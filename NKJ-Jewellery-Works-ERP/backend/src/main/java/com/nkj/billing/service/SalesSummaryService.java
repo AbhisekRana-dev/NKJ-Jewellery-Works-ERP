@@ -30,6 +30,7 @@ public class SalesSummaryService {
                 SELECT 1
                 FROM public.bookings b
                 WHERE b.invoice_no = i.invoice_no
+                  AND b.is_installment_plan = TRUE
             )
 
             UNION ALL
@@ -40,6 +41,7 @@ public class SalesSummaryService {
             FROM public.bookings b
             INNER JOIN public.invoices i ON i.invoice_no = b.invoice_no
             WHERE b.invoice_no IS NOT NULL
+              AND b.is_installment_plan = TRUE
               AND b.advance_amount > 0
 
             UNION ALL
@@ -52,6 +54,7 @@ public class SalesSummaryService {
             INNER JOIN public.bookings b ON b.id = ins.booking_id
             INNER JOIN public.invoices i ON i.invoice_no = b.invoice_no
             WHERE b.invoice_no IS NOT NULL
+              AND b.is_installment_plan = TRUE
               AND p.amount > 0
             """;
 
