@@ -375,39 +375,50 @@ function formatInvoiceDateForDisplay(value) {
 const INVOICE_DRAFT_RELOAD_GUARD_KEY = "nkj.invoice.draft.reload-document";
 let invoiceReloadDraftClearedInMemory = false;
 
-function readInvoiceDraft() {
-  if (typeof window === "undefined") return null;
+function getInvoiceReloadDocumentKey() {
+  if (typeof window === "undefined") return "";
   try {
     const navigationEntries = window.performance?.getEntriesByType?.("navigation") || [];
     const navigationType = navigationEntries[0]?.type;
     const legacyReload = navigationEntries.length === 0
       && window.performance?.navigation?.type === 1;
-    const isFullPageReload = navigationType === "reload" || legacyReload;
-    const documentKey = String(window.performance?.timeOrigin || "");
+    if (navigationType !== "reload" && !legacyReload) return "";
+    return String(
+      window.performance?.timeOrigin ||
+      window.performance?.timing?.navigationStart ||
+      "",
+    );
+  } catch {
+    return "";
+  }
+}
 
-    // Clear the old draft once per hard-reloaded document. The session key
-    // prevents an in-app return to /invoice from clearing a newer draft again.
-    let reloadAlreadyHandled = invoiceReloadDraftClearedInMemory;
-    if (isFullPageReload && documentKey) {
-      try {
-        reloadAlreadyHandled =
-          window.sessionStorage.getItem(INVOICE_DRAFT_RELOAD_GUARD_KEY) === documentKey;
-      } catch {
-        // The in-memory guard below still handles browsers with blocked storage.
-      }
+// This check is deliberately read-only because React Strict Mode may call
+// state initializers more than once in development.
+function isUnconsumedInvoiceReload() {
+  const documentKey = getInvoiceReloadDocumentKey();
+  if (!documentKey) return false;
+  try {
+    return window.sessionStorage.getItem(INVOICE_DRAFT_RELOAD_GUARD_KEY) !== documentKey;
+  } catch {
+    return !invoiceReloadDraftClearedInMemory;
+  }
+}
 
-      if (!reloadAlreadyHandled) {
-        invoiceReloadDraftClearedInMemory = true;
-        try {
-          window.sessionStorage.setItem(INVOICE_DRAFT_RELOAD_GUARD_KEY, documentKey);
-        } catch {
-          // Continue with the in-memory guard if session storage is unavailable.
-        }
-        window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY);
-        return null;
-      }
-    }
+function markInvoiceReloadHandled() {
+  const documentKey = getInvoiceReloadDocumentKey();
+  if (!documentKey) return;
+  invoiceReloadDraftClearedInMemory = true;
+  try {
+    window.sessionStorage.setItem(INVOICE_DRAFT_RELOAD_GUARD_KEY, documentKey);
+  } catch {
+    // The in-memory guard handles browsers with blocked session storage.
+  }
+}
 
+function readInvoiceDraft() {
+  if (typeof window === "undefined") return null;
+  try {
     const draft = JSON.parse(window.localStorage.getItem(INVOICE_DRAFT_STORAGE_KEY) || "null");
     return draft && draft.version === 1 ? draft : null;
   } catch {
@@ -429,12 +440,13 @@ function createInvoiceDraftKey() {
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const copiedInvoice = location.state?.copyInvoice
+  const [reloadResetPending, setReloadResetPending] = useState(() => isUnconsumedInvoiceReload());
+  const copiedInvoice = !reloadResetPending && location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
   const startingNewInvoice = location.state?.startNewInvoice === true;
   const [initialDraft] = useState(() =>
-    copiedInvoice || startingNewInvoice ? null : readInvoiceDraft()
+    reloadResetPending || copiedInvoice || startingNewInvoice ? null : readInvoiceDraft()
   );
   const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || getTodayIndiaDate());
   const maxInvoiceDate = getTodayIndiaDate();
@@ -515,11 +527,25 @@ export function InvoicePage() {
     };
   }, []);
 
+  const initialReloadResetHandledRef = useRef(false);
+
   useEffect(() => {
-    if (startingNewInvoice) {
-      // Explicit New Invoice navigation resets the form even when the user
-      // clicks New Invoice while already on /invoice. Only the temporary
-      // browser draft is removed; saved database invoices remain untouched.
+    const firstMountAfterReload = reloadResetPending && !initialReloadResetHandledRef.current;
+    const explicitNewInvoice = !reloadResetPending && startingNewInvoice;
+
+    if (firstMountAfterReload || explicitNewInvoice) {
+      if (firstMountAfterReload) {
+        // Mark the reload only after render. Keeping the state initializer
+        // read-only makes this reliable under React Strict Mode.
+        initialReloadResetHandledRef.current = true;
+        markInvoiceReloadHandled();
+        setReloadResetPending(false);
+      }
+
+      // A full browser reload must always start a blank invoice, even when
+      // history.state still contains a copied invoice or a New Invoice flag.
+      // Explicit New Invoice navigation uses the same reset path. Saved
+      // database invoices and Invoice History are never modified here.
       try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
       setInvoiceDate(getTodayIndiaDate());
       setCustomer({ name: "", mobile: "", address: "" });
@@ -539,16 +565,20 @@ export function InvoicePage() {
       setInvoiceId(null);
       setShowInvoicePin(false);
 
-      // Consume the one-time navigation instruction so browser Back can
-      // restore a genuinely unfinished draft instead of clearing it again.
+      // Remove persisted router state so another refresh cannot reopen the
+      // invoice that was previously copied or selected.
       navigate("/invoice", { replace: true, state: null });
       return;
     }
 
+    // Do not process stale history.state while the initial reload reset is
+    // waiting to be committed.
+    if (reloadResetPending) return;
+
     if (location.state?.copyInvoice) {
       navigate("/invoice", { replace: true, state: null });
     }
-  }, [location.key, startingNewInvoice, location.state, navigate]);
+  }, [location.key, startingNewInvoice, location.state, navigate, reloadResetPending]);
 
   useEffect(() => {
     if (saved) {
