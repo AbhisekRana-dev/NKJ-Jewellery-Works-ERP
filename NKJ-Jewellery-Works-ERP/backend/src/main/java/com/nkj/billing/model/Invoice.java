@@ -39,6 +39,9 @@ public class Invoice {
     @Column(name = "invoice_date", nullable = false)
     private LocalDate invoiceDate;
 
+    @Column(name = "show_gstin", nullable = false)
+    private boolean showGstin = true;
+
     @Column(name = "customer_name")
     private String customerName;
 
@@ -271,6 +274,14 @@ public class Invoice {
 
     public LocalDate getInvoiceDate() {
         return invoiceDate;
+    }
+
+    public boolean isShowGstin() {
+        return showGstin;
+    }
+
+    public void setShowGstin(boolean showGstin) {
+        this.showGstin = showGstin;
     }
 
     public void setInvoiceDate(LocalDate invoiceDate) {
