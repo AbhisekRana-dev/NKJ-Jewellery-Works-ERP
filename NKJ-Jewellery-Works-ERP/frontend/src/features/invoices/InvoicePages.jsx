@@ -404,7 +404,8 @@ export function InvoicePage() {
   }));
 
   const [paymentMode, setPaymentMode] = useState(() => copiedInvoice?.paymentMode || initialDraft?.paymentMode || "Cash");
-  const [paymentAmount, setPaymentAmount] = useState(() => String(copiedInvoice?.paymentAmount ?? initialDraft?.paymentAmount ?? ""));
+  // A copied invoice is a new transaction, so do not copy its previous received payment.
+  const [paymentAmount, setPaymentAmount] = useState(() => String(initialDraft?.paymentAmount ?? ""));
   const [referenceNo, setReferenceNo] = useState(() => copiedInvoice?.referenceNo || initialDraft?.referenceNo || "");
   const [newItems, setNewItems] = useState(() => copiedRows(copiedInvoice?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
@@ -649,6 +650,7 @@ export function InvoicePage() {
     setDiscount("");
     setGst("0");
     setDescription("");
+    setSuccessMessage("");
     setInvoiceNo("");
     setInvoiceId(null);
     setIdempotencyKey(createInvoiceDraftKey());
