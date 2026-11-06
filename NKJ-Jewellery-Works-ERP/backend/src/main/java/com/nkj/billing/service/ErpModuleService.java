@@ -89,8 +89,9 @@ public class ErpModuleService {
         ), "bookingId", "installmentNo", "amountDue");
         register("installment-payments", "installment_payments", true, List.of(
             f("installmentId","installment_id","number","Installment ID"), f("paymentDate","payment_date","date","Payment date"),
-            f("amount","amount","number","Amount"), f("paymentMethod","payment_method","text","Payment method"), f("referenceNo","reference_no","text","Reference no.")
-        ), "installmentId", "amount", "paymentMethod");
+            f("amount","amount","number","Amount"), f("paymentMethod","payment_method","text","Payment method"), f("referenceNo","reference_no","text","Reference no."),
+            f("idempotencyKey","idempotency_key","text","Idempotency key")
+        ), "installmentId", "paymentDate", "amount", "paymentMethod");
         register("suppliers", "suppliers", true, List.of(
             f("supplierCode","supplier_code","text","Supplier ID"), f("name","name","text","Supplier name"), f("phone","phone","text","Phone"), f("email","email","text","Email"),
             f("address","address","text","Address"), f("gstNumber","gst_number","text","GST number"),
@@ -182,6 +183,35 @@ public class ErpModuleService {
         // Browser forms submit empty strings for optional inputs. Convert them to null
         // so empty date/time values do not reach PostgreSQL CAST operations.
         data.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
+        if (module.equals("installment-payments")) {
+            String idempotencyKey = String.valueOf(data.getOrDefault("idempotencyKey", "")).trim();
+            if (!idempotencyKey.matches("[A-Za-z0-9._:-]{1,120}")) {
+                throw new IllegalArgumentException("A valid payment request key is required.");
+            }
+
+            // Serialize retries with the same client key. A lost HTTP response
+            // can then be retried without recording the receipt or schedule update twice.
+            jdbc.query(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",
+                    rs -> {
+                        if (rs.next()) {
+                            // Ensure PostgreSQL acquires the transaction-scoped lock.
+                        }
+                        return null;
+                    },
+                    "installment-payment:" + idempotencyKey
+            );
+            Long existingPaymentId = jdbc.queryForObject(
+                    "SELECT MAX(id) FROM public.installment_payments WHERE idempotency_key=?",
+                    Long.class,
+                    idempotencyKey
+            );
+            if (existingPaymentId != null) {
+                return Map.of("success", true, "id", existingPaymentId,
+                        "duplicate", true, "message", "This installment payment was already recorded.");
+            }
+            data.put("idempotencyKey", idempotencyKey);
+        }
         if (module.equals("staff-notes")) data.putIfAbsent("createdBy", auth.getUsername());
         if (module.equals("bookings") && data.get("bookingNo") == null) data.put("bookingNo", "PENDING-" + UUID.randomUUID());
         if (module.equals("repairs") && data.get("orderNo") == null) data.put("orderNo", "PENDING-" + UUID.randomUUID());
@@ -261,9 +291,15 @@ public class ErpModuleService {
         if (request == null) throw new IllegalArgumentException("Installment plan details are required.");
         String invoiceNo = String.valueOf(request.getOrDefault("invoiceNo", "")).trim();
         if (invoiceNo.isBlank() || "null".equals(invoiceNo)) throw new IllegalArgumentException("A valid saved invoice number is required.");
-        Long duplicate = jdbc.queryForObject("SELECT COUNT(*) FROM bookings WHERE invoice_no=?", Long.class, invoiceNo);
+
+        // Lock the source invoice so two simultaneous conversions cannot both
+        // pass the duplicate check and create plans for the same invoice.
+        Map<String,Object> invoice = jdbc.queryForMap(
+                "SELECT invoice_no, customer_name, mobile, grand_total FROM public.invoices WHERE invoice_no=? FOR UPDATE",
+                invoiceNo
+        );
+        Long duplicate = jdbc.queryForObject("SELECT COUNT(*) FROM public.bookings WHERE invoice_no=?", Long.class, invoiceNo);
         if (duplicate != null && duplicate > 0) throw new IllegalArgumentException("An installment plan already exists for this invoice.");
-        Map<String,Object> invoice = jdbc.queryForMap("SELECT invoice_no, customer_name, mobile, grand_total FROM invoices WHERE invoice_no=?", invoiceNo);
         BigDecimal invoiceTotal = decimal(invoice.get("grand_total"));
         if (invoiceTotal.signum() <= 0) throw new IllegalArgumentException("The selected invoice has no payable amount.");
         Object bookingObject = request.get("booking");
