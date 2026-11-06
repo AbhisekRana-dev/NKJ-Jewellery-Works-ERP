@@ -36,7 +36,7 @@ public class ErpModuleController {
     public Map<String,Object> createInstallmentPlan(
             @RequestBody Map<String,Object> body,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
-            jakarta.servlet.http.HttpServletRequest request) {
+            jakarta.servlet.http.HttpServletRequest request) throws Exception {
         return modules.createInstallmentPlan(body, idempotencyKey, request.getRemoteAddr());
     }
 
