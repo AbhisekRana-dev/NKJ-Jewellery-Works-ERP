@@ -52,3 +52,191 @@
 
 }
 .nkj-downpayment-tag {display:inline-block;padding:4px 7px;border-radius:5px;background:#fff1d6;color:#8f5b08;font-size:11px}
+
+.nkj-installment-calculation {
+  flex-wrap: wrap;
+}
+.nkj-installment-calculation > div {
+  display: grid;
+  gap: 3px;
+}
+.nkj-installment-preview {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid #eadbc9;
+  border-radius: 12px;
+  background: #fffdf9;
+}
+.nkj-installment-preview .nkj-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.nkj-installment-preview h3 {
+  margin: 0;
+  color: #850b2b;
+  font: 700 16px Georgia,serif;
+}
+.nkj-installment-preview .nkj-panel-head span {
+  color: #776d68;
+  font-size: 11px;
+}
+.nkj-installment-preview table th,
+.nkj-installment-preview table td {
+  padding: 9px 11px;
+}
+.nkj-installment-preview tbody tr:last-child {
+  background: #fff1d0;
+  font-weight: 800;
+}
+.nkj-installment-detail-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #eadbc9;
+  border-radius: 13px;
+  background: #fff;
+}
+.nkj-installment-detail-panel > h4 {
+  margin: 18px 0 9px;
+  color: #850b2b;
+  font: 700 15px Georgia,serif;
+}
+.nkj-installment-detail-panel .nkj-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.nkj-installment-detail-panel .nkj-panel-head h3 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 4px;
+  color: #850b2b;
+  font: 700 18px Georgia,serif;
+}
+.nkj-installment-detail-panel .nkj-panel-head span {
+  color: #746864;
+  font-size: 12px;
+}
+.nkj-installment-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.nkj-installment-detail-summary > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #efdfcf;
+  border-radius: 10px;
+  background: #fffaf2;
+}
+.nkj-installment-detail-summary span {
+  color: #766b65;
+  font-size: 11px;
+}
+.nkj-installment-detail-summary b {
+  color: #850b2b;
+  font-size: 17px;
+}
+.nkj-installment-detail-summary small {
+  color: #837771;
+  font-size: 10px;
+}
+.nkj-installment-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.nkj-installment-status.pending {
+  color: #885a00;
+  background: #fff1ce;
+  border: 1px solid #f1d69a;
+}
+.nkj-installment-status.partial {
+  color: #14578b;
+  background: #eaf4ff;
+  border: 1px solid #bfdbf7;
+}
+.nkj-installment-status.paid {
+  color: #16633b;
+  background: #e5f6eb;
+  border: 1px solid #b9e5c9;
+}
+.nkj-installment-status.overdue {
+  color: #98213b;
+  background: #fff0f2;
+  border: 1px solid #efc0ca;
+}
+.nkj-installment-row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.nkj-installment-row-actions .small-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.nkj-installment-row-actions .small-action svg {
+  flex: 0 0 auto;
+}
+.nkj-notebook-ledger > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 14px 0;
+  margin: 0;
+  color: #850b2b;
+  font: 700 17px Georgia,serif;
+}
+.nkj-notebook-ledger .table-wrap {
+  margin-top: 10px;
+}
+.nkj-notebook-ledger table {
+  min-width: 980px;
+}
+.nkj-installment-page .nkj-module-table table {
+  min-width: 1120px;
+}
+.nkj-installment-page .nkj-outstanding {
+  color: #8b0b2e;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.nkj-installment-page .nkj-installment-input-grid label {
+  min-width: 0;
+}
+.nkj-installment-page .nkj-module-footnote {
+  margin: 10px 0;
+  color: #766a64;
+  font-size: 11px;
+  line-height: 1.55;
+}
+@media (max-width: 860px) {
+  .nkj-installment-detail-summary {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+@media (max-width: 600px) {
+  .nkj-installment-detail-summary {
+    grid-template-columns: 1fr;
+  }
+  .nkj-installment-detail-panel .nkj-panel-head {
+    align-items: flex-start;
+  }
+  .nkj-installment-detail-panel .nkj-panel-head h3 {
+    font-size: 15px;
+  }
+}
