@@ -443,7 +443,7 @@ export function InvoicePage() {
   // Drafts created before invoiceDate was added may reuse an idempotency key
   // that already belongs to an invoice saved with today's date. Give those
   // legacy drafts a fresh key rather than silently returning that old invoice.
-  const hasDateAwareDraft = /^\\d{4}-\\d{2}-\\d{2}$/.test(String(initialDraft?.invoiceDate || ""));
+  const hasDateAwareDraft = /^\d{4}-\d{2}-\d{2}$/.test(String(initialDraft?.invoiceDate || ""));
   const [idempotencyKey, setIdempotencyKey] = useState(() =>
     hasDateAwareDraft && initialDraft?.idempotencyKey
       ? initialDraft.idempotencyKey
