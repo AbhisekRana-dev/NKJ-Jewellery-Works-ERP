@@ -1,12 +1,11 @@
 import "./InstallmentManagementPage.css";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Search, Wallet, Printer, UserRound, ReceiptText } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 import { request } from "../../core/api/client";
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
-const createPaymentRequestKey = () => window.crypto?.randomUUID?.() || `emi-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const fmtDate = (d) => d ? new Date(`${String(d).slice(0,10)}T00:00:00`).toLocaleDateString("en-IN") : "—";
 const addMonths = (date, count, dueDay) => { const d = new Date(`${date}T12:00:00`); d.setDate(1); d.setMonth(d.getMonth()+count); const last = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); d.setDate(Math.min(Math.max(1, Number(dueDay) || 1), last)); return d.toISOString().slice(0,10); };
 
@@ -24,8 +23,6 @@ export default function InstallmentManagementPage() {
   const [invoiceId, setInvoiceId] = useState("");
   const [plan, setPlan] = useState({ totalAmount: "", downPayment: "0", count: "6", frequency: "MONTHLY", startDate: today(), dueDay: String(new Date().getDate()) });
   const [receiptForm, setReceiptForm] = useState({ installmentId: "", paymentDate: today(), amount: "", paymentMethod: "Cash", referenceNo: "" });
-  const [receiptRequestKey, setReceiptRequestKey] = useState(() => createPaymentRequestKey());
-  const receiptSubmissionRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -86,36 +83,17 @@ export default function InstallmentManagementPage() {
   };
 
   const postReceipt = async (e) => {
-    e.preventDefault();
-    if (receiptSubmissionRef.current) return;
-    receiptSubmissionRef.current = true;
-    setSaving(true); setError(""); setMessage("");
+    e.preventDefault(); setSaving(true); setError(""); setMessage("");
     const schedule=schedules.find(s=>String(s.id)===String(receiptForm.installmentId));
     const amount=Number(receiptForm.amount);
-    if (!schedule||!Number.isFinite(amount)||amount<=0||amount>Number(schedule.remainingAmount||0)) {
-      setError("Choose a due installment and enter an amount no greater than its remaining balance.");
-      setSaving(false);
-      receiptSubmissionRef.current = false;
-      return;
-    }
+    if (!schedule||!Number.isFinite(amount)||amount<=0||amount>Number(schedule.remainingAmount||0)) { setError("Choose a due installment and enter an amount no greater than its remaining balance."); setSaving(false); return; }
     try {
-      await request("/admin/modules/installment-payments", { method:"POST", body:JSON.stringify({
-        installmentId:Number(receiptForm.installmentId),
-        paymentDate:receiptForm.paymentDate,
-        amount,
-        paymentMethod:receiptForm.paymentMethod,
-        referenceNo:`Installment ${schedule.installmentNo}`,
-        idempotencyKey:receiptRequestKey
-      }) });
+      await request("/admin/modules/installment-payments", { method:"POST", body:JSON.stringify({ installmentId:Number(receiptForm.installmentId), paymentDate:receiptForm.paymentDate, amount, paymentMethod:receiptForm.paymentMethod, referenceNo:`Installment ${schedule.installmentNo}` }) });
       setMessage(`₹ ${money(amount)} receipt saved against invoice ${schedule.invoiceNo}.`);
-      setReceiptRequestKey(createPaymentRequestKey());
       setReceiptForm({ installmentId:"",paymentDate:today(),amount:"",paymentMethod:"Cash",referenceNo:"" });
       await load(); setTab("receipts");
     } catch (e2) { setError(e2.message || "Could not post receipt."); }
-    finally {
-      setSaving(false);
-      receiptSubmissionRef.current = false;
-    }
+    finally { setSaving(false); }
   };
 
   const startReceipt = (schedule) => { setReceiptForm({ installmentId:String(schedule.id), paymentDate:today(), amount:String(schedule.remainingAmount||""), paymentMethod:"Cash", referenceNo:`Installment ${schedule.installmentNo}` }); setTab("receipts"); };
