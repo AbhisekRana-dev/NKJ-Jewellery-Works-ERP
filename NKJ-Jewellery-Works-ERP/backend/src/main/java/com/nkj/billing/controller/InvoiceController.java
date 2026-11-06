@@ -189,6 +189,31 @@ public class InvoiceController {
         return view(invoice);
     }
 
+    /**
+     * Frontend preflight: do not submit invoices to an older backend that
+     * ignores invoiceDate and silently uses createdAt for numbering.
+     */
+    @GetMapping("/date-support")
+    public Map<String, Object> dateSupport() {
+        Boolean invoiceDateColumn = jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                        + "WHERE table_schema='public' AND table_name='invoices' AND column_name='invoice_date')",
+                Boolean.class
+        );
+        Boolean dailySequenceTable = jdbc.queryForObject(
+                "SELECT to_regclass('public.invoice_daily_sequences') IS NOT NULL",
+                Boolean.class
+        );
+        boolean supported = Boolean.TRUE.equals(invoiceDateColumn)
+                && Boolean.TRUE.equals(dailySequenceTable);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("invoiceDateSupported", supported);
+        response.put("apiVersion", "backdated-invoice-date-v1");
+        response.put("invoiceDateColumn", Boolean.TRUE.equals(invoiceDateColumn));
+        response.put("dailySequenceTable", Boolean.TRUE.equals(dailySequenceTable));
+        return response;
+    }
+
     @GetMapping
     public java.util.List<Map<String, Object>> all() {
         return repo.findAllByOrderByInvoiceDateDescCreatedAtDesc().stream().map(this::summary).toList();
