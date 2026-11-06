@@ -440,15 +440,10 @@ export function InvoicePage() {
   const [description, setDescription] = useState(() => copiedInvoice?.description || initialDraft?.description || "");
   const [saved, setSaved] = useState(false);
   const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
-  // Drafts created before invoiceDate was added may reuse an idempotency key
-  // that already belongs to an invoice saved with today's date. Give those
-  // legacy drafts a fresh key rather than silently returning that old invoice.
-  const hasDateAwareDraft = /^\d{4}-\d{2}-\d{2}$/.test(String(initialDraft?.invoiceDate || ""));
-  const [idempotencyKey, setIdempotencyKey] = useState(() =>
-    hasDateAwareDraft && initialDraft?.idempotencyKey
-      ? initialDraft.idempotencyKey
-      : createInvoiceDraftKey()
-  );
+  // Keep the draft's idempotency key when restoring it. The backend checks
+  // that key and safely repairs a prior save's business date only when the
+  // rest of the invoice payload is identical.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => initialDraft?.idempotencyKey || createInvoiceDraftKey());
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
