@@ -30,8 +30,8 @@ public class MetalRateController {
     /** Legacy contract: values are per gram to preserve existing invoice calculations. */
     public record RateUpdateRequest(BigDecimal gold24kRate, BigDecimal gold22kRate, BigDecimal silverRate) {}
 
-    /** Admin-only ingestion contract from an authorized daily newspaper adapter. */
-    public record NewspaperImportRequest(
+    /** Internal ingestion contract from an authorized Kolkata rate-feed adapter. */
+    public record KolkataRateImportRequest(
             BigDecimal gold24kRate,
             BigDecimal gold22kRate,
             BigDecimal silverRate,
