@@ -158,9 +158,9 @@ public class ErpModuleService {
         }
         if (module.equals("installment-payments")) {
             return jdbc.queryForList("SELECT * FROM (" +
-                "SELECT p.id, i.id AS \"installmentId\", COALESCE(b.invoice_no,b.booking_no) AS \"invoiceNo\", b.customer_name AS \"customerName\", p.payment_date AS \"paymentDate\", p.created_at AS \"paidAt\", p.amount, p.payment_method AS \"paymentMethod\", p.reference_no AS \"referenceNo\" FROM installment_payments p JOIN installments i ON i.id=p.installment_id JOIN bookings b ON b.id=i.booking_id " +
+                "SELECT p.id, i.id AS \"installmentId\", COALESCE(b.invoice_no,b.booking_no) AS \"invoiceNo\", b.customer_name AS \"customerName\", p.payment_date AS \"paymentDate\", p.created_at AS \"paidAt\", p.amount, p.payment_method AS \"paymentMethod\", p.reference_no AS \"referenceNo\" FROM installment_payments p JOIN installments i ON i.id=p.installment_id JOIN bookings b ON b.id=i.booking_id WHERE b.is_installment_plan=TRUE " +
                 "UNION ALL " +
-                "SELECT -b.id AS id, NULL::BIGINT AS \"installmentId\", b.invoice_no AS \"invoiceNo\", b.customer_name AS \"customerName\", b.booking_date AS \"paymentDate\", b.booking_date::timestamptz AS \"paidAt\", b.advance_amount AS amount, 'Cash'::VARCHAR AS \"paymentMethod\", 'DOWN PAYMENT'::VARCHAR AS \"referenceNo\" FROM bookings b WHERE b.invoice_no IS NOT NULL AND b.advance_amount>0" +
+                "SELECT -b.id AS id, NULL::BIGINT AS \"installmentId\", b.invoice_no AS \"invoiceNo\", b.customer_name AS \"customerName\", b.booking_date AS \"paymentDate\", b.booking_date::timestamptz AS \"paidAt\", b.advance_amount AS amount, 'Cash'::VARCHAR AS \"paymentMethod\", 'DOWN PAYMENT'::VARCHAR AS \"referenceNo\" FROM bookings b WHERE b.invoice_no IS NOT NULL AND b.is_installment_plan=TRUE AND b.advance_amount>0" +
                 ") receipts ORDER BY \"paidAt\" DESC,id DESC LIMIT 1000");
         }
         if (module.equals("attendance")) {
@@ -340,6 +340,7 @@ public class ErpModuleService {
         booking.put("remainingAmount", expectedSchedule);
         Map<String,Object> createdBooking = create("bookings", booking, ip);
         long bookingId = ((Number) createdBooking.get("id")).longValue();
+        jdbc.update("UPDATE public.bookings SET is_installment_plan=TRUE WHERE id=?", bookingId);
         for (Map<String,Object> item : schedule) {
             Map<String,Object> row = new LinkedHashMap<>(item);
             row.put("bookingId", bookingId);
