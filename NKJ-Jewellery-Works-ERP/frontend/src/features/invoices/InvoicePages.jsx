@@ -128,7 +128,6 @@ function makeInvoiceShareMessage(invoice) {
     `Mobile: ${data.mobile || "—"}`,
     `Address: ${data.address || "—"}`,
     `Payment: ${data.paymentMode || "—"}`,
-    `Amount Received: ₹${money(data.paymentAmount)}`,
     `Reference: ${data.referenceNo || "—"}`,
     "",
     "NEW ORNAMENTS:",
@@ -404,8 +403,6 @@ export function InvoicePage() {
   }));
 
   const [paymentMode, setPaymentMode] = useState(() => copiedInvoice?.paymentMode || initialDraft?.paymentMode || "Cash");
-  // A copied invoice is a new transaction, so do not copy its previous received payment.
-  const [paymentAmount, setPaymentAmount] = useState(() => String(initialDraft?.paymentAmount ?? ""));
   const [referenceNo, setReferenceNo] = useState(() => copiedInvoice?.referenceNo || initialDraft?.referenceNo || "");
   const [newItems, setNewItems] = useState(() => copiedRows(copiedInvoice?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
@@ -481,7 +478,6 @@ export function InvoicePage() {
       idempotencyKey,
       customer,
       paymentMode,
-      paymentAmount,
       referenceNo,
       newItems,
       oldItems,
@@ -495,7 +491,7 @@ export function InvoicePage() {
     } catch {
       // The invoice remains usable when browser storage is unavailable or full.
     }
-  }, [customer, paymentMode, paymentAmount, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
+  }, [customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -616,7 +612,6 @@ export function InvoicePage() {
       mobile: customer.mobile,
       address: customer.address,
       paymentMode,
-      paymentAmount: paymentAmount.trim() === "" ? 0 : Number(paymentAmount),
       referenceNo,
       description,
       // Preserve every displayed row, including intentionally blank rows.
@@ -643,7 +638,6 @@ export function InvoicePage() {
     try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
-    setPaymentAmount("");
     setReferenceNo("");
     setNewItems([blankNew()]);
     setOldItems([blankOld()]);
@@ -680,7 +674,7 @@ export function InvoicePage() {
     );
     if (invalidOldItem) return "Old ornament weights and rates must be valid non-negative numbers.";
 
-    for (const [label, value] of [["GST", gst], ["Discount", discount], ["Amount received", paymentAmount]]) {
+    for (const [label, value] of [["GST", gst], ["Discount", discount]]) {
       const raw = String(value ?? "").trim();
       if (raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0)) {
         return `${label} must be a valid non-negative number.`;
@@ -896,22 +890,6 @@ export function InvoicePage() {
                     ),
                   )}
                 </select>
-              </label>
-
-              <label>
-                <span>Amount Received (₹)</span>
-
-                <i>:</i>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={paymentAmount}
-                  onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="0.00"
-                />
               </label>
 
               <label>
@@ -1546,10 +1524,6 @@ function SavedInvoicePrintSheet({ invoice }) {
             <label>
               <span>Payment Mode</span><i>:</i>
               <input value={data.paymentMode || "Cash"} readOnly />
-            </label>
-            <label>
-              <span>Amount Received (₹)</span><i>:</i>
-              <input value={money(data.paymentAmount)} readOnly />
             </label>
             <label>
               <span>Reference No.</span><i>:</i>
