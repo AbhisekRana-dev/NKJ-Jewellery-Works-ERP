@@ -154,7 +154,7 @@ public class MetalRateService {
      * or older than the last successfully imported automatic publication.
      */
     @Transactional
-    public Map<String, Object> importNewspaperRates(KolkataRateImportRequest request) {
+    public Map<String, Object> importKolkataRates(KolkataRateImportRequest request) {
         if (request == null) throw new IllegalArgumentException("Kolkata rate payload is required.");
         LocalDate today = LocalDate.now(SHOP_ZONE);
         LocalDate publicationDate = request.publicationDate();
