@@ -96,8 +96,9 @@ public class MetalRateService {
         // automatic snapshot before attempting to fetch a newer publication.
         restoreLatestAutomaticSnapshot(current);
 
+        // Mode selection alone is not a rate change, so it does not create
+        // a duplicate daily price row in Rate Change History.
         MetalRate saved = repository.save(current);
-        appendHistory(before, snapshotOf(saved), "MODE_SWITCH", "Administrator enabled automatic Kolkata rate mode", auth.getUsername());
         return toResponse(saved);
     }
 
@@ -162,6 +163,11 @@ public class MetalRateService {
         LocalDate publicationDate = request.publicationDate();
         if (publicationDate == null || publicationDate.isAfter(today)) {
             throw new IllegalArgumentException("Kolkata rate publication date cannot be missing or in the future.");
+        }
+        // Permit the previous business-day snapshot over weekends/short
+        // holidays, but never accept a feed older than three calendar days.
+        if (publicationDate.isBefore(today.minusDays(3))) {
+            throw new IllegalArgumentException("Kolkata rate source publication is stale; the last verified active rates will be retained.");
         }
         if (request.publishedAt() == null || !request.publishedAt().toLocalDate().equals(publicationDate)) {
             throw new IllegalArgumentException("The source publication timestamp must match the stated publication date.");
