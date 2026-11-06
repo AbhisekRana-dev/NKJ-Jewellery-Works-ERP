@@ -372,27 +372,40 @@ function formatInvoiceDateForDisplay(value) {
   return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || "—");
 }
 
-function wasInvoicePageReloaded() {
-  if (typeof window === "undefined") return false;
+const INVOICE_DRAFT_RELOAD_GUARD_KEY = "nkj.invoice.draft.reload-document";
+let invoiceReloadDraftClearedInMemory = false;
+
+function readInvoiceDraft() {
+  if (typeof window === "undefined") return null;
   try {
     const navigationEntries = window.performance?.getEntriesByType?.("navigation") || [];
     const navigationType = navigationEntries[0]?.type;
     const legacyReload = navigationEntries.length === 0
       && window.performance?.navigation?.type === 1;
-    return navigationType === "reload" || legacyReload;
-  } catch {
-    return false;
-  }
-}
+    const isFullPageReload = navigationType === "reload" || legacyReload;
+    const documentKey = String(window.performance?.timeOrigin || "");
 
-function readInvoiceDraft() {
-  if (typeof window === "undefined") return null;
-  try {
-    // Refresh means discard only the unfinished browser draft. Saved database
-    // invoices are not affected. In-app navigation may still restore drafts.
-    if (wasInvoicePageReloaded()) {
-      window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY);
-      return null;
+    // Clear the old draft once per hard-reloaded document. The session key
+    // prevents an in-app return to /invoice from clearing a newer draft again.
+    let reloadAlreadyHandled = invoiceReloadDraftClearedInMemory;
+    if (isFullPageReload && documentKey) {
+      try {
+        reloadAlreadyHandled =
+          window.sessionStorage.getItem(INVOICE_DRAFT_RELOAD_GUARD_KEY) === documentKey;
+      } catch {
+        // The in-memory guard below still handles browsers with blocked storage.
+      }
+
+      if (!reloadAlreadyHandled) {
+        invoiceReloadDraftClearedInMemory = true;
+        try {
+          window.sessionStorage.setItem(INVOICE_DRAFT_RELOAD_GUARD_KEY, documentKey);
+        } catch {
+          // Continue with the in-memory guard if session storage is unavailable.
+        }
+        window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY);
+        return null;
+      }
     }
 
     const draft = JSON.parse(window.localStorage.getItem(INVOICE_DRAFT_STORAGE_KEY) || "null");
@@ -416,13 +429,13 @@ function createInvoiceDraftKey() {
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const pageWasReloaded = wasInvoicePageReloaded();
-  const copiedInvoice = !pageWasReloaded && location.state?.copyInvoice
+  const copiedInvoice = location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
-  const startingNewInvoice = !pageWasReloaded && location.state?.startNewInvoice === true;
-  const [storedDraft] = useState(() => readInvoiceDraft());
-  const initialDraft = copiedInvoice || startingNewInvoice || pageWasReloaded ? null : storedDraft;
+  const startingNewInvoice = location.state?.startNewInvoice === true;
+  const [initialDraft] = useState(() =>
+    copiedInvoice || startingNewInvoice ? null : readInvoiceDraft()
+  );
   const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || getTodayIndiaDate());
   const maxInvoiceDate = getTodayIndiaDate();
 
