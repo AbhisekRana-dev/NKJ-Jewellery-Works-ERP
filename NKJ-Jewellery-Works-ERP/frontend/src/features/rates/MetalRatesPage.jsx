@@ -243,6 +243,7 @@ export default function MetalRatesPage() {
                   <th>22K Gold (₹ / 10g)</th>
                   <th>Silver 999 (₹ / 10g)</th>
                   <th>Original Rate Date</th>
+                  <th>Source Published At</th>
                   <th>Source</th>
                   <th>Action</th>
                   <th>Admin / Process</th>
@@ -256,6 +257,7 @@ export default function MetalRatesPage() {
                     <td>₹ {fmt(Number(row.newGold22kRate || 0) * 10)}</td>
                     <td>₹ {fmt(Number(row.newSilverRate || 0) * 10)}</td>
                     <td>{displayDate(row.newRateDate)}</td>
+                    <td>{row.sourcePublishedAt ? new Date(row.sourcePublishedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"}</td>
                     <td>
                       <span>{row.rateSource || "—"}</span>
                       {isExternalUrl(row.sourceReference) && (
@@ -269,7 +271,7 @@ export default function MetalRatesPage() {
                   </tr>
                 ))}
                 {!history.length && (
-                  <tr><td colSpan="8" className="empty">No rate changes recorded yet.</td></tr>
+                  <tr><td colSpan="9" className="empty">No rate changes recorded yet.</td></tr>
                 )}
               </tbody>
             </table>
