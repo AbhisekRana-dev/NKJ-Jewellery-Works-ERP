@@ -10,6 +10,11 @@ import { useAuth } from "../../core/auth/AuthProvider";
 import { Page, Stat } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 
+function displayInvoiceDate(value) {
+  const match = String(value || "").match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : value || "—";
+}
+
 const StatLink = ({ to, ...props }) => <Link to={to} className="nkj-dashboard-stat-link"><Stat {...props} /></Link>;
 
 const initial = { totalInvoices: 0, totalCustomers: 0, todayInvoices: 0, recent: [], staffCount: 0, presentToday: 0, absentToday: 0, openBookings: 0, monthSales: 0, monthExpenses: 0, todaySales: 0, todayExpenses: 0, goldStockQuantity: 0, silverStockQuantity: 0, lowStockCount: 0, bookingOutstanding: 0, supplierOutstanding: 0, monthlySalaryExpense: 0, pendingSalary: 0, operatingResultBeforeCogs: 0 };
@@ -58,7 +63,7 @@ export function AdminHome() {
       <section className="nkj-dashboard-lower nkj-dashboard-lower-single">
         <div className="nkj-recent panel"><div className="nkj-panel-head"><h3><Receipt/> Recent Invoices</h3><Link to="/saved-invoices">View All</Link></div>
           <div className="table-wrap"><table><thead><tr><th>Invoice No.</th><th>Customer</th><th>Date</th><th>Payment</th><th>Amount (₹)</th><th>Action</th></tr></thead><tbody>
-            {recent.map((row,i)=><tr key={row.id??row.invoiceNo??i}><td>{row.invoiceNo||"—"}</td><td>{row.customerName||"—"}</td><td>{row.invoiceDate||"—"}</td><td>{row.paymentMode||"—"}</td><td>{money(row.grandTotal)}</td><td><Link className="nkj-view" to={row.id?`/saved-invoices?invoiceId=${row.id}`:"/saved-invoices"}><Eye size={16}/></Link></td></tr>)}
+            {recent.map((row,i)=><tr key={row.id??row.invoiceNo??i}><td>{row.invoiceNo||"—"}</td><td>{row.customerName||"—"}</td><td>{displayInvoiceDate(row.invoiceDate)}</td><td>{row.paymentMode||"—"}</td><td>{money(row.grandTotal)}</td><td><Link className="nkj-view" to={row.id?`/saved-invoices?invoiceId=${row.id}`:"/saved-invoices"}><Eye size={16}/></Link></td></tr>)}
             {!loading&&!recent.length&&<tr><td colSpan="6" className="empty">No invoices have been saved yet.</td></tr>}
             {loading&&<tr><td colSpan="6" className="empty">Loading invoices…</td></tr>}
           </tbody></table></div>
