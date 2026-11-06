@@ -16,27 +16,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nkj.billing.model.Invoice;
 import com.nkj.billing.repo.InvoiceRepository;
-import com.nkj.billing.service.SalesSummaryService;
 
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
 
     private final InvoiceRepository repo;
-    private final SalesSummaryService salesSummary;
 
-    public AdminController(InvoiceRepository repo, SalesSummaryService salesSummary) {
+    public AdminController(InvoiceRepository repo) {
         this.repo = repo;
-        this.salesSummary = salesSummary;
     }
 
     @GetMapping("/dashboard")
     public Map<String, Object> dashboard() {
         List<Invoice> all = repo.findAllByOrderByCreatedAtDesc();
 
-        Map<String, Object> sales = salesSummary.summary();
-        BigDecimal totalAmount = (BigDecimal) sales.get("totalSales");
-        BigDecimal todayAmount = (BigDecimal) sales.get("todaySales");
+        BigDecimal totalAmount = sumGrandTotals(all);
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
 
         List<Invoice> todays = all.stream()
@@ -71,7 +66,7 @@ public class AdminController {
         result.put("totalAmount", totalAmount);
         result.put("totalCustomers", customers.size());
         result.put("todayInvoices", todays.size());
-        result.put("todayAmount", todayAmount);
+        result.put("todayAmount", sumGrandTotals(todays));
         result.put("recent", recent);
         return result;
     }
