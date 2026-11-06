@@ -903,12 +903,22 @@ export function InvoicePage() {
                   pattern="[0-9]{10}"
                   maxLength={10}
                   value={customer.mobile}
-                  onChange={(e) =>
-                    setCustomer({
-                      ...customer,
-                      mobile: e.target.value.replace(/[^0-9]/g, "").slice(0, 10),
-                    })
-                  }
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, "");
+                    setCustomer({ ...customer, mobile: digits });
+                    setError("");
+                  }}
+                  onPaste={(e) => {
+                    const pastedDigits = e.clipboardData.getData("text").replace(/[^0-9]/g, "");
+                    if (pastedDigits.length > 10) {
+                      e.preventDefault();
+                      setError("Paste only the 10-digit mobile number without country code.");
+                      return;
+                    }
+                    e.preventDefault();
+                    setCustomer({ ...customer, mobile: pastedDigits });
+                    setError("");
+                  }}
                   placeholder="10-digit mobile number"
                   aria-label="10-digit mobile number"
                 />
