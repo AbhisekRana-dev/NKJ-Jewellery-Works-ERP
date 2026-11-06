@@ -1,23 +1,21 @@
-# Daily Anandabazar Patrika Rate Import
+# Kolkata Gold & Silver Rate Sources
 
-## What the application now does
+## Source order
 
-- A Spring scheduled job runs once a day at **06:15 Asia/Kolkata**. The schedule is fixed in code so it cannot be configured to refresh prices multiple times during the day.
-- It requests one JSON document from a configured, authorized feed adapter.
-- Only a record whose `publicationDate` equals the current Kolkata date may be applied.
-- The import runs only while the owner has selected `AUTO` mode.
-- Duplicate imports for the same newspaper publication date are ignored.
-- A failed request, missing current issue, or invalid payload does not replace the active prices. The last verified rate values and their original `rateDate` remain visible.
-- Values are stored internally per gram for existing invoice calculations. The web board/editor display per 10 grams.
-- Manual edits are backend protected, require a valid administrator bearer session, and create a before/after history record with the Admin username and timestamp.
+The daily backend job runs once at **06:15 Asia/Kolkata** and uses this source order:
 
-## Important publisher-access limitation
+1. **Anandabazar Patrika Kolkata edition** — only when an authorized adapter URL is configured. The application does not bypass its e-paper subscription or claim access to a public publisher API.
+2. **All India Bullion — Kolkata** — public city snapshot fallback at
+   https://allindiabullion.com/gold-rate/west-bengal/kolkata
 
-Anandabazar Patrika e-paper content is subscriber-controlled. This project does **not** scrape a subscriber page, bypass a paywall, or claim a public API exists. The automated job is an integration adapter. It becomes operational only after you have authorized access to a source/data adapter and configure its URL below. Without that external source configured, the status remains `NOT_CONFIGURED` and existing rates are retained.
+The fallback publishes a Kolkata-specific 24K and 22K gold reference in ₹/10 grams and 999 silver in ₹/kilogram. The importer converts silver to ₹/10 grams and stores all three metals internally per gram for the existing invoice calculations. The ERP labels this source **All India Bullion · Kolkata**, never Anandabazar Patrika. The provider describes these prices as indicative bullion reference rates, not a binding offer or a final jewellery invoice.
 
-## Environment configuration
+Source methodology:
+https://allindiabullion.com/rate-methodology
 
-Copy `backend/.env.example` to `backend/.env`, then set:
+## Anandabazar adapter (optional, preferred)
+
+The Anandabazar e-paper is subscriber-controlled. Do not scrape subscriber-only pages or bypass access restrictions. To use the preferred source, configure an authorized feed adapter that you are permitted to access and reuse:
 
 ```properties
 ABP_RATE_FEED_ENABLED=true
@@ -25,30 +23,50 @@ ABP_RATE_FEED_URL=https://YOUR-AUTHORIZED-ADAPTER-ENDPOINT/daily-rates
 ABP_RATE_FEED_API_KEY=YOUR_ADAPTER_KEY
 ```
 
-Do not place API keys in the React frontend. `ABP_RATE_FEED_URL` must be an endpoint you are permitted to access and reuse. The adapter must return the JSON contract below, mapping the authorized Kolkata newspaper data into the standard field names.
-
-## Feed JSON contract
+The adapter must return a JSON document in this format:
 
 ```json
 {
-  "publicationDate": "2026-11-04",
-  "publishedAt": "2026-11-04T06:00:00",
+  "publicationDate": "2026-11-07",
+  "publishedAt": "2026-11-07T06:00:00",
   "unit": "PER_10_GRAMS",
   "gold24k": 146500.00,
   "gold22k": 134500.00,
   "silver999": 1450.00,
-  "sourceReference": "Authorized Anandabazar Patrika Kolkata e-paper edition URL or issue reference"
+  "sourceReference": "Exact Anandabazar Patrika Kolkata edition URL or issue reference"
 }
 ```
 
-`unit` can be `PER_10_GRAMS` or `PER_GRAM`. Use Kolkata local time for `publishedAt`; if the adapter provides an ISO timestamp with an offset, include the offset. The feed needs all three numeric prices and a reference to the exact edition. Invalid/partial results are rejected.
+`unit` can be `PER_10_GRAMS` or `PER_GRAM`. `publishedAt` must be Kolkata-local or an offset-aware timestamp. The three rates and exact issue reference are mandatory.
 
-## Manual operation
+If the Anandabazar adapter is disabled, unavailable, invalid, or has no newer publication, the daily job attempts the Kolkata fallback. A source is never labelled as Anandabazar unless it came through the configured Anandabazar adapter.
+
+## Automatic update behavior
+
+- Scheduled once each day at 06:15 in `Asia/Kolkata`.
+- An authorized Anandabazar adapter is tried first; All India Bullion Kolkata is the fallback.
+- Only explicit Kolkata snapshots with all three metal values and a source publication timestamp are accepted.
+- A publication date cannot be in the future or older than the last automatically imported publication date.
+- Automatic imports are serialized against manual updates and deduplicated by publication date.
+- Manual Override Mode blocks all automatic overwrites.
+- Switching back to Automatic Mode immediately restores the latest previously imported automatic snapshot, then checks the sources.
+- If no source returns a newer valid snapshot, the last verified prices and their original rate date remain active.
+- Failed or stale source responses update fetch status only; they do not alter active prices or rate history.
+
+## Manual override and rate units
 
 1. Sign in as the owner (password plus authenticator OTP).
 2. Open **Gold & Silver Rates**.
-3. Enter 24K, 22K and 999 Silver amounts per 10 grams and save.
-4. The system records previous and new amounts, the Admin username, local timestamp and action type.
-5. The rate mode becomes `MANUAL`; automatic imports are ignored until **Switch to Auto Mode** is selected.
+3. Enter 24K, 22K and 999 Silver amounts in ₹ per 10 grams and select **Save Manual Rates**.
+4. The mode changes to `MANUAL`; the automatic job cannot overwrite these values.
+5. Use **Switch to Auto Mode** to restore the latest saved automatic snapshot and immediately fetch newer published values.
 
-Public visitors can read the rate board but cannot edit rates or access the history API.
+The database and existing invoice calculations continue to store rates per gram. The management page and public rate board display ₹ per 10 grams.
+
+## Daily Rate History
+
+Every successful automatic import and manual rate change is saved with its actual rate values, source, publication date where available, and change timestamp. The history UI displays the saved values directly; it does not show a previous-rate-to-new-rate comparison.
+
+## Provider note
+
+All India Bullion's Kolkata page calls its prices indicative reference rates and says final jewellery prices may differ due to local seller pricing, GST and charges. Confirm the final sale quote with the shop's pricing policy. The ERP preserves the provider name and page reference for audit and traceability.
