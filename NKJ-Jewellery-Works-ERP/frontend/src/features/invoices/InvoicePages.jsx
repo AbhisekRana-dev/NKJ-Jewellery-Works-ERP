@@ -374,10 +374,16 @@ function formatInvoiceDateForDisplay(value) {
 }
 
 const INVOICE_DRAFT_RELOAD_GUARD_KEY = "nkj.invoice.draft.reload-document";
+// Capture the route loaded by the browser itself. The document navigation
+// type remains "reload" during later SPA navigation, so it must not reset an
+// invoice opened after the user refreshed another page.
+const INVOICE_DOCUMENT_ENTRY_PATH = typeof window !== "undefined"
+  ? String(window.location.pathname || "").replace(/\/+$/, "")
+  : "";
 let invoiceReloadDraftClearedInMemory = false;
 
 function getInvoiceReloadDocumentKey() {
-  if (typeof window === "undefined") return "";
+  if (typeof window === "undefined" || INVOICE_DOCUMENT_ENTRY_PATH !== "/invoice") return "";
   try {
     const navigationEntries = window.performance?.getEntriesByType?.("navigation") || [];
     const navigationType = navigationEntries[0]?.type;
