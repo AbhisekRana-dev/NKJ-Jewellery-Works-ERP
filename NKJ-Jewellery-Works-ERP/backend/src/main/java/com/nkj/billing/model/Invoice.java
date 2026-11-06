@@ -2,6 +2,7 @@
 package com.nkj.billing.model;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -34,6 +35,9 @@ public class Invoice {
 
     @Column(name = "idempotency_key", unique = true, length = 120)
     private String idempotencyKey;
+
+    @Column(name = "invoice_date", nullable = false)
+    private LocalDate invoiceDate;
 
     @Column(name = "customer_name")
     private String customerName;
@@ -107,6 +111,9 @@ public class Invoice {
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+        }
+        if (invoiceDate == null) {
+            invoiceDate = LocalDate.now(ZoneId.of("Asia/Kolkata"));
         }
     }
 
@@ -260,6 +267,14 @@ public class Invoice {
 
     public void setGrandTotal(BigDecimal grandTotal) {
         this.grandTotal = grandTotal == null ? BigDecimal.ZERO : grandTotal;
+    }
+
+    public LocalDate getInvoiceDate() {
+        return invoiceDate;
+    }
+
+    public void setInvoiceDate(LocalDate invoiceDate) {
+        this.invoiceDate = invoiceDate;
     }
 
     public LocalDateTime getCreatedAt() {

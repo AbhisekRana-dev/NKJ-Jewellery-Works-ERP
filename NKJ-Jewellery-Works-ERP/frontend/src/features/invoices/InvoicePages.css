@@ -1661,3 +1661,22 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     font-weight: 800 !important;
     color: #86132f;
 }
+/* Editable business date in the invoice header. Saved invoices switch to
+   plain text before printing, preserving the existing A4 invoice layout. */
+.inv-meta .invoice-date-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 27px;
+  padding: 2px 4px;
+  border: 1px solid #b6c9df;
+  border-radius: 4px;
+  background: #fff;
+  color: #10172a;
+  font: 14px Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  box-sizing: border-box;
+}
+@media print {
+  .inv-meta .invoice-date-input { display: none !important; }
+}

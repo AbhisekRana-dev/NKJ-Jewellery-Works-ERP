@@ -128,7 +128,6 @@ function makeInvoiceShareMessage(invoice) {
     `Mobile: ${data.mobile || "—"}`,
     `Address: ${data.address || "—"}`,
     `Payment: ${data.paymentMode || "—"}`,
-    `Amount Received: ₹${money(data.paymentAmount)}`,
     `Reference: ${data.referenceNo || "—"}`,
     "",
     "NEW ORNAMENTS:",
@@ -357,6 +356,22 @@ function amountInWords(value) {
 
 const INVOICE_DRAFT_STORAGE_KEY = "nkj.invoice.draft.v1";
 
+function getTodayIndiaDate() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function formatInvoiceDateForDisplay(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || "—");
+}
+
 function readInvoiceDraft() {
   if (typeof window === "undefined") return null;
   try {
@@ -384,7 +399,12 @@ export function InvoicePage() {
   const copiedInvoice = location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
-  const [initialDraft] = useState(() => copiedInvoice ? null : readInvoiceDraft());
+  const startingNewInvoice = location.state?.startNewInvoice === true;
+  const [initialDraft] = useState(() =>
+    copiedInvoice || startingNewInvoice ? null : readInvoiceDraft()
+  );
+  const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || getTodayIndiaDate());
+  const maxInvoiceDate = getTodayIndiaDate();
 
   const copiedRows = (value, fallback) => {
     if (Array.isArray(value) && value.length) return value;
@@ -404,8 +424,6 @@ export function InvoicePage() {
   }));
 
   const [paymentMode, setPaymentMode] = useState(() => copiedInvoice?.paymentMode || initialDraft?.paymentMode || "Cash");
-  // A copied invoice is a new transaction, so do not copy its previous received payment.
-  const [paymentAmount, setPaymentAmount] = useState(() => String(initialDraft?.paymentAmount ?? ""));
   const [referenceNo, setReferenceNo] = useState(() => copiedInvoice?.referenceNo || initialDraft?.referenceNo || "");
   const [newItems, setNewItems] = useState(() => copiedRows(copiedInvoice?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
@@ -425,6 +443,9 @@ export function InvoicePage() {
   const [description, setDescription] = useState(() => copiedInvoice?.description || initialDraft?.description || "");
   const [saved, setSaved] = useState(false);
   const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
+  // Keep the draft's idempotency key when restoring it. The backend checks
+  // that key and safely repairs a prior save's business date only when the
+  // rest of the invoice payload is identical.
   const [idempotencyKey, setIdempotencyKey] = useState(() => initialDraft?.idempotencyKey || createInvoiceDraftKey());
   const [saving, setSaving] = useState(false);
 
@@ -462,10 +483,39 @@ export function InvoicePage() {
   }, []);
 
   useEffect(() => {
+    if (startingNewInvoice) {
+      // Explicit New Invoice navigation resets the form even when the user
+      // clicks New Invoice while already on /invoice. Only the temporary
+      // browser draft is removed; saved database invoices remain untouched.
+      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+      setInvoiceDate(getTodayIndiaDate());
+      setCustomer({ name: "", mobile: "", address: "" });
+      setPaymentMode("Cash");
+      setReferenceNo("");
+      setNewItems([blankNew()]);
+      setOldItems([blankOld()]);
+      setDiscount("");
+      setGst("0");
+      setDescription("");
+      setSaved(false);
+      setDraftRestored(false);
+      setIdempotencyKey(createInvoiceDraftKey());
+      setError("");
+      setSuccessMessage("");
+      setInvoiceNo("");
+      setInvoiceId(null);
+      setShowInvoicePin(false);
+
+      // Consume the one-time navigation instruction so browser Back can
+      // restore a genuinely unfinished draft instead of clearing it again.
+      navigate("/invoice", { replace: true, state: null });
+      return;
+    }
+
     if (location.state?.copyInvoice) {
       navigate("/invoice", { replace: true, state: null });
     }
-  }, [location.state, navigate]);
+  }, [location.key, startingNewInvoice, location.state, navigate]);
 
   useEffect(() => {
     if (saved) {
@@ -479,9 +529,9 @@ export function InvoicePage() {
     const draft = {
       version: 1,
       idempotencyKey,
+      invoiceDate,
       customer,
       paymentMode,
-      paymentAmount,
       referenceNo,
       newItems,
       oldItems,
@@ -495,7 +545,7 @@ export function InvoicePage() {
     } catch {
       // The invoice remains usable when browser storage is unavailable or full.
     }
-  }, [customer, paymentMode, paymentAmount, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
+  }, [invoiceDate, customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -612,11 +662,11 @@ export function InvoicePage() {
 
   function buildInvoicePayload() {
     return {
+      invoiceDate,
       customerName: customer.name,
       mobile: customer.mobile,
       address: customer.address,
       paymentMode,
-      paymentAmount: paymentAmount.trim() === "" ? 0 : Number(paymentAmount),
       referenceNo,
       description,
       // Preserve every displayed row, including intentionally blank rows.
@@ -641,9 +691,9 @@ export function InvoicePage() {
 
     skipNextDraftPersistRef.current = true;
     try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+    setInvoiceDate(getTodayIndiaDate());
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
-    setPaymentAmount("");
     setReferenceNo("");
     setNewItems([blankNew()]);
     setOldItems([blankOld()]);
@@ -659,7 +709,12 @@ export function InvoicePage() {
   }
 
   function validateInvoiceForm() {
+    if (!invoiceDate) return "Please select an invoice date.";
+    if (invoiceDate > maxInvoiceDate) return "Invoice date cannot be in the future.";
     if (!customer.name.trim()) return "Please enter customer name.";
+    if (customer.mobile && !/^[0-9]{10}$/.test(customer.mobile)) {
+      return "Please enter a valid 10-digit Indian mobile number using digits 0-9 only.";
+    }
     if (!hasNewItemDetails && !hasOldItemDetails) {
       return "Enter at least one ornament detail before saving the invoice.";
     }
@@ -680,7 +735,7 @@ export function InvoicePage() {
     );
     if (invalidOldItem) return "Old ornament weights and rates must be valid non-negative numbers.";
 
-    for (const [label, value] of [["GST", gst], ["Discount", discount], ["Amount received", paymentAmount]]) {
+    for (const [label, value] of [["GST", gst], ["Discount", discount]]) {
       const raw = String(value ?? "").trim();
       if (raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0)) {
         return `${label} must be a valid non-negative number.`;
@@ -704,6 +759,36 @@ export function InvoicePage() {
     saveInProgressRef.current = true;
     setSaving(true);
     try {
+      // Preflight before POST. Older deployed backends ignored invoiceDate
+      // and generated the invoice date/number from createdAt, which could
+      // persist an incorrect invoice even though the UI later detected it.
+      let dateSupport = null;
+      let dateSupportRequestFailed = false;
+      try {
+        dateSupport = await request("/invoices/date-support", {
+          publicRequest: true,
+          suppressSessionExpiry: true,
+        });
+      } catch {
+        dateSupportRequestFailed = true;
+      }
+
+      const supportsBackdatedInvoices =
+        !dateSupportRequestFailed &&
+        dateSupport?.invoiceDateSupported === true &&
+        dateSupport?.apiVersion === "backdated-invoice-date-v1";
+      const selectedDateIsToday = invoiceDate === getTodayIndiaDate();
+
+      // Compatibility: the legacy backend safely numbers today's invoice
+      // using its Asia/Kolkata creation date. Keep present-date invoice
+      // creation/printing working while backdate support is being deployed.
+      // Never send a previous-date invoice to that old implementation.
+      if (!supportsBackdatedInvoices && !selectedDateIsToday) {
+        throw new Error(
+          "Backdated invoice saving is not enabled on the connected backend. No invoice was submitted. Deploy the updated Spring Boot backend with Flyway migration V11, then retry this same draft. Today's invoices can still be saved using the existing backend."
+        );
+      }
+
       const result = await request("/invoices", {
         method: "POST",
         headers: { "Idempotency-Key": idempotencyKey },
@@ -711,6 +796,13 @@ export function InvoicePage() {
       });
       if (!result?.id || !result?.invoiceNo) {
         throw new Error("The server did not confirm a saved invoice ID and number. Nothing will be printed or downloaded. Your draft is still available.");
+      }
+      const expectedDatePart = invoiceDate.slice(8, 10) + invoiceDate.slice(5, 7) + invoiceDate.slice(2, 4);
+      const invoiceNumberMatchesDate = result.invoiceNo.startsWith(`NKJ-${expectedDatePart}-`);
+      if (result.invoiceDate !== invoiceDate || !invoiceNumberMatchesDate) {
+        throw new Error(
+          `Invoice date confirmation mismatch. You selected ${formatInvoiceDateForDisplay(invoiceDate)}, but the server returned ${formatInvoiceDateForDisplay(result.invoiceDate)} with invoice number ${result.invoiceNo}. Check Invoice History before retrying; the server may already have saved this request.`
+        );
       }
       setInvoiceId(result.id);
       setInvoiceNo(result.invoiceNo);
@@ -755,8 +847,6 @@ export function InvoicePage() {
   }
 
   const now = new Date();
-
-  const date = now.toLocaleDateString("en-GB").replace(/\//g, "-");
 
   const time = now.toLocaleTimeString("en-IN", {
     hour: "2-digit",
@@ -817,7 +907,24 @@ export function InvoicePage() {
             <span>
               <label>Date</label>
 
-              <strong>{date}</strong>
+              <strong>
+                {saved ? (
+                  formatInvoiceDateForDisplay(invoiceDate)
+                ) : (
+                  <input
+                    className="invoice-date-input"
+                    type="date"
+                    value={invoiceDate}
+                    max={maxInvoiceDate}
+                    disabled={saving}
+                    onChange={(e) => {
+                      setInvoiceDate(e.target.value);
+                      setError("");
+                    }}
+                    aria-label="Invoice Date"
+                  />
+                )}
+              </strong>
             </span>
 
             <span>
@@ -853,11 +960,29 @@ export function InvoicePage() {
                 <i>:</i>
 
                 <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
                   value={customer.mobile}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, mobile: e.target.value })
-                  }
-                  placeholder="Mobile number"
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, "");
+                    setCustomer({ ...customer, mobile: digits });
+                    setError("");
+                  }}
+                  onPaste={(e) => {
+                    const pastedDigits = e.clipboardData.getData("text").replace(/[^0-9]/g, "");
+                    if (pastedDigits.length > 10) {
+                      e.preventDefault();
+                      setError("Paste only the 10-digit mobile number without country code.");
+                      return;
+                    }
+                    e.preventDefault();
+                    setCustomer({ ...customer, mobile: pastedDigits });
+                    setError("");
+                  }}
+                  placeholder="10-digit mobile number"
+                  aria-label="10-digit mobile number"
                 />
               </label>
 
@@ -896,22 +1021,6 @@ export function InvoicePage() {
                     ),
                   )}
                 </select>
-              </label>
-
-              <label>
-                <span>Amount Received (₹)</span>
-
-                <i>:</i>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={paymentAmount}
-                  onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="0.00"
-                />
               </label>
 
               <label>
@@ -1439,8 +1548,8 @@ export function InvoicePage() {
       {!saved && (
         <p className="draft-note no-print" role="status">
           {draftRestored
-            ? "Your unfinished invoice draft was restored from this browser. Changes continue to save automatically."
-            : "Your unfinished invoice is saved automatically in this browser and will be restored after a refresh."}
+            ? "Unsaved draft restored from this browser. It is not in Invoice History until the server confirms Save Invoice."
+            : "Unsaved draft: details are kept in this browser only. This invoice is not in Invoice History until Save Invoice succeeds."}
         </p>
       )}
       {showInvoicePin && (
@@ -1546,10 +1655,6 @@ function SavedInvoicePrintSheet({ invoice }) {
             <label>
               <span>Payment Mode</span><i>:</i>
               <input value={data.paymentMode || "Cash"} readOnly />
-            </label>
-            <label>
-              <span>Amount Received (₹)</span><i>:</i>
-              <input value={money(data.paymentAmount)} readOnly />
             </label>
             <label>
               <span>Reference No.</span><i>:</i>
@@ -1876,7 +1981,7 @@ export function SavedInvoices() {
           <span className="eyebrow">RECORDS</span>
           <h2>Saved Invoices</h2>
         </div>
-        <Link className="primary" to="/invoice"><Plus /> New Invoice</Link>
+        <Link className="primary" to="/invoice" state={{ startNewInvoice: true }}><Plus /> New Invoice</Link>
       </div>
 
       <div className="nkj-saved-toolbar-row">
@@ -1909,7 +2014,7 @@ export function SavedInvoices() {
                 <tr key={x.id ?? x.invoiceNo ?? index}>
                   <td>{x.invoiceNo || "—"}</td>
                   <td>{x.customerName || "—"}</td>
-                  <td>{x.invoiceDate || "—"}</td>
+                  <td>{displaySavedInvoiceDate(x.invoiceDate)}</td>
                   <td>{x.mobile || "—"}</td>
                   <td>₹ {money(x.grandTotal)}</td>
                   <td>
