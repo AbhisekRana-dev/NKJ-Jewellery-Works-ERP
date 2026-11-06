@@ -440,7 +440,15 @@ export function InvoicePage() {
   const [description, setDescription] = useState(() => copiedInvoice?.description || initialDraft?.description || "");
   const [saved, setSaved] = useState(false);
   const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
-  const [idempotencyKey, setIdempotencyKey] = useState(() => initialDraft?.idempotencyKey || createInvoiceDraftKey());
+  // Drafts created before invoiceDate was added may reuse an idempotency key
+  // that already belongs to an invoice saved with today's date. Give those
+  // legacy drafts a fresh key rather than silently returning that old invoice.
+  const hasDateAwareDraft = /^\\d{4}-\\d{2}-\\d{2}$/.test(String(initialDraft?.invoiceDate || ""));
+  const [idempotencyKey, setIdempotencyKey] = useState(() =>
+    hasDateAwareDraft && initialDraft?.idempotencyKey
+      ? initialDraft.idempotencyKey
+      : createInvoiceDraftKey()
+  );
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
@@ -677,6 +685,9 @@ export function InvoicePage() {
     if (!invoiceDate) return "Please select an invoice date.";
     if (invoiceDate > maxInvoiceDate) return "Invoice date cannot be in the future.";
     if (!customer.name.trim()) return "Please enter customer name.";
+    if (customer.mobile && !/^[0-9]{10}$/.test(customer.mobile)) {
+      return "Please enter a valid 10-digit Indian mobile number using digits 0-9 only.";
+    }
     if (!hasNewItemDetails && !hasOldItemDetails) {
       return "Enter at least one ornament detail before saving the invoice.";
     }
@@ -729,9 +740,15 @@ export function InvoicePage() {
       if (!result?.id || !result?.invoiceNo) {
         throw new Error("The server did not confirm a saved invoice ID and number. Nothing will be printed or downloaded. Your draft is still available.");
       }
+      const expectedDatePart = invoiceDate.slice(8, 10) + invoiceDate.slice(5, 7) + invoiceDate.slice(2, 4);
+      const invoiceNumberMatchesDate = result.invoiceNo.startsWith(`NKJ-${expectedDatePart}-`);
+      if (result.invoiceDate !== invoiceDate || !invoiceNumberMatchesDate) {
+        throw new Error(
+          `Invoice date confirmation mismatch. You selected ${formatInvoiceDateForDisplay(invoiceDate)}, but the server returned ${formatInvoiceDateForDisplay(result.invoiceDate)} with invoice number ${result.invoiceNo}. Check Invoice History before retrying; the server may already have saved this request.`
+        );
+      }
       setInvoiceId(result.id);
       setInvoiceNo(result.invoiceNo);
-      if (result.invoiceDate) setInvoiceDate(result.invoiceDate);
       setSaved(true);
       setDraftRestored(false);
       setShowInvoicePin(false);
@@ -842,6 +859,7 @@ export function InvoicePage() {
                     type="date"
                     value={invoiceDate}
                     max={maxInvoiceDate}
+                    disabled={saving}
                     onChange={(e) => {
                       setInvoiceDate(e.target.value);
                       setError("");
@@ -885,11 +903,19 @@ export function InvoicePage() {
                 <i>:</i>
 
                 <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
                   value={customer.mobile}
                   onChange={(e) =>
-                    setCustomer({ ...customer, mobile: e.target.value })
+                    setCustomer({
+                      ...customer,
+                      mobile: e.target.value.replace(/[^0-9]/g, "").slice(0, 10),
+                    })
                   }
-                  placeholder="Mobile number"
+                  placeholder="10-digit mobile number"
+                  aria-label="10-digit mobile number"
                 />
               </label>
 
