@@ -16,18 +16,58 @@ public class ErpModuleController {
     private final ErpModuleService modules;
     private final JdbcTemplate jdbc;
     private final DataSource dataSource;
+    private final com.nkj.billing.service.SalesAccountingService salesAccounting;
 
-    public ErpModuleController(ErpModuleService modules, JdbcTemplate jdbc, DataSource dataSource) {
-        this.modules = modules; this.jdbc = jdbc; this.dataSource = dataSource;
+    public ErpModuleController(
+            ErpModuleService modules,
+            JdbcTemplate jdbc,
+            DataSource dataSource,
+            com.nkj.billing.service.SalesAccountingService salesAccounting) {
+        this.modules = modules;
+        this.jdbc = jdbc;
+        this.dataSource = dataSource;
+        this.salesAccounting = salesAccounting;
     }
 
     @GetMapping("/modules/{module}")
     public Object list(@PathVariable String module) { return modules.list(module); }
 
     @PostMapping("/installments/plans")
-    public Map<String,Object> createInstallmentPlan(@RequestBody Map<String,Object> body,
-                                     jakarta.servlet.http.HttpServletRequest request) {
-        return modules.createInstallmentPlan(body, request.getRemoteAddr());
+    public Map<String,Object> createInstallmentPlan(
+            @RequestBody Map<String,Object> body,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            jakarta.servlet.http.HttpServletRequest request) {
+        return modules.createInstallmentPlan(body, idempotencyKey, request.getRemoteAddr());
+    }
+
+    @GetMapping("/installments/plans/{bookingId}")
+    public Map<String,Object> installmentPlanDetails(@PathVariable long bookingId) {
+        return modules.getInstallmentPlanDetails(bookingId);
+    }
+
+    @PostMapping("/installments/payments")
+    public Map<String,Object> collectInstallmentPayment(
+            @RequestBody Map<String,Object> body,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            jakarta.servlet.http.HttpServletRequest request) throws Exception {
+        return modules.collectInstallmentPayment(body, idempotencyKey, request.getRemoteAddr());
+    }
+
+    @PutMapping("/installments/schedules/{installmentId}/due-date")
+    public Map<String,Object> updateInstallmentDueDate(
+            @PathVariable long installmentId,
+            @RequestBody Map<String,Object> body,
+            jakarta.servlet.http.HttpServletRequest request) {
+        return modules.updateInstallmentDueDate(installmentId, body.get("dueDate"), request.getRemoteAddr());
+    }
+
+    @PostMapping("/installments/payments/{paymentId}/reverse")
+    public Map<String,Object> reverseInstallmentPayment(
+            @PathVariable long paymentId,
+            @RequestBody Map<String,Object> body,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            jakarta.servlet.http.HttpServletRequest request) throws Exception {
+        return modules.reverseInstallmentPayment(paymentId, body, idempotencyKey, request.getRemoteAddr());
     }
 
     @PostMapping("/modules/{module}")
@@ -56,9 +96,9 @@ public class ErpModuleController {
     @GetMapping("/reports/summary")
     public Map<String,Object> reportSummary() {
         Map<String,Object> result = new LinkedHashMap<>();
-        result.put("todaySales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices WHERE invoice_date=(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date", BigDecimal.class));
-        result.put("monthSales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices WHERE invoice_date >= date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date AND invoice_date < (date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata') + INTERVAL '1 month')::date", BigDecimal.class));
-        result.put("totalSales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices", BigDecimal.class));
+        result.put("todaySales", salesAccounting.todaySales());
+        result.put("monthSales", salesAccounting.monthSales());
+        result.put("totalSales", salesAccounting.totalSales());
         result.put("todayExpenses", jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE expense_date=CURRENT_DATE", BigDecimal.class));
         result.put("monthExpenses", jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date_trunc('month', expense_date)=date_trunc('month', CURRENT_DATE)", BigDecimal.class));
         result.put("totalExpenses", jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM expenses", BigDecimal.class));
