@@ -61,7 +61,7 @@
 .nkj-rate-history-source-link:hover {
   text-decoration: underline;
 }
-.nkj-rate-history-panel table { min-width: 1420px; }
+.nkj-rate-history-panel table { min-width: 1580px; }
 .nkj-rate-history-panel td:nth-child(2),
 .nkj-rate-history-panel td:nth-child(3),
 .nkj-rate-history-panel td:nth-child(4) {
