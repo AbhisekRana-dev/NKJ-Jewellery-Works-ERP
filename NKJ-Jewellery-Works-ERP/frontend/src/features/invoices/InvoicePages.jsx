@@ -375,6 +375,19 @@ function formatInvoiceDateForDisplay(value) {
 function readInvoiceDraft() {
   if (typeof window === "undefined") return null;
   try {
+    // A full browser refresh of the invoice page starts a clean invoice.
+    // Preserve drafts during normal in-app navigation, but never restore an
+    // unfinished invoice after the user explicitly refreshes the page.
+    const navigationEntries = window.performance?.getEntriesByType?.("navigation") || [];
+    const navigationType = navigationEntries[0]?.type;
+    const legacyReload = navigationEntries.length === 0
+      && window.performance?.navigation?.type === 1;
+
+    if (navigationType === "reload" || legacyReload) {
+      window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY);
+      return null;
+    }
+
     const draft = JSON.parse(window.localStorage.getItem(INVOICE_DRAFT_STORAGE_KEY) || "null");
     return draft && draft.version === 1 ? draft : null;
   } catch {
@@ -1548,8 +1561,8 @@ export function InvoicePage() {
       {!saved && (
         <p className="draft-note no-print" role="status">
           {draftRestored
-            ? "Unsaved draft restored from this browser. It is not in Invoice History until the server confirms Save Invoice."
-            : "Unsaved draft: details are kept in this browser only. This invoice is not in Invoice History until Save Invoice succeeds."}
+            ? "An unfinished draft was restored during in-app navigation. Refreshing this page clears the draft."
+            : "Unsaved invoice: refreshing this page clears these details. Select Save Invoice to keep it in Invoice History."}
         </p>
       )}
       {showInvoicePin && (
