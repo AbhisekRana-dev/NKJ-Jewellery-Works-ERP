@@ -206,6 +206,7 @@ public class InvoiceController {
 
         Invoice invoice = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Invoice not found."));
+        boolean previousShowGstin = invoice.isShowGstin();
         LocalDate requestedDate = requestedInvoiceDate(body);
         if (invoice.getInvoiceDate() == null || !invoice.getInvoiceDate().equals(requestedDate)) {
             throw new IllegalArgumentException(
@@ -248,7 +249,7 @@ public class InvoiceController {
                 "INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
                         + "VALUES ('OWNER','INVOICE_UPDATED','INVOICES',?,CAST(? AS JSONB),CAST(? AS JSONB),?)",
                 String.valueOf(invoice.getId()),
-                mapper.writeValueAsString(Map.of("showGstin", !invoice.isShowGstin())),
+                mapper.writeValueAsString(Map.of("showGstin", previousShowGstin)),
                 mapper.writeValueAsString(Map.of(
                         "invoiceNo", invoice.getInvoiceNo(),
                         "showGstin", invoice.isShowGstin(),
