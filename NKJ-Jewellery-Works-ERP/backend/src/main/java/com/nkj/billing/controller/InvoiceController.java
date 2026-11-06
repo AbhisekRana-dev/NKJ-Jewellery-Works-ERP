@@ -3,6 +3,7 @@ package com.nkj.billing.controller;
 import java.math.BigDecimal;
 import java.util.List;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.sql.Date;
 import java.util.Locale;
 import java.time.format.DateTimeFormatter;
@@ -82,6 +83,7 @@ public class InvoiceController {
         }
 
         validateInvoiceBody(body);
+        LocalDate invoiceDate = requestedInvoiceDate(body);
         String customerName = clean(body.get("customerName"));
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
@@ -90,6 +92,7 @@ public class InvoiceController {
         Invoice invoice = new Invoice();
         invoice.setInvoiceNo("PENDING-" + UUID.randomUUID());
         invoice.setIdempotencyKey(requestKey);
+        invoice.setInvoiceDate(invoiceDate);
 
         invoice.setCustomerName(customerName);
         invoice.setMobile(clean(body.get("mobile")));
@@ -113,7 +116,6 @@ public class InvoiceController {
         // which records createdAt in the Asia/Kolkata timezone.
         repo.saveAndFlush(invoice);
 
-        LocalDate invoiceDate = invoice.getCreatedAt().toLocalDate();
         String datePart = invoiceDate.format(DateTimeFormatter.ofPattern("ddMMyy"));
         long dailySequence = nextDailyInvoiceSequence(invoiceDate, datePart);
 
@@ -134,7 +136,7 @@ public class InvoiceController {
 
     @GetMapping
     public java.util.List<Map<String, Object>> all() {
-        return repo.findAllByOrderByCreatedAtDesc().stream().map(this::summary).toList();
+        return repo.findAllByOrderByInvoiceDateDescCreatedAtDesc().stream().map(this::summary).toList();
     }
 
     @GetMapping("/{id}")
@@ -181,6 +183,25 @@ public class InvoiceController {
      * row. Because this method runs inside create()'s transaction, a failed
      * invoice save also rolls back the counter increment.
      */
+
+    private LocalDate requestedInvoiceDate(Map<String, Object> body) {
+        String rawDate = clean(body.get("invoiceDate"));
+        LocalDate selectedDate;
+        try {
+            selectedDate = rawDate.isBlank()
+                    ? LocalDate.now(ZoneId.of("Asia/Kolkata"))
+                    : LocalDate.parse(rawDate, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invoice date must be a valid date in YYYY-MM-DD format.");
+        }
+
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+        if (selectedDate.isAfter(today)) {
+            throw new IllegalArgumentException("Invoice date cannot be in the future.");
+        }
+        return selectedDate;
+    }
+
     private long nextDailyInvoiceSequence(LocalDate invoiceDate, String datePart) {
         String sql = """
                 INSERT INTO public.invoice_daily_sequences (invoice_date, last_number, updated_at)
@@ -372,9 +393,11 @@ public class InvoiceController {
         response.put("address", invoice.getAddress());
         response.put("paymentMode", invoice.getPaymentMode());
         response.put("referenceNo", invoice.getReferenceNo());
-        response.put("invoiceDate", invoice.getCreatedAt() == null
+        response.put("invoiceDate", invoice.getInvoiceDate() == null
                 ? ""
-                : invoice.getCreatedAt().toLocalDate().toString());
+                : invoice.getInvoiceDate().toString());
+        // createdAt remains the real server-side creation timestamp for audit purposes.
+        response.put("createdAt", invoice.getCreatedAt());
         response.put("invoiceTime", invoice.getCreatedAt() == null
                 ? ""
                 : invoice.getCreatedAt().toLocalTime().withNano(0).toString());
