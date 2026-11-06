@@ -143,6 +143,7 @@ export function Nav({ active = "home" }) {
                     <Link
                       key={key}
                       to={to}
+                      state={key === "invoice" ? { startNewInvoice: true } : undefined}
                       className={selected ? "active" : ""}
                       title={sidebarCollapsed ? label : undefined}
                       aria-label={label}
@@ -174,7 +175,7 @@ export function Nav({ active = "home" }) {
             <b>Nandikishor Jewellery Works</b>
           </div>
           <div className="nkj-owner-top-actions">
-            <Link to="/invoice" className="primary"><Plus size={16} /> New Invoice</Link>
+            <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
             <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
           </div>
         </header>
@@ -190,7 +191,7 @@ export function Nav({ active = "home" }) {
       </Link>
       <nav aria-label="Main navigation">
         <Link className={active === "home" ? "active" : ""} to="/"><HomeIcon />Home</Link>
-        <Link className={active === "invoice" ? "active" : ""} to="/invoice"><FileText />New Invoice</Link>
+        <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
         {isAdmin ? <>
           <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
           <Link className={active === "dashboard" ? "active" : ""} to="/dashboard"><LayoutDashboard />Dashboard</Link>
