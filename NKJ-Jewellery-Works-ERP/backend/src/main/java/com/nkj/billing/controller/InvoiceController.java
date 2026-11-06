@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestHeader;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import com.nkj.billing.service.InvoicePinService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,15 +36,13 @@ public class InvoiceController {
     private final InvoiceRepository repo;
     private final ObjectMapper mapper;
     private final AuthService auth;
-    private final InvoicePinService invoicePin;
     private final JdbcTemplate jdbc;
 
     public InvoiceController(InvoiceRepository repo, ObjectMapper mapper, AuthService auth,
-                             InvoicePinService invoicePin, JdbcTemplate jdbc) {
+                             JdbcTemplate jdbc) {
         this.repo = repo;
         this.mapper = mapper;
         this.auth = auth;
-        this.invoicePin = invoicePin;
         this.jdbc = jdbc;
     }
 
@@ -60,9 +57,30 @@ public class InvoiceController {
     @PostMapping
     @Transactional
     public Map<String, Object> create(@RequestBody Map<String, Object> body,
-                                      @RequestHeader(value = "X-Invoice-Pin-Ticket", required = false) String pinTicket,
+                                      @RequestHeader("Idempotency-Key") String idempotencyKey,
                                       jakarta.servlet.http.HttpServletRequest servletRequest) throws Exception {
-        invoicePin.consume(pinTicket, servletRequest.getRemoteAddr());
+        String requestKey = clean(idempotencyKey);
+        if (!requestKey.matches("[A-Za-z0-9._:-]{1,120}")) {
+            throw new IllegalArgumentException("A valid Idempotency-Key is required to save an invoice.");
+        }
+
+        // Serialize requests carrying the same key so retries return the first
+        // committed invoice instead of creating a second invoice.
+        jdbc.query(
+                "SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",
+                rs -> {
+                    if (rs.next()) {
+                        // Reading the result ensures PostgreSQL executes and acquires the lock.
+                    }
+                    return null;
+                },
+                requestKey
+        );
+        Invoice existingInvoice = repo.findByIdempotencyKey(requestKey).orElse(null);
+        if (existingInvoice != null) {
+            return view(existingInvoice);
+        }
+
         String customerName = clean(body.get("customerName"));
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
@@ -70,6 +88,7 @@ public class InvoiceController {
 
         Invoice invoice = new Invoice();
         invoice.setInvoiceNo("PENDING-" + UUID.randomUUID());
+        invoice.setIdempotencyKey(requestKey);
 
         invoice.setCustomerName(customerName);
         invoice.setMobile(clean(body.get("mobile")));
