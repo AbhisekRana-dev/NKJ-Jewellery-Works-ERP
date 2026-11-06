@@ -399,7 +399,10 @@ export function InvoicePage() {
   const copiedInvoice = location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
-  const [initialDraft] = useState(() => copiedInvoice ? null : readInvoiceDraft());
+  const startingNewInvoice = location.state?.startNewInvoice === true;
+  const [initialDraft] = useState(() =>
+    copiedInvoice || startingNewInvoice ? null : readInvoiceDraft()
+  );
   const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || getTodayIndiaDate());
   const maxInvoiceDate = getTodayIndiaDate();
 
@@ -484,6 +487,14 @@ export function InvoicePage() {
       navigate("/invoice", { replace: true, state: null });
     }
   }, [location.state, navigate]);
+
+  useEffect(() => {
+    if (startingNewInvoice) {
+      // A deliberate New Invoice action starts clean. Remove only the
+      // temporary browser draft; saved database invoices are untouched.
+      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+    }
+  }, [startingNewInvoice]);
 
   useEffect(() => {
     if (saved) {
@@ -1939,7 +1950,7 @@ export function SavedInvoices() {
           <span className="eyebrow">RECORDS</span>
           <h2>Saved Invoices</h2>
         </div>
-        <Link className="primary" to="/invoice"><Plus /> New Invoice</Link>
+        <Link className="primary" to="/invoice" state={{ startNewInvoice: true }}><Plus /> New Invoice</Link>
       </div>
 
       <div className="nkj-saved-toolbar-row">
