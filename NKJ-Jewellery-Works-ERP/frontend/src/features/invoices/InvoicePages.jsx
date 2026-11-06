@@ -762,20 +762,27 @@ export function InvoicePage() {
       // Preflight before POST. Older deployed backends ignored invoiceDate
       // and generated the invoice date/number from createdAt, which could
       // persist an incorrect invoice even though the UI later detected it.
-      let dateSupport;
+      let dateSupport = null;
+      let dateSupportRequestFailed = false;
       try {
         dateSupport = await request("/invoices/date-support");
       } catch {
-        throw new Error(
-          "Backdated invoice saving is not enabled on the connected backend. No invoice was submitted. Deploy/restart the Spring Boot backend from the fix/invoice-workflow-and-daily-numbering branch (including Flyway migration V11), then retry this same draft."
-        );
+        dateSupportRequestFailed = true;
       }
-      if (
-        dateSupport?.invoiceDateSupported !== true ||
-        dateSupport?.apiVersion !== "backdated-invoice-date-v1"
-      ) {
+
+      const supportsBackdatedInvoices =
+        !dateSupportRequestFailed &&
+        dateSupport?.invoiceDateSupported === true &&
+        dateSupport?.apiVersion === "backdated-invoice-date-v1";
+      const selectedDateIsToday = invoiceDate === getTodayIndiaDate();
+
+      // Compatibility: the legacy backend safely numbers today's invoice
+      // using its Asia/Kolkata creation date. Keep present-date invoice
+      // creation/printing working while backdate support is being deployed.
+      // Never send a previous-date invoice to that old implementation.
+      if (!supportsBackdatedInvoices && !selectedDateIsToday) {
         throw new Error(
-          "The connected backend/database does not support backdated invoice dates yet. No invoice was submitted. Deploy/restart the updated Spring Boot backend and ensure Flyway migration V11 is applied, then retry this same draft."
+          "Backdated invoice saving is not enabled on the connected backend. No invoice was submitted. Deploy the updated Spring Boot backend with Flyway migration V11, then retry this same draft. Today's invoices can still be saved using the existing backend."
         );
       }
 
