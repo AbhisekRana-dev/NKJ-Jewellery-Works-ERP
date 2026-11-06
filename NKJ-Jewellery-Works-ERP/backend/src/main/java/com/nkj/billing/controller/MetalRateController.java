@@ -18,9 +18,13 @@ import com.nkj.billing.service.MetalRateService;
 @RequestMapping("/api")
 public class MetalRateController {
     private final MetalRateService service;
+    private final com.nkj.billing.service.DailyAnandabazarRateJob dailyRateJob;
 
-    public MetalRateController(MetalRateService service) {
+    public MetalRateController(
+            MetalRateService service,
+            com.nkj.billing.service.DailyAnandabazarRateJob dailyRateJob) {
         this.service = service;
+        this.dailyRateJob = dailyRateJob;
     }
 
     /** Legacy contract: values are per gram to preserve existing invoice calculations. */
@@ -34,7 +38,8 @@ public class MetalRateController {
             String unit,
             LocalDate publicationDate,
             LocalDateTime publishedAt,
-            String sourceReference) {}
+            String sourceReference,
+            String sourceName) {}
 
     @GetMapping("/rates")
     public Map<String, Object> getPublicRates() {
@@ -53,7 +58,11 @@ public class MetalRateController {
 
     @PutMapping("/admin/rates/auto")
     public Map<String, Object> enableAutoMode() {
-        return service.enableAutoMode();
+        service.enableAutoMode();
+        // Switching back to AUTO immediately checks the latest verified
+        // Kolkata sources; the same protected job also runs every morning.
+        dailyRateJob.fetchDailyPublishedRates();
+        return service.getPublicRates();
     }
 
 }
