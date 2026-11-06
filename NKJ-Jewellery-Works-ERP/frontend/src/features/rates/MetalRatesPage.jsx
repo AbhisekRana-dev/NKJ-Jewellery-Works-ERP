@@ -156,6 +156,18 @@ export default function MetalRatesPage() {
             The database contains unverified legacy seed values. They are not treated as published Kolkata market prices. Enter the correct 24K, 22K and 999 silver values before using the rate board for new billing.
           </p>
         )}
+        {rates.rateMode === "AUTO" && [
+          "NO_AUTHORIZED_KOLKATA_SOURCE",
+          "FALLBACK_FEED_NOT_CONFIGURED",
+          "ALL_AUTHORIZED_FEEDS_FAILED",
+          "KOLKATA_FEED_FAILED",
+          "KOLKATA_FALLBACK_FAILED",
+          "ALL_SOURCES_FAILED",
+        ].includes(rates.lastAutoFetchStatus) && (
+          <p className="warning">
+            Automatic Mode is selected, but no authorized Kolkata feed has supplied a fresh rate. The current verified values and their original rate date remain active. Configure an authorized Anandabazar feed or an authorized Kolkata-specific fallback before expecting automatic updates.
+          </p>
+        )}
 
         <div className="nkj-rate-active-grid">
           {[
