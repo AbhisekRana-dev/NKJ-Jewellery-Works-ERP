@@ -40,6 +40,8 @@ public class MetalRate {
     private LocalDateTime lastAutoFetchAt;
     @Column(name = "last_auto_fetch_date")
     private LocalDate lastAutoFetchDate;
+    @Column(name = "last_auto_source_date")
+    private LocalDate lastAutoSourceDate;
     @Column(name = "last_auto_fetch_status", length = 40)
     private String lastAutoFetchStatus = "NOT_CONFIGURED";
     @Column(name = "updated_at", nullable = false)
@@ -71,6 +73,8 @@ public class MetalRate {
     public void setLastAutoFetchAt(LocalDateTime value) { lastAutoFetchAt = value; }
     public LocalDate getLastAutoFetchDate() { return lastAutoFetchDate; }
     public void setLastAutoFetchDate(LocalDate value) { lastAutoFetchDate = value; }
+    public LocalDate getLastAutoSourceDate() { return lastAutoSourceDate; }
+    public void setLastAutoSourceDate(LocalDate value) { lastAutoSourceDate = value; }
     public String getLastAutoFetchStatus() { return lastAutoFetchStatus; }
     public void setLastAutoFetchStatus(String value) { lastAutoFetchStatus = value; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
