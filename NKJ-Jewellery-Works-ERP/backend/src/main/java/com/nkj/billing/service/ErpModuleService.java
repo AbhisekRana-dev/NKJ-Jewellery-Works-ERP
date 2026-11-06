@@ -159,6 +159,7 @@ public class ErpModuleService {
                        b.mobile, b.booking_date AS "bookingDate", b.description,
                        b.estimated_value AS "estimatedValue", b.making_estimate AS "makingEstimate",
                        b.advance_amount AS "advanceAmount", b.down_payment_date AS "downPaymentDate",
+                       b.down_payment_recorded_by AS "downPaymentRecordedBy",
                        b.remaining_amount AS "remainingAmount", b.delivery_date AS "deliveryDate",
                        b.status, b.is_installment_plan AS "isInstallmentPlan",
                        b.total_installments AS "totalInstallments",
@@ -213,7 +214,7 @@ public class ErpModuleService {
                            NULL::INTEGER AS "installmentNo", b.down_payment_date AS "paymentDate",
                            b.created_at AS "paidAt", b.advance_amount AS amount,
                            'Cash'::VARCHAR AS "paymentMethod", 'DOWN PAYMENT'::VARCHAR AS "referenceNo",
-                           'OWNER'::VARCHAR AS "recordedBy", NULL::NUMERIC AS "reversedAmount",
+                           COALESCE(b.down_payment_recorded_by, 'SYSTEM MIGRATION')::VARCHAR AS "recordedBy", NULL::NUMERIC AS "reversedAmount",
                            NULL::DATE AS "reversalDate", NULL::TEXT AS "reversalReason",
                            NULL::VARCHAR AS "reversedBy", 'DOWN_PAYMENT'::VARCHAR AS "entryType"
                       FROM bookings b
@@ -309,7 +310,9 @@ public class ErpModuleService {
                     id, advance, "Advance received for " + data.get("bookingNo") + " / " + data.get("customerName"));
             }
         }
-        if (module.equals("installment-payments")) applyInstallmentReceipt(data);
+        if (module.equals("installment-payments")) {
+            throw new IllegalArgumentException("Installment receipts must be posted through the protected idempotent payment endpoint.");
+        }
         if (module.equals("salary-payments")) applySalaryReceipt(data);
         if (module.equals("stock-movements")) applyStockMovement(data);
         audit("CREATE", module, id, null, data, ip);
@@ -322,16 +325,21 @@ public class ErpModuleService {
      */
     @Transactional
     public Map<String,Object> createInstallmentPlan(
-            Map<String,Object> request, String idempotencyKey, String ip) {
+            Map<String,Object> request, String idempotencyKey, String ip) throws JsonProcessingException {
         if (request == null) throw new IllegalArgumentException("Installment plan details are required.");
         String key = requiredIdempotencyKey(idempotencyKey, "plan");
         lockIdempotencyKey("installment-plan:" + key);
 
         List<Map<String,Object>> existingByKey = jdbc.queryForList(
-                "SELECT id, booking_no AS \"bookingNo\", invoice_no AS \"invoiceNo\", total_installments AS \"totalInstallments\" FROM bookings WHERE plan_idempotency_key=? LIMIT 1",
+                "SELECT id, booking_no AS \"bookingNo\", invoice_no AS \"invoiceNo\", total_installments AS \"totalInstallments\", plan_request_json AS \"planRequestJson\" FROM bookings WHERE plan_idempotency_key=? LIMIT 1",
                 key);
         if (!existingByKey.isEmpty()) {
             Map<String,Object> existing = existingByKey.get(0);
+            JsonNode priorRequest = mapper.readTree(String.valueOf(existing.get("planRequestJson")));
+            JsonNode retryRequest = mapper.valueToTree(request);
+            if (!priorRequest.equals(retryRequest)) {
+                throw new IllegalArgumentException("This installment plan idempotency key was already used for different invoice or schedule details.");
+            }
             long existingId = ((Number) existing.get("id")).longValue();
             long scheduleCount = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM installments WHERE booking_id=?", Long.class, existingId);
@@ -416,19 +424,19 @@ public class ErpModuleService {
         Long bookingId = jdbc.queryForObject("""
             INSERT INTO bookings(
                 booking_no, invoice_id, invoice_no, is_installment_plan,
-                total_installments, payment_frequency, plan_idempotency_key,
-                down_payment_date, customer_name, mobile, booking_date,
+                total_installments, payment_frequency, plan_idempotency_key, plan_request_json,
+                down_payment_date, down_payment_recorded_by, customer_name, mobile, booking_date,
                 description, metal_type, purity, estimated_weight, estimated_rate,
                 estimated_value, making_estimate, advance_amount, remaining_amount,
                 delivery_date, status, converted_at, created_at, updated_at
             )
-            VALUES (?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?,
+            VALUES (?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                     ?, 'GOLD', '', 0, 0, ?, 0, ?, ?, ?, ?, NOW(), NOW(), NOW())
             RETURNING id
             """,
             Long.class,
-            bookingNoSeed, invoiceId, invoiceNo, count, frequency, key,
-            downPaymentDate, invoice.get("customer_name"), invoice.get("mobile"),
+            bookingNoSeed, invoiceId, invoiceNo, count, frequency, key, mapper.writeValueAsString(request),
+            downPaymentDate, auth.getUsername(), invoice.get("customer_name"), invoice.get("mobile"),
             today, "Installment plan linked to invoice " + invoiceNo,
             invoiceTotal, downPayment, remainingBalance, firstDueDate, "OPEN");
         String bookingNo = "NKJ-BKG-" + today.format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy"))
@@ -487,6 +495,10 @@ public class ErpModuleService {
         auditValues.put("paymentFrequency", frequency);
         auditValues.put("scheduledCount", amounts.size());
         audit("INSTALLMENT_PLAN_CREATED", "installments", bookingId, null, auditValues, ip);
+        audit("INVOICE_SALES_REVERSED_FOR_INSTALLMENT", "invoices", invoiceId,
+                Map.of("invoiceNo", invoiceNo, "salesAmount", invoiceTotal),
+                Map.of("installmentBookingId", bookingId, "downPayment", downPayment,
+                        "downPaymentDate", downPaymentDate, "futureReceiptsCountAsSalesOnReceiptDate", true), ip);
 
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("success", true);
@@ -514,6 +526,7 @@ public class ErpModuleService {
                    b.customer_name AS "customerName", b.mobile,
                    b.estimated_value + b.making_estimate AS "originalInvoiceAmount",
                    b.advance_amount AS "downPayment", b.down_payment_date AS "downPaymentDate",
+                   b.down_payment_recorded_by AS "downPaymentRecordedBy",
                    b.remaining_amount AS "remainingBalance",
                    b.total_installments AS "totalInstallments",
                    b.payment_frequency AS "paymentFrequency",
@@ -935,6 +948,9 @@ public class ErpModuleService {
         Definition d = writableDefinition(module);
         if (body == null || body.isEmpty()) throw new IllegalArgumentException("Update data is required.");
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
+        if ("bookings".equals(module) && Boolean.TRUE.equals(before.get("is_installment_plan"))) {
+            throw new IllegalArgumentException("Converted invoice installment plans cannot be edited through generic booking fields. Use the installment detail actions so schedule and accounting records stay consistent.");
+        }
         Map<String,Object> normalized = new LinkedHashMap<>(body);
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
         // Business identifiers are generated once and must not be accidentally
@@ -987,6 +1003,9 @@ public class ErpModuleService {
         }
         Definition d = writableDefinition(module);
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
+        if ("bookings".equals(module) && Boolean.TRUE.equals(before.get("is_installment_plan"))) {
+            throw new IllegalArgumentException("An invoice installment plan cannot be deleted because it has financial history. Reverse or correct posted transactions instead.");
+        }
         jdbc.update("DELETE FROM " + d.table() + " WHERE id=?", id);
         audit("DELETE", module, id, before, null, ip);
         return Map.of("success", true, "message", "Record deleted successfully.");
