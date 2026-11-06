@@ -13,7 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.nkj.billing.controller.MetalRateController.NewspaperImportRequest;
+import com.nkj.billing.controller.MetalRateController.KolkataRateImportRequest;
 import com.nkj.billing.controller.MetalRateController.RateUpdateRequest;
 import com.nkj.billing.model.MetalRate;
 import com.nkj.billing.repo.MetalRateRepository;
@@ -157,7 +157,7 @@ public class MetalRateService {
      * or older than the last successfully imported automatic publication.
      */
     @Transactional
-    public Map<String, Object> importNewspaperRates(NewspaperImportRequest request) {
+    public Map<String, Object> importNewspaperRates(KolkataRateImportRequest request) {
         if (request == null) throw new IllegalArgumentException("Kolkata rate payload is required.");
         LocalDate today = LocalDate.now(SHOP_ZONE);
         LocalDate publicationDate = request.publicationDate();
