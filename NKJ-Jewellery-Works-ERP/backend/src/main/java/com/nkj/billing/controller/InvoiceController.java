@@ -138,7 +138,14 @@ public class InvoiceController {
                     invoice.getId(), invoice.getInvoiceNo(), invoice.getCustomerName(), decimalValue(paymentAmount), invoice.getPaymentMode(), invoice.getReferenceNo(), "Initial invoice payment");
         }
         jdbc.update("INSERT INTO audit_logs(actor_identity,action,module,record_id,new_value,ip_address) VALUES ('PUBLIC','INVOICE_CREATED','INVOICES',?,CAST(? AS JSONB),?)",
-                String.valueOf(invoice.getId()), mapper.writeValueAsString(Map.of("invoiceNo", invoice.getInvoiceNo(), "grandTotal", invoice.getGrandTotal())), servletRequest.getRemoteAddr());
+                String.valueOf(invoice.getId()),
+                mapper.writeValueAsString(Map.of(
+                        "invoiceNo", invoice.getInvoiceNo(),
+                        "invoiceDate", invoice.getInvoiceDate().toString(),
+                        "createdAt", invoice.getCreatedAt().toString(),
+                        "grandTotal", invoice.getGrandTotal()
+                )),
+                servletRequest.getRemoteAddr());
 
         return view(invoice);
     }
