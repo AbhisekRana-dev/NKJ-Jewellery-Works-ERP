@@ -1,6 +1,7 @@
 package com.nkj.billing.controller;
 
 import com.nkj.billing.service.ErpModuleService;
+import com.nkj.billing.service.SalesSummaryService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,9 +17,12 @@ public class ErpModuleController {
     private final ErpModuleService modules;
     private final JdbcTemplate jdbc;
     private final DataSource dataSource;
+    private final SalesSummaryService salesSummary;
 
-    public ErpModuleController(ErpModuleService modules, JdbcTemplate jdbc, DataSource dataSource) {
+    public ErpModuleController(ErpModuleService modules, JdbcTemplate jdbc, DataSource dataSource,
+                               SalesSummaryService salesSummary) {
         this.modules = modules; this.jdbc = jdbc; this.dataSource = dataSource;
+        this.salesSummary = salesSummary;
     }
 
     @GetMapping("/modules/{module}")
@@ -56,9 +60,7 @@ public class ErpModuleController {
     @GetMapping("/reports/summary")
     public Map<String,Object> reportSummary() {
         Map<String,Object> result = new LinkedHashMap<>();
-        result.put("todaySales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices WHERE created_at::date=CURRENT_DATE", BigDecimal.class));
-        result.put("monthSales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices WHERE date_trunc('month', created_at)=date_trunc('month', CURRENT_DATE)", BigDecimal.class));
-        result.put("totalSales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices", BigDecimal.class));
+        result.putAll(salesSummary.summary());
         result.put("todayExpenses", jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE expense_date=CURRENT_DATE", BigDecimal.class));
         result.put("monthExpenses", jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date_trunc('month', expense_date)=date_trunc('month', CURRENT_DATE)", BigDecimal.class));
         result.put("totalExpenses", jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM expenses", BigDecimal.class));
