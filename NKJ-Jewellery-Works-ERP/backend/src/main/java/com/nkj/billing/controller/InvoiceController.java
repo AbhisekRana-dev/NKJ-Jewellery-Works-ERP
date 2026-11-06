@@ -25,7 +25,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nkj.billing.model.Invoice;
 import com.nkj.billing.repo.InvoiceRepository;
 import com.nkj.billing.service.AuthService;
@@ -84,11 +86,47 @@ public class InvoiceController {
         if (existingInvoice != null) {
             if (existingInvoice.getInvoiceDate() == null
                     || !existingInvoice.getInvoiceDate().equals(invoiceDate)) {
-                throw new IllegalArgumentException(
-                        "This save request was already used for invoice " + existingInvoice.getInvoiceNo()
-                        + " dated " + existingInvoice.getInvoiceDate()
-                        + ". The selected date is different. Check Invoice History before retrying to avoid a duplicate invoice."
-                );
+                // A legacy draft may have reached the database before the
+                // business-date field was supported. Repair that same invoice
+                // only when every other saved field matches this exact retry.
+                if (!sameInvoicePayloadExceptDate(existingInvoice.getPayloadJson(), body)) {
+                    throw new IllegalArgumentException(
+                            "This save request key already belongs to invoice " + existingInvoice.getInvoiceNo()
+                            + " with different invoice details. Open Invoice History and verify the earlier save before creating another invoice."
+                    );
+                }
+
+                String previousInvoiceNo = existingInvoice.getInvoiceNo();
+                LocalDate previousInvoiceDate = existingInvoice.getInvoiceDate();
+                String datePart = invoiceDate.format(DateTimeFormatter.ofPattern("ddMMyy"));
+                long dailySequence = nextDailyInvoiceSequence(invoiceDate, datePart);
+                String correctedInvoiceNo = "NKJ-" + datePart + "-"
+                        + String.format(Locale.ROOT, "%03d", dailySequence);
+
+                existingInvoice.setInvoiceDate(invoiceDate);
+                existingInvoice.setInvoiceNo(correctedInvoiceNo);
+                existingInvoice.setPayloadJson(mapper.writeValueAsString(body));
+                repo.saveAndFlush(existingInvoice);
+
+                // Keep denormalized invoice-number references consistent.
+                jdbc.update("UPDATE payments SET invoice_no=? WHERE invoice_id=?",
+                        correctedInvoiceNo, existingInvoice.getId());
+                jdbc.update("UPDATE bookings SET invoice_no=? WHERE invoice_no=?",
+                        correctedInvoiceNo, previousInvoiceNo);
+
+                jdbc.update("INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
+                                + "VALUES ('PUBLIC','INVOICE_BUSINESS_DATE_CORRECTED','INVOICES',?,CAST(? AS JSONB),CAST(? AS JSONB),?)",
+                        String.valueOf(existingInvoice.getId()),
+                        mapper.writeValueAsString(Map.of(
+                                "invoiceNo", previousInvoiceNo,
+                                "invoiceDate", previousInvoiceDate == null ? "" : previousInvoiceDate.toString()
+                        )),
+                        mapper.writeValueAsString(Map.of(
+                                "invoiceNo", correctedInvoiceNo,
+                                "invoiceDate", invoiceDate.toString(),
+                                "createdAt", existingInvoice.getCreatedAt().toString()
+                        )),
+                        servletRequest.getRemoteAddr());
             }
             return view(existingInvoice);
         }
@@ -218,6 +256,21 @@ public class InvoiceController {
             throw new IllegalArgumentException("Invoice date cannot be in the future.");
         }
         return selectedDate;
+    }
+
+
+    private boolean sameInvoicePayloadExceptDate(String storedPayload, Map<String, Object> requestBody) {
+        if (storedPayload == null || storedPayload.isBlank() || requestBody == null) return false;
+        try {
+            JsonNode stored = mapper.readTree(storedPayload);
+            JsonNode requested = mapper.valueToTree(requestBody);
+            if (!stored.isObject() || !requested.isObject()) return false;
+            ((ObjectNode) stored).remove("invoiceDate");
+            ((ObjectNode) requested).remove("invoiceDate");
+            return stored.equals(requested);
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     private long nextDailyInvoiceSequence(LocalDate invoiceDate, String datePart) {
