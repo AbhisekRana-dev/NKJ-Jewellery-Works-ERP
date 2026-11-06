@@ -86,7 +86,7 @@ public class DailyAnandabazarRateJob {
                 KolkataRateImportRequest newspaper = fetchAuthorizedFeed(
                         anandabazarFeedUrl, anandabazarApiKey, ANANDABAZAR_SOURCE,
                         "anandabazar.com");
-                Map<String, Object> result = rates.importNewspaperRates(newspaper);
+                Map<String, Object> result = rates.importKolkataRates(newspaper);
                 if ("IMPORTED".equals(result.get("lastAutoFetchStatus"))) {
                     log.info("Imported Kolkata rates from Anandabazar Patrika for {}.", newspaper.publicationDate());
                     return;
@@ -108,7 +108,7 @@ public class DailyAnandabazarRateJob {
             KolkataRateImportRequest fallback = fetchAuthorizedFeed(
                     kolkataFallbackFeedUrl, kolkataFallbackApiKey, AIB_SOURCE,
                     "allindiabullion.com");
-            Map<String, Object> result = rates.importNewspaperRates(fallback);
+            Map<String, Object> result = rates.importKolkataRates(fallback);
             if ("IMPORTED".equals(result.get("lastAutoFetchStatus"))) {
                 log.info("Imported Kolkata rates from authorized All India Bullion feed for {}.", fallback.publicationDate());
             } else {
