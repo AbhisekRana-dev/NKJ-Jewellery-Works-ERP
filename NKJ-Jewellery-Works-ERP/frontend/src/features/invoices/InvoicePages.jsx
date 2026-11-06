@@ -1435,11 +1435,6 @@ export function InvoicePage() {
           <Printer /> {saving ? "Saving..." : "Print Invoice / Save as PDF"}
         </button>
 
-        {!saved && (
-          <button type="button" className="secondary" onClick={discardDraft} disabled={saving}>
-            <Trash2 /> Discard Draft
-          </button>
-        )}
       </div>
       {!saved && (
         <p className="draft-note no-print" role="status">
