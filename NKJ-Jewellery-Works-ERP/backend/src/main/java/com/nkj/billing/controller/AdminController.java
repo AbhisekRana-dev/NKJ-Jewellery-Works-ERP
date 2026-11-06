@@ -22,16 +22,20 @@ import com.nkj.billing.repo.InvoiceRepository;
 public class AdminController {
 
     private final InvoiceRepository repo;
+    private final com.nkj.billing.service.SalesAccountingService salesAccounting;
 
-    public AdminController(InvoiceRepository repo) {
+    public AdminController(
+            InvoiceRepository repo,
+            com.nkj.billing.service.SalesAccountingService salesAccounting) {
         this.repo = repo;
+        this.salesAccounting = salesAccounting;
     }
 
     @GetMapping("/dashboard")
     public Map<String, Object> dashboard() {
         List<Invoice> all = repo.findAllByOrderByInvoiceDateDescCreatedAtDesc();
 
-        BigDecimal totalAmount = sumGrandTotals(all);
+        BigDecimal totalAmount = salesAccounting.totalSales();
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
 
         List<Invoice> todays = all.stream()
@@ -66,7 +70,7 @@ public class AdminController {
         result.put("totalAmount", totalAmount);
         result.put("totalCustomers", customers.size());
         result.put("todayInvoices", todays.size());
-        result.put("todayAmount", sumGrandTotals(todays));
+        result.put("todayAmount", salesAccounting.todaySales());
         result.put("recent", recent);
         return result;
     }
