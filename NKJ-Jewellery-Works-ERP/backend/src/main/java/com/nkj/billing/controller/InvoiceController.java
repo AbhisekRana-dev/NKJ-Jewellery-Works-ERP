@@ -65,6 +65,9 @@ public class InvoiceController {
             throw new IllegalArgumentException("A valid Idempotency-Key is required to save an invoice.");
         }
 
+        validateInvoiceBody(body);
+        LocalDate invoiceDate = requestedInvoiceDate(body);
+
         // Serialize requests carrying the same key so retries return the first
         // committed invoice instead of creating a second invoice.
         jdbc.query(
@@ -79,11 +82,17 @@ public class InvoiceController {
         );
         Invoice existingInvoice = repo.findByIdempotencyKey(requestKey).orElse(null);
         if (existingInvoice != null) {
+            if (existingInvoice.getInvoiceDate() == null
+                    || !existingInvoice.getInvoiceDate().equals(invoiceDate)) {
+                throw new IllegalArgumentException(
+                        "This save request was already used for invoice " + existingInvoice.getInvoiceNo()
+                        + " dated " + existingInvoice.getInvoiceDate()
+                        + ". The selected date is different. Check Invoice History before retrying to avoid a duplicate invoice."
+                );
+            }
             return view(existingInvoice);
         }
 
-        validateInvoiceBody(body);
-        LocalDate invoiceDate = requestedInvoiceDate(body);
         String customerName = clean(body.get("customerName"));
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
@@ -186,11 +195,13 @@ public class InvoiceController {
 
     private LocalDate requestedInvoiceDate(Map<String, Object> body) {
         String rawDate = clean(body.get("invoiceDate"));
+        if (rawDate.isBlank()) {
+            throw new IllegalArgumentException("Invoice date is required. Select the invoice date before saving.");
+        }
+
         LocalDate selectedDate;
         try {
-            selectedDate = rawDate.isBlank()
-                    ? LocalDate.now(ZoneId.of("Asia/Kolkata"))
-                    : LocalDate.parse(rawDate, DateTimeFormatter.ISO_LOCAL_DATE);
+            selectedDate = LocalDate.parse(rawDate, DateTimeFormatter.ISO_LOCAL_DATE);
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invoice date must be a valid date in YYYY-MM-DD format.");
         }
@@ -296,6 +307,11 @@ public class InvoiceController {
         }
         if (clean(body.get("customerName")).isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
+        }
+
+        String mobile = clean(body.get("mobile"));
+        if (!mobile.isEmpty() && !mobile.matches("[0-9]{10}")) {
+            throw new IllegalArgumentException("Mobile number must contain exactly 10 digits (0-9 only).");
         }
 
         boolean hasNewItems = validateInvoiceItemRows(body.get("newItems"), "NEW");
