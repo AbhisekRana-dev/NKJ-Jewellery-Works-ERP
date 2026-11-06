@@ -1,6 +1,11 @@
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function request(path, options = {}) {
+  const {
+    publicRequest = false,
+    suppressSessionExpiry = false,
+    ...fetchOptions
+  } = options;
   const token = localStorage.getItem("nkj_token");
   const headers = {
     Accept: "application/json",
@@ -8,14 +13,14 @@ export async function request(path, options = {}) {
     ...(options.headers || {}),
   };
 
-  if (token) {
+  if (token && !publicRequest) {
     headers.Authorization = `Bearer ${token}`;
   }
 
   let response;
   try {
     response = await fetch(`${API}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers,
     });
   } catch (error) {
@@ -32,7 +37,7 @@ export async function request(path, options = {}) {
     }
   }
 
-  if (response.status === 401) {
+  if (response.status === 401 && !suppressSessionExpiry) {
     localStorage.removeItem("nkj_token");
     localStorage.removeItem("nkj_user");
     window.dispatchEvent(new Event("nkj:session-expired"));
