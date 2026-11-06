@@ -483,18 +483,39 @@ export function InvoicePage() {
   }, []);
 
   useEffect(() => {
+    if (startingNewInvoice) {
+      // Explicit New Invoice navigation resets the form even when the user
+      // clicks New Invoice while already on /invoice. Only the temporary
+      // browser draft is removed; saved database invoices remain untouched.
+      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+      setInvoiceDate(getTodayIndiaDate());
+      setCustomer({ name: "", mobile: "", address: "" });
+      setPaymentMode("Cash");
+      setReferenceNo("");
+      setNewItems([blankNew()]);
+      setOldItems([blankOld()]);
+      setDiscount("");
+      setGst("0");
+      setDescription("");
+      setSaved(false);
+      setDraftRestored(false);
+      setIdempotencyKey(createInvoiceDraftKey());
+      setError("");
+      setSuccessMessage("");
+      setInvoiceNo("");
+      setInvoiceId(null);
+      setShowInvoicePin(false);
+
+      // Consume the one-time navigation instruction so browser Back can
+      // restore a genuinely unfinished draft instead of clearing it again.
+      navigate("/invoice", { replace: true, state: null });
+      return;
+    }
+
     if (location.state?.copyInvoice) {
       navigate("/invoice", { replace: true, state: null });
     }
-  }, [location.state, navigate]);
-
-  useEffect(() => {
-    if (startingNewInvoice) {
-      // A deliberate New Invoice action starts clean. Remove only the
-      // temporary browser draft; saved database invoices are untouched.
-      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
-    }
-  }, [startingNewInvoice]);
+  }, [location.key, startingNewInvoice, location.state, navigate]);
 
   useEffect(() => {
     if (saved) {
