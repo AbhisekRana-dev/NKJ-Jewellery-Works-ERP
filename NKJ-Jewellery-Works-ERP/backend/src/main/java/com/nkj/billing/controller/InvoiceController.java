@@ -268,6 +268,10 @@ public class InvoiceController {
             if (!stored.isObject() || !requested.isObject()) return false;
             ((ObjectNode) stored).remove("invoiceDate");
             ((ObjectNode) requested).remove("invoiceDate");
+            // paymentAmount was removed from the current invoice form; ignore
+            // this legacy-only field when recovering an older saved draft.
+            ((ObjectNode) stored).remove("paymentAmount");
+            ((ObjectNode) requested).remove("paymentAmount");
             return stored.equals(requested);
         } catch (Exception ex) {
             return false;
