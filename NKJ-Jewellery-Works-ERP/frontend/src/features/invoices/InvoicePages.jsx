@@ -356,6 +356,22 @@ function amountInWords(value) {
 
 const INVOICE_DRAFT_STORAGE_KEY = "nkj.invoice.draft.v1";
 
+function getTodayIndiaDate() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function formatInvoiceDateForDisplay(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || "—");
+}
+
 function readInvoiceDraft() {
   if (typeof window === "undefined") return null;
   try {
@@ -384,6 +400,8 @@ export function InvoicePage() {
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
   const [initialDraft] = useState(() => copiedInvoice ? null : readInvoiceDraft());
+  const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || getTodayIndiaDate());
+  const maxInvoiceDate = getTodayIndiaDate();
 
   const copiedRows = (value, fallback) => {
     if (Array.isArray(value) && value.length) return value;
@@ -476,6 +494,7 @@ export function InvoicePage() {
     const draft = {
       version: 1,
       idempotencyKey,
+      invoiceDate,
       customer,
       paymentMode,
       referenceNo,
@@ -491,7 +510,7 @@ export function InvoicePage() {
     } catch {
       // The invoice remains usable when browser storage is unavailable or full.
     }
-  }, [customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
+  }, [invoiceDate, customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -608,6 +627,7 @@ export function InvoicePage() {
 
   function buildInvoicePayload() {
     return {
+      invoiceDate,
       customerName: customer.name,
       mobile: customer.mobile,
       address: customer.address,
@@ -636,6 +656,7 @@ export function InvoicePage() {
 
     skipNextDraftPersistRef.current = true;
     try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+    setInvoiceDate(getTodayIndiaDate());
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
     setReferenceNo("");
@@ -653,6 +674,8 @@ export function InvoicePage() {
   }
 
   function validateInvoiceForm() {
+    if (!invoiceDate) return "Please select an invoice date.";
+    if (invoiceDate > maxInvoiceDate) return "Invoice date cannot be in the future.";
     if (!customer.name.trim()) return "Please enter customer name.";
     if (!hasNewItemDetails && !hasOldItemDetails) {
       return "Enter at least one ornament detail before saving the invoice.";
@@ -708,6 +731,7 @@ export function InvoicePage() {
       }
       setInvoiceId(result.id);
       setInvoiceNo(result.invoiceNo);
+      if (result.invoiceDate) setInvoiceDate(result.invoiceDate);
       setSaved(true);
       setDraftRestored(false);
       setShowInvoicePin(false);
@@ -749,8 +773,6 @@ export function InvoicePage() {
   }
 
   const now = new Date();
-
-  const date = now.toLocaleDateString("en-GB").replace(/\//g, "-");
 
   const time = now.toLocaleTimeString("en-IN", {
     hour: "2-digit",
@@ -811,7 +833,23 @@ export function InvoicePage() {
             <span>
               <label>Date</label>
 
-              <strong>{date}</strong>
+              <strong>
+                {saved ? (
+                  formatInvoiceDateForDisplay(invoiceDate)
+                ) : (
+                  <input
+                    className="invoice-date-input"
+                    type="date"
+                    value={invoiceDate}
+                    max={maxInvoiceDate}
+                    onChange={(e) => {
+                      setInvoiceDate(e.target.value);
+                      setError("");
+                    }}
+                    aria-label="Invoice Date"
+                  />
+                )}
+              </strong>
             </span>
 
             <span>
