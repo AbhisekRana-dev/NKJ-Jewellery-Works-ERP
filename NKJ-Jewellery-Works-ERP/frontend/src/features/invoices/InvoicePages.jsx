@@ -372,18 +372,25 @@ function formatInvoiceDateForDisplay(value) {
   return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || "—");
 }
 
-function readInvoiceDraft() {
-  if (typeof window === "undefined") return null;
+function wasInvoicePageReloaded() {
+  if (typeof window === "undefined") return false;
   try {
-    // A full browser refresh of the invoice page starts a clean invoice.
-    // Preserve drafts during normal in-app navigation, but never restore an
-    // unfinished invoice after the user explicitly refreshes the page.
     const navigationEntries = window.performance?.getEntriesByType?.("navigation") || [];
     const navigationType = navigationEntries[0]?.type;
     const legacyReload = navigationEntries.length === 0
       && window.performance?.navigation?.type === 1;
+    return navigationType === "reload" || legacyReload;
+  } catch {
+    return false;
+  }
+}
 
-    if (navigationType === "reload" || legacyReload) {
+function readInvoiceDraft() {
+  if (typeof window === "undefined") return null;
+  try {
+    // Refresh means discard only the unfinished browser draft. Saved database
+    // invoices are not affected. In-app navigation may still restore drafts.
+    if (wasInvoicePageReloaded()) {
       window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY);
       return null;
     }
@@ -409,13 +416,13 @@ function createInvoiceDraftKey() {
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const copiedInvoice = location.state?.copyInvoice
+  const pageWasReloaded = wasInvoicePageReloaded();
+  const copiedInvoice = !pageWasReloaded && location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
-  const startingNewInvoice = location.state?.startNewInvoice === true;
-  const [initialDraft] = useState(() =>
-    copiedInvoice || startingNewInvoice ? null : readInvoiceDraft()
-  );
+  const startingNewInvoice = !pageWasReloaded && location.state?.startNewInvoice === true;
+  const [storedDraft] = useState(() => readInvoiceDraft());
+  const initialDraft = copiedInvoice || startingNewInvoice || pageWasReloaded ? null : storedDraft;
   const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || getTodayIndiaDate());
   const maxInvoiceDate = getTodayIndiaDate();
 
