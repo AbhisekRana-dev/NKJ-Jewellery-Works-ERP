@@ -765,7 +765,10 @@ export function InvoicePage() {
       let dateSupport = null;
       let dateSupportRequestFailed = false;
       try {
-        dateSupport = await request("/invoices/date-support");
+        dateSupport = await request("/invoices/date-support", {
+          publicRequest: true,
+          suppressSessionExpiry: true,
+        });
       } catch {
         dateSupportRequestFailed = true;
       }
