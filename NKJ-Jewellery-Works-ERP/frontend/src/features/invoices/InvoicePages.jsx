@@ -1,6 +1,6 @@
 
 import "./InvoicePages.css";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { Link, useNavigate, useLocation } from "react-router-dom";
 
@@ -354,12 +354,36 @@ function amountInWords(value) {
   );
 }
 
+const INVOICE_DRAFT_STORAGE_KEY = "nkj.invoice.draft.v1";
+
+function readInvoiceDraft() {
+  if (typeof window === "undefined") return null;
+  try {
+    const draft = JSON.parse(window.localStorage.getItem(INVOICE_DRAFT_STORAGE_KEY) || "null");
+    return draft && draft.version === 1 ? draft : null;
+  } catch {
+    return null;
+  }
+}
+
+function createInvoiceDraftKey() {
+  try {
+    if (typeof window !== "undefined" && typeof window.crypto?.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+  } catch {
+    // Fall back for browsers without crypto.randomUUID.
+  }
+  return `nkj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const copiedInvoice = location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
+  const [initialDraft] = useState(() => copiedInvoice ? null : readInvoiceDraft());
 
   const copiedRows = (value, fallback) => {
     if (Array.isArray(value) && value.length) return value;
@@ -373,18 +397,18 @@ export function InvoicePage() {
   };
 
   const [customer, setCustomer] = useState(() => ({
-    name: copiedInvoice?.customerName || copiedInvoice?.name || "",
-    mobile: copiedInvoice?.mobile || "",
-    address: copiedInvoice?.address || "",
+    name: copiedInvoice?.customerName || copiedInvoice?.name || initialDraft?.customer?.name || "",
+    mobile: copiedInvoice?.mobile || initialDraft?.customer?.mobile || "",
+    address: copiedInvoice?.address || initialDraft?.customer?.address || "",
   }));
 
-  const [paymentMode, setPaymentMode] = useState(() => copiedInvoice?.paymentMode || "Cash");
-  const [referenceNo, setReferenceNo] = useState(() => copiedInvoice?.referenceNo || "");
-  const [newItems, setNewItems] = useState(() => copiedRows(copiedInvoice?.newItems, [blankNew()]).map((x) => ({ ...blankNew(), ...x })));
+  const [paymentMode, setPaymentMode] = useState(() => copiedInvoice?.paymentMode || initialDraft?.paymentMode || "Cash");
+  const [referenceNo, setReferenceNo] = useState(() => copiedInvoice?.referenceNo || initialDraft?.referenceNo || "");
+  const [newItems, setNewItems] = useState(() => copiedRows(copiedInvoice?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
   // and always start with exactly one empty row at the end.
   const [oldItems, setOldItems] = useState(() => {
-    const rows = copiedRows(copiedInvoice?.oldItems, [blankOld()]).map((x) => ({ ...blankOld(), ...x }));
+    const rows = copiedRows(copiedInvoice?.oldItems, copiedRows(initialDraft?.oldItems, [blankOld()])).map((x) => ({ ...blankOld(), ...x }));
     const enteredRows = rows.filter((row) =>
       String(row.description ?? "").trim() !== "" ||
       String(row.purity ?? "").trim() !== "" ||
@@ -393,17 +417,21 @@ export function InvoicePage() {
     );
     return [...enteredRows, blankOld()];
   });
-  const [discount, setDiscount] = useState(() => String(copiedInvoice?.discount ?? ""));
-  const [gst, setGst] = useState(() => String(copiedInvoice?.gstPercent ?? 0));
-  const [description, setDescription] = useState(() => copiedInvoice?.description || "");
+  const [discount, setDiscount] = useState(() => String(copiedInvoice?.discount ?? initialDraft?.discount ?? ""));
+  const [gst, setGst] = useState(() => String(copiedInvoice?.gstPercent ?? initialDraft?.gst ?? 0));
+  const [description, setDescription] = useState(() => copiedInvoice?.description || initialDraft?.description || "");
   const [saved, setSaved] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
+  const [idempotencyKey, setIdempotencyKey] = useState(() => initialDraft?.idempotencyKey || createInvoiceDraftKey());
+  const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
 
   const [invoiceNo, setInvoiceNo] = useState("");
+  const [invoiceId, setInvoiceId] = useState(null);
   const [showInvoicePin, setShowInvoicePin] = useState(false);
-  const [invoicePinAction, setInvoicePinAction] = useState("save");
-  const [pendingInvoicePayload, setPendingInvoicePayload] = useState(null);
+  const saveInProgressRef = useRef(false);
+  const skipNextDraftPersistRef = useRef(false);
 
   // Disable the browser print shortcut only while the New Invoice page is mounted.
   useEffect(() => {
@@ -434,6 +462,35 @@ export function InvoicePage() {
       navigate("/invoice", { replace: true, state: null });
     }
   }, [location.state, navigate]);
+
+  useEffect(() => {
+    if (saved) {
+      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+      return;
+    }
+    if (skipNextDraftPersistRef.current) {
+      skipNextDraftPersistRef.current = false;
+      return;
+    }
+    const draft = {
+      version: 1,
+      idempotencyKey,
+      customer,
+      paymentMode,
+      referenceNo,
+      newItems,
+      oldItems,
+      discount,
+      gst,
+      description,
+      savedAt: new Date().toISOString(),
+    };
+    try {
+      window.localStorage.setItem(INVOICE_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    } catch {
+      // The invoice remains usable when browser storage is unavailable or full.
+    }
+  }, [customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -572,35 +629,70 @@ export function InvoicePage() {
     };
   }
 
+  function discardDraft() {
+    if (saved || saving) return;
+    if (!window.confirm("Discard this unfinished invoice draft? This cannot be undone.")) return;
+
+    skipNextDraftPersistRef.current = true;
+    try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+    setCustomer({ name: "", mobile: "", address: "" });
+    setPaymentMode("Cash");
+    setReferenceNo("");
+    setNewItems([blankNew()]);
+    setOldItems([blankOld()]);
+    setDiscount("");
+    setGst("0");
+    setDescription("");
+    setInvoiceNo("");
+    setInvoiceId(null);
+    setIdempotencyKey(createInvoiceDraftKey());
+    setDraftRestored(false);
+    setError("");
+  }
+
   async function save() {
+    if (saveInProgressRef.current || saved) return;
     setError("");
     if (!customer.name.trim()) { setError("Please enter customer name."); return; }
     if (!hasNewItemDetails && !hasOldItemDetails) { setError("Enter at least one ornament detail before saving the invoice."); return; }
-    setPendingInvoicePayload(buildInvoicePayload());
-    setInvoicePinAction("save");
-    setShowInvoicePin(true);
-  }
 
-  async function requestPrintPin() {
-    setInvoicePinAction("print");
-    setShowInvoicePin(true);
-  }
-
-  async function continueAfterInvoicePin(ticket) {
-    if (invoicePinAction === "save") {
+    saveInProgressRef.current = true;
+    setSaving(true);
+    try {
       const result = await request("/invoices", {
         method: "POST",
-        headers: { "X-Invoice-Pin-Ticket": ticket },
-        body: JSON.stringify(pendingInvoicePayload || buildInvoicePayload()),
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify(buildInvoicePayload()),
       });
-      setInvoiceNo(result.invoiceNo || "");
+      if (!result?.id || !result?.invoiceNo) {
+        throw new Error("The server did not return a saved invoice ID and number. Please refresh the saved invoice list before retrying.");
+      }
+      setInvoiceId(result.id);
+      setInvoiceNo(result.invoiceNo);
       setSaved(true);
+      setDraftRestored(false);
       setShowInvoicePin(false);
-      setTimeout(() => setSaved(false), 3500);
+    } catch (e) {
+      setError(e.message || "Could not save the invoice. Your draft is still available.");
+    } finally {
+      saveInProgressRef.current = false;
+      setSaving(false);
+    }
+  }
+
+  function requestPrintPin() {
+    if (!saved || !invoiceId) {
+      setError("Save the invoice before printing or downloading its PDF.");
       return;
     }
+    setError("");
+    setShowInvoicePin(true);
+  }
+
+  async function printCurrentInvoice(ticket) {
     await request("/invoices/consume-print-ticket", {
-      method: "POST", body: JSON.stringify({ ticket })
+      method: "POST",
+      body: JSON.stringify({ ticket, invoiceId }),
     });
     setShowInvoicePin(false);
     window.setTimeout(() => window.print(), 120);
@@ -1256,15 +1348,41 @@ export function InvoicePage() {
       {saved && <p className="success no-print">Invoice saved successfully.</p>}
 
       <div className="invoice-actions no-print">
-        <button type="button" className="primary" onClick={save}>
-          <Save /> Save Invoice
+        <button type="button" className="primary" onClick={save} disabled={saving || saved}>
+          <Save /> {saving ? "Saving..." : saved ? "Invoice Saved" : "Save Invoice"}
         </button>
 
-        <button type="button" className="secondary" onClick={requestPrintPin}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={requestPrintPin}
+          disabled={!saved || !invoiceId}
+          title={!saved ? "Save the invoice before printing or downloading a PDF" : "Print this saved invoice"}
+        >
           <Printer /> Print / Save PDF
         </button>
+
+        {!saved && (
+          <button type="button" className="secondary" onClick={discardDraft} disabled={saving}>
+            <Trash2 /> Discard Draft
+          </button>
+        )}
       </div>
-      {showInvoicePin && <InvoicePinDialog onClose={() => setShowInvoicePin(false)} onVerified={continueAfterInvoicePin} title={invoicePinAction === "save" ? "Authorize invoice save" : "Authorize invoice printing"} />}
+      {!saved && (
+        <p className="draft-note no-print" role="status">
+          {draftRestored
+            ? "Your unfinished invoice draft was restored from this browser. Changes continue to save automatically."
+            : "Your unfinished invoice is saved automatically in this browser and will be restored after a refresh."}
+        </p>
+      )}
+      {showInvoicePin && (
+        <InvoicePinDialog
+          invoiceId={invoiceId}
+          onClose={() => setShowInvoicePin(false)}
+          onVerified={printCurrentInvoice}
+          title="Authorize saved invoice printing"
+        />
+      )}
     </Page>
   );
 }
@@ -1654,7 +1772,13 @@ export function SavedInvoices() {
   if (!isAdmin) return null;
 
   const printSavedInvoice = async (ticket) => {
-    await request("/invoices/consume-print-ticket", { method: "POST", body: JSON.stringify({ ticket }) });
+    if (!selectedInvoice?.id) {
+      throw new Error("Open a saved invoice before printing.");
+    }
+    await request("/invoices/consume-print-ticket", {
+      method: "POST",
+      body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
+    });
     setShowPrintPin(false);
     window.setTimeout(() => window.print(), 120);
   };
@@ -1788,7 +1912,7 @@ export function SavedInvoices() {
           </section>
         </div>
       )}
-      {showPrintPin && <InvoicePinDialog onClose={() => setShowPrintPin(false)} onVerified={printSavedInvoice} title="Authorize saved invoice printing" />}
+      {showPrintPin && <InvoicePinDialog invoiceId={selectedInvoice?.id} onClose={() => setShowPrintPin(false)} onVerified={printSavedInvoice} title="Authorize saved invoice printing" />}
     </Page>
   );
 }
