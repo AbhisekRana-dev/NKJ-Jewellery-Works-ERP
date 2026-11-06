@@ -1538,8 +1538,8 @@ export function InvoicePage() {
       {!saved && (
         <p className="draft-note no-print" role="status">
           {draftRestored
-            ? "Your unfinished invoice draft was restored from this browser. Changes continue to save automatically."
-            : "Your unfinished invoice is saved automatically in this browser and will be restored after a refresh."}
+            ? "Unsaved draft restored from this browser. It is not in Invoice History until the server confirms Save Invoice."
+            : "Unsaved draft: details are kept in this browser only. This invoice is not in Invoice History until Save Invoice succeeds."}
         </p>
       )}
       {showInvoicePin && (
