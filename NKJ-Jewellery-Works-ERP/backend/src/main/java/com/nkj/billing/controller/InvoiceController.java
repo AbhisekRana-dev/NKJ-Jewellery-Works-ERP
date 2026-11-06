@@ -81,6 +81,7 @@ public class InvoiceController {
             return view(existingInvoice);
         }
 
+        validateInvoiceBody(body);
         String customerName = clean(body.get("customerName"));
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
@@ -233,6 +234,7 @@ public class InvoiceController {
             if (!(raw instanceof Map<?, ?> rawMap)) continue;
             Map<String, Object> row = new LinkedHashMap<>();
             rawMap.forEach((key, value) -> row.put(String.valueOf(key), value));
+            if (!hasInvoiceItemDetails(row, itemType)) continue;
             BigDecimal netWeight = decimalValue(row.get(itemType.equals("OLD_EXCHANGE") ? "pureWeight" : "netWeight"));
             BigDecimal rate = decimalValue(row.get("rate"));
             BigDecimal making = decimalValue(row.get("makingCharge"));
@@ -259,6 +261,78 @@ public class InvoiceController {
                     extra,
                     amount,
                     mapper.writeValueAsString(row));
+        }
+    }
+
+    /**
+     * Validate the request before writing any invoice rows. The controller
+     * transaction then commits the invoice, line items, and any initial
+     * payment together or rolls all of them back on failure.
+     */
+    private void validateInvoiceBody(Map<String, Object> body) {
+        if (body == null) {
+            throw new IllegalArgumentException("Invoice details are required.");
+        }
+        if (clean(body.get("customerName")).isEmpty()) {
+            throw new IllegalArgumentException("Customer name is required.");
+        }
+
+        boolean hasNewItems = validateInvoiceItemRows(body.get("newItems"), "NEW");
+        boolean hasOldItems = validateInvoiceItemRows(body.get("oldItems"), "OLD_EXCHANGE");
+        if (!hasNewItems && !hasOldItems) {
+            throw new IllegalArgumentException("At least one new or old ornament detail is required.");
+        }
+
+        for (String field : List.of(
+                "newTotal", "oldTotal", "makingCharge", "extraCharge", "discount",
+                "subTotal", "gstPercent", "gstAmount", "otherCharge", "grandTotal", "paymentAmount")) {
+            validateNonNegativeDecimal(body.get(field), field);
+        }
+    }
+
+    private boolean validateInvoiceItemRows(Object rawItems, String itemType) {
+        if (rawItems == null) return false;
+        if (!(rawItems instanceof List<?> rows)) {
+            throw new IllegalArgumentException("Invoice " + itemType + " items must be a list.");
+        }
+
+        boolean hasDetails = false;
+        for (Object raw : rows) {
+            if (!(raw instanceof Map<?, ?> rawMap)) {
+                throw new IllegalArgumentException("Each invoice item must be an object.");
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> row.put(String.valueOf(key), value));
+            if (!hasInvoiceItemDetails(row, itemType)) continue;
+            hasDetails = true;
+
+            List<String> numericFields = itemType.equals("OLD_EXCHANGE")
+                    ? List.of("pureWeight", "rate")
+                    : List.of("netWeight", "rate", "makingCharge", "stampCharge", "extraCharge");
+            for (String field : numericFields) {
+                validateNonNegativeDecimal(row.get(field), itemType + " item " + field);
+            }
+        }
+        return hasDetails;
+    }
+
+    private boolean hasInvoiceItemDetails(Map<String, Object> row, String itemType) {
+        List<String> fields = itemType.equals("OLD_EXCHANGE")
+                ? List.of("description", "purity", "pureWeight", "rate")
+                : List.of("description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge");
+        return fields.stream().anyMatch(field -> !clean(row.get(field)).isEmpty());
+    }
+
+    private void validateNonNegativeDecimal(Object value, String field) {
+        if (value == null || String.valueOf(value).isBlank()) return;
+        final BigDecimal parsed;
+        try {
+            parsed = new BigDecimal(String.valueOf(value));
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException(field + " must be a valid number.");
+        }
+        if (parsed.signum() < 0) {
+            throw new IllegalArgumentException(field + " cannot be negative.");
         }
     }
 
