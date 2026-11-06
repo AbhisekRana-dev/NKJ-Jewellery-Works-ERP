@@ -1,4 +1,54 @@
 /* InvoicePages: page-specific styles. */
+.nkj-invoice-toolbar {
+  max-width: 1200px;
+  margin: 10px auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.nkj-gstin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border: 1px solid #d8a64b;
+  border-radius: 7px;
+  background: #fffaf0;
+  color: #3b2a12;
+  font: 600 13px Arial, sans-serif;
+  cursor: pointer;
+}
+.nkj-gstin-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #a20b2d;
+  cursor: pointer;
+}
+.nkj-gstin-toggle strong {
+  min-width: 27px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f1e2c7;
+  color: #7a1029;
+  text-align: center;
+  font-size: 10px;
+}
+.nkj-gstin-toggle input:disabled {
+  cursor: not-allowed;
+}
+.nkj-editing-invoice-note {
+  color: #687386;
+  font: 12px Arial, sans-serif;
+}
+@media (max-width: 600px) {
+  .nkj-invoice-toolbar {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
+
 .nkj-owner-layout .invoice-container.nkj-owner-invoice-container {width: calc(100% - 258px) !important;
   max-width: none !important;
   margin: 0 0 0 258px !important;
