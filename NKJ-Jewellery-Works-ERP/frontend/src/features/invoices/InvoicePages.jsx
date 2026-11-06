@@ -128,6 +128,7 @@ function makeInvoiceShareMessage(invoice) {
     `Mobile: ${data.mobile || "—"}`,
     `Address: ${data.address || "—"}`,
     `Payment: ${data.paymentMode || "—"}`,
+    `Amount Received: ₹${money(data.paymentAmount)}`,
     `Reference: ${data.referenceNo || "—"}`,
     "",
     "NEW ORNAMENTS:",
@@ -403,6 +404,7 @@ export function InvoicePage() {
   }));
 
   const [paymentMode, setPaymentMode] = useState(() => copiedInvoice?.paymentMode || initialDraft?.paymentMode || "Cash");
+  const [paymentAmount, setPaymentAmount] = useState(() => String(copiedInvoice?.paymentAmount ?? initialDraft?.paymentAmount ?? ""));
   const [referenceNo, setReferenceNo] = useState(() => copiedInvoice?.referenceNo || initialDraft?.referenceNo || "");
   const [newItems, setNewItems] = useState(() => copiedRows(copiedInvoice?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
@@ -426,6 +428,7 @@ export function InvoicePage() {
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [invoiceNo, setInvoiceNo] = useState("");
   const [invoiceId, setInvoiceId] = useState(null);
@@ -477,6 +480,7 @@ export function InvoicePage() {
       idempotencyKey,
       customer,
       paymentMode,
+      paymentAmount,
       referenceNo,
       newItems,
       oldItems,
@@ -490,7 +494,7 @@ export function InvoicePage() {
     } catch {
       // The invoice remains usable when browser storage is unavailable or full.
     }
-  }, [customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
+  }, [customer, paymentMode, paymentAmount, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -611,6 +615,7 @@ export function InvoicePage() {
       mobile: customer.mobile,
       address: customer.address,
       paymentMode,
+      paymentAmount: paymentAmount.trim() === "" ? 0 : Number(paymentAmount),
       referenceNo,
       description,
       // Preserve every displayed row, including intentionally blank rows.
@@ -637,6 +642,7 @@ export function InvoicePage() {
     try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
+    setPaymentAmount("");
     setReferenceNo("");
     setNewItems([blankNew()]);
     setOldItems([blankOld()]);
@@ -650,11 +656,48 @@ export function InvoicePage() {
     setError("");
   }
 
-  async function save() {
-    if (saveInProgressRef.current || saved) return;
+  function validateInvoiceForm() {
+    if (!customer.name.trim()) return "Please enter customer name.";
+    if (!hasNewItemDetails && !hasOldItemDetails) {
+      return "Enter at least one ornament detail before saving the invoice.";
+    }
+
+    const hasInvalidNumber = (row, fields) => fields.some((field) => {
+      const raw = String(row?.[field] ?? "").trim();
+      return raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0);
+    });
+    const invalidNewItem = newItems.some((row) =>
+      rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]) &&
+      hasInvalidNumber(row, ["netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]),
+    );
+    if (invalidNewItem) return "New ornament weights, rates, and charges must be valid non-negative numbers.";
+
+    const invalidOldItem = oldItems.some((row) =>
+      rowHasAnyInput(row, ["description", "purity", "pureWeight", "rate"]) &&
+      hasInvalidNumber(row, ["pureWeight", "rate"]),
+    );
+    if (invalidOldItem) return "Old ornament weights and rates must be valid non-negative numbers.";
+
+    for (const [label, value] of [["GST", gst], ["Discount", discount], ["Amount received", paymentAmount]]) {
+      const raw = String(value ?? "").trim();
+      if (raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0)) {
+        return `${label} must be a valid non-negative number.`;
+      }
+    }
+    return "";
+  }
+
+  async function persistInvoice() {
+    if (saved && invoiceId) return { id: invoiceId, invoiceNo };
+    if (saveInProgressRef.current) return null;
+
     setError("");
-    if (!customer.name.trim()) { setError("Please enter customer name."); return; }
-    if (!hasNewItemDetails && !hasOldItemDetails) { setError("Enter at least one ornament detail before saving the invoice."); return; }
+    setSuccessMessage("");
+    const validationError = validateInvoiceForm();
+    if (validationError) {
+      setError(validationError);
+      return null;
+    }
 
     saveInProgressRef.current = true;
     setSaving(true);
@@ -665,27 +708,38 @@ export function InvoicePage() {
         body: JSON.stringify(buildInvoicePayload()),
       });
       if (!result?.id || !result?.invoiceNo) {
-        throw new Error("The server did not return a saved invoice ID and number. Please refresh the saved invoice list before retrying.");
+        throw new Error("The server did not confirm a saved invoice ID and number. Nothing will be printed or downloaded. Your draft is still available.");
       }
       setInvoiceId(result.id);
       setInvoiceNo(result.invoiceNo);
       setSaved(true);
       setDraftRestored(false);
       setShowInvoicePin(false);
+      setSuccessMessage(`Invoice ${result.invoiceNo} saved successfully. It is now available in Invoice History.`);
+      return result;
     } catch (e) {
-      setError(e.message || "Could not save the invoice. Your draft is still available.");
+      setError(e.message || "Could not save the invoice. Printing and PDF download have been stopped; your draft is still available.");
+      return null;
     } finally {
       saveInProgressRef.current = false;
       setSaving(false);
     }
   }
 
-  function requestPrintPin() {
-    if (!saved || !invoiceId) {
-      setError("Save the invoice before printing or downloading its PDF.");
-      return;
-    }
+  async function save() {
+    await persistInvoice();
+  }
+
+  async function requestPrintPin() {
     setError("");
+    const result = await persistInvoice();
+    if (!result?.id || !result?.invoiceNo) return;
+
+    // persistInvoice returns the existing ID for a saved invoice and only
+    // creates a database record for an unsaved draft. Never POST again on reprint.
+    setInvoiceId(result.id);
+    setInvoiceNo(result.invoiceNo);
+    setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN to print or save as PDF.`);
     setShowInvoicePin(true);
   }
 
@@ -840,6 +894,22 @@ export function InvoicePage() {
                     ),
                   )}
                 </select>
+              </label>
+
+              <label>
+                <span>Amount Received (₹)</span>
+
+                <i>:</i>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={paymentAmount}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                />
               </label>
 
               <label>
@@ -1343,9 +1413,10 @@ export function InvoicePage() {
         </div>
       </div>
 
-      {error && <p className="error no-print">{error}</p>}
+      {error && <p className="error no-print" role="alert">{error}</p>}
 
-      {saved && <p className="success no-print">Invoice saved successfully.</p>}
+      {successMessage && <p className="success no-print" role="status">{successMessage}</p>}
+      {saving && <p className="draft-note no-print" role="status">Saving the complete invoice to PostgreSQL. Printing will start only after the server confirms the save.</p>}
 
       <div className="invoice-actions no-print">
         <button type="button" className="primary" onClick={save} disabled={saving || saved}>
@@ -1356,10 +1427,10 @@ export function InvoicePage() {
           type="button"
           className="secondary"
           onClick={requestPrintPin}
-          disabled={!saved || !invoiceId}
-          title={!saved ? "Save the invoice before printing or downloading a PDF" : "Print this saved invoice"}
+          disabled={saving || showInvoicePin}
+          title="Save this invoice to PostgreSQL before opening Print or Save as PDF"
         >
-          <Printer /> Print / Save PDF
+          <Printer /> {saving ? "Saving..." : "Print Invoice / Save as PDF"}
         </button>
 
         {!saved && (
@@ -1478,6 +1549,10 @@ function SavedInvoicePrintSheet({ invoice }) {
             <label>
               <span>Payment Mode</span><i>:</i>
               <input value={data.paymentMode || "Cash"} readOnly />
+            </label>
+            <label>
+              <span>Amount Received (₹)</span><i>:</i>
+              <input value={money(data.paymentAmount)} readOnly />
             </label>
             <label>
               <span>Reference No.</span><i>:</i>
