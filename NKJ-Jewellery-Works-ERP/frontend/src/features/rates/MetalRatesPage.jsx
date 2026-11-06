@@ -141,7 +141,7 @@ export default function MetalRatesPage() {
           <div>
             <strong>Kolkata daily rate sources</strong>
             <span>
-              Anandabazar Patrika is preferred when an authorized feed is connected. If it is unavailable or has no newer issue, the system checks All India Bullion's Kolkata city snapshot. The source name and original publication timestamp are saved with every automatic update.
+              Anandabazar Patrika is preferred when an authorized Kolkata feed is connected. If it is unavailable or has no newer issue, the system checks an authorized All India Bullion Kolkata feed. Public website pages and display widgets are not scraped. Until a feed is configured with permission, the last verified rates and their original publication date remain active.
             </span>
           </div>
           <b className={`nkj-rate-mode-pill ${rates.rateFreshToday ? "is-live" : ""}`}>
@@ -271,7 +271,7 @@ export default function MetalRatesPage() {
         </div>
 
         <p className="nkj-module-footnote">
-          Active rates remain stored internally per gram so existing invoice calculations are unchanged. This page displays ₹ per 10 grams. The daily job runs once at 06:15 Asia/Kolkata. If no newer verified Kolkata snapshot is available, the last verified rates and their original publication date remain active. The All India Bullion fallback is an indicative Kolkata bullion reference, not a final jewellery sale price; making charges and applicable taxes remain governed by your existing invoice workflow.
+          Active rates remain stored internally per gram so existing invoice calculations are unchanged. This page displays ₹ per 10 grams. The daily job runs once at 06:15 Asia/Kolkata and checks only authorized source adapters. The All India Bullion Kolkata reference derives 22K from its 24K/999 metal reference and publishes silver per kilogram; the authorized adapter must normalize all three fields to the same unit before import. These are indicative reference rates, not final jewellery sale prices. Making charges and applicable taxes remain governed by your existing invoice workflow.
         </p>
       </section>
     </Page>
