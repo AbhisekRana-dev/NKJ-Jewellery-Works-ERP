@@ -659,9 +659,10 @@ export function InvoicePage() {
 
   const discountValue = Math.min(newTotal, Math.max(0, +discount || 0));
 
-  // GST calculated on SUB TOTAL before discount
-
-  const tax = (newTotal * (+gst || 0)) / 100;
+  // GST applies only when the invoice's GSTIN/GST visibility option is ON.
+  // Keep the entered GST percentage in state so turning the option back ON
+  // immediately restores the correct calculation.
+  const tax = showGstin ? (newTotal * (+gst || 0)) / 100 : 0;
 
   // Discount deducted after GST calculation
 
@@ -1547,25 +1548,27 @@ export function InvoicePage() {
 
             {/* 2. GST AMOUNT */}
 
-            <div className="total-row">
-              <span>
-                GST AMOUNT (₹){" "}
-                <small>
-                  GST %{" "}
-                  <input
-                    className="gst-percent-input"
-                    aria-label="GST percentage"
-                    type="number"
-                    min="0"
-                    onWheel={(e) => e.currentTarget.blur()}
-                    value={gst}
-                    onChange={(e) => setGst(e.target.value)}
-                  />
-                </small>
-              </span>
+            {showGstin && (
+              <div className="total-row">
+                <span>
+                  GST AMOUNT (₹){" "}
+                  <small>
+                    GST %{" "}
+                    <input
+                      className="gst-percent-input"
+                      aria-label="GST percentage"
+                      type="number"
+                      min="0"
+                      onWheel={(e) => e.currentTarget.blur()}
+                      value={gst}
+                      onChange={(e) => setGst(e.target.value)}
+                    />
+                  </small>
+                </span>
 
-              <b>{money(tax)}</b>
-            </div>
+                <b>{money(tax)}</b>
+              </div>
+            )}
 
             {/* 3. DISCOUNT */}
 
@@ -1718,15 +1721,17 @@ function SavedInvoicePrintSheet({ invoice }) {
   const oldRows = invoiceRows(data.oldItems);
   const calculatedNewTotal = newRows.reduce((sum, row) => sum + newAmt(row), 0);
   const calculatedOldTotal = oldRows.reduce((sum, row) => sum + oldAmt(row), 0);
+  const showGstin = data.showGstin !== false;
   const newTotal = Number(data.newTotal ?? data.subTotal ?? calculatedNewTotal) || 0;
   const oldTotal = Number(data.oldTotal ?? calculatedOldTotal) || 0;
   const gstPercent = Number(data.gstPercent) || 0;
-  const gstAmount = Number(data.gstAmount ?? (newTotal * gstPercent) / 100) || 0;
+  const gstAmount = showGstin
+    ? Number(data.gstAmount ?? (newTotal * gstPercent) / 100) || 0
+    : 0;
   const discount = Number(data.discount) || 0;
   const grandTotal = Number(data.grandTotal ?? (newTotal + gstAmount - discount - oldTotal)) || 0;
   const invoiceDate = displaySavedInvoiceDate(data.invoiceDate || data.date);
   const invoiceTime = displaySavedInvoiceTime(data.invoiceTime || data.time);
-  const showGstin = data.showGstin !== false;
 
   return (
     <div className="invoice-sheet nkj-saved-invoice-sheet" id="invoice-print">
@@ -1867,12 +1872,14 @@ function SavedInvoicePrintSheet({ invoice }) {
             <span>SUB TOTAL (₹)</span>
             <b>{money(newTotal)}</b>
           </div>
-          <div className="total-row">
-            <span>
-              GST AMOUNT (₹) <small>GST % <input className="gst-percent-input" aria-label="GST percentage" value={gstPercent} readOnly /></small>
-            </span>
-            <b>{money(gstAmount)}</b>
-          </div>
+          {showGstin && (
+            <div className="total-row">
+              <span>
+                GST AMOUNT (₹) <small>GST % <input className="gst-percent-input" aria-label="GST percentage" value={gstPercent} readOnly /></small>
+              </span>
+              <b>{money(gstAmount)}</b>
+            </div>
+          )}
           <div className="total-row">
             <span>DISCOUNT (₹)</span>
             <b><input aria-label="Discount" value={discount > 0 ? discount.toFixed(2) : ""} placeholder="0.00" readOnly /></b>
