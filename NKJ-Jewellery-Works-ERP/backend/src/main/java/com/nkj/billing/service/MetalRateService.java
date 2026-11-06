@@ -191,12 +191,16 @@ public class MetalRateService {
         MetalRate current = getOrCreate();
         if (!"AUTO".equalsIgnoreCase(current.getRateMode())) {
             markFetchResult("SKIPPED_MANUAL_MODE");
-            return toResponse(current);
+            Map<String, Object> response = toResponse(current);
+            response.put("lastAutoFetchStatus", "SKIPPED_MANUAL_MODE");
+            return response;
         }
         if (current.getLastAutoSourceDate() != null
                 && !publicationDate.isAfter(current.getLastAutoSourceDate())) {
             markFetchResult("ALREADY_IMPORTED_PUBLICATION_DATE");
-            return toResponse(repository.findById(RATE_ROW_ID).orElse(current));
+            Map<String, Object> response = toResponse(current);
+            response.put("lastAutoFetchStatus", "ALREADY_IMPORTED_PUBLICATION_DATE");
+            return response;
         }
 
         RateSnapshot before = snapshotOf(current);
