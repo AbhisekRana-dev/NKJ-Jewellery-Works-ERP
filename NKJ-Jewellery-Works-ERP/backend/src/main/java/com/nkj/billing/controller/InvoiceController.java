@@ -131,6 +131,7 @@ public class InvoiceController {
             return view(existingInvoice);
         }
 
+        validateMobileNumber(body);
         String customerName = clean(body.get("customerName"));
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
@@ -369,11 +370,6 @@ public class InvoiceController {
             throw new IllegalArgumentException("Customer name is required.");
         }
 
-        String mobile = clean(body.get("mobile"));
-        if (!mobile.isEmpty() && !mobile.matches("[0-9]{10}")) {
-            throw new IllegalArgumentException("Mobile number must contain exactly 10 digits (0-9 only).");
-        }
-
         boolean hasNewItems = validateInvoiceItemRows(body.get("newItems"), "NEW");
         boolean hasOldItems = validateInvoiceItemRows(body.get("oldItems"), "OLD_EXCHANGE");
         if (!hasNewItems && !hasOldItems) {
@@ -418,6 +414,14 @@ public class InvoiceController {
                 ? List.of("description", "purity", "pureWeight", "rate")
                 : List.of("description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge");
         return fields.stream().anyMatch(field -> !clean(row.get(field)).isEmpty());
+    }
+
+
+    private void validateMobileNumber(Map<String, Object> body) {
+        String mobile = clean(body.get("mobile"));
+        if (!mobile.isEmpty() && !mobile.matches("[0-9]{10}")) {
+            throw new IllegalArgumentException("Mobile number must contain exactly 10 digits (0-9 only).");
+        }
     }
 
     private void validateNonNegativeDecimal(Object value, String field) {
