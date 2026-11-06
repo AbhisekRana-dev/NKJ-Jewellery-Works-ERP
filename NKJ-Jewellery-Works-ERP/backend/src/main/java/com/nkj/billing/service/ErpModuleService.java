@@ -331,6 +331,9 @@ public class ErpModuleService {
         booking.put("bookingNo", "PENDING-" + UUID.randomUUID());
         booking.put("customerName", invoice.get("customer_name"));
         booking.put("mobile", invoice.get("mobile"));
+        // Record the down payment against the actual conversion/receipt date
+        // using the ERP business timezone, not a browser-supplied date.
+        booking.put("bookingDate", java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).toString());
         booking.put("estimatedValue", invoiceTotal);
         booking.put("makingEstimate", BigDecimal.ZERO);
         booking.put("advanceAmount", advance);
