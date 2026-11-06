@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -104,6 +105,7 @@ public class InvoiceController {
                         + String.format(Locale.ROOT, "%03d", dailySequence);
 
                 existingInvoice.setInvoiceDate(invoiceDate);
+                existingInvoice.setShowGstin(booleanValue(body.get("showGstin"), true));
                 existingInvoice.setInvoiceNo(correctedInvoiceNo);
                 existingInvoice.setPayloadJson(mapper.writeValueAsString(body));
                 repo.saveAndFlush(existingInvoice);
@@ -141,6 +143,7 @@ public class InvoiceController {
         invoice.setInvoiceNo("PENDING-" + UUID.randomUUID());
         invoice.setIdempotencyKey(requestKey);
         invoice.setInvoiceDate(invoiceDate);
+        invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
 
         invoice.setCustomerName(customerName);
         invoice.setMobile(clean(body.get("mobile")));
@@ -190,6 +193,74 @@ public class InvoiceController {
     }
 
     /**
+     * Update an existing saved invoice without changing its invoice number,
+     * business date, creation timestamp, or recorded payments.
+     */
+    @PutMapping("/{id}")
+    @Transactional
+    public Map<String, Object> update(@PathVariable Long id,
+                                      @RequestBody Map<String, Object> body,
+                                      HttpServletRequest servletRequest) throws Exception {
+        validateInvoiceBody(body);
+        validateMobileNumber(body);
+
+        Invoice invoice = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Invoice not found."));
+        LocalDate requestedDate = requestedInvoiceDate(body);
+        if (invoice.getInvoiceDate() == null || !invoice.getInvoiceDate().equals(requestedDate)) {
+            throw new IllegalArgumentException(
+                    "The invoice date cannot be changed while editing a saved invoice. Its invoice number and history date must remain unchanged."
+            );
+        }
+
+        String customerName = clean(body.get("customerName"));
+        if (customerName.isEmpty()) {
+            throw new IllegalArgumentException("Customer name is required.");
+        }
+
+        invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
+        invoice.setCustomerName(customerName);
+        invoice.setMobile(clean(body.get("mobile")));
+        invoice.setAddress(clean(body.get("address")));
+        invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
+        invoice.setReferenceNo(clean(body.get("referenceNo")));
+        invoice.setPayloadJson(mapper.writeValueAsString(body));
+
+        invoice.setNewTotal(number(body, "newTotal"));
+        invoice.setOldTotal(number(body, "oldTotal"));
+        invoice.setMakingCharge(number(body, "makingCharge"));
+        invoice.setExtraCharge(number(body, "extraCharge"));
+        invoice.setDiscount(number(body, "discount"));
+        invoice.setSubTotal(number(body, "subTotal"));
+        invoice.setGstPercent(number(body, "gstPercent"));
+        invoice.setGstAmount(number(body, "gstAmount"));
+        invoice.setOtherCharge(number(body, "otherCharge"));
+        invoice.setGrandTotal(number(body, "grandTotal"));
+
+        repo.saveAndFlush(invoice);
+
+        // Replace the saved line-item snapshots atomically with the edited form.
+        jdbc.update("DELETE FROM invoice_items WHERE invoice_id = ?", invoice.getId());
+        persistInvoiceItems(invoice.getId(), body.get("newItems"), "NEW");
+        persistInvoiceItems(invoice.getId(), body.get("oldItems"), "OLD_EXCHANGE");
+
+        jdbc.update(
+                "INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
+                        + "VALUES ('OWNER','INVOICE_UPDATED','INVOICES',?,CAST(? AS JSONB),CAST(? AS JSONB),?)",
+                String.valueOf(invoice.getId()),
+                mapper.writeValueAsString(Map.of("showGstin", !invoice.isShowGstin())),
+                mapper.writeValueAsString(Map.of(
+                        "invoiceNo", invoice.getInvoiceNo(),
+                        "showGstin", invoice.isShowGstin(),
+                        "grandTotal", invoice.getGrandTotal()
+                )),
+                servletRequest.getRemoteAddr()
+        );
+
+        return view(invoice);
+    }
+
+    /**
      * Frontend preflight: do not submit invoices to an older backend that
      * ignores invoiceDate and silently uses createdAt for numbering.
      */
@@ -204,6 +275,11 @@ public class InvoiceController {
                 "SELECT to_regclass('public.invoice_daily_sequences') IS NOT NULL",
                 Boolean.class
         );
+        Boolean showGstinColumn = jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                        + "WHERE table_schema='public' AND table_name='invoices' AND column_name='show_gstin')",
+                Boolean.class
+        );
         boolean supported = Boolean.TRUE.equals(invoiceDateColumn)
                 && Boolean.TRUE.equals(dailySequenceTable);
         Map<String, Object> response = new LinkedHashMap<>();
@@ -211,6 +287,7 @@ public class InvoiceController {
         response.put("apiVersion", "backdated-invoice-date-v1");
         response.put("invoiceDateColumn", Boolean.TRUE.equals(invoiceDateColumn));
         response.put("dailySequenceTable", Boolean.TRUE.equals(dailySequenceTable));
+        response.put("invoiceGstinVisibilitySupported", Boolean.TRUE.equals(showGstinColumn));
         return response;
     }
 
@@ -297,6 +374,14 @@ public class InvoiceController {
             // this legacy-only field when recovering an older saved draft.
             ((ObjectNode) stored).remove("paymentAmount");
             ((ObjectNode) requested).remove("paymentAmount");
+            // Older invoice drafts predate the per-invoice GSTIN flag. Their
+            // historical behavior displayed GSTIN, so treat a missing flag as true.
+            if (!stored.has("showGstin") || stored.get("showGstin").isNull()) {
+                ((ObjectNode) stored).put("showGstin", true);
+            }
+            if (!requested.has("showGstin") || requested.get("showGstin").isNull()) {
+                ((ObjectNode) requested).put("showGstin", true);
+            }
             return stored.equals(requested);
         } catch (Exception ex) {
             return false;
@@ -466,6 +551,15 @@ public class InvoiceController {
         }
     }
 
+    private boolean booleanValue(Object value, boolean fallback) {
+        if (value == null) return fallback;
+        if (value instanceof Boolean bool) return bool;
+        String normalized = String.valueOf(value).trim();
+        if ("true".equalsIgnoreCase(normalized)) return true;
+        if ("false".equalsIgnoreCase(normalized)) return false;
+        throw new IllegalArgumentException("showGstin must be either true or false.");
+    }
+
     private BigDecimal decimalValue(Object value) {
         if (value == null || String.valueOf(value).isBlank()) return BigDecimal.ZERO;
         try {
@@ -505,6 +599,7 @@ public class InvoiceController {
         response.put("invoiceDate", invoice.getInvoiceDate() == null
                 ? ""
                 : invoice.getInvoiceDate().toString());
+        response.put("showGstin", invoice.isShowGstin());
         // createdAt remains the real server-side creation timestamp for audit purposes.
         response.put("createdAt", invoice.getCreatedAt());
         response.put("invoiceTime", invoice.getCreatedAt() == null
