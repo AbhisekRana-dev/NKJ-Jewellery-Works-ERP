@@ -51,13 +51,12 @@ public class MetalRateService {
                    change_note AS "changeNote",
                    COALESCE(new_rate_source, rate_source) AS "rateSource",
                    COALESCE(new_source_reference, source_reference) AS "sourceReference",
-                   previous_rate_date AS "previousRateDate",
                    new_rate_date AS "newRateDate",
+                   new_source_published_at AS "sourcePublishedAt",
                    changed_by AS "changedBy",
                    changed_at AS "changedAt"
               FROM metal_rate_history
              ORDER BY changed_at DESC
-             LIMIT 200
             """);
     }
 
@@ -92,25 +91,89 @@ public class MetalRateService {
         MetalRate current = getOrCreate();
         RateSnapshot before = snapshotOf(current);
         current.setRateMode("AUTO");
-        // Preserve current values, source and rate date until a new daily issue is verified.
+
+        // When leaving Manual Override, restore the most recently stored
+        // automatic snapshot before attempting to fetch a newer publication.
+        restoreLatestAutomaticSnapshot(current);
+
         MetalRate saved = repository.save(current);
-        appendHistory(before, snapshotOf(saved), "MODE_SWITCH", "Administrator enabled automatic daily mode", auth.getUsername());
+        appendHistory(before, snapshotOf(saved), "MODE_SWITCH", "Administrator enabled automatic Kolkata rate mode", auth.getUsername());
         return toResponse(saved);
     }
 
-    /** Only accepts today's published issue; duplicate imports for the same issue are ignored. */
+    @Transactional(readOnly = true)
+    public boolean isAutoMode() {
+        return repository.findById(RATE_ROW_ID)
+                .map(rate -> "AUTO".equalsIgnoreCase(rate.getRateMode()))
+                .orElse(false);
+    }
+
+    private void restoreLatestAutomaticSnapshot(MetalRate current) {
+        List<Map<String, Object>> snapshots = jdbc.queryForList("""
+            SELECT new_gold_24k_rate, new_gold_22k_rate, new_silver_rate,
+                   COALESCE(new_rate_source, rate_source) AS rate_source,
+                   COALESCE(new_source_reference, source_reference) AS source_reference,
+                   new_rate_date, new_source_published_at
+              FROM metal_rate_history
+             WHERE change_type IN ('NEWSPAPER_DAILY_IMPORT', 'KOLKATA_CITY_DAILY_IMPORT')
+               AND new_rate_date IS NOT NULL
+             ORDER BY changed_at DESC
+             LIMIT 1
+            """);
+        if (snapshots.isEmpty()) return;
+
+        Map<String, Object> latest = snapshots.get(0);
+        current.setGold24kRate(asBigDecimal(latest.get("new_gold_24k_rate")));
+        current.setGold22kRate(asBigDecimal(latest.get("new_gold_22k_rate")));
+        current.setSilverRate(asBigDecimal(latest.get("new_silver_rate")));
+        current.setRateSource(String.valueOf(latest.get("rate_source")));
+        current.setSourceReference((String) latest.get("source_reference"));
+        current.setRateDate(asLocalDate(latest.get("new_rate_date")));
+        current.setSourcePublishedAt(asLocalDateTime(latest.get("new_source_published_at")));
+        current.setLastAutoSourceDate(current.getRateDate());
+        current.setOwnerVerified(true);
+    }
+
+    private BigDecimal asBigDecimal(Object value) {
+        return value == null ? BigDecimal.ZERO : new BigDecimal(String.valueOf(value));
+    }
+
+    private LocalDate asLocalDate(Object value) {
+        if (value instanceof LocalDate date) return date;
+        if (value instanceof java.sql.Date date) return date.toLocalDate();
+        return value == null ? null : LocalDate.parse(value.toString());
+    }
+
+    private LocalDateTime asLocalDateTime(Object value) {
+        if (value instanceof LocalDateTime dateTime) return dateTime;
+        if (value instanceof java.sql.Timestamp timestamp) return timestamp.toLocalDateTime();
+        return value == null ? null : LocalDateTime.parse(value.toString().replace(' ', 'T'));
+    }
+
+    /**
+     * Import a verified Kolkata snapshot. The publication may be today or the
+     * latest prior business day (weekends/holidays), but never future-dated
+     * or older than the last successfully imported automatic publication.
+     */
     @Transactional
     public Map<String, Object> importNewspaperRates(NewspaperImportRequest request) {
-        if (request == null) throw new IllegalArgumentException("Newspaper rate payload is required.");
+        if (request == null) throw new IllegalArgumentException("Kolkata rate payload is required.");
         LocalDate today = LocalDate.now(SHOP_ZONE);
-        if (request.publicationDate() == null || !request.publicationDate().equals(today)) {
-            markFetchResult("NO_TODAYS_ISSUE");
-            throw new IllegalArgumentException("Only today's Kolkata edition may replace the active daily rates.");
+        LocalDate publicationDate = request.publicationDate();
+        if (publicationDate == null || publicationDate.isAfter(today)) {
+            throw new IllegalArgumentException("Kolkata rate publication date cannot be missing or in the future.");
         }
-        if (request.publishedAt() == null || !request.publishedAt().toLocalDate().equals(request.publicationDate()))
-            throw new IllegalArgumentException("The issue publication time must belong to the stated publication date.");
-        if (request.sourceReference() == null || request.sourceReference().isBlank())
-            throw new IllegalArgumentException("A source reference is required for a newspaper import.");
+        if (request.publishedAt() == null || !request.publishedAt().toLocalDate().equals(publicationDate)) {
+            throw new IllegalArgumentException("The source publication timestamp must match the stated publication date.");
+        }
+        if (request.sourceReference() == null || request.sourceReference().isBlank()) {
+            throw new IllegalArgumentException("A source reference is required for an automatic rate import.");
+        }
+
+        String sourceName = request.sourceName() == null ? "" : request.sourceName().trim();
+        if (!List.of("Anandabazar Patrika", "All India Bullion · Kolkata").contains(sourceName)) {
+            throw new IllegalArgumentException("The Kolkata rate source is not on the approved source list.");
+        }
 
         BigDecimal gold24 = normalize(request.gold24kRate(), "24K gold");
         BigDecimal gold22 = normalize(request.gold22kRate(), "22K gold");
@@ -130,8 +193,9 @@ public class MetalRateService {
             markFetchResult("SKIPPED_MANUAL_MODE");
             return toResponse(current);
         }
-        if (today.equals(current.getLastAutoFetchDate())) {
-            markFetchResult("ALREADY_IMPORTED_TODAY");
+        if (current.getLastAutoSourceDate() != null
+                && !publicationDate.isAfter(current.getLastAutoSourceDate())) {
+            markFetchResult("ALREADY_IMPORTED_PUBLICATION_DATE");
             return toResponse(repository.findById(RATE_ROW_ID).orElse(current));
         }
 
@@ -141,15 +205,21 @@ public class MetalRateService {
         current.setSilverRate(silver);
         current.setRateMode("AUTO");
         current.setOwnerVerified(true);
-        current.setRateSource("Anandabazar Patrika");
+        current.setRateSource(sourceName);
         current.setSourceReference(request.sourceReference().trim());
         current.setSourcePublishedAt(request.publishedAt());
-        current.setRateDate(request.publicationDate());
+        current.setRateDate(publicationDate);
+        current.setLastAutoSourceDate(publicationDate);
         current.setLastAutoFetchAt(LocalDateTime.now(SHOP_ZONE));
         current.setLastAutoFetchDate(today);
         current.setLastAutoFetchStatus("IMPORTED");
         MetalRate saved = repository.save(current);
-        appendHistory(before, snapshotOf(saved), "NEWSPAPER_DAILY_IMPORT", "Authorized Anandabazar Patrika daily rate import", "SYSTEM · DAILY IMPORT");
+        String changeType = "Anandabazar Patrika".equals(sourceName)
+                ? "NEWSPAPER_DAILY_IMPORT"
+                : "KOLKATA_CITY_DAILY_IMPORT";
+        appendHistory(before, snapshotOf(saved), changeType,
+                "Verified Kolkata rate snapshot imported from " + sourceName,
+                "SYSTEM · DAILY IMPORT");
         return toResponse(saved);
     }
 
@@ -212,9 +282,15 @@ public class MetalRateService {
         out.put("rateDate", rate.getRateDate());
         out.put("lastAutoFetchAt", rate.getLastAutoFetchAt());
         out.put("lastAutoFetchDate", rate.getLastAutoFetchDate());
+        out.put("lastAutoSourceDate", rate.getLastAutoSourceDate());
         out.put("lastAutoFetchStatus", rate.getLastAutoFetchStatus());
         out.put("updatedAt", rate.getUpdatedAt());
         LocalDate today = LocalDate.now(SHOP_ZONE);
+        boolean rateFreshToday = "AUTO".equalsIgnoreCase(rate.getRateMode())
+                && rate.getSourcePublishedAt() != null
+                && today.equals(rate.getRateDate());
+        out.put("rateFreshToday", rateFreshToday);
+        // Backward-compatible alias for older frontend bundles.
         out.put("newspaperVerified", "Anandabazar Patrika".equals(rate.getRateSource())
                 && rate.getSourcePublishedAt() != null && today.equals(rate.getRateDate()));
         return out;
