@@ -8,7 +8,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nkj.billing.controller.MetalRateController.NewspaperImportRequest;
+import com.nkj.billing.controller.MetalRateController.KolkataRateImportRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -83,7 +83,7 @@ public class DailyAnandabazarRateJob {
         boolean anandabazarConfigured = anandabazarEnabled && !anandabazarFeedUrl.isBlank();
         if (anandabazarConfigured) {
             try {
-                NewspaperImportRequest newspaper = fetchAuthorizedFeed(
+                KolkataRateImportRequest newspaper = fetchAuthorizedFeed(
                         anandabazarFeedUrl, anandabazarApiKey, ANANDABAZAR_SOURCE,
                         "anandabazar.com");
                 Map<String, Object> result = rates.importNewspaperRates(newspaper);
@@ -105,7 +105,7 @@ public class DailyAnandabazarRateJob {
         }
 
         try {
-            NewspaperImportRequest fallback = fetchAuthorizedFeed(
+            KolkataRateImportRequest fallback = fetchAuthorizedFeed(
                     kolkataFallbackFeedUrl, kolkataFallbackApiKey, AIB_SOURCE,
                     "allindiabullion.com");
             Map<String, Object> result = rates.importNewspaperRates(fallback);
@@ -121,7 +121,7 @@ public class DailyAnandabazarRateJob {
         }
     }
 
-    private NewspaperImportRequest fetchAuthorizedFeed(
+    private KolkataRateImportRequest fetchAuthorizedFeed(
             String feedUrl,
             String apiKey,
             String sourceName,
@@ -149,7 +149,7 @@ public class DailyAnandabazarRateJob {
             throw new IllegalArgumentException(sourceName + " source reference must point to " + requiredSourceHost);
         }
 
-        return new NewspaperImportRequest(
+        return new KolkataRateImportRequest(
                 requiredDecimal(body, "gold24k"),
                 requiredDecimal(body, "gold22k"),
                 requiredDecimal(body, "silver999"),
