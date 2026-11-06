@@ -29,14 +29,14 @@ public class AdminController {
 
     @GetMapping("/dashboard")
     public Map<String, Object> dashboard() {
-        List<Invoice> all = repo.findAllByOrderByCreatedAtDesc();
+        List<Invoice> all = repo.findAllByOrderByInvoiceDateDescCreatedAtDesc();
 
         BigDecimal totalAmount = sumGrandTotals(all);
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
 
         List<Invoice> todays = all.stream()
-                .filter(invoice -> invoice.getCreatedAt() != null
-                        && invoice.getCreatedAt().toLocalDate().equals(today))
+                .filter(invoice -> invoice.getInvoiceDate() != null
+                        && invoice.getInvoiceDate().equals(today))
                 .toList();
 
         Set<String> customers = new HashSet<>();
@@ -53,9 +53,9 @@ public class AdminController {
             row.put("id", invoice.getId());
             row.put("invoiceNo", invoice.getInvoiceNo());
             row.put("customerName", Objects.toString(invoice.getCustomerName(), ""));
-            row.put("invoiceDate", invoice.getCreatedAt() == null
+            row.put("invoiceDate", invoice.getInvoiceDate() == null
                     ? ""
-                    : invoice.getCreatedAt().toLocalDate().toString());
+                    : invoice.getInvoiceDate().toString());
             row.put("grandTotal", invoice.getGrandTotal());
             row.put("paymentMode", Objects.toString(invoice.getPaymentMode(), ""));
             return row;
@@ -82,7 +82,7 @@ public class AdminController {
     public List<Map<String, Object>> customers() {
         Map<String, List<Invoice>> grouped = new LinkedHashMap<>();
 
-        repo.findAllByOrderByCreatedAtDesc().forEach(invoice -> {
+        repo.findAllByOrderByInvoiceDateDescCreatedAtDesc().forEach(invoice -> {
             String name = Objects.toString(invoice.getCustomerName(), "").trim();
             String mobile = Objects.toString(invoice.getMobile(), "").trim();
             String key = name.toLowerCase(Locale.ROOT) + "|" + mobile;
