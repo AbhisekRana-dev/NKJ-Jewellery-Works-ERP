@@ -54,8 +54,11 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (contextPath != null && !contextPath.isEmpty() && requestPath.startsWith(contextPath)) {
             requestPath = requestPath.substring(contextPath.length());
         }
-        if ("POST".equalsIgnoreCase(req.getMethod()) &&
-                ("/api/invoices".equals(requestPath) || "/api/invoices/verify-pin".equals(requestPath) || "/api/invoices/consume-print-ticket".equals(requestPath))) {
+        if (("GET".equalsIgnoreCase(req.getMethod()) && "/api/invoices/date-support".equals(requestPath))
+                || ("POST".equalsIgnoreCase(req.getMethod()) &&
+                ("/api/invoices".equals(requestPath) || "/api/invoices/verify-pin".equals(requestPath) || "/api/invoices/consume-print-ticket".equals(requestPath)))) {
+            // This endpoint exposes only feature/database readiness flags and
+            // must be reachable by public staff who are allowed to create invoices.
             return true;
         }
 
