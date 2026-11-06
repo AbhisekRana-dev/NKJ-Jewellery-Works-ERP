@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.net.URI;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -145,8 +146,13 @@ public class DailyAnandabazarRateJob {
         LocalDate publicationDate = LocalDate.parse(requiredText(body, "publicationDate"));
         LocalDateTime publishedAt = parsePublishedAt(requiredText(body, "publishedAt"));
         String sourceReference = requiredText(body, "sourceReference");
-        if (!sourceReference.toLowerCase(java.util.Locale.ROOT).contains(requiredSourceHost)) {
-            throw new IllegalArgumentException(sourceName + " source reference must point to " + requiredSourceHost);
+        URI sourceUri = URI.create(sourceReference);
+        String sourceHost = sourceUri.getHost();
+        if (!"https".equalsIgnoreCase(sourceUri.getScheme())
+                || sourceHost == null
+                || !(sourceHost.equalsIgnoreCase(requiredSourceHost)
+                    || sourceHost.toLowerCase(java.util.Locale.ROOT).endsWith("." + requiredSourceHost))) {
+            throw new IllegalArgumentException(sourceName + " source reference must be an HTTPS URL on " + requiredSourceHost);
         }
 
         return new KolkataRateImportRequest(
