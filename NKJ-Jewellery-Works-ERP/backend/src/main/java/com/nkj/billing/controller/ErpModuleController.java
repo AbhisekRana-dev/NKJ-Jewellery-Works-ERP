@@ -56,8 +56,9 @@ public class ErpModuleController {
     @GetMapping("/reports/summary")
     public Map<String,Object> reportSummary() {
         Map<String,Object> result = new LinkedHashMap<>();
-        result.put("todaySales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices WHERE invoice_date=CURRENT_DATE", BigDecimal.class));
-        result.put("monthSales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices WHERE date_trunc('month', invoice_date)=date_trunc('month', CURRENT_DATE)", BigDecimal.class));
+        result.put("todaySales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices WHERE invoice_date=(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date", BigDecimal.class));
+        result.put("monthSales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices WHERE invoice_date >= date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+          AND invoice_date < (date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata') + INTERVAL '1 month')::date", BigDecimal.class));
         result.put("totalSales", jdbc.queryForObject("SELECT COALESCE(SUM(grand_total),0) FROM invoices", BigDecimal.class));
         result.put("todayExpenses", jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE expense_date=CURRENT_DATE", BigDecimal.class));
         result.put("monthExpenses", jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date_trunc('month', expense_date)=date_trunc('month', CURRENT_DATE)", BigDecimal.class));
