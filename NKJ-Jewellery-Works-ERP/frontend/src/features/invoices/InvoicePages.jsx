@@ -894,6 +894,9 @@ export function InvoicePage() {
       if (!result?.id || !result?.invoiceNo) {
         throw new Error("The server did not confirm a saved invoice ID and number. Nothing will be printed or downloaded. Your draft is still available.");
       }
+      if (result.showGstin !== showGstin) {
+        throw new Error("The server did not confirm the selected GSTIN visibility setting. Check the backend migration and reopen Invoice History before retrying.");
+      }
       const expectedDatePart = invoiceDate.slice(8, 10) + invoiceDate.slice(5, 7) + invoiceDate.slice(2, 4);
       const invoiceNumberMatchesDate = result.invoiceNo.startsWith(`NKJ-${expectedDatePart}-`);
       if (result.invoiceDate !== invoiceDate || !invoiceNumberMatchesDate) {
@@ -906,7 +909,7 @@ export function InvoicePage() {
       setSaved(true);
       setDraftRestored(false);
       setShowInvoicePin(false);
-      setSuccessMessage(`Invoice ${result.invoiceNo} saved successfully. It is now available in Invoice History.`);
+      setSuccessMessage(`Invoice ${result.invoiceNo} ${isEditingSavedInvoice ? "updated" : "saved"} successfully. It is now available in Invoice History.`);
       return result;
     } catch (e) {
       setError(e.message || "Could not save the invoice. Printing and PDF download have been stopped; your draft is still available.");
