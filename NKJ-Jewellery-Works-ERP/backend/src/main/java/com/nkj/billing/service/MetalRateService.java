@@ -41,9 +41,6 @@ public class MetalRateService {
     public List<Map<String, Object>> getHistory() {
         return jdbc.queryForList("""
             SELECT id,
-                   previous_gold_24k_rate AS "previousGold24kRate",
-                   previous_gold_22k_rate AS "previousGold22kRate",
-                   previous_silver_rate AS "previousSilverRate",
                    new_gold_24k_rate AS "newGold24kRate",
                    new_gold_22k_rate AS "newGold22kRate",
                    new_silver_rate AS "newSilverRate",
