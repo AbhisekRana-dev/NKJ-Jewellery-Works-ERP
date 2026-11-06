@@ -29,6 +29,15 @@ function OwnerOnly({ children }) {
   return <Guard>{children}</Guard>;
 }
 
+function InvoiceRoute() {
+  const location = useLocation();
+  // A deliberate New Invoice action gets a fresh component instance even
+  // when the user is already on /invoice. Copy Invoice navigation keeps the
+  // stable key while its temporary router state is cleared.
+  const invoicePageKey = location.state?.startNewInvoice ? location.key : "invoice-page";
+  return <InvoicePage key={invoicePageKey} />;
+}
+
 export default function App() {
 
   return (
@@ -37,7 +46,7 @@ export default function App() {
         <Routes>
           {/* Public staff can access only Home and New Invoice. */}
           <Route path="/" element={<Home />} />
-          <Route path="/invoice" element={<InvoicePage />} />
+          <Route path="/invoice" element={<InvoiceRoute />} />
           <Route path="/login" element={<Login />} />
           <Route path="/setup-totp" element={<TotpSetup />} />
 
