@@ -727,6 +727,26 @@ export function InvoicePage() {
     saveInProgressRef.current = true;
     setSaving(true);
     try {
+      // Preflight before POST. Older deployed backends ignored invoiceDate
+      // and generated the invoice date/number from createdAt, which could
+      // persist an incorrect invoice even though the UI later detected it.
+      let dateSupport;
+      try {
+        dateSupport = await request("/invoices/date-support");
+      } catch {
+        throw new Error(
+          "Backdated invoice saving is not enabled on the connected backend. No invoice was submitted. Deploy/restart the Spring Boot backend from the fix/invoice-workflow-and-daily-numbering branch (including Flyway migration V11), then retry this same draft."
+        );
+      }
+      if (
+        dateSupport?.invoiceDateSupported !== true ||
+        dateSupport?.apiVersion !== "backdated-invoice-date-v1"
+      ) {
+        throw new Error(
+          "The connected backend/database does not support backdated invoice dates yet. No invoice was submitted. Deploy/restart the updated Spring Boot backend and ensure Flyway migration V11 is applied, then retry this same draft."
+        );
+      }
+
       const result = await request("/invoices", {
         method: "POST",
         headers: { "Idempotency-Key": idempotencyKey },
