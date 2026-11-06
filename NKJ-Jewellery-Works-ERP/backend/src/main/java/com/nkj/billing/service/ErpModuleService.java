@@ -414,6 +414,16 @@ public class ErpModuleService {
     private void applyInstallmentReceipt(Map<String,Object> data) {
         long installmentId = requiredId(data.get("installmentId"), "Installment ID");
         BigDecimal receipt = nonNegative(data.get("amount"), "Payment amount");
+        java.time.LocalDate paymentDate;
+        try {
+            paymentDate = java.time.LocalDate.parse(String.valueOf(data.get("paymentDate")));
+        } catch (java.time.DateTimeException ex) {
+            throw new IllegalArgumentException("A valid installment payment date is required.");
+        }
+        java.time.LocalDate businessToday = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+        if (paymentDate.isAfter(businessToday)) {
+            throw new IllegalArgumentException("An installment payment date cannot be in the future.");
+        }
         Map<String,Object> installment = jdbc.queryForMap(
                 "SELECT id, booking_id, amount_due, amount_paid FROM installments WHERE id=? FOR UPDATE",
                 installmentId);
