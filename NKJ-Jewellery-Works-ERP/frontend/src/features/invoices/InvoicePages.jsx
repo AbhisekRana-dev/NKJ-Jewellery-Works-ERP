@@ -14,6 +14,7 @@ import {
   Plus,
   Eye,
   Copy,
+  Pencil,
   X,
   MessageCircle,
   Printer,
@@ -441,14 +442,26 @@ export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [reloadResetPending, setReloadResetPending] = useState(() => isUnconsumedInvoiceReload());
+  const editingInvoice = !reloadResetPending && location.state?.editInvoice
+    ? parseInvoiceDetails(location.state.editInvoice)
+    : null;
   const copiedInvoice = !reloadResetPending && location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
+  const invoiceSeed = editingInvoice || copiedInvoice;
+  const [isEditingSavedInvoice] = useState(() =>
+    Boolean(location.state?.editInvoice?.id) && !isUnconsumedInvoiceReload()
+  );
   const startingNewInvoice = location.state?.startNewInvoice === true;
   const [initialDraft] = useState(() =>
-    reloadResetPending || copiedInvoice || startingNewInvoice ? null : readInvoiceDraft()
+    reloadResetPending || invoiceSeed || startingNewInvoice ? null : readInvoiceDraft()
   );
-  const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || getTodayIndiaDate());
+  const [invoiceDate, setInvoiceDate] = useState(() =>
+    invoiceSeed?.invoiceDate || initialDraft?.invoiceDate || getTodayIndiaDate()
+  );
+  const [showGstin, setShowGstin] = useState(() =>
+    Boolean(invoiceSeed?.showGstin ?? initialDraft?.showGstin ?? true)
+  );
   const maxInvoiceDate = getTodayIndiaDate();
 
   const copiedRows = (value, fallback) => {
@@ -463,18 +476,18 @@ export function InvoicePage() {
   };
 
   const [customer, setCustomer] = useState(() => ({
-    name: copiedInvoice?.customerName || copiedInvoice?.name || initialDraft?.customer?.name || "",
-    mobile: copiedInvoice?.mobile || initialDraft?.customer?.mobile || "",
-    address: copiedInvoice?.address || initialDraft?.customer?.address || "",
+    name: invoiceSeed?.customerName || invoiceSeed?.name || initialDraft?.customer?.name || "",
+    mobile: invoiceSeed?.mobile || initialDraft?.customer?.mobile || "",
+    address: invoiceSeed?.address || initialDraft?.customer?.address || "",
   }));
 
-  const [paymentMode, setPaymentMode] = useState(() => copiedInvoice?.paymentMode || initialDraft?.paymentMode || "Cash");
-  const [referenceNo, setReferenceNo] = useState(() => copiedInvoice?.referenceNo || initialDraft?.referenceNo || "");
-  const [newItems, setNewItems] = useState(() => copiedRows(copiedInvoice?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
+  const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || initialDraft?.paymentMode || "Cash");
+  const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || initialDraft?.referenceNo || "");
+  const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
   // and always start with exactly one empty row at the end.
   const [oldItems, setOldItems] = useState(() => {
-    const rows = copiedRows(copiedInvoice?.oldItems, copiedRows(initialDraft?.oldItems, [blankOld()])).map((x) => ({ ...blankOld(), ...x }));
+    const rows = copiedRows(invoiceSeed?.oldItems, copiedRows(initialDraft?.oldItems, [blankOld()])).map((x) => ({ ...blankOld(), ...x }));
     const enteredRows = rows.filter((row) =>
       String(row.description ?? "").trim() !== "" ||
       String(row.purity ?? "").trim() !== "" ||
@@ -483,9 +496,9 @@ export function InvoicePage() {
     );
     return [...enteredRows, blankOld()];
   });
-  const [discount, setDiscount] = useState(() => String(copiedInvoice?.discount ?? initialDraft?.discount ?? ""));
-  const [gst, setGst] = useState(() => String(copiedInvoice?.gstPercent ?? initialDraft?.gst ?? 0));
-  const [description, setDescription] = useState(() => copiedInvoice?.description || initialDraft?.description || "");
+  const [discount, setDiscount] = useState(() => String(invoiceSeed?.discount ?? initialDraft?.discount ?? ""));
+  const [gst, setGst] = useState(() => String(invoiceSeed?.gstPercent ?? initialDraft?.gst ?? 0));
+  const [description, setDescription] = useState(() => invoiceSeed?.description || initialDraft?.description || "");
   const [saved, setSaved] = useState(false);
   const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
   // Keep the draft's idempotency key when restoring it. The backend checks
@@ -497,8 +510,12 @@ export function InvoicePage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [invoiceId, setInvoiceId] = useState(null);
+  const [invoiceNo, setInvoiceNo] = useState(() =>
+    isEditingSavedInvoice ? String(invoiceSeed?.invoiceNo || "") : ""
+  );
+  const [invoiceId, setInvoiceId] = useState(() =>
+    isEditingSavedInvoice ? invoiceSeed?.id ?? null : null
+  );
   const [showInvoicePin, setShowInvoicePin] = useState(false);
   const saveInProgressRef = useRef(false);
   const skipNextDraftPersistRef = useRef(false);
@@ -548,6 +565,7 @@ export function InvoicePage() {
       // database invoices and Invoice History are never modified here.
       try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
       setInvoiceDate(getTodayIndiaDate());
+      setShowGstin(true);
       setCustomer({ name: "", mobile: "", address: "" });
       setPaymentMode("Cash");
       setReferenceNo("");
@@ -575,7 +593,7 @@ export function InvoicePage() {
     // waiting to be committed.
     if (reloadResetPending) return;
 
-    if (location.state?.copyInvoice) {
+    if (location.state?.copyInvoice || location.state?.editInvoice) {
       navigate("/invoice", { replace: true, state: null });
     }
   }, [location.key, startingNewInvoice, location.state, navigate, reloadResetPending]);
@@ -601,6 +619,7 @@ export function InvoicePage() {
       discount,
       gst,
       description,
+      showGstin,
       savedAt: new Date().toISOString(),
     };
     try {
@@ -608,7 +627,7 @@ export function InvoicePage() {
     } catch {
       // The invoice remains usable when browser storage is unavailable or full.
     }
-  }, [invoiceDate, customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, idempotencyKey, saved]);
+  }, [invoiceDate, customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, showGstin, idempotencyKey, saved]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -726,6 +745,7 @@ export function InvoicePage() {
   function buildInvoicePayload() {
     return {
       invoiceDate,
+      showGstin,
       customerName: customer.name,
       mobile: customer.mobile,
       address: customer.address,
@@ -755,6 +775,7 @@ export function InvoicePage() {
     skipNextDraftPersistRef.current = true;
     try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
     setInvoiceDate(getTodayIndiaDate());
+    setShowGstin(true);
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
     setReferenceNo("");
@@ -840,23 +861,36 @@ export function InvoicePage() {
         !dateSupportRequestFailed &&
         dateSupport?.invoiceDateSupported === true &&
         dateSupport?.apiVersion === "backdated-invoice-date-v1";
+      const supportsInvoiceGstinVisibility =
+        !dateSupportRequestFailed &&
+        dateSupport?.invoiceGstinVisibilitySupported === true;
       const selectedDateIsToday = invoiceDate === getTodayIndiaDate();
 
-      // Compatibility: the legacy backend safely numbers today's invoice
-      // using its Asia/Kolkata creation date. Keep present-date invoice
-      // creation/printing working while backdate support is being deployed.
-      // Never send a previous-date invoice to that old implementation.
+      if (!supportsInvoiceGstinVisibility) {
+        throw new Error(
+          "Per-invoice GSTIN visibility is not enabled on the connected backend. No invoice was submitted. Deploy the updated Spring Boot backend and apply Flyway migration V12, then retry."
+        );
+      }
+
+      // Keep the existing safe fallback for today's invoices when an older
+      // backend is still deployed; backdated dates remain protected.
       if (!supportsBackdatedInvoices && !selectedDateIsToday) {
         throw new Error(
           "Backdated invoice saving is not enabled on the connected backend. No invoice was submitted. Deploy the updated Spring Boot backend with Flyway migration V11, then retry this same draft. Today's invoices can still be saved using the existing backend."
         );
       }
 
-      const result = await request("/invoices", {
-        method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify(buildInvoicePayload()),
-      });
+      const invoicePayload = JSON.stringify(buildInvoicePayload());
+      const result = isEditingSavedInvoice && invoiceId
+        ? await request(`/invoices/${invoiceId}`, {
+            method: "PUT",
+            body: invoicePayload,
+          })
+        : await request("/invoices", {
+            method: "POST",
+            headers: { "Idempotency-Key": idempotencyKey },
+            body: invoicePayload,
+          });
       if (!result?.id || !result?.invoiceNo) {
         throw new Error("The server did not confirm a saved invoice ID and number. Nothing will be printed or downloaded. Your draft is still available.");
       }
@@ -923,12 +957,29 @@ export function InvoicePage() {
         <div>
           <span className="eyebrow">BILLING</span>
 
-          <h2>Create New Invoice</h2>
+          <h2>{isEditingSavedInvoice ? "Edit Invoice" : "Create New Invoice"}</h2>
         </div>
 
         <Link to="/" className="secondary">
           <ArrowLeft /> Home
         </Link>
+      </div>
+
+      <div className="nkj-invoice-toolbar no-print">
+        <label className="nkj-gstin-toggle">
+          <input
+            type="checkbox"
+            checked={showGstin}
+            disabled={saving || saved}
+            onChange={(event) => setShowGstin(event.target.checked)}
+            aria-label="Show GSTIN on Invoice"
+          />
+          <span>Show GSTIN on Invoice</span>
+          <strong>{showGstin ? "ON" : "OFF"}</strong>
+        </label>
+        {isEditingSavedInvoice && invoiceNo && (
+          <span className="nkj-editing-invoice-note">Editing {invoiceNo}</span>
+        )}
       </div>
 
       <div className="invoice-sheet" id="invoice-print">
@@ -952,9 +1003,11 @@ export function InvoicePage() {
             <p>Sasra, Gopiballavpur, Jhargram, Pin - 721506</p>
 
             <strong>Gold & Silver Ornaments</strong>
-            <small className="invoice-gstin">
-        GSTIN No: 19ABCDE1234F1Z5
-    </small>
+            {showGstin && (
+              <small className="invoice-gstin">
+                GSTIN No: 19ABCDE1234F1Z5
+              </small>
+            )}
           
           </div>
           
@@ -971,7 +1024,7 @@ export function InvoicePage() {
               <label>Date</label>
 
               <strong>
-                {saved ? (
+                {saved || isEditingSavedInvoice ? (
                   formatInvoiceDateForDisplay(invoiceDate)
                 ) : (
                   <input
@@ -979,7 +1032,7 @@ export function InvoicePage() {
                     type="date"
                     value={invoiceDate}
                     max={maxInvoiceDate}
-                    disabled={saving}
+                    disabled={saving || isEditingSavedInvoice}
                     onChange={(e) => {
                       setInvoiceDate(e.target.value);
                       setError("");
@@ -1594,7 +1647,7 @@ export function InvoicePage() {
 
       <div className="invoice-actions no-print">
         <button type="button" className="primary" onClick={save} disabled={saving || saved}>
-          <Save /> {saving ? "Saving..." : saved ? "Invoice Saved" : "Save Invoice"}
+          <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
         </button>
 
         <button
@@ -1664,6 +1717,7 @@ function SavedInvoicePrintSheet({ invoice }) {
   const grandTotal = Number(data.grandTotal ?? (newTotal + gstAmount - discount - oldTotal)) || 0;
   const invoiceDate = displaySavedInvoiceDate(data.invoiceDate || data.date);
   const invoiceTime = displaySavedInvoiceTime(data.invoiceTime || data.time);
+  const showGstin = data.showGstin !== false;
 
   return (
     <div className="invoice-sheet nkj-saved-invoice-sheet" id="invoice-print">
@@ -1682,7 +1736,11 @@ function SavedInvoicePrintSheet({ invoice }) {
           <b>Contact No. : 99322770722 | 8116022248</b>
           <p>Sasra, Gopiballavpur, Jhargram, Pin - 721506</p>
           <strong>Gold &amp; Silver Ornaments</strong>
-          <small className="invoice-gstin" style={{ display: "block", marginTop: "2px", fontSize: "15px", fontWeight: 700 }}>GSTIN: 19ABCDE1234F1Z5</small>
+          {showGstin && (
+            <small className="invoice-gstin">
+              GSTIN No: 19ABCDE1234F1Z5
+            </small>
+          )}
         </div>
 
         <div className="inv-meta">
@@ -1942,6 +2000,21 @@ export function SavedInvoices() {
       (searchPhone.length > 0 && customerPhone.includes(searchPhone));
   });
 
+  const editSelectedInvoice = () => {
+    if (!selectedInvoice?.id) {
+      setDetailError("This saved invoice cannot be edited because its database ID is missing.");
+      return;
+    }
+    if (!hasInvoiceLineItems(selectedInvoice)) {
+      setDetailError("This older saved record has no ornament line items, so it cannot be edited as a complete invoice.");
+      return;
+    }
+    const invoice = selectedInvoice;
+    setSelectedInvoice(null);
+    setShowPrintPin(false);
+    navigate("/invoice", { state: { editInvoice: invoice } });
+  };
+
   const copySelectedInvoice = () => {
     if (!selectedInvoice) return;
     if (!hasInvoiceLineItems(selectedInvoice)) {
@@ -2128,6 +2201,9 @@ export function SavedInvoices() {
             aria-labelledby="invoice-detail-title"
           >
             <div className="nkj-invoice-detail-actions no-print">
+              <button type="button" className="secondary" onClick={editSelectedInvoice}>
+                <Pencil size={16} /> Edit Invoice
+              </button>
               <button type="button" className="secondary" onClick={() => setShowPrintPin(true)}>
                 <Printer size={16} /> Print / Save PDF
               </button>
