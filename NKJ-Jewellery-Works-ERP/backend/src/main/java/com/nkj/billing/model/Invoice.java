@@ -32,6 +32,9 @@ public class Invoice {
     @Column(name = "invoice_no", nullable = false, unique = true, length = 100)
     private String invoiceNo;
 
+    @Column(name = "idempotency_key", unique = true, length = 120)
+    private String idempotencyKey;
+
     @Column(name = "customer_name")
     private String customerName;
 
@@ -121,6 +124,14 @@ public class Invoice {
 
     public void setInvoiceNo(String invoiceNo) {
         this.invoiceNo = invoiceNo;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 
     public String getCustomerName() {

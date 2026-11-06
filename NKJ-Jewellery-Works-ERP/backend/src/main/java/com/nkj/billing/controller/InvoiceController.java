@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestHeader;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import com.nkj.billing.service.InvoicePinService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,15 +36,13 @@ public class InvoiceController {
     private final InvoiceRepository repo;
     private final ObjectMapper mapper;
     private final AuthService auth;
-    private final InvoicePinService invoicePin;
     private final JdbcTemplate jdbc;
 
     public InvoiceController(InvoiceRepository repo, ObjectMapper mapper, AuthService auth,
-                             InvoicePinService invoicePin, JdbcTemplate jdbc) {
+                             JdbcTemplate jdbc) {
         this.repo = repo;
         this.mapper = mapper;
         this.auth = auth;
-        this.invoicePin = invoicePin;
         this.jdbc = jdbc;
     }
 
@@ -60,9 +57,31 @@ public class InvoiceController {
     @PostMapping
     @Transactional
     public Map<String, Object> create(@RequestBody Map<String, Object> body,
-                                      @RequestHeader(value = "X-Invoice-Pin-Ticket", required = false) String pinTicket,
+                                      @RequestHeader("Idempotency-Key") String idempotencyKey,
                                       jakarta.servlet.http.HttpServletRequest servletRequest) throws Exception {
-        invoicePin.consume(pinTicket, servletRequest.getRemoteAddr());
+        String requestKey = clean(idempotencyKey);
+        if (!requestKey.matches("[A-Za-z0-9._:-]{1,120}")) {
+            throw new IllegalArgumentException("A valid Idempotency-Key is required to save an invoice.");
+        }
+
+        // Serialize requests carrying the same key so retries return the first
+        // committed invoice instead of creating a second invoice.
+        jdbc.query(
+                "SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",
+                rs -> {
+                    if (rs.next()) {
+                        // Reading the result ensures PostgreSQL executes and acquires the lock.
+                    }
+                    return null;
+                },
+                requestKey
+        );
+        Invoice existingInvoice = repo.findByIdempotencyKey(requestKey).orElse(null);
+        if (existingInvoice != null) {
+            return view(existingInvoice);
+        }
+
+        validateInvoiceBody(body);
         String customerName = clean(body.get("customerName"));
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
@@ -70,6 +89,7 @@ public class InvoiceController {
 
         Invoice invoice = new Invoice();
         invoice.setInvoiceNo("PENDING-" + UUID.randomUUID());
+        invoice.setIdempotencyKey(requestKey);
 
         invoice.setCustomerName(customerName);
         invoice.setMobile(clean(body.get("mobile")));
@@ -214,6 +234,7 @@ public class InvoiceController {
             if (!(raw instanceof Map<?, ?> rawMap)) continue;
             Map<String, Object> row = new LinkedHashMap<>();
             rawMap.forEach((key, value) -> row.put(String.valueOf(key), value));
+            if (!hasInvoiceItemDetails(row, itemType)) continue;
             BigDecimal netWeight = decimalValue(row.get(itemType.equals("OLD_EXCHANGE") ? "pureWeight" : "netWeight"));
             BigDecimal rate = decimalValue(row.get("rate"));
             BigDecimal making = decimalValue(row.get("makingCharge"));
@@ -240,6 +261,78 @@ public class InvoiceController {
                     extra,
                     amount,
                     mapper.writeValueAsString(row));
+        }
+    }
+
+    /**
+     * Validate the request before writing any invoice rows. The controller
+     * transaction then commits the invoice, line items, and any initial
+     * payment together or rolls all of them back on failure.
+     */
+    private void validateInvoiceBody(Map<String, Object> body) {
+        if (body == null) {
+            throw new IllegalArgumentException("Invoice details are required.");
+        }
+        if (clean(body.get("customerName")).isEmpty()) {
+            throw new IllegalArgumentException("Customer name is required.");
+        }
+
+        boolean hasNewItems = validateInvoiceItemRows(body.get("newItems"), "NEW");
+        boolean hasOldItems = validateInvoiceItemRows(body.get("oldItems"), "OLD_EXCHANGE");
+        if (!hasNewItems && !hasOldItems) {
+            throw new IllegalArgumentException("At least one new or old ornament detail is required.");
+        }
+
+        for (String field : List.of(
+                "newTotal", "oldTotal", "makingCharge", "extraCharge", "discount",
+                "subTotal", "gstPercent", "gstAmount", "otherCharge", "grandTotal", "paymentAmount")) {
+            validateNonNegativeDecimal(body.get(field), field);
+        }
+    }
+
+    private boolean validateInvoiceItemRows(Object rawItems, String itemType) {
+        if (rawItems == null) return false;
+        if (!(rawItems instanceof List<?> rows)) {
+            throw new IllegalArgumentException("Invoice " + itemType + " items must be a list.");
+        }
+
+        boolean hasDetails = false;
+        for (Object raw : rows) {
+            if (!(raw instanceof Map<?, ?> rawMap)) {
+                throw new IllegalArgumentException("Each invoice item must be an object.");
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> row.put(String.valueOf(key), value));
+            if (!hasInvoiceItemDetails(row, itemType)) continue;
+            hasDetails = true;
+
+            List<String> numericFields = itemType.equals("OLD_EXCHANGE")
+                    ? List.of("pureWeight", "rate")
+                    : List.of("netWeight", "rate", "makingCharge", "stampCharge", "extraCharge");
+            for (String field : numericFields) {
+                validateNonNegativeDecimal(row.get(field), itemType + " item " + field);
+            }
+        }
+        return hasDetails;
+    }
+
+    private boolean hasInvoiceItemDetails(Map<String, Object> row, String itemType) {
+        List<String> fields = itemType.equals("OLD_EXCHANGE")
+                ? List.of("description", "purity", "pureWeight", "rate")
+                : List.of("description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge");
+        return fields.stream().anyMatch(field -> !clean(row.get(field)).isEmpty());
+    }
+
+    private void validateNonNegativeDecimal(Object value, String field) {
+        if (value == null || String.valueOf(value).isBlank()) return;
+        final BigDecimal parsed;
+        try {
+            parsed = new BigDecimal(String.valueOf(value));
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException(field + " must be a valid number.");
+        }
+        if (parsed.signum() < 0) {
+            throw new IllegalArgumentException(field + " cannot be negative.");
         }
     }
 

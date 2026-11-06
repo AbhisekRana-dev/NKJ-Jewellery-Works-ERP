@@ -21,4 +21,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     List<Invoice> findAllByOrderByCreatedAtDesc();
 
     Optional<Invoice> findByInvoiceNo(String invoiceNo);
+
+    Optional<Invoice> findByIdempotencyKey(String idempotencyKey);
 }

@@ -8,6 +8,7 @@ import { request } from "../../core/api/client";
 export default function InvoicePinDialog({
   onClose,
   onVerified,
+  invoiceId,
   title = "Verify invoice security PIN",
 }) {
   const [pin, setPin] = useState("");
@@ -24,6 +25,10 @@ export default function InvoicePinDialog({
     event.preventDefault();
     setError("");
 
+    if (!invoiceId) {
+      setError("A saved invoice is required before PIN verification.");
+      return;
+    }
     if (!/^\d{6}$/.test(pin)) {
       setError("Enter the 6-digit invoice security PIN.");
       return;
@@ -34,7 +39,7 @@ export default function InvoicePinDialog({
     try {
       const result = await request("/invoices/verify-pin", {
         method: "POST",
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin, invoiceId }),
       });
 
       await onVerified(result.ticket);

@@ -28,7 +28,8 @@ public class InvoicePinService {
 
     public InvoicePinService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    public synchronized String verify(String pin, String ip) {
+    public synchronized String verify(String pin, String ip, Long invoiceId) {
+        requireSavedInvoice(invoiceId);
         String key = (ip == null || ip.isBlank()) ? "unknown" : ip;
         long now = System.currentTimeMillis();
         AttemptState state = attempts.getOrDefault(key, new AttemptState(0, now, 0));
@@ -57,17 +58,35 @@ public class InvoicePinService {
         attempts.remove(key);
         byte[] bytes = new byte[32]; random.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        tickets.put(token, new Ticket(key, now + TICKET_TTL_MS));
-        audit("PIN_VERIFIED", null, key, Map.of("expiresAt", Instant.ofEpochMilli(now + TICKET_TTL_MS).toString()));
+        tickets.put(token, new Ticket(key, now + TICKET_TTL_MS, invoiceId));
+        audit("PIN_VERIFIED", invoiceId, key, Map.of("expiresAt", Instant.ofEpochMilli(now + TICKET_TTL_MS).toString()));
         return token;
     }
 
-    public void consume(String token, String ip) {
-        if (token == null || token.isBlank()) throw new IllegalArgumentException("Verify the invoice security PIN before saving.");
+    public void consume(String token, String ip, Long invoiceId) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Verify the invoice security PIN before printing a saved invoice.");
+        }
         Ticket ticket = tickets.remove(token);
         String key = (ip == null || ip.isBlank()) ? "unknown" : ip;
-        if (ticket == null || ticket.expiresAt() < System.currentTimeMillis() || !ticket.ip().equals(key)) {
-            throw new IllegalArgumentException("Invoice PIN verification expired. Verify the PIN again.");
+        if (ticket == null || ticket.expiresAt() < System.currentTimeMillis() ||
+                !ticket.ip().equals(key) || invoiceId == null || !ticket.invoiceId().equals(invoiceId)) {
+            throw new IllegalArgumentException("Invoice PIN verification expired or does not match this saved invoice. Verify the PIN again.");
+        }
+        requireSavedInvoice(invoiceId);
+    }
+
+    private void requireSavedInvoice(Long invoiceId) {
+        if (invoiceId == null) {
+            throw new IllegalArgumentException("A saved invoice is required before printing or downloading a PDF.");
+        }
+        Boolean exists = jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM public.invoices WHERE id = ?)",
+                Boolean.class,
+                invoiceId
+        );
+        if (!Boolean.TRUE.equals(exists)) {
+            throw new IllegalArgumentException("The requested invoice is not saved or no longer exists.");
         }
     }
 
@@ -89,5 +108,5 @@ public class InvoicePinService {
         }
     }
     private record AttemptState(int count, long windowStart, long blockedUntil) {}
-    private record Ticket(String ip, long expiresAt) {}
+    private record Ticket(String ip, long expiresAt, Long invoiceId) {}
 }
