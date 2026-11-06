@@ -1921,7 +1921,7 @@ export function SavedInvoices() {
                 <tr key={x.id ?? x.invoiceNo ?? index}>
                   <td>{x.invoiceNo || "—"}</td>
                   <td>{x.customerName || "—"}</td>
-                  <td>{x.invoiceDate || "—"}</td>
+                  <td>{displaySavedInvoiceDate(x.invoiceDate)}</td>
                   <td>{x.mobile || "—"}</td>
                   <td>₹ {money(x.grandTotal)}</td>
                   <td>
