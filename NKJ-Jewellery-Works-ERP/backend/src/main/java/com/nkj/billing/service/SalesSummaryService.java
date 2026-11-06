@@ -39,7 +39,6 @@ public class SalesSummaryService {
                 b.booking_date AS sales_date,
                 b.advance_amount AS amount
             FROM public.bookings b
-            INNER JOIN public.invoices i ON i.invoice_no = b.invoice_no
             WHERE b.invoice_no IS NOT NULL
               AND b.is_installment_plan = TRUE
               AND b.advance_amount > 0
@@ -52,7 +51,6 @@ public class SalesSummaryService {
             FROM public.installment_payments p
             INNER JOIN public.installments ins ON ins.id = p.installment_id
             INNER JOIN public.bookings b ON b.id = ins.booking_id
-            INNER JOIN public.invoices i ON i.invoice_no = b.invoice_no
             WHERE b.invoice_no IS NOT NULL
               AND b.is_installment_plan = TRUE
               AND p.amount > 0
