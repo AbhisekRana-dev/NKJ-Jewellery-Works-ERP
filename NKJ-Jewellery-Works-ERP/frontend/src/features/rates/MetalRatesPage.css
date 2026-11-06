@@ -18,3 +18,69 @@
   .nkj-rate-management-page .nkj-rate-edit-form h3 small { width: 100%; margin-left: 0; }
   .nkj-rate-fetch-meta { flex-direction: column; gap: 8px; }
 }
+
+.nkj-rate-source-card {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0 0 16px;
+  padding: 12px 15px;
+  border: 1px solid #ead9c6;
+  border-radius: 10px;
+  background: #fffdf9;
+}
+.nkj-rate-source-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 170px;
+}
+.nkj-rate-source-card b {
+  color: #806d66;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.nkj-rate-source-card strong {
+  color: #82102d;
+  font-size: 13px;
+}
+.nkj-rate-source-card > a,
+.nkj-rate-history-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #8b0b2d;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.nkj-rate-source-card > a:hover,
+.nkj-rate-history-source-link:hover {
+  text-decoration: underline;
+}
+.nkj-rate-history-panel table { min-width: 1420px; }
+.nkj-rate-history-panel td:nth-child(2),
+.nkj-rate-history-panel td:nth-child(3),
+.nkj-rate-history-panel td:nth-child(4) {
+  font-weight: 700;
+  color: #251c1c;
+}
+.nkj-rate-history-panel td:nth-child(6) {
+  white-space: normal;
+  min-width: 160px;
+}
+.nkj-rate-history-source-link {
+  margin-top: 4px;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .nkj-rate-source-card {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .nkj-rate-source-card > div { min-width: 0; }
+}
