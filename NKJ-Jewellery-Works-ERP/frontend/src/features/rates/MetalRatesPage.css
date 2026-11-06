@@ -1,0 +1,20 @@
+/* Rate-management feature styles. Shared form/table primitives remain in ../../shared/styles/common.css. */
+.nkj-rate-management-page .nkj-rate-admin-banner { align-items: center; }
+.nkj-rate-management-page .nkj-rate-admin-banner > div:nth-child(2) { min-width: 240px; }
+.nkj-rate-management-page .nkj-rate-mode-pill { white-space: nowrap; }
+.nkj-rate-management-page .nkj-rate-edit-form h3 small { margin-left: auto; color: #7b6b69; font: 600 12px/1.4 Arial, sans-serif; }
+.nkj-rate-fetch-meta { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 14px 0; padding: 13px 16px; border: 1px solid #ead9c6; border-radius: 10px; background: #fffaf1; color: #5d4b4b; font-size: 13px; }
+.nkj-rate-fetch-meta span { min-width: 180px; }
+.nkj-rate-fetch-meta b { color: #800d2b; }
+.nkj-rate-history-panel .table-wrap { overflow-x: auto; }
+.nkj-rate-history-panel table { min-width: 1120px; }
+.nkj-rate-history-panel td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nkj-rate-history-panel td:nth-child(3),
+.nkj-rate-history-panel td:nth-child(4),
+.nkj-rate-history-panel td:nth-child(5) { font-weight: 700; }
+@media (max-width: 720px) {
+  .nkj-rate-management-page .nkj-rate-admin-banner { align-items: flex-start; }
+  .nkj-rate-management-page .nkj-rate-edit-form h3 { align-items: flex-start; flex-wrap: wrap; }
+  .nkj-rate-management-page .nkj-rate-edit-form h3 small { width: 100%; margin-left: 0; }
+  .nkj-rate-fetch-meta { flex-direction: column; gap: 8px; }
+}

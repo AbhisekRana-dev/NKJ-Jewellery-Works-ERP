@@ -1,0 +1,50 @@
+const API = import.meta.env.VITE_API_BASE_URL || "/api";
+
+export async function request(path, options = {}) {
+  const token = localStorage.getItem("nkj_token");
+  const headers = {
+    Accept: "application/json",
+    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(options.headers || {}),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    throw new Error("Cannot connect to the server. Check that the backend is running.");
+  }
+
+  const raw = await response.text();
+  let data = {};
+  if (raw) {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = { message: raw };
+    }
+  }
+
+  if (response.status === 401) {
+    localStorage.removeItem("nkj_token");
+    localStorage.removeItem("nkj_user");
+    window.dispatchEvent(new Event("nkj:session-expired"));
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.message ||
+      data.error ||
+      `Request failed (${response.status})`,
+    );
+  }
+
+  return data;
+}

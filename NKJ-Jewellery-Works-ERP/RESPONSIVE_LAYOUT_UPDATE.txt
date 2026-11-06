@@ -1,0 +1,35 @@
+NKJ JEWELLERY WORKS - RESPONSIVE LAYOUT UPDATE
+
+Updated:
+1. Public/staff navbar uses the existing burgundy and gold brand colors and stays visible while scrolling.
+2. Home, New Invoice, and Owner Login are available when signed out.
+3. Authenticated users retain the dedicated owner sidebar and owner topbar.
+4. Footer remains in normal page flow and does not overlay the page.
+5. Navigation, page gutters, and owner workspace widths adapt to desktop, tablet, and mobile screens.
+6. Invoice print styles continue to hide navbar/sidebar/footer so print layout remains independent.
+
+Windows verification:
+- Open PowerShell in the frontend folder.
+- Run: npm ci
+- Run: npm run build
+- Start: npm run dev
+
+Backend is unchanged by this layout-only update. Keep the backend terminal running separately.
+
+
+API routing correction:
+- Backend default port: 8086.
+- Vite /api proxy default target: http://localhost:8086.
+- If you intentionally run the backend on another port, set VITE_BACKEND_TARGET before starting Vite, or update the Vite config target to match.
+- Local CORS patterns allow localhost and 127.0.0.1 development ports. For deployment, replace CORS_ALLOWED_ORIGINS with the exact trusted frontend origin(s).
+
+FINAL OWNER SHELL REVISION — 04 NOV 2026
+---------------------------------------
+- One shared sidebar width now controls owner header, page canvas and footer alignment; expanded sidebar no longer reduces the dashboard to a wider-than-available grid.
+- Sidebar expand/collapse is manual and persistent. The logo and owner card remain visible at the top, Public Home and Logout remain pinned at the bottom, and only the navigation list scrolls. Its scroll position is retained between pages.
+- Removed the wide 3-line hamburger box from the owner header. The sidebar has one compact chevron control.
+- Dashboard KPIs reflow for desktop/tablet/mobile, and tables keep their own horizontal scrolling where necessary.
+- Owner sidebar navigation includes Purchases, Payments, Old Gold Exchange and Suppliers.
+- The shared footer now displays “Designed & Built with ❤️ by Abhisek Rana”.
+- Human-readable IDs and active-staff dropdowns are described in FINAL_REVISION_NOTES.md. Flyway migration V5 adds missing codes to existing rows; back up the existing database before the first updated backend startup.
+- Home and invoice main source files and the original A4 stylesheet were not changed.

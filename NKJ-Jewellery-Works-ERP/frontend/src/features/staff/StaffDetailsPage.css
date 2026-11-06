@@ -1,0 +1,78 @@
+/* StaffDetailsPage: page-specific styles. */
+.nkj-staff-photo-preview {display:block;width:76px;height:76px;object-fit:cover;border:1px solid #e5d4bc;border-radius:10px;margin-top:7px}
+.nkj-staff-details-page .nkj-staff-summary {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:15px 0}
+.nkj-staff-summary>div {display:flex;flex-direction:column;gap:5px;min-height:90px;padding:15px;border:1px solid #eedfd1;border-radius:13px;background:linear-gradient(135deg,#fff,#fff8ec)}
+.nkj-staff-summary svg {color:#a26808;width:23px}
+.nkj-staff-summary span {font-size:12px;color:#6f6260}
+.nkj-staff-summary strong {font-size:22px;color:#870b2b}
+.nkj-staff-layout {display:grid;grid-template-columns:minmax(260px,.7fr) minmax(0,1.6fr);gap:14px;align-items:start}
+.nkj-staff-directory,
+.nkj-staff-profile-panel {padding:15px;border:1px solid #ecded0;border-radius:13px;background:#fff}
+.nkj-staff-directory-head {display:grid;gap:10px}
+.nkj-staff-directory-head h3 {margin:0;color:#870b2b;font:700 18px Georgia,serif}
+.nkj-staff-directory .nkj-module-toolbar {max-width:none;margin:0}
+.nkj-staff-list {display:grid;gap:5px;max-height:660px;overflow-y:auto;margin-top:10px}
+.nkj-staff-person {width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:10px;border:1px solid transparent;border-radius:10px;background:#fff;color:#2b2525}
+.nkj-staff-person:hover,
+.nkj-staff-person.active {background:#fff5e4;border-color:#edcf8f}
+.nkj-staff-avatar,
+.nkj-staff-profile-photo {display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:50%;background:#fff0d0;color:#8d0b2c;font-weight:800;overflow:hidden}
+.nkj-staff-avatar img,
+.nkj-staff-profile-photo img {width:100%;height:100%;object-fit:cover}
+.nkj-staff-person-copy {display:grid;gap:3px;min-width:0;flex:1}
+.nkj-staff-person-copy small {font-size:11px;color:#7c7070;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nkj-staff-person>i {width:9px;height:9px;border-radius:50%;background:#aaa}
+.nkj-staff-person>i.active {background:#20a35a}
+.nkj-staff-profile-head,
+.nkj-staff-profile-identity {display:flex;align-items:center;gap:14px}
+.nkj-staff-profile-head {justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+.nkj-staff-profile-photo {width:68px;height:68px;font-size:24px}
+.nkj-staff-profile-identity h3 {margin:3px 0;color:#820a28;font:700 21px Georgia,serif}
+.nkj-staff-profile-identity p {margin:0;color:#776a68;font-size:12px}
+.nkj-staff-profile-facts {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:17px}
+.nkj-staff-profile-facts>div {padding:10px;border:1px solid #eee3d9;border-radius:9px;background:#fffdf9;display:grid;gap:4px;min-width:0}
+.nkj-staff-profile-facts small {font-size:11px;color:#827573}
+.nkj-staff-profile-facts b {font-size:12px;overflow-wrap:anywhere}
+.nkj-staff-notebook {border-top:1px solid #eee3d9;padding-top:14px}
+.nkj-staff-note-form {display:grid;grid-template-columns:160px 180px 1fr auto;align-items:end;gap:10px;padding:12px;border:1px solid #eadbca;border-radius:10px;background:#fffaf1}
+.nkj-staff-note-form label {display:grid;gap:5px;font-size:11px;font-weight:700;color:#615554}
+.nkj-staff-note-form input,
+.nkj-staff-note-form select,
+.nkj-staff-note-form textarea {width:100%;min-width:0;border:1px solid #d9d5d2;border-radius:7px;padding:8px;background:#fff}
+.nkj-staff-note-form .wide {grid-column:1/-2}
+.nkj-staff-note-form button {align-self:end;min-height:36px}
+.nkj-staff-note-list {display:grid;gap:8px;margin-top:12px}
+.nkj-staff-note-list article {padding:12px 14px;border-left:3px solid #d5a449;border-radius:5px;background:repeating-linear-gradient(180deg,#fffdf9 0,#fffdf9 29px,#f4ede4 30px)}
+.nkj-staff-note-list time {font-size:11px;font-weight:800;color:#8e1530}
+.nkj-staff-note-list p {margin:7px 0;color:#3b3535;white-space:pre-wrap}
+.nkj-staff-note-list small {color:#827674}
+.nkj-staff-form-modal {max-height:90vh;overflow:auto}
+.nkj-staff-form-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+.nkj-staff-form-grid label {display:grid;gap:5px;font-size:12px;font-weight:700;color:#554849}
+.nkj-staff-form-grid input,
+.nkj-staff-form-grid textarea {width:100%;min-width:0;border:1px solid #d9d4d1;border-radius:8px;padding:9px;background:#fff}
+.nkj-staff-form-grid .wide {grid-column:1/-1}
+@media (max-width:1050px) {
+.nkj-staff-layout {grid-template-columns:1fr}
+.nkj-staff-list {max-height:260px}
+.nkj-staff-note-form {grid-template-columns:1fr 1fr}
+.nkj-staff-note-form .wide {grid-column:1/-1}
+
+}
+@media (max-width:750px) {
+.nkj-staff-details-page .nkj-staff-summary {grid-template-columns:repeat(2,minmax(0,1fr))}
+.nkj-staff-profile-facts {grid-template-columns:1fr 1fr}
+.nkj-staff-profile-head {align-items:flex-start}
+.nkj-staff-profile-head .nkj-module-actions {width:100%}
+
+}
+@media (max-width:480px) {
+.nkj-staff-details-page .nkj-staff-summary {grid-template-columns:1fr}
+.nkj-staff-profile-facts,
+.nkj-staff-form-grid,
+.nkj-staff-note-form {grid-template-columns:1fr}
+.nkj-staff-note-form .wide,
+.nkj-staff-form-grid .wide {grid-column:auto}
+.nkj-staff-profile-head .nkj-module-actions button {flex:1}
+
+}

@@ -1,0 +1,54 @@
+/* InstallmentManagementPage: page-specific styles. */
+.nkj-installment-page .nkj-installment-kpis {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.nkj-installment-kpis>div {display:grid;grid-template-columns:42px 1fr;grid-template-rows:auto auto;align-items:center;gap:2px 10px;padding:14px 16px;border:1px solid #eadbc9;border-radius:13px;background:linear-gradient(135deg,#fff,#fff8ea);box-shadow:0 3px 10px rgba(80,20,20,.04)}
+.nkj-installment-kpis>div svg {grid-row:span 2;width:40px;height:40px;padding:9px;border-radius:50%;background:#fff0cf;color:#a66b05}
+.nkj-installment-kpis>div span {font-size:12px;color:#6b6260}
+.nkj-installment-kpis>div strong {font-size:22px;color:#850b2b}
+.nkj-installment-tabs {display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;margin-bottom:8px}
+.nkj-installment-tabs button {flex:0 0 auto;min-height:38px;border:1px solid #eadfda;border-radius:10px;background:#fff;color:#4d4141;font-weight:700;padding:8px 15px}
+.nkj-installment-tabs button.active {background:#920b2b;border-color:#920b2b;color:#fff;box-shadow:0 4px 10px rgba(146,11,43,.15)}
+.nkj-installment-form {padding:18px!important}
+.nkj-installment-form-grid {display:grid;grid-template-columns:1fr 1.35fr;gap:16px}
+.nkj-installment-form-grid>section {min-width:0;padding:14px;border:1px solid #eedfd1;border-radius:12px;background:#fffdf9}
+.nkj-installment-form-grid h4 {margin:0 0 12px;color:#890b2c;font:700 17px Georgia,serif}
+.nkj-installment-form-grid label,
+.nkj-installment-receipt-layout label {display:grid;gap:6px;margin-bottom:10px;font-size:12px;font-weight:700;color:#4d4443}
+.nkj-installment-form-grid input,
+.nkj-installment-form-grid select,
+.nkj-installment-receipt-layout input,
+.nkj-installment-receipt-layout select {width:100%;min-width:0;min-height:38px;border:1px solid #d9d8d6;border-radius:8px;padding:8px 10px;background:#fff}
+.nkj-installment-input-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 12px}
+.nkj-installment-selected {display:grid;gap:6px;padding:12px;margin-top:10px;border:1px solid #f1d59d;border-radius:9px;background:#fff6df;color:#51413b;font-size:12px}
+.nkj-installment-selected b {font-size:15px;color:#880b2c}
+.nkj-installment-calculation {display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px;border-radius:9px;background:#fff1cf;color:#694d1b;font-size:13px}
+.nkj-installment-calculation strong {color:#870b2b;font-size:18px}
+.nkj-installment-toolbar {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px}
+.nkj-installment-toolbar .nkj-module-toolbar {margin:0;flex:1;max-width:520px}
+.nkj-installment-progress {width:88px;height:8px;overflow:hidden;border-radius:99px;background:#f1e5d9}
+.nkj-installment-progress i {display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#d69a32,#278b50)}
+.nkj-outstanding {font-weight:800;color:#9c1736}
+.nkj-installment-receipt-layout {display:grid;grid-template-columns:minmax(280px,.75fr) minmax(0,1.25fr);gap:14px;align-items:start}
+.nkj-installment-receipt-layout>.nkj-module-form {padding:18px!important}
+.nkj-installment-receipt-layout h3,
+.nkj-notebook-ledger h3 {display:flex;align-items:center;gap:8px;color:#870b2b;font:700 18px Georgia,serif;margin:0 0 14px}
+.nkj-notebook-ledger {padding:16px;border:1px solid #ecdfd5;border-radius:13px;background:linear-gradient(180deg,#fffdf8,#fff)}
+.nkj-notebook-ledger table td {font-size:12px}
+.nkj-notebook-ledger table td:first-child {font-weight:700;color:#890b2b}
+@media (max-width:1050px) {
+.nkj-installment-form-grid,
+.nkj-installment-receipt-layout {grid-template-columns:1fr}
+
+}
+@media (max-width:750px) {
+.nkj-installment-page .nkj-installment-kpis {grid-template-columns:repeat(2,minmax(0,1fr))}
+.nkj-installment-form-grid {grid-template-columns:1fr}
+.nkj-installment-input-grid {grid-template-columns:1fr 1fr}
+.nkj-installment-toolbar {align-items:stretch;flex-direction:column}
+
+}
+@media (max-width:480px) {
+.nkj-installment-page .nkj-installment-kpis {grid-template-columns:1fr}
+.nkj-installment-tabs button {padding:8px 11px;font-size:12px}
+
+}
+.nkj-downpayment-tag {display:inline-block;padding:4px 7px;border-radius:5px;background:#fff1d6;color:#8f5b08;font-size:11px}

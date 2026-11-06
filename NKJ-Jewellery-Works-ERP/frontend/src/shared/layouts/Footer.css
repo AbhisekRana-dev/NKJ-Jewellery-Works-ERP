@@ -1,0 +1,492 @@
+
+/* =========================================
+   GLOBAL RESET
+========================================= */
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* =========================================
+   NKJ LUXURY JEWELLERY FOOTER
+========================================= */
+
+.jewellery-footer {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: auto 0 0;
+  padding: 16px clamp(18px, 2.5vw, 38px) 0;
+  overflow: hidden;
+
+  background: linear-gradient(
+    115deg,
+    #70001e,
+    #410013 55%,
+    #69001d
+  );
+
+  border-top: 2px solid #d6ad54;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+/* =========================================
+   OWNER SIDEBAR ALIGNMENT
+========================================= */
+
+body.nkj-owner-layout .jewellery-footer {
+  width: calc(100% - var(--nkj-owner-expanded-width, 264px));
+  max-width: calc(100% - var(--nkj-owner-expanded-width, 264px));
+  margin-left: var(--nkj-owner-expanded-width, 264px);
+}
+
+body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed)
+.jewellery-footer {
+  width: calc(100% - var(--nkj-owner-collapsed-width, 78px));
+  max-width: calc(100% - var(--nkj-owner-collapsed-width, 78px));
+  margin-left: var(--nkj-owner-collapsed-width, 78px);
+}
+
+/* =========================================
+   MAIN FOOTER GRID
+========================================= */
+
+.footer-main {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.25fr)
+    minmax(0, 0.75fr)
+    minmax(0, 1.35fr)
+    minmax(0, 0.65fr)
+    minmax(0, 1fr);
+
+  align-items: center;
+  gap: clamp(12px, 1.5vw, 22px);
+
+  width: 100%;
+  max-width: 1750px;
+  min-height: 105px;
+
+  margin: auto;
+  padding: 5px 0 15px;
+}
+
+.footer-main > * {
+  min-width: 0;
+}
+
+/* =========================================
+   BRAND
+========================================= */
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+
+  min-height: 65px;
+  min-width: 0;
+  padding-right: 16px;
+
+  border-right: 1px solid #ae823c;
+}
+
+.footer-logo {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 53px;
+  width: 53px;
+  height: 53px;
+
+  border: 2px solid #e6bf62;
+  border-radius: 50%;
+
+  color: #f6d77b;
+  font: 700 21px Georgia, serif;
+}
+
+.logo-crown {
+  position: absolute;
+  top: -12px;
+
+  color: #f6d77b;
+  font-size: 17px;
+}
+
+.brand-text {
+  min-width: 0;
+}
+
+.brand-text h2 {
+  margin: 0 0 6px;
+
+  color: #fff;
+  font: 700 17px Georgia, serif;
+
+  overflow-wrap: anywhere;
+}
+
+.brand-text p {
+  margin: 0;
+
+  color: #f1dada;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* =========================================
+   QUICK LINKS
+========================================= */
+
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+
+  min-height: 65px;
+  min-width: 0;
+  padding-right: 14px;
+
+  border-right: 1px solid #ae823c;
+}
+
+.footer-links h3,
+.footer-contact h3 {
+  margin: 0 0 5px;
+
+  color: #f5d77d;
+  font: 700 15px Georgia, serif;
+}
+
+.footer-links a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  width: fit-content;
+  max-width: 100%;
+
+  color: #fff;
+  font-size: 12px;
+  text-decoration: none;
+
+  transition: color 0.2s ease;
+}
+
+.footer-links a:hover,
+.footer-contact a:hover {
+  color: #f5d77d;
+}
+
+.footer-links svg,
+.footer-contact svg {
+  flex-shrink: 0;
+  color: #edc866;
+}
+
+/* =========================================
+   CONTACT
+========================================= */
+
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+
+  min-width: 0;
+
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.contact-item > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.contact-item a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.contact-separator {
+  white-space: nowrap;
+}
+
+.proprietor-label {
+  display: inline;
+  margin-right: 5px;
+
+  color: #f5d77d;
+  font-weight: 700;
+  font-family: Georgia, serif;
+}
+
+.footer-contact .contact-item svg {
+  flex-shrink: 0;
+  color: #edc866;
+}
+
+/* =========================================
+   DIAMOND
+========================================= */
+
+.footer-diamond {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 0;
+  min-height: 75px;
+  padding: 0 8px;
+
+  border-left: 1px solid #ae823c;
+  border-right: none;
+}
+
+.footer-diamond svg {
+  display: block;
+  width: 100%;
+  max-width: 125px;
+  height: auto;
+
+  color: #f5d77d;
+}
+
+/* =========================================
+   DEVELOPER
+========================================= */
+
+.footer-developer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+
+  min-width: 0;
+  padding-left: 0;
+
+  text-align: left;
+}
+
+.developer-heading {
+  margin: 0;
+
+  color: #fff;
+  font: 15px Georgia, serif;
+  line-height: 1.4;
+}
+
+.developer-heading span {
+  color: #f5d77d;
+}
+
+.developer-bottom {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.developer-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  padding: 9px 14px;
+
+  border: 1px solid #d5aa57;
+  border-radius: 24px;
+
+  background: linear-gradient(
+    110deg,
+    #a86a22,
+    #71380e
+  );
+
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+
+  transition: 0.2s;
+}
+
+.developer-name:hover {
+  background: #b78335;
+  transform: translateY(-2px);
+}
+
+.version-tag {
+  padding: 7px 10px;
+
+  border: 1px solid #c99c45;
+  border-radius: 20px;
+
+  color: #f5d77d;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* =========================================
+   COPYRIGHT
+========================================= */
+
+.footer-copyright {
+  margin: 0 calc(-1 * clamp(18px, 2.5vw, 38px));
+  padding: 8px 10px;
+
+  background: linear-gradient(
+    90deg,
+    #fff3df,
+    #f4dfc0,
+    #fff3df
+  );
+
+  color: #402a1b;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* =========================================
+   MEDIUM SCREENS
+========================================= */
+
+@media (max-width: 1250px) {
+  .footer-main {
+    grid-template-columns:
+      minmax(0, 1.1fr)
+      minmax(0, 0.75fr)
+      minmax(0, 1.2fr)
+      minmax(0, 1fr);
+
+    gap: 12px;
+  }
+
+  .footer-diamond {
+    display: none;
+  }
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 850px) {
+  .footer-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .footer-brand,
+  .footer-links {
+    border-right: none;
+    padding-right: 0;
+  }
+
+  .footer-contact {
+    padding-right: 0;
+  }
+
+  .footer-developer {
+    grid-column: 1 / -1;
+
+    align-items: center;
+    padding-top: 15px;
+
+    border-top: 1px solid #ae823c;
+    text-align: center;
+  }
+
+  .developer-bottom {
+    justify-content: center;
+  }
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 500px) {
+  .jewellery-footer {
+    padding: 17px 16px 0;
+  }
+
+  .footer-main {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .footer-brand {
+    min-height: 55px;
+  }
+
+  .footer-developer {
+    align-items: center;
+    padding-top: 14px;
+  }
+
+  .developer-bottom {
+    justify-content: center;
+  }
+
+  .footer-copyright {
+    margin: 0 -16px;
+    font-size: 9px;
+  }
+}
+
+/* =========================================
+   PRINT
+========================================= */
+
+@media print {
+  .jewellery-footer {
+    display: none !important;
+  }
+}

@@ -1,0 +1,185 @@
+/* Shared public rate-board and owner rate-management design. */
+/* Premium bullion rate board and rate administration polish */
+.nkj-rate-premium{border:1px solid #e8d4ad!important;border-radius:18px!important;overflow:hidden;background:linear-gradient(135deg,#fffdf8 0%,#fff8e9 48%,#fff 100%)!important;box-shadow:0 10px 28px rgba(91,20,31,.09)}
+.nkj-rate-premium .nkj-public-rate-heading{background:linear-gradient(105deg,#97002c,#70001f)!important;color:#fff!important;padding:15px 20px!important;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.nkj-rate-premium .nkj-public-rate-heading h3{color:#fff!important;margin:0!important}
+.nkj-rate-premium .nkj-public-edit-rate{margin-left:auto!important;border:0!important;border-radius:999px!important;background:linear-gradient(180deg,#fff1c9,#f5d98f)!important;color:#750020!important;font-weight:800!important;padding:10px 20px!important}
+.nkj-rate-source{font-size:11px;letter-spacing:.08em;font-weight:800;color:#ffe9b5;display:flex;align-items:center;gap:7px;margin-left:auto}
+.nkj-rate-live-dot{width:8px;height:8px;border-radius:50%;background:#38c96b;box-shadow:0 0 0 4px rgba(56,201,107,.16);display:inline-block}
+.nkj-rate-premium .nkj-public-rate-values{padding:14px!important;gap:14px!important}
+.nkj-rate-premium .nkj-public-rate-item{border:1px solid #f0d49c;border-radius:15px;padding:16px!important;background:linear-gradient(135deg,#fff6dc,#ffe9b7)!important;min-height:112px}
+.nkj-rate-premium .nkj-public-silver-rate{background:linear-gradient(135deg,#fff,#e9e9e9)!important;border-color:#d8d8d8!important}
+.nkj-rate-premium .nkj-public-rate-copy b{color:#97002c!important;font-size:20px!important}
+.nkj-rate-premium .nkj-public-rate-copy strong{font-size:clamp(20px,2.1vw,30px)!important;white-space:nowrap}
+.nkj-rate-premium .nkj-public-rate-copy small{font-size:13px!important;font-weight:600}
+.nkj-rate-premium .nkj-public-rate-divider{background:#d99a36!important;width:2px!important}
+.nkj-rate-admin-banner{display:flex;align-items:center;gap:14px;padding:16px;border:1px solid #ead8b6;border-radius:14px;background:#fffaf0;margin:18px 0}
+.nkj-rate-admin-icon{width:44px;height:44px;border-radius:12px;background:#fff0c9;color:#97002c;display:grid;place-items:center;flex:none}
+.nkj-rate-admin-banner>div:nth-child(2){display:grid;gap:4px;flex:1}.nkj-rate-admin-banner span{font-size:13px;color:#665b54;line-height:1.5}
+.nkj-rate-mode-pill{font-size:11px;letter-spacing:.06em;border-radius:999px;padding:7px 11px;background:#fff0c9;color:#8b4b00;white-space:nowrap}
+.nkj-rate-edit-form{padding:20px!important}.nkj-rate-edit-form h3{display:flex;align-items:center;gap:8px;color:#870025;margin:0 0 16px}
+.nkj-rate-preview{display:grid;grid-template-columns:1fr auto;gap:9px 18px;padding:14px;margin-top:16px;border-radius:12px;background:#fff8e9;color:#5e5148;font-size:13px}.nkj-rate-preview strong{color:#850025;font-size:16px}
+@media(max-width:700px){.nkj-rate-source{margin-left:0;width:100%}.nkj-rate-premium .nkj-public-rate-values{display:grid!important;grid-template-columns:1fr!important}.nkj-rate-premium .nkj-public-rate-divider{display:none}.nkj-rate-premium .nkj-public-rate-copy strong{white-space:normal}.nkj-rate-admin-banner{align-items:flex-start;flex-wrap:wrap}.nkj-rate-mode-pill{margin-left:58px}}
+
+/* NKJ public 3-metal rate board and rate administration enhancements */
+.nkj-public-rate-values-three{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}
+.nkj-public-rate-values-three .nkj-public-rate-item{min-height:82px;justify-content:flex-start;padding:9px 11px;gap:10px}
+.nkj-public-rate-values-three .nkj-public-rate-copy b{font-size:17px}
+.nkj-public-rate-values-three .nkj-public-rate-copy strong{font-size:clamp(17px,1.5vw,25px);white-space:normal;line-height:1.15}
+.nkj-public-rate-values-three .nkj-public-rate-copy small{font-size:12px;white-space:nowrap}
+.nkj-public-rate-meta{display:flex;justify-content:space-between;gap:12px;padding:7px 3px 0;color:#756a65;font-size:10px;flex-wrap:wrap}
+.nkj-public-rate-meta b{color:#8d0b2e}
+.nkj-rate-manual-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#dda34a;margin-right:3px}
+.nkj-rate-management-page .nkj-rate-admin-banner{display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:14px 16px;border:1px solid #ead8c6;border-radius:12px;background:#fffaf3}
+.nkj-rate-management-page .nkj-rate-admin-banner>div:nth-child(2){display:flex;flex-direction:column;gap:4px;flex:1}
+.nkj-rate-management-page .nkj-rate-admin-banner strong{color:#81102d}
+.nkj-rate-management-page .nkj-rate-admin-banner span{font-size:12px;color:#756a65;line-height:1.5}
+.nkj-rate-mode-pill{background:#fff0d8;border:1px solid #f0d2a6;border-radius:999px;padding:7px 11px;color:#865100;font-size:10px;white-space:nowrap}
+.nkj-rate-mode-pill.is-live{background:#e6f8eb;border-color:#b9e9c6;color:#16703a}
+.nkj-rate-active-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.nkj-rate-active-card{background:#fff;border:1px solid #efdfcf;border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:4px;box-shadow:0 3px 10px rgba(90,30,20,.04)}
+.nkj-rate-active-card span{font-size:12px;color:#8a1633;font-weight:700}.nkj-rate-active-card strong{font-size:23px;color:#241c1c}.nkj-rate-active-card small{font-size:11px;color:#82736d}
+.nkj-rate-edit-form h3{display:flex;align-items:center;gap:8px;color:#84102a;margin:0 0 12px;font:700 17px Georgia,serif}
+.nkj-rate-history-panel{margin-top:18px;padding:14px;border:1px solid #efdfcf;border-radius:12px;background:#fff}
+.nkj-rate-history-panel .nkj-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nkj-rate-history-panel .nkj-panel-head h3{display:flex;gap:8px;align-items:center;color:#86132f;margin:0;font:700 16px Georgia,serif}
+.nkj-rate-history-panel .nkj-panel-head span{color:#766b68;font-size:12px}
+@media(max-width:1000px){.nkj-public-rate-values-three{grid-template-columns:1fr}.nkj-public-rate-meta{flex-direction:column}.nkj-rate-active-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.nkj-rate-management-page .nkj-rate-admin-banner{align-items:flex-start;flex-wrap:wrap}.nkj-rate-mode-pill{margin-left:55px}}
+
+/* Page/component-specific rules moved from the former global stylesheets. */
+.nkj-public-rate-card {min-width: 0;
+  padding: 9px;
+  overflow: hidden;
+  border: 1px solid #f0dfca;
+  border-radius: 12px;
+  background: linear-gradient(120deg, #fffaf3, #fffdf9);
+  box-shadow: 0 3px 10px rgba(95, 48, 20, 0.08);}
+.nkj-public-rate-heading {justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: linear-gradient(110deg, #ad002d, #79001d);}
+.nkj-public-rate-heading h3 {color: #fff;}
+.nkj-public-rate-values {display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;}
+.nkj-public-rate-item {display: flex;
+  min-width: 0;
+  min-height: 58px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 7px;
+  border-radius: 9px;}
+.nkj-public-rate-copy {display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;}
+.nkj-public-rate-copy b {color: #97001e;
+  font-size: 13px;}
+.nkj-public-rate-copy strong {color: #272727;
+  font-size: 20px;
+  line-height: 1.2;
+  white-space: nowrap;}
+.nkj-public-rate-copy small {font-size: 11px;
+  font-weight: 500;}
+.nkj-public-rate-divider {width: 1px;
+  height: 28px;
+  background: #f0a23b;}
+@media (max-width: 550px) {
+.nkj-public-rate-values {gap: 6px;}
+.nkj-public-rate-item {gap: 5px;
+    padding: 6px 3px;}
+.nkj-public-rate-copy strong {font-size: 16px;}
+
+}
+.nkj-public-rate-card {min-width: 0;
+  background: linear-gradient(120deg, #fffaf3, #fffdf9);
+  border: 1px solid #f0dfca;
+  border-radius: 12px;
+  padding: 9px;
+  box-shadow: 0 3px 10px rgba(95, 48, 20, 0.08);}
+.nkj-public-rate-values {display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  align-items: center;
+  gap: 10px;}
+.nkj-public-rate-item {display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 7px;
+  border-radius: 9px;}
+.nkj-public-rate-item.gold-rate {background: linear-gradient(120deg, #fff4d7, #ffe9b7);}
+.nkj-public-rate-item.silver-rate {background: linear-gradient(120deg, #fafafa, #e5e5e5);}
+.nkj-public-rate-item > div {display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;}
+.nkj-public-rate-item b {color: #97001e;
+  font-size: 13px;}
+.nkj-public-rate-item strong {color: #272727;
+  font-size: 20px;
+  line-height: 1.2;
+  white-space: nowrap;}
+.nkj-public-rate-item small {font-size: 11px;
+  font-weight: 500;}
+.nkj-public-rate-divider {height: 28px;
+  background: #f0a23b;}
+@media (max-width: 550px) {
+.nkj-public-rate-values {gap: 6px;}
+.nkj-public-rate-item {gap: 5px;
+    padding: 6px 3px;}
+.nkj-public-rate-item strong {font-size: 16px;}
+
+}
+.nkj-public-rate-card {min-width: 0;}
+.nkj-public-rate-values {min-width: 0;}
+.nkj-public-rate-copy {min-width: 0;}
+.nkj-public-rate-copy strong {overflow-wrap: anywhere;}
+@media (max-width: 600px) {
+.nkj-public-rate-values {grid-template-columns: minmax(0, 1fr);}
+.nkj-public-rate-divider {width: 100%;
+    height: 1px;}
+
+}
+.nkj-public-rate-card {min-width: 0; padding: 7px 8px 9px; border: 1px solid #f0dfca; border-radius: 14px;
+  background: linear-gradient(120deg,#fffaf3,#fffdf9); box-shadow: 0 3px 9px rgba(95,48,20,.12);}
+.nkj-public-rate-heading {justify-content: space-between; gap: 8px; margin: -2px -1px 10px; padding: 6px 14px; border-radius: 10px; background: linear-gradient(110deg,#b00031,#79001d);}
+.nkj-public-rate-heading h3 {color: #fff;}
+.nkj-public-rate-values {display: grid; grid-template-columns: minmax(0,1fr) 2px minmax(0,1fr); align-items: center; gap: 13px;}
+.nkj-public-rate-item {display: flex; min-width: 0; min-height: 86px; align-items: center; justify-content: center; gap: 13px; padding: 8px; border: 1px solid #f3d9a1; border-radius: 12px;}
+.nkj-public-rate-copy {display: flex; min-width: 0; flex-direction: column; gap: 4px;}
+.nkj-public-rate-copy b {color: #97001e; font: 700 19px Georgia,"Times New Roman",serif;}
+.nkj-public-rate-copy strong {color: #151515; font: 700 29px Arial,sans-serif; white-space: nowrap;}
+.nkj-public-rate-copy small {font-size: 16px; font-weight: 500;}
+.nkj-public-rate-divider {width: 2px; height: 42px; background: #e7a13c;}
+@media (max-width: 1050px) {
+.nkj-public-rate-copy strong {font-size: 23px;}
+
+}
+@media (max-width: 760px) {
+.nkj-public-rate-copy b {font-size: 16px;}
+.nkj-public-rate-copy strong {font-size: 23px;}
+
+}
+@media (max-width: 460px) {
+.nkj-public-rate-values {grid-template-columns: minmax(0,1fr);}
+.nkj-public-rate-divider {width: 100%; height: 1px;}
+
+}
+.nkj-rate-message,
+.nkj-rate-error {width: min(1500px, calc(100% - 42px));
+  margin: 8px auto 12px;
+  font-size: 12px;}
+.nkj-rate-message {color: #237444;}
+.nkj-rate-error {color: #a00d2d;}
+@media (max-width: 600px) {
+.nkj-rate-message,
+.nkj-rate-error {width: calc(100% - 24px);}
+
+}

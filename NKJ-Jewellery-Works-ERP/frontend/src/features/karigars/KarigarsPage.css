@@ -1,0 +1,48 @@
+/* KarigarsPage: page-specific styles. */
+.nkj-karigar-kpis {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}
+.nkj-karigar-kpis>div {display:grid;grid-template-columns:42px 1fr;grid-template-rows:auto auto;align-items:center;gap:3px 12px;padding:15px;background:linear-gradient(135deg,#fffdf8,#fff);border:1px solid #eedfce;border-radius:13px;box-shadow:0 3px 12px #3e071008;min-width:0}
+.nkj-karigar-kpis svg {grid-row:span 2;width:42px;height:42px;padding:10px;border-radius:50%;background:#fff1d6;color:#a66a08}
+.nkj-karigar-kpis span {font-size:12px;color:#6f6663;font-weight:600}
+.nkj-karigar-kpis strong {font-size:22px;color:#8a0a2b}
+.nkj-karigar-editor {margin:16px 0 20px;padding:18px;background:#fffdfa;border:1px solid #ead6c4;border-radius:15px;box-shadow:0 5px 18px #3c001b0a}
+.nkj-karigar-editor-head {display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:15px}
+.nkj-karigar-editor-head h3 {margin:4px 0;color:#820a28;font:700 23px Georgia,serif}
+.nkj-karigar-form-grid input,
+.nkj-karigar-form-grid select,
+.nkj-karigar-form-grid textarea {width:100%;min-width:0;padding:9px 10px;border:1px solid #dcd5d0;border-radius:7px;background:#fff;color:#28242a;font-size:13px;outline:none}
+.nkj-karigar-form-grid input:focus,
+.nkj-karigar-form-grid select:focus,
+.nkj-karigar-form-grid textarea:focus {border-color:#bf913d;box-shadow:0 0 0 2px #e5c57a33}
+.nkj-karigar-editor-actions {display:flex;justify-content:flex-end;gap:9px;margin-top:15px;padding-top:14px;border-top:1px solid #eee2d7}
+.nkj-karigar-table {padding:14px;margin-top:16px;border:1px solid #ebded2;border-radius:14px;background:#fff}
+.nkj-karigar-table-head {display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.nkj-karigar-table-head h3 {margin:0;color:#840b29;font:700 19px Georgia,serif}
+.nkj-karigar-filters {display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.nkj-karigar-filters select {padding:9px 10px;border:1px solid #ddd2ca;border-radius:7px;background:white;font-size:12px}
+.nkj-karigar-filters .nkj-module-toolbar {margin:0;min-width:min(320px,100%)}
+.nkj-karigar-editor-head h3 {margin:4px 0;color:#850b29;font:700 22px Georgia,serif}
+.nkj-karigar-form-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.nkj-karigar-form-grid label {display:grid;gap:5px;font-size:12px;font-weight:700;color:#4a4241;min-width:0}
+.nkj-karigar-form-grid .wide {grid-column:span 2}
+.nkj-karigar-photo-preview {width:72px;height:72px;object-fit:cover;border-radius:8px;margin-top:6px}
+.nkj-karigar-name-cell {display:flex;align-items:center;gap:8px;min-width:140px;text-align:left}
+.nkj-karigar-name-cell img,
+.nkj-karigar-name-cell>span {width:34px;height:34px;flex:none;display:grid;place-items:center;object-fit:cover;border-radius:50%;background:#fff0d2;color:#8b0a2a;font-weight:800}
+@media (max-width:1000px) {
+.nkj-karigar-form-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+
+}
+@media (max-width:700px) {
+.nkj-karigar-kpis {grid-template-columns:repeat(2,minmax(0,1fr))}
+.nkj-karigar-filters {width:100%;align-items:stretch;flex-direction:column}
+.nkj-karigar-filters .nkj-module-toolbar {min-width:0;width:100%}
+.nkj-karigar-form-grid {grid-template-columns:1fr}
+.nkj-karigar-form-grid .wide {grid-column:auto}
+
+}
+@media (max-width:430px) {
+.nkj-karigar-kpis {grid-template-columns:1fr 1fr}
+.nkj-karigar-kpis>div {padding:10px;gap:3px 8px}
+.nkj-karigar-kpis svg {width:34px;height:34px;padding:7px}
+
+}

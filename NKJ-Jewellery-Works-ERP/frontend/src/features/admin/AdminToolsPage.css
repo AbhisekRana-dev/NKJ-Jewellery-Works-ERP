@@ -1,0 +1,14 @@
+/* AdminToolsPage: page-specific styles. */
+.nkj-db-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.nkj-db-grid .panel {display:grid;grid-template-columns:32px 1fr;align-items:center;gap:3px 10px;padding:17px;border-radius:12px}
+.nkj-db-grid svg {grid-row:span 2;color:#a01637}
+.nkj-db-grid small {color:#847b82;font-size:11px}
+.nkj-db-grid strong {color:#302a2d;font-size:15px;overflow-wrap:anywhere}
+@media (max-width:800px) {
+.nkj-db-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+
+}
+@media (max-width:560px) {
+.nkj-db-grid {grid-template-columns:1fr}
+
+}

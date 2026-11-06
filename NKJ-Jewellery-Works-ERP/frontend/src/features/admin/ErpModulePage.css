@@ -1,0 +1,82 @@
+/* ErpModulePage: page-specific styles. */
+.nkj-module-page {width:100%;max-width:1600px;margin:0 auto}
+.nkj-module-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 19px}
+.nkj-module-heading h2 {margin:5px 0 6px;color:#72102a;font:700 28px Georgia,serif}
+.nkj-module-heading p {margin:0;color:#77717a;font-size:13px;line-height:1.6}
+.nkj-module-actions {display:flex;gap:9px;flex-wrap:wrap}
+.nkj-module-actions button {padding:10px 14px;font-size:12px}
+.nkj-module-toolbar {display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 13px;border:1px solid #e8e2db;border-radius:10px;background:#fff;max-width:700px;color:#9b1738}
+.nkj-module-toolbar input {flex:1;min-width:0;border:0;outline:0;background:transparent;color:#24212a}
+.nkj-module-toolbar span {font-size:11px;color:#858087;white-space:nowrap}
+.nkj-module-form {margin:0 0 17px;padding:17px 18px;border:1px solid #ead9bc;border-radius:13px;background:linear-gradient(135deg,#fff,#fffcf6);box-shadow:0 5px 18px rgba(75,30,10,.045)}
+.nkj-module-form-head {display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.nkj-module-form-head h3 {margin:0;color:#74102a;font:700 18px Georgia,serif}
+.nkj-module-fields {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.nkj-module-fields label {display:flex;flex-direction:column;gap:6px;min-width:0;color:#685e61;font-size:11px;font-weight:700}
+.nkj-module-fields input,
+.nkj-module-fields select,
+.nkj-module-fields textarea {width:100%;min-width:0;min-height:38px;padding:9px 10px;border:1px solid #ded5d0;border-radius:7px;background:#fff;color:#25232a;font:12px "DM Sans",Arial,sans-serif}
+.nkj-module-fields textarea {resize:vertical}
+.nkj-module-fields input:focus,
+.nkj-module-fields select:focus,
+.nkj-module-fields textarea:focus {outline:2px solid #e9d39b;border-color:#bd8d37}
+.nkj-module-form-actions {display:flex;justify-content:flex-end;gap:9px;margin-top:15px}
+.nkj-module-form-actions button {padding:9px 15px;font-size:12px}
+.nkj-module-table {padding:0!important;border-radius:12px!important;overflow:hidden!important}
+.nkj-module-table .table-wrap {overflow-x:auto}
+.nkj-module-table table {width:100%;min-width:700px;border-collapse:collapse;font-size:12px}
+.nkj-module-table th {position:sticky;top:0;background:#760e29;color:#fff;padding:12px 10px;text-align:left;white-space:nowrap}
+.nkj-module-table td {padding:11px 10px;border-bottom:1px solid #eee9e5;color:#403b40;vertical-align:middle}
+.nkj-module-table tbody tr:hover {background:#fffaf2}
+.nkj-row-actions {display:flex;gap:6px;white-space:nowrap}
+.nkj-row-actions .small-action {padding:6px 8px}
+.nkj-module-footnote {margin:12px 2px;color:#89828a;font-size:11px;line-height:1.6}
+@media (max-width:800px) {
+.nkj-module-fields {grid-template-columns:repeat(2,minmax(0,1fr))}
+
+}
+@media (max-width:560px) {
+.nkj-module-heading {flex-direction:column}
+.nkj-module-fields {grid-template-columns:1fr}
+
+}
+.nkj-module-page {min-width:0;max-width:100%}
+.nkj-module-page * {min-width:0}
+.nkj-module-kpis {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.nkj-module-kpis>div {display:grid;grid-template-columns:42px 1fr;grid-template-rows:auto auto;align-items:center;gap:2px 10px;padding:14px 16px;border:1px solid #efdfd1;border-radius:13px;background:linear-gradient(135deg,#fff,#fff9f0);box-shadow:0 3px 10px rgba(80,20,20,.04)}
+.nkj-module-kpis>div svg {grid-row:span 2;width:40px;height:40px;padding:9px;border-radius:50%;background:#fff0d2;color:#a66a00}
+.nkj-module-kpis>div span {font-size:12px;color:#6c6260;font-weight:600}
+.nkj-module-kpis>div strong {font-size:22px;color:#870b2c}
+.nkj-table-sub {display:block;color:#777;font-size:11px;margin-top:3px}
+@media (max-width:750px) {
+.nkj-module-kpis {grid-template-columns:repeat(2,minmax(0,1fr))}
+
+}
+@media (max-width:480px) {
+.nkj-module-kpis {grid-template-columns:1fr}
+
+}
+.nkj-status-pill {display:inline-block;padding:5px 9px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;background:#edf4ee;color:#26713e}
+.nkj-status-pill.out_of_stock,
+.nkj-status-pill.damaged,
+.nkj-status-pill.inactive {background:#fff0f0;color:#a22727}
+.nkj-status-pill.reserved,
+.nkj-status-pill.on_hold {background:#fff4d9;color:#93620b}
+.nkj-module-page {width: 100%;
+  max-width: 100%;
+  min-width: 0;}
+.nkj-field-hint {display: block;
+  margin-top: 3px;
+  color: #827781;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.45;}
+.nkj-business-code {display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid #ead8b8;
+  border-radius: 6px;
+  background: #fff9ed;
+  color: #7b1730;
+  font: 700 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: nowrap;}

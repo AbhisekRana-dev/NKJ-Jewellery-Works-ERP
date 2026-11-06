@@ -1,0 +1,57 @@
+NKJ JEWELLERY WORKS - ERP PHASE 1 UPDATE
+======================================
+
+- Added a fixed owner sidebar/topbar across authenticated owner routes,
+  including the owner invoice screen. The original invoice sheet and print CSS
+  remain; print CSS hides site navigation.
+- Public navigation now exposes Home and New Invoice only. Owner Login remains
+  available through the footer.
+- Added a PostgreSQL Flyway V1 migration with core business, inventory,
+  booking/installment, finance, staff/payroll, audit and backup-history tables.
+- Added allow-listed owner CRUD APIs for staff, attendance, salary, expenses,
+  inventory, stock movements, bookings, installments and receipts, suppliers,
+  purchases, payments, old-gold exchange, customers, karigars, repairs, leaves
+  and shop settings.
+- Added database status, sales/expense reports and audit-log views.
+- Added a backend-only PBKDF2 invoice PIN verifier and one-time PIN tickets;
+  new invoice create and print actions require verification.
+- Persisted invoice rows in invoice_items as well as the full payload snapshot.
+- Improved the owner dashboard; removed Total Billing Amount and the duplicated
+  Quick Actions panel.
+- Added project setup and folder structure documentation.
+
+Run frontend:
+  cd frontend
+  npm install
+  npm run dev
+
+Run backend:
+  cd backend
+  mvn spring-boot:run
+
+Backend port: 8086. Database: PostgreSQL, default database name nkj_billing.
+
+IMPORTANT LIMITATIONS:
+This update is ERP Phase 1, not the completed production ERP. The existing
+custom password + TOTP session service is still used (not Spring Security JWT).
+Email authenticator recovery, encrypted scheduled local/Google Drive backup,
+Electron desktop packaging, booking PDF/receipt workflows, automated salary
+policy/attendance reconciliation, complete stock-to-sales integration and
+final profit & loss with COGS are not implemented end-to-end. Database Management
+is read-only health/status, and Backup History is currently a read-only register.
+The report value is labeled Operating Result Before COGS and is not final profit.
+A live Maven build, Vite production build and PostgreSQL migration test must be
+run on the target computer before deployment. Back up existing PostgreSQL data
+before applying migrations.
+
+2026-11-03 user-requested correction pass (source changes in this archive)
+- Removed Old Gold Exchange, Suppliers, Purchases and Payments from the owner sidebar navigation (their routes/data modules remain in the project).
+- Added a user-controlled sidebar collapse/expand button and layout adjustments for the collapsed state.
+- Removed the Login label from public footer Quick Links while retaining the login icon/link.
+- Disabled automatic ornament-row creation while typing; rows are now added only through the explicit Add Ornament buttons.
+- Replaced the staff Profile photo URL text field with an image upload control (2 MB limit and preview), and added Aadhaar and PAN fields to the staff form configuration.
+- Simplified the attendance form status choices to Present, Absent and Half Day.
+
+Important verification note:
+- Frontend dependency installation did not finish in the build environment, so a production build could not be run here. Run `npm ci` in frontend, then `npm run build` before deployment.
+- The remaining requested workflows (booking print/WhatsApp, installment customer ledger and multiple receipt posting, one-click attendance list, persistent dated metal-rate history, and final cross-browser PDF orientation validation) still require end-to-end implementation and database testing. Do not treat these as completed based on this correction pass.

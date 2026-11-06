@@ -1,0 +1,1663 @@
+/* InvoicePages: page-specific styles. */
+.nkj-owner-layout .invoice-container.nkj-owner-invoice-container {width: calc(100% - 258px) !important;
+  max-width: none !important;
+  margin: 0 0 0 258px !important;
+  padding: 8px 14px 18px !important;}
+@media (max-width: 1100px) {
+.nkj-owner-layout .invoice-container.nkj-owner-invoice-container {width: calc(100% - 78px) !important;
+    margin-left: 78px !important;}
+
+}
+@media print {
+.nkj-owner-layout .invoice-container.nkj-owner-invoice-container {width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important;}
+
+}
+@media (max-width: 650px) {
+.container:not(.invoice-container) {padding: 16px 12px 24px !important;}
+
+}
+.totals label {display:block;font-size:13px;font-weight:700;margin:15px 0 7px}
+.form-grid input,
+.form-grid select,
+.items-table input,
+.items-table select,
+.totals input {width:100%;padding:11px;border:1px solid #d8dce3;border-radius:6px;background:#fff;min-width:0}
+.form-grid input:focus {outline:2px solid #e7bd68;border-color:#bb8b37}
+.invoice-sheet {background:#fff;max-width:1200px;margin:auto;padding:18px;border:1px solid #d8a64b;box-shadow:0 3px 20px #0000000b;color:#111827;font-family:Georgia,serif}
+.inv-head {display:grid;grid-template-columns:145px 1fr 290px;align-items:center;gap:12px;border-bottom:2px solid #b87924;padding-bottom:12px}
+.inv-logo {width:115px;height:115px;border:4px double #d99b26;border-radius:50%;display:grid;place-items:center;color:#d18b13;font-size:38px;font-weight:bold;margin:auto}
+.inv-shop {text-align:center}
+.inv-shop h1 {font-size:clamp(19px,3vw,34px);color:#a00d2d;margin:0}
+.inv-shop h3,
+.inv-shop strong {color:#a00d2d;margin:3px}
+.inv-shop p {margin:3px}
+.inv-meta {border:1px solid #d88b8b;border-radius:6px;overflow:hidden}
+.inv-meta>b {display:block;text-align:center;background:#a20b2d;color:#fff;padding:6px;font-size:19px}
+.inv-meta span {display:flex;justify-content:space-between;padding:7px 10px;border-top:1px solid #f0c4c4;font-size:13px}
+.inv-two {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.inv-panel {border:1px solid #e4a0a0;border-radius:6px;padding:7px;margin-bottom:9px;min-width:0}
+.inv-panel h3 {color:#a00d2d;font-size:18px;margin:0 0 7px}
+.form-grid {display:grid;gap:6px}
+.form-grid label {display:grid;grid-template-columns:145px 1fr;align-items:center;font-size:14px}
+.form-grid input,
+.form-grid select {padding:5px 8px;height:30px}
+.inv-main {display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:9px;margin-top:2px}
+.items-table {width:100%;border-collapse:collapse;font-size:13px}
+.items-table th {background:#a20b2d;color:#fff;padding:8px 5px;border:1px solid #d9a4a4}
+.items-table td {padding:5px;border:1px solid #d7dce2;text-align:center}
+.items-table input,
+.items-table select {padding:5px 4px;min-width:62px;font-size:12px}
+.items-table td:nth-child(2) {min-width:120px}
+.totals {border:1px solid #e4a0a0;border-radius:6px;align-self:start;overflow:hidden}
+.totals h3 {background:#fff0f1;color:#9e0d2b;padding:9px;margin:0}
+.totals>div {display:flex;justify-content:space-between;gap:7px;padding:8px;border-bottom:1px solid #f1d2d2;font-size:12px}
+.totals>div b {font-size:14px;white-space:nowrap}
+.totals label {padding:0 8px;margin:8px 0;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.totals input {width:90px;padding:5px}
+.totals .grand {background:#a20b2d;color:white;padding:14px;font-size:17px}
+.totals .grand b {font-size:19px}
+.inv-bottom {display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inv-bottom label {font-weight:bold;color:#a00d2d;border:1px solid #e4a0a0;border-radius:6px;padding:8px}
+.inv-bottom textarea {display:block;width:100%;height:60px;border:1px solid #d7dce2;border-radius:5px;margin-top:5px}
+.signatures {display:flex;align-items:end;justify-content:space-around;border:1px solid #e4a0a0;border-radius:6px;padding:12px 5px}
+.signatures span {border-top:1px solid #333;padding:7px 12px 0;font-size:13px}
+.thankyou {text-align:center;color:#a00d2d;padding:12px}
+.thankyou i {display:block;font-size:36px;font-style:italic}
+.thankyou b {font-size:20px}
+.invoice-actions {display:flex;justify-content:center;gap:12px;padding:20px}
+@media (max-width:950px) {
+.inv-head {grid-template-columns:90px 1fr}
+.inv-logo {width:75px;height:75px;font-size:25px}
+.inv-meta {grid-column:1/-1}
+.inv-main {grid-template-columns:1fr}
+.totals {max-width:none}
+
+}
+@media (max-width:600px) {
+.inv-two,
+.inv-bottom {grid-template-columns:1fr}
+.invoice-sheet {padding:8px}
+.inv-head {grid-template-columns:1fr}
+.inv-logo {display:none}
+.inv-shop h1 {font-size:21px}
+.inv-meta {grid-column:auto}
+.form-grid label {grid-template-columns:110px 1fr}
+.invoice-actions {flex-direction:column}
+.invoice-actions button {width:100%}
+
+}
+@media print {
+.invoice-actions {display:none!important}
+.invoice-sheet {width:194mm;max-width:none;margin:0;padding:3mm;border:1px solid #c98a2a;box-shadow:none;zoom:.88}
+.inv-head {grid-template-columns:25mm 1fr 48mm}
+.inv-logo {width:23mm;height:23mm;font-size:22px}
+.inv-shop h1 {font-size:20px}
+.inv-shop h3 {font-size:13px}
+.inv-shop b,
+.inv-shop p,
+.inv-shop strong {font-size:10px}
+.inv-meta span {font-size:9px;padding:4px}
+.inv-meta>b {font-size:13px;padding:4px}
+.inv-panel {padding:4px;margin-bottom:5px}
+.inv-panel h3 {font-size:12px}
+.form-grid label {font-size:10px;grid-template-columns:30mm 1fr}
+.form-grid input,
+.form-grid select {height:21px;padding:2px 4px;font-size:9px}
+.inv-main {grid-template-columns:minmax(0,1fr) 48mm;gap:5px}
+.items-table {font-size:8px}
+.items-table th {font-size:8px;padding:4px 2px}
+.items-table td {padding:3px 2px}
+.items-table input,
+.items-table select {font-size:8px;padding:2px;min-width:0}
+.totals>div {font-size:8px;padding:4px}
+.totals>div b {font-size:9px}
+.totals h3 {font-size:11px;padding:5px}
+.totals label {font-size:8px;margin:3px}
+.totals input {font-size:8px;padding:2px;width:16mm}
+.totals .grand {font-size:12px;padding:7px}
+.totals .grand b {font-size:13px}
+.inv-bottom label {font-size:10px;padding:4px}
+.inv-bottom textarea {height:12mm}
+.signatures {padding:7px}
+.signatures span {font-size:9px}
+.thankyou {padding:5px}
+.thankyou i {font-size:25px}
+.thankyou b {font-size:13px}
+
+}
+.invoice-sheet {max-width:1480px;margin:0 auto;background:#fff;padding:18px 20px 10px;border:2px solid #d69a36;color:#10172a;font-family:Georgia,"Times New Roman",serif;box-shadow:0 2px 14px #0000000c}
+.inv-head {display:grid;grid-template-columns:155px minmax(0,1fr) 360px;gap:14px;align-items:center;border-bottom:2px solid #c17b22;padding:0 0 10px}
+.inv-logo-wrap {display:flex;justify-content:center;align-items:center}
+.inv-logo {width:130px;height:130px;border:4px double #d99b26;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#d18b13;font-family:Georgia,serif;background:radial-gradient(circle,#fff 62%,#fff8e8 100%);margin:auto}
+.inv-logo span {font-size:25px;line-height:1;color:#d18b13}
+.inv-logo b {font-size:42px;line-height:1.1}
+.inv-shop {text-align:center;min-width:0}
+.inv-shop h1 {font-family:Georgia,serif;font-size:clamp(24px,2.55vw,43px);line-height:1.05;white-space:nowrap;color:#a00d2d;margin:0 0 4px;font-weight:700}
+.inv-shop h3 {font-family:Georgia,serif;color:#a00d2d;font-size:22px;margin:2px 0}
+.inv-shop>b {font-size:18px}
+.inv-shop p {font-size:17px;margin:2px}
+.inv-shop strong {display:block;color:#a00d2d;font-size:19px;margin-top:2px}
+.inv-meta {border:1px solid #d88b8b;border-radius:7px;overflow:hidden;align-self:center}
+.inv-meta>b {display:block;text-align:center;background:#a20b2d;color:#fff;padding:5px;font:700 22px Georgia,serif}
+.inv-meta span {display:grid;grid-template-columns:42% 58%;gap:5px;padding:7px 10px;border-top:1px solid #f0c4c4;font-size:16px}
+.inv-meta span label {font-weight:400}
+.inv-meta span strong {font-weight:400;white-space:nowrap}
+.inv-two {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 10px}
+.inv-panel {border:1px solid #e78d8d;border-radius:7px;padding:7px 9px;margin:0 0 8px;min-width:0;background:#fff}
+.inv-panel h3 {display:flex;align-items:center;gap:7px;color:#a00d2d;font:700 20px Georgia,serif;margin:0 0 7px}
+.form-grid {display:grid;gap:4px}
+.form-grid label {display:grid;grid-template-columns:165px 1fr;gap:8px;align-items:center;font:18px Georgia,serif;color:#10172a}
+.form-grid input,
+.form-grid select {width:100%;height:32px;padding:3px 10px;border:1px solid #aebfd4;border-radius:5px;font:17px Georgia,serif;color:#10172a;background:#fff}
+.inv-main {display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:10px;margin-top:0;align-items:stretch}
+.inv-left {min-width:0}
+.ornament-panel {padding:7px 8px;margin-bottom:8px}
+.ornament-panel h3 {font-size:20px}
+.items-table {width:100%;border-collapse:collapse;table-layout:fixed;font:16px Georgia,serif}
+.items-table th {background:#a20b2d;color:#fff;padding:8px 4px;border:1px solid #d9a4a4;font:bold 15px Georgia,serif;text-align:center;line-height:1.15}
+.items-table td {padding:5px 4px;border:1px solid #d7dce2;text-align:center;height:34px;overflow:hidden}
+.items-table input,
+.items-table select {width:100%;min-width:0;padding:4px 3px;border:1px solid #bdc9d8;border-radius:3px;font:14px Georgia,serif;background:#fff;color:#10172a;text-align:center}
+.new-items-table th:nth-child(1) {width:5%}
+.new-items-table th:nth-child(2) {width:17%}
+.new-items-table th:nth-child(3) {width:8%}
+.new-items-table th:nth-child(4) {width:8%}
+.new-items-table th:nth-child(5),
+.new-items-table th:nth-child(6),
+.new-items-table th:nth-child(7) {width:10%}
+.new-items-table th:nth-child(8) {width:9%}
+.new-items-table th:nth-child(9) {width:10%}
+.new-items-table th:nth-child(10) {width:12%}
+.new-items-table th:nth-child(11) {width:3%}
+.old-items-table th:nth-child(1) {width:6%}
+.old-items-table th:nth-child(2) {width:23%}
+.old-items-table th:nth-child(3) {width:12%}
+.old-items-table th:nth-child(4) {width:19%}
+.old-items-table th:nth-child(5) {width:17%}
+.old-items-table th:nth-child(6) {width:20%}
+.old-items-table th:nth-child(7) {width:3%}
+.totals {border:1px solid #e78d8d;border-radius:7px;align-self:stretch;overflow:hidden;background:#fff}
+.totals h3 {background:#fff3f3;color:#a00d2d;padding:9px 12px;margin:0;font:700 20px Georgia,serif}
+.totals .total-row {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;padding:9px 10px;border-bottom:1px solid #f1cccc;font:15px Georgia,serif;min-height:39px}
+.totals .total-row b {font:bold 19px Georgia,serif;white-space:nowrap;color:#10172a;text-align:right}
+.total-edit {padding:7px 10px;display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+.totals .total-edit label {display:flex;align-items:center;justify-content:space-between;gap:5px;font:12px Arial,sans-serif;margin:0}
+.totals .total-edit input {width:75px;padding:4px;border:1px solid #d7dce2;border-radius:4px}
+.totals .grand {display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;background:#a20b2d;color:#fff;padding:15px 12px;font:700 23px Georgia,serif;white-space:nowrap}
+.totals .grand b {font:bold 24px Georgia,serif;color:#fff}
+.inv-bottom {display:grid;grid-template-columns:40% 60%;gap:8px;margin-top:0}
+.description-panel,
+.words-panel {padding:7px 10px;margin:0;min-height:112px}
+.description-panel h3,
+.words-panel h3 {font-size:18px}
+.description-panel textarea {width:100%;height:68px;resize:vertical;border:1px solid #bdc9d8;border-radius:5px;padding:6px;font:15px Georgia,serif}
+.words-sign {display:grid;grid-template-columns:1fr 360px;gap:10px;align-items:center}
+.amount-words {border:1px solid #bdc9d8;border-radius:5px;min-height:68px;padding:8px;font:15px Georgia,serif;color:#10172a}
+.signatures {display:flex;justify-content:space-around;align-items:end;gap:12px;border:0;padding:8px 0 2px}
+.signatures span {border-top:1px solid #18243b;padding:7px 8px 0;font:15px Georgia,serif;white-space:nowrap}
+.thankyou {display:flex;justify-content:center;align-items:center;gap:22px;text-align:center;color:#a00d2d;padding:5px 0 0}
+.thankyou i {display:block;font:italic 42px cursive}
+.thankyou b {display:block;font:700 22px Georgia,serif}
+.thankyou .flourish {font:70px Georgia,serif;color:#d69a36;line-height:.8}
+.thankyou .mirror {transform:scaleX(-1)}
+@media (max-width:1100px) {
+.inv-head {grid-template-columns:100px 1fr 270px}
+.inv-logo {width:90px;height:90px}
+.inv-logo b {font-size:30px}
+.inv-main {grid-template-columns:minmax(0,1fr) 310px}
+.inv-shop h1 {white-space:normal}
+.form-grid label {grid-template-columns:125px 1fr}
+.words-sign {grid-template-columns:1fr}
+.signatures {justify-content:space-evenly}
+
+}
+@media (max-width:760px) {
+.invoice-sheet {padding:10px}
+.inv-head {grid-template-columns:1fr}
+.inv-logo-wrap {display:none}
+.inv-meta {width:100%}
+.inv-two,
+.inv-main,
+.inv-bottom {grid-template-columns:1fr}
+.inv-main {gap:0}
+.totals {margin-bottom:8px}
+.form-grid label {grid-template-columns:120px 1fr;font-size:14px}
+.inv-shop h1 {font-size:25px}
+.inv-shop h3 {font-size:18px}
+.inv-shop>b,
+.inv-shop p,
+.inv-shop strong {font-size:14px}
+.items-table {min-width:900px}
+.words-sign {grid-template-columns:1fr}
+
+}
+@media print {
+.invoice-actions {display:none!important}
+.invoice-sheet {width:287mm!important;max-width:none!important;min-height:0!important;margin:0!important;padding:2.5mm!important;border:1px solid #c98a2a!important;box-shadow:none!important;zoom:1!important;box-sizing:border-box!important}
+.inv-head {grid-template-columns:30mm minmax(0,1fr) 68mm!important;gap:2mm!important;padding-bottom:2mm!important}
+.inv-logo {width:25mm!important;height:25mm!important;border-width:1mm!important}
+.inv-logo span {font-size:13pt!important}
+.inv-logo b {font-size:22pt!important}
+.inv-shop h1 {font-size:19pt!important;white-space:nowrap!important}
+.inv-shop h3 {font-size:12pt!important}
+.inv-shop>b {font-size:10pt!important}
+.inv-shop p {font-size:9pt!important}
+.inv-shop strong {font-size:11pt!important}
+.inv-meta>b {font-size:13pt!important;padding:2mm!important}
+.inv-meta span {font-size:9pt!important;padding:1.5mm 2mm!important}
+.inv-two {grid-template-columns:1fr 1fr!important;gap:2mm!important;margin:2mm 0!important}
+.inv-panel {padding:1.5mm 2mm!important;margin-bottom:1.5mm!important;break-inside:avoid!important}
+.inv-panel h3 {font-size:11pt!important;margin-bottom:1mm!important}
+.form-grid {gap:1mm!important}
+.form-grid label {grid-template-columns:34mm 1fr!important;font-size:10pt!important;gap:1mm!important}
+.form-grid input,
+.form-grid select {height:7mm!important;padding:1mm 2mm!important;font-size:9pt!important}
+.inv-main {grid-template-columns:minmax(0,1fr) 68mm!important;gap:2mm!important}
+.items-table {font-size:8pt!important;min-width:0!important}
+.items-table th {font-size:7.5pt!important;padding:1.5mm .5mm!important}
+.items-table td {height:7mm!important;padding:1mm .5mm!important}
+.items-table input,
+.items-table select {font-size:7.5pt!important;padding:.5mm!important;border:0!important;background:transparent!important}
+.totals h3 {font-size:11pt!important;padding:2mm!important}
+.totals .total-row {font-size:8pt!important;min-height:8mm!important;padding:1.5mm 2mm!important}
+.totals .total-row b {font-size:9pt!important}
+.total-edit {display:none!important}
+.totals .grand {font-size:12pt!important;padding:3mm 2mm!important}
+.totals .grand b {font-size:12pt!important}
+.inv-bottom {grid-template-columns:40% 60%!important;gap:2mm!important;margin-top:0!important}
+.description-panel,
+.words-panel {min-height:22mm!important;padding:1.5mm 2mm!important}
+.description-panel h3,
+.words-panel h3 {font-size:10pt!important}
+.description-panel textarea {height:13mm!important;border:1px solid #bdc9d8!important}
+.words-sign {grid-template-columns:1fr 75mm!important;gap:2mm!important}
+.amount-words {min-height:13mm!important;font-size:8.5pt!important;padding:1.5mm!important}
+.signatures {gap:2mm!important}
+.signatures span {font-size:8pt!important;padding:1.5mm 1mm 0!important}
+.thankyou {padding:1mm 0 0!important;gap:5mm!important}
+.thankyou i {font-size:22pt!important}
+.thankyou b {font-size:12pt!important}
+.thankyou .flourish {font-size:34pt!important}
+
+}
+.invoice-container {width:100%!important;max-width:none!important;margin:0!important;padding:8px 14px 18px!important;background:#f7f6f4}
+.invoice-container .page-title {display:none!important}
+.invoice-sheet {width:100%;max-width:none;margin:0 auto;padding:14px 18px 8px;border:2px solid #c98a2a;border-radius:4px;box-shadow:0 2px 12px #0000000c;background:#fff;font-family:Georgia,"Times New Roman",serif;color:#10172a}
+.inv-head {grid-template-columns:185px minmax(0,1fr) 365px;gap:12px;min-height:150px;padding:0 0 9px;border-bottom:2px solid #b87924}
+.inv-logo {width:132px;height:132px;border:4px double #d88e19;background:#fff}
+.inv-logo span {font-size:28px}
+.inv-logo b {font-size:46px;color:#d18b13}
+.inv-shop h1 {font:700 clamp(30px,2.65vw,44px)/1.08 Georgia,"Times New Roman",serif;white-space:nowrap;color:#a5092d;margin:0 0 2px}
+.inv-shop h3 {font:700 23px Georgia,"Times New Roman",serif;color:#a5092d;margin:1px 0 3px}
+.inv-shop>b {font:700 19px Georgia,"Times New Roman",serif;color:#10172a}
+.inv-shop p {font:700 18px Georgia,"Times New Roman",serif;color:#10172a;margin:2px 0}
+.inv-shop strong {font:700 20px Georgia,"Times New Roman",serif;color:#a5092d;margin-top:2px}
+.inv-meta {border:1px solid #e58a8a;border-radius:7px}
+.inv-meta>b {font:700 23px Georgia,"Times New Roman",serif;background:#a5092d;padding:5px}
+.inv-meta span {grid-template-columns:42% 58%;padding:7px 10px;font:17px Georgia,"Times New Roman",serif;border-top:1px solid #f0c4c4}
+.inv-meta span strong {font-weight:400}
+.inv-two {grid-template-columns:1fr 1fr;gap:9px;margin:6px 0 10px}
+.inv-panel {border:1px solid #ed8585;border-radius:7px;padding:6px 9px;margin:0 0 8px;background:#fff}
+.inv-panel h3 {font:700 21px Georgia,"Times New Roman",serif;color:#a5092d;margin:0 0 6px}
+.form-grid {gap:4px}
+.form-grid label {display:grid;grid-template-columns:145px 12px minmax(0,1fr);gap:4px;align-items:center;font:18px Georgia,"Times New Roman",serif;color:#10172a}
+.form-grid label i {font-style:normal;text-align:center}
+.form-grid input,
+.form-grid select {height:31px;width:100%;padding:3px 10px;border:1px solid #b6c9df;border-radius:5px;background:#fff;color:#10172a;font:17px Georgia,"Times New Roman",serif}
+.inv-main {grid-template-columns:minmax(0,1fr) 370px;gap:10px;align-items:stretch}
+.ornament-panel {padding:6px 7px;margin-bottom:8px}
+.ornament-panel h3 {font-size:21px;margin-bottom:5px}
+.items-table {width:100%;table-layout:fixed;border-collapse:collapse;font:16px Georgia,"Times New Roman",serif}
+.items-table th {background:#a5092d;color:white;border:1px solid #d9a4a4;padding:8px 3px;font:700 15px Georgia,"Times New Roman",serif;text-align:center;line-height:1.15;overflow-wrap:anywhere}
+.items-table td {height:32px;padding:4px 3px;border:1px solid #d7dce2;text-align:center;font:16px Georgia,"Times New Roman",serif;overflow:hidden}
+.items-table input,
+.items-table select {width:100%;min-width:0;border:1px solid #bdc9d8;border-radius:3px;padding:3px 2px;text-align:center;font:14px Georgia,"Times New Roman",serif;background:#fff;color:#10172a}
+.new-items-table th:nth-child(1) {width:5%}
+.new-items-table th:nth-child(2) {width:17%}
+.new-items-table th:nth-child(3) {width:8%}
+.new-items-table th:nth-child(4) {width:8%}
+.new-items-table th:nth-child(5) {width:10%}
+.new-items-table th:nth-child(6) {width:10%}
+.new-items-table th:nth-child(7) {width:10%}
+.new-items-table th:nth-child(8) {width:9%}
+.new-items-table th:nth-child(9) {width:10%}
+.new-items-table th:nth-child(10) {width:12%}
+.new-items-table th:nth-child(11) {width:1%}
+.old-items-table th:nth-child(1) {width:5%}
+.old-items-table th:nth-child(2) {width:22%}
+.old-items-table th:nth-child(3) {width:11%}
+.old-items-table th:nth-child(4) {width:19%}
+.old-items-table th:nth-child(5) {width:19%}
+.old-items-table th:nth-child(6) {width:22%}
+.old-items-table th:nth-child(7) {width:2%}
+.items-table th:last-child,
+.items-table td:last-child {padding:0;width:1%;font-size:0}
+.items-table td:last-child .icon-btn {opacity:0;width:18px;height:22px;padding:0;border:0;background:transparent;color:#a5092d}
+.items-table tr:hover td:last-child .icon-btn {opacity:1}
+.totals {border:1px solid #ed8585;border-radius:7px;overflow:hidden;background:#fff;align-self:stretch}
+.totals h3 {display:none}
+.totals .total-row {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;align-items:center;min-height:37px;padding:6px 10px;border-bottom:1px solid #f1cccc;font:15px Georgia,"Times New Roman",serif}
+.totals .total-row span {white-space:normal}
+.totals .total-row b {font:700 20px Georgia,"Times New Roman",serif;color:#10172a;text-align:right;white-space:nowrap}
+.totals .total-edit {padding:6px 9px;display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+.totals .total-edit label {display:flex;align-items:center;justify-content:space-between;gap:4px;margin:0;font:12px Arial,sans-serif}
+.totals .total-edit input {width:68px;padding:3px;border:1px solid #d7dce2;border-radius:4px;font-size:12px}
+.totals .grand {display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px;padding:15px 12px;background:#a5092d;color:#fff;white-space:nowrap;font:700 24px Georgia,"Times New Roman",serif}
+.totals .grand b {font:700 24px Georgia,"Times New Roman",serif;color:#fff}
+.inv-bottom {display:grid;grid-template-columns:40% minmax(0,1fr);gap:8px;margin-top:0}
+.description-panel,
+.words-panel {min-height:112px;padding:7px 10px;margin:0}
+.description-panel h3,
+.words-panel h3 {font:700 19px Georgia,"Times New Roman",serif;color:#a5092d}
+.description-panel textarea {display:block;width:100%;height:68px;resize:vertical;padding:6px;border:1px solid #bdc9d8;border-radius:5px;font:15px Georgia,"Times New Roman",serif}
+.words-sign {display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:10px;align-items:center}
+.amount-words {min-height:68px;padding:7px;border:1px solid #bdc9d8;border-radius:5px;font:15px Georgia,"Times New Roman",serif;color:#10172a}
+.signatures {display:flex;justify-content:space-around;align-items:end;gap:10px;padding:8px 0 2px;border:0}
+.signatures span {padding:7px 7px 0;border-top:1px solid #18243b;font:15px Georgia,"Times New Roman",serif;white-space:nowrap}
+.thankyou {display:flex;justify-content:center;align-items:center;gap:20px;padding:4px 0 0;text-align:center;color:#a5092d}
+.thankyou i {display:block;font:italic 44px cursive}
+.thankyou b {display:block;font:700 22px Georgia,"Times New Roman",serif}
+.thankyou .flourish {font:70px Georgia,serif;line-height:.8;color:#d69a36}
+.thankyou .mirror {transform:scaleX(-1)}
+.invoice-actions {padding:12px 0 20px}
+@media (max-width:1050px) {
+.invoice-container {padding:8px!important}
+.inv-head {grid-template-columns:100px minmax(0,1fr) 260px}
+.inv-logo {width:90px;height:90px}
+.inv-logo b {font-size:32px}
+.inv-shop h1 {white-space:normal;font-size:28px}
+.inv-main {grid-template-columns:minmax(0,1fr) 300px}
+.form-grid label {grid-template-columns:110px 12px minmax(0,1fr)}
+.words-sign {grid-template-columns:1fr}
+
+}
+@media (max-width:760px) {
+.inv-head {grid-template-columns:1fr}
+.inv-logo-wrap {display:none}
+.inv-two,
+.inv-main,
+.inv-bottom {grid-template-columns:1fr}
+.inv-main {gap:0}
+.totals {margin-bottom:8px}
+.inv-shop h1 {font-size:25px}
+.form-grid label {grid-template-columns:100px 10px minmax(0,1fr);font-size:14px}
+.items-table {min-width:900px}
+.words-sign {grid-template-columns:1fr}
+.invoice-sheet {padding:8px}
+
+}
+@media print {
+.invoice-actions {display:none!important}
+.invoice-container {width:100%!important;max-width:none!important;margin:0!important;padding:0!important}
+.invoice-sheet {width:287mm!important;max-width:none!important;margin:0!important;padding:2mm!important;border:1px solid #c98a2a!important;box-shadow:none!important;zoom:1!important;box-sizing:border-box!important}
+.inv-head {grid-template-columns:30mm minmax(0,1fr) 68mm!important;gap:2mm!important;min-height:31mm!important;padding-bottom:1.5mm!important}
+.inv-logo {width:27mm!important;height:27mm!important;border-width:1mm!important}
+.inv-logo span {font-size:13pt!important}
+.inv-logo b {font-size:22pt!important}
+.inv-shop h1 {font-size:19pt!important;white-space:nowrap!important}
+.inv-shop h3 {font-size:12pt!important}
+.inv-shop>b {font-size:10pt!important}
+.inv-shop p {font-size:9pt!important}
+.inv-shop strong {font-size:11pt!important}
+.inv-meta>b {font-size:13pt!important;padding:1.5mm!important}
+.inv-meta span {font-size:9pt!important;padding:1.3mm 2mm!important}
+.inv-two {grid-template-columns:1fr 1fr!important;gap:2mm!important;margin:1.5mm 0 2mm!important}
+.inv-panel {padding:1.2mm 1.5mm!important;margin-bottom:1.5mm!important;break-inside:avoid!important}
+.inv-panel h3 {font-size:11pt!important;margin-bottom:1mm!important}
+.form-grid {gap:.7mm!important}
+.form-grid label {grid-template-columns:31mm 3mm minmax(0,1fr)!important;gap:.5mm!important;font-size:10pt!important}
+.form-grid input,
+.form-grid select {height:6.2mm!important;padding:.5mm 1.5mm!important;font-size:9pt!important}
+.inv-main {grid-template-columns:minmax(0,1fr) 68mm!important;gap:2mm!important}
+.items-table {min-width:0!important;font-size:8pt!important}
+.items-table th {font-size:7.2pt!important;padding:1.1mm .4mm!important}
+.items-table td {height:6.4mm!important;padding:.6mm .4mm!important;font-size:8pt!important}
+.items-table input,
+.items-table select {font-size:7pt!important;padding:.3mm!important;border:0!important;background:transparent!important}
+.items-table th:last-child,
+.items-table td:last-child {display:none!important}
+.totals .total-row {font-size:7.7pt!important;min-height:7.2mm!important;padding:1mm 1.5mm!important}
+.totals .total-row b {font-size:9pt!important}
+.total-edit {display:none!important}
+.totals .grand {font-size:12pt!important;padding:2.7mm 2mm!important}
+.totals .grand b {font-size:12pt!important}
+.inv-bottom {grid-template-columns:40% minmax(0,1fr)!important;gap:2mm!important}
+.description-panel,
+.words-panel {min-height:22mm!important;padding:1.2mm 1.5mm!important}
+.description-panel h3,
+.words-panel h3 {font-size:10pt!important}
+.description-panel textarea {height:13mm!important}
+.words-sign {grid-template-columns:minmax(0,1fr) 75mm!important;gap:2mm!important}
+.amount-words {min-height:13mm!important;font-size:8pt!important;padding:1mm!important}
+.signatures {gap:2mm!important}
+.signatures span {font-size:8pt!important;padding:1.5mm 1mm 0!important}
+.thankyou {padding:1mm 0 0!important;gap:5mm!important}
+.thankyou i {font-size:22pt!important}
+.thankyou b {font-size:12pt!important}
+.thankyou .flourish {font-size:34pt!important}
+
+}
+.invoice-logo-image {display:block;width:145px;height:145px;object-fit:contain;max-width:100%}
+.totals .total-row b input {width:112px;max-width:100%;padding:0;border:0;border-radius:0;background:transparent;text-align:right;color:#10172a;font:700 19px Georgia,"Times New Roman",serif;outline-offset:2px}
+.totals .total-row b input:focus {outline:1px solid #d99a2d;background:#fffaf0}
+.total-edit {display:none!important}
+.thankyou .flourish-img {width:190px;height:75px;object-fit:contain}
+@media (max-width:1050px) {
+.invoice-logo-image {width:100px;height:100px}
+.thankyou .flourish-img {width:130px;height:60px}
+
+}
+@media (max-width:760px) {
+.invoice-logo-image {display:none}
+
+}
+@media print {
+.invoice-logo-image {width:29mm!important;height:29mm!important;object-fit:contain!important}
+.totals .total-row b input {width:24mm!important;font-size:9pt!important;color:#10172a!important}
+.thankyou .flourish-img {width:48mm!important;height:18mm!important;object-fit:contain!important}
+
+}
+.container:not(.invoice-container) {max-width:1600px;padding:22px 2.2% 16px}
+@media (max-width:520px) {
+.container:not(.invoice-container) {padding:14px 10px}
+
+}
+@media print {
+.invoice-actions {display: none !important;}
+.invoice-container,
+main.invoice-container,
+.container.invoice-container {display: block !important;
+    width: 291mm !important;
+    min-width: 291mm !important;
+    max-width: 291mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;}
+#invoice-print,
+.invoice-sheet {display: block !important;
+    position: relative !important;
+    width: 291mm !important;
+    min-width: 291mm !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    border: 0.35mm solid #c98a2a !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
+    zoom: 1 !important;
+    transform: none !important;
+    overflow: visible !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;}
+#invoice-print .inv-head {display: grid !important;
+    grid-template-columns: 29mm minmax(0, 1fr) 68mm !important;
+    grid-template-areas: "logo shop meta" !important;
+    align-items: center !important;
+    gap: 2mm !important;
+    width: 100% !important;
+    min-height: 31mm !important;
+    padding: 0 0 1.5mm !important;
+    margin: 0 !important;
+    border-bottom: 0.5mm solid #b87924 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;}
+#invoice-print .inv-logo-wrap {display: flex !important;
+    grid-area: logo !important;
+    width: 29mm !important;
+    height: 29mm !important;
+    align-items: center !important;
+    justify-content: center !important;
+    visibility: visible !important;}
+#invoice-print .invoice-logo-image {display: block !important;
+    visibility: visible !important;
+    width: 28mm !important;
+    height: 28mm !important;
+    max-width: 28mm !important;
+    object-fit: contain !important;}
+#invoice-print .inv-shop {display: block !important;
+    grid-area: shop !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    text-align: center !important;}
+#invoice-print .inv-shop h1 {display: block !important;
+    margin: 0 0 0.5mm !important;
+    color: #a5092d !important;
+    font: 700 18pt/1.05 Georgia, "Times New Roman", serif !important;
+    white-space: nowrap !important;}
+#invoice-print .inv-shop h3 {margin: 0.3mm 0 !important;
+    font: 700 11pt/1.05 Georgia, "Times New Roman", serif !important;
+    color: #a5092d !important;}
+#invoice-print .inv-shop b {font: 700 9pt/1.05 Georgia, "Times New Roman", serif !important;}
+#invoice-print .inv-shop p {margin: 0.3mm 0 !important;
+    font: 9pt/1.05 Georgia, "Times New Roman", serif !important;}
+#invoice-print .inv-shop strong {display: block !important;
+    margin-top: 0.3mm !important;
+    font: 700 10pt/1.05 Georgia, "Times New Roman", serif !important;
+    color: #a5092d !important;}
+#invoice-print .inv-meta {display: block !important;
+    grid-area: meta !important;
+    width: 68mm !important;
+    max-width: 68mm !important;
+    min-width: 68mm !important;
+    align-self: center !important;
+    overflow: hidden !important;
+    border: 0.3mm solid #e58a8a !important;
+    border-radius: 1.5mm !important;}
+#invoice-print .inv-meta > b {display: block !important;
+    padding: 1.2mm !important;
+    background: #a5092d !important;
+    color: #fff !important;
+    font: 700 12pt Georgia, "Times New Roman", serif !important;
+    text-align: center !important;}
+#invoice-print .inv-meta span {display: grid !important;
+    grid-template-columns: 40% 60% !important;
+    gap: 1mm !important;
+    padding: 1.1mm 1.8mm !important;
+    border-top: 0.2mm solid #f0c4c4 !important;
+    font: 8.5pt Georgia, "Times New Roman", serif !important;
+    white-space: nowrap !important;}
+#invoice-print .inv-meta span strong {font-weight: 400 !important;}
+#invoice-print .inv-two {display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 2mm !important;
+    margin: 1.5mm 0 2mm !important;}
+#invoice-print .inv-panel {min-width: 0 !important;
+    padding: 1.2mm 1.5mm !important;
+    margin: 0 0 1.4mm !important;
+    border: 0.3mm solid #ed8585 !important;
+    border-radius: 1.5mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;}
+#invoice-print .inv-panel h3 {display: flex !important;
+    align-items: center !important;
+    gap: 1mm !important;
+    margin: 0 0 1mm !important;
+    font: 700 10.5pt/1.05 Georgia, "Times New Roman", serif !important;
+    color: #a5092d !important;}
+#invoice-print .form-grid {display: grid !important;
+    gap: 0.7mm !important;}
+#invoice-print .form-grid label {display: grid !important;
+    grid-template-columns: 31mm 3mm minmax(0, 1fr) !important;
+    gap: 0.5mm !important;
+    align-items: center !important;
+    font: 9.5pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .form-grid input,
+#invoice-print .form-grid select {display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 6mm !important;
+    padding: 0.5mm 1.5mm !important;
+    border: 0.25mm solid #b6c9df !important;
+    border-radius: 1mm !important;
+    background: #fff !important;
+    color: #10172a !important;
+    font: 9pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .inv-main {display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 68mm !important;
+    gap: 2mm !important;
+    align-items: stretch !important;
+    width: 100% !important;}
+#invoice-print .inv-left {display: block !important;
+    min-width: 0 !important;}
+#invoice-print .ornament-panel {display: block !important;
+    min-width: 0 !important;
+    padding: 1.2mm 1.5mm !important;
+    margin-bottom: 1.5mm !important;}
+#invoice-print .table-wrap {display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;}
+#invoice-print .items-table {display: table !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    font: 7.5pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .items-table thead {display: table-header-group !important;}
+#invoice-print .items-table tbody {display: table-row-group !important;}
+#invoice-print .items-table tr {display: table-row !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;}
+#invoice-print .items-table th {padding: 1.2mm 0.5mm !important;
+    background: #a5092d !important;
+    color: #fff !important;
+    border: 0.2mm solid #d9a4a4 !important;
+    font: 700 7pt/1.1 Georgia, "Times New Roman", serif !important;
+    text-align: center !important;
+    overflow-wrap: anywhere !important;}
+#invoice-print .items-table td {height: 6.2mm !important;
+    padding: 0.5mm !important;
+    border: 0.2mm solid #d7dce2 !important;
+    font: 7.5pt Georgia, "Times New Roman", serif !important;
+    text-align: center !important;
+    overflow: hidden !important;}
+#invoice-print .items-table input,
+#invoice-print .items-table select {width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: 0.2mm !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: #10172a !important;
+    font: 7pt Georgia, "Times New Roman", serif !important;
+    text-align: center !important;}
+#invoice-print .items-table th:last-child,
+#invoice-print .items-table td:last-child {display: none !important;}
+#invoice-print .row-end {display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 1.5mm !important;
+    margin-top: 0.8mm !important;
+    font: 8.5pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .row-end > b strong {padding: 0.7mm 1.5mm !important;
+    border: 0.2mm solid #ed8585 !important;
+    font: 700 9pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .totals {display: block !important;
+    width: 68mm !important;
+    min-width: 68mm !important;
+    max-width: 68mm !important;
+    align-self: stretch !important;
+    overflow: hidden !important;
+    border: 0.3mm solid #ed8585 !important;
+    border-radius: 1.5mm !important;}
+#invoice-print .totals h3 {display: none !important;}
+#invoice-print .totals .total-row {display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 1mm !important;
+    align-items: center !important;
+    min-height: 7.1mm !important;
+    padding: 1mm 1.5mm !important;
+    border-bottom: 0.2mm solid #f1cccc !important;
+    font: 7.4pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .totals .total-row b {font: 700 9pt Georgia, "Times New Roman", serif !important;
+    white-space: nowrap !important;
+    text-align: right !important;}
+#invoice-print .totals .total-row b input {width: 22mm !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    font: 700 8.5pt Georgia, "Times New Roman", serif !important;
+    text-align: right !important;}
+#invoice-print .totals .grand {display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    gap: 1mm !important;
+    align-items: center !important;
+    padding: 2.6mm 2mm !important;
+    background: #a5092d !important;
+    color: #fff !important;
+    font: 700 12pt Georgia, "Times New Roman", serif !important;
+    white-space: nowrap !important;}
+#invoice-print .totals .grand b {color: #fff !important;
+    font: 700 12pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .inv-bottom {display: grid !important;
+    grid-template-columns: 40% minmax(0, 1fr) !important;
+    gap: 2mm !important;
+    margin-top: 0 !important;}
+#invoice-print .description-panel,
+#invoice-print .words-panel {min-height: 21mm !important;
+    padding: 1.2mm 1.5mm !important;}
+#invoice-print .description-panel textarea {display: block !important;
+    width: 100% !important;
+    height: 13mm !important;
+    min-height: 13mm !important;
+    padding: 1mm !important;
+    border: 0.25mm solid #b6c9df !important;
+    font: 8pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .words-sign {display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 75mm !important;
+    gap: 2mm !important;
+    align-items: center !important;}
+#invoice-print .amount-words {min-height: 13mm !important;
+    padding: 1mm !important;
+    border: 0.25mm solid #b6c9df !important;
+    font: 8pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .signatures {display: flex !important;
+    justify-content: space-around !important;
+    align-items: flex-end !important;
+    gap: 2mm !important;
+    padding: 1.5mm 0 0 !important;}
+#invoice-print .signatures span {padding: 1.5mm 1mm 0 !important;
+    border-top: 0.25mm solid #18243b !important;
+    font: 8pt Georgia, "Times New Roman", serif !important;
+    white-space: nowrap !important;}
+#invoice-print .thankyou {display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 5mm !important;
+    padding: 0.7mm 0 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;}
+#invoice-print .thankyou i {font: italic 22pt cursive !important;}
+#invoice-print .thankyou b {font: 700 12pt Georgia, "Times New Roman", serif !important;}
+#invoice-print .thankyou .flourish-img {display: block !important;
+    width: 48mm !important;
+    height: 17mm !important;
+    object-fit: contain !important;}
+#invoice-print,
+#invoice-print > *,
+#invoice-print .inv-main,
+#invoice-print .inv-left,
+#invoice-print .inv-two,
+#invoice-print .inv-bottom {break-inside: avoid !important;
+    page-break-inside: avoid !important;}
+
+}
+.new-items-table th:nth-child(1),
+.new-items-table td:nth-child(1) {width:5%}
+.new-items-table th:nth-child(2),
+.new-items-table td:nth-child(2) {width:20%}
+.new-items-table th:nth-child(3),
+.new-items-table td:nth-child(3) {width:9%}
+.new-items-table th:nth-child(4),
+.new-items-table td:nth-child(4) {width:11%}
+.new-items-table th:nth-child(5),
+.new-items-table td:nth-child(5) {width:11%}
+.new-items-table th:nth-child(6),
+.new-items-table td:nth-child(6) {width:11%}
+.new-items-table th:nth-child(7),
+.new-items-table td:nth-child(7) {width:9%}
+.new-items-table th:nth-child(8),
+.new-items-table td:nth-child(8) {width:11%}
+.new-items-table th:nth-child(9),
+.new-items-table td:nth-child(9) {width:12%}
+.new-items-table th:nth-child(10),
+.new-items-table td:nth-child(10) {width:1%}
+.invoice-sheet input[type="number"] {overscroll-behavior:contain}
+.invoice-sheet input[type="number"]::-webkit-inner-spin-button,
+.invoice-sheet input[type="number"]::-webkit-outer-spin-button {-webkit-appearance:none;margin:0}
+.invoice-sheet input[type="number"] {appearance:textfield;-moz-appearance:textfield}
+@media print {
+.new-items-table th:nth-child(1) {width:5%!important}
+.new-items-table th:nth-child(2) {width:20%!important}
+.new-items-table th:nth-child(3) {width:9%!important}
+.new-items-table th:nth-child(4) {width:11%!important}
+.new-items-table th:nth-child(5) {width:11%!important}
+.new-items-table th:nth-child(6) {width:11%!important}
+.new-items-table th:nth-child(7) {width:9%!important}
+.new-items-table th:nth-child(8) {width:11%!important}
+.new-items-table th:nth-child(9) {width:12%!important}
+.new-items-table th:nth-child(10) {display:none!important}
+
+}
+.invoice-sheet .new-items-table th,
+.invoice-sheet .old-items-table th {background:linear-gradient(180deg,#990b2d 0%,#78091f 100%)!important;
+  color:#fff!important;
+  border-color:#d6a34b!important;
+  font-weight:700!important;}
+.invoice-sheet .new-items-table td,
+.invoice-sheet .old-items-table td {border-color:#cfd7e1!important;}
+.invoice-sheet .new-items-table input,
+.invoice-sheet .old-items-table input {text-align:center;
+  min-width:0;}
+.new-items-table th:nth-child(1) {width:5%!important}
+.new-items-table th:nth-child(2) {width:21%!important}
+.new-items-table th:nth-child(3) {width:10%!important}
+.new-items-table th:nth-child(4) {width:12%!important}
+.new-items-table th:nth-child(5) {width:12%!important}
+.new-items-table th:nth-child(6) {width:10%!important}
+.new-items-table th:nth-child(7) {width:9%!important}
+.new-items-table th:nth-child(8) {width:10%!important}
+.new-items-table th:nth-child(9) {width:10%!important}
+.new-items-table th:nth-child(10) {width:1%!important}
+.new-items-table th:last-child,
+.new-items-table td:last-child {font-size:0}
+.old-items-table th:nth-child(1) {width:6%!important}
+.old-items-table th:nth-child(2) {width:27%!important}
+.old-items-table th:nth-child(3) {width:15%!important}
+.old-items-table th:nth-child(4) {width:18%!important}
+.old-items-table th:nth-child(5) {width:17%!important}
+.old-items-table th:nth-child(6) {width:16%!important}
+.old-items-table th:nth-child(7) {width:1%!important}
+.second-reference-totals .total-row {min-height:40px;
+  grid-template-columns:minmax(0,1fr) auto;
+  background:#fffdf8;
+  border-bottom:1px solid #dfc08a!important;
+  color:#321a1d;
+  font:700 14px Arial,sans-serif!important;
+  letter-spacing:.2px;
+  padding:9px 11px!important;}
+.second-reference-totals .total-row span {font-weight:800;
+  text-transform:uppercase;}
+.second-reference-totals .total-row b {font:700 15px Arial,sans-serif!important;
+  color:#261b1b!important;
+  white-space:nowrap;}
+.second-reference-totals .total-row b input {width:96px!important;
+  border:1px solid #d5b16e!important;
+  border-radius:3px!important;
+  padding:4px 6px!important;
+  background:#fff!important;
+  font:700 14px Arial,sans-serif!important;}
+.second-reference-totals .total-row small {display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:10px;
+  margin-left:7px;
+  color:#775b3c;
+  text-transform:none;}
+.second-reference-totals .gst-percent-input {width:38px!important;
+  padding:2px 3px!important;
+  font-size:11px!important;}
+.second-reference-totals .grand {background:linear-gradient(90deg,#fff1c5,#ffedb6)!important;
+  border-top:1px solid #d6a34b!important;
+  color:#75091f!important;
+  padding:13px 11px!important;
+  font:800 17px Arial,sans-serif!important;
+  text-transform:uppercase;}
+.second-reference-totals .grand b {color:#241a1a!important;
+  font:800 17px Arial,sans-serif!important;}
+@media print {
+.new-items-table th:nth-child(1) {width:5%!important}
+.new-items-table th:nth-child(2) {width:22%!important}
+.new-items-table th:nth-child(3) {width:11%!important}
+.new-items-table th:nth-child(4) {width:12%!important}
+.new-items-table th:nth-child(5) {width:11%!important}
+.new-items-table th:nth-child(6) {width:10%!important}
+.new-items-table th:nth-child(7) {width:9%!important}
+.new-items-table th:nth-child(8) {width:10%!important}
+.new-items-table th:nth-child(9) {width:10%!important}
+.new-items-table th:nth-child(10),
+.new-items-table td:nth-child(10) {display:none!important}
+.second-reference-totals .total-row {min-height:7.1mm!important;padding:1mm 1.5mm!important;font-size:7.5pt!important}
+.second-reference-totals .total-row b {font-size:9pt!important}
+.second-reference-totals .total-row b input {font-size:8.5pt!important;width:18mm!important}
+.second-reference-totals .total-row small {font-size:6.5pt!important}
+.second-reference-totals .gst-percent-input {width:8mm!important}
+.second-reference-totals .grand {padding:2.6mm 2mm!important;font-size:10pt!important}
+.second-reference-totals .grand b {font-size:10pt!important}
+
+}
+.items-table th:last-child,
+.items-table td.delete-column {width: 55px !important;
+  min-width: 25px !important;
+  max-width: 25px !important;
+  padding: 4px !important;
+  text-align: center;}
+.second-reference-totals .total-row input[aria-label="Discount"] {border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  width: 100%;
+  padding: 5px 8px;
+  text-align: right;
+  font: inherit;
+  color: inherit;}
+.second-reference-totals .total-row input[aria-label="Discount"] {border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  width: 100%;
+  padding: 5px 8px;
+  text-align: right;
+  font: inherit;
+  color: inherit;}
+.second-reference-totals .total-row input[aria-label="Discount"]::placeholder {color: #000;
+  opacity: 1;}
+.second-reference-totals .total-row input[aria-label="Discount"] {border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  width: 100%;
+  padding: 5px 8px;
+  text-align: right;
+  font: inherit;
+  color: #222;}
+.second-reference-totals .total-row input[aria-label="Discount"]::placeholder {color: #888;
+  opacity: 1;
+  font-weight: normal;}
+body.invoice-page footer,
+body.invoice-page .footer {display: none !important;}
+.container:not(.invoice-container) {position: relative;
+  margin-top: 0 !important;
+  padding-top: 30px !important;
+  padding-bottom: 30px !important;}
+@media (max-width: 600px) {
+.container:not(.invoice-container) {padding: 20px 12px !important;}
+
+}
+@media print {
+.invoice-container {margin: 0 !important;
+    padding: 0 !important;}
+
+}
+.nkj-saved-toolbar-row {display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 14px;}
+.nkj-saved-toolbar-row .toolbar {flex: 1; max-width: 650px; margin: 0;}
+.nkj-saved-panel {border-radius: 13px;}
+.nkj-saved-table {min-width: 850px;}
+.nkj-invoice-detail-overlay {position: fixed; inset: 0; z-index: 5000; display: grid; place-items: center; padding: 22px; overflow-y: auto; background: rgba(22,0,8,.72);}
+.nkj-invoice-detail-sheet {width: min(1100px,100%); max-height: calc(100vh - 44px); overflow-y: auto; padding: 24px; border: 1px solid #d9a34d; border-radius: 13px; background: #fff; color: #191919; box-shadow: 0 20px 65px #0005;}
+.nkj-invoice-detail-actions {display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 18px;}
+.nkj-invoice-detail-brand {display: grid; grid-template-columns: 75px minmax(0,1fr) 170px; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 2px solid #bc862c;}
+.nkj-invoice-detail-brand img {width: 72px; height: 72px; object-fit: contain;}
+.nkj-invoice-detail-brand h2 {margin: 0 0 5px; color: #a5092d; font: 700 23px Georgia,"Times New Roman",serif;}
+.nkj-invoice-detail-brand p {margin: 0 0 4px; font-size: 13px;}
+.nkj-invoice-detail-brand b {color: #a5092d; font-size: 13px;}
+.nkj-invoice-detail-number {display: flex; flex-direction: column; gap: 5px; padding: 10px; border: 1px solid #e5a2a2; border-radius: 8px; text-align: center;}
+.nkj-invoice-detail-number b {padding: 6px; background: #a5092d; color: #fff;}
+.nkj-invoice-detail-grid {display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; padding: 14px 0;}
+.nkj-invoice-detail-grid > div {min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 9px 11px; border: 1px solid #eadada; border-radius: 7px;}
+.nkj-invoice-detail-grid span {color: #7b5960; font-size: 11px; text-transform: uppercase; letter-spacing: .5px;}
+.nkj-invoice-detail-grid b {overflow-wrap: anywhere; font-size: 13px;}
+.nkj-invoice-detail-section {margin-top: 12px;}
+.nkj-invoice-detail-section h3 {margin: 0 0 8px; color: #990b2d; font: 700 17px Georgia,"Times New Roman",serif;}
+.nkj-invoice-detail-section table {min-width: 650px; font-size: 12px;}
+.nkj-invoice-detail-section td,
+.nkj-invoice-detail-section th {padding: 8px 6px; border: 1px solid #e4caca; text-align: center;}
+.nkj-invoice-detail-totals {display: grid; gap: 0; width: min(450px,100%); margin: 16px 0 0 auto; border: 1px solid #e5abab; border-radius: 8px; overflow: hidden;}
+.nkj-invoice-detail-totals > div {display: flex; justify-content: space-between; gap: 15px; padding: 8px 12px; border-bottom: 1px solid #f1dada; font-size: 13px;}
+.nkj-invoice-detail-totals .grand-total {border: 0; background: #a5092d; color: #fff; font-size: 17px; font-weight: 800;}
+@media print {
+.nkj-invoice-detail-overlay {position: static; display: block; padding: 0; overflow: visible; background: #fff;}
+.nkj-invoice-detail-sheet {width: 100%; max-height: none; overflow: visible; padding: 8mm; border: 0; box-shadow: none;}
+.nkj-invoice-detail-actions {display: none !important;}
+
+}
+@media (max-width: 760px) {
+.nkj-saved-toolbar-row {align-items: stretch; flex-direction: column;}
+.nkj-saved-toolbar-row .toolbar {max-width: none;}
+.nkj-invoice-detail-overlay {padding: 8px;}
+.nkj-invoice-detail-sheet {max-height: calc(100vh - 16px); padding: 14px;}
+.nkj-invoice-detail-brand {grid-template-columns: 55px minmax(0,1fr);}
+.nkj-invoice-detail-brand img {width: 54px; height: 54px;}
+.nkj-invoice-detail-brand h2 {font-size: 16px;}
+.nkj-invoice-detail-number {grid-column: 1 / -1;}
+.nkj-invoice-detail-grid {grid-template-columns: repeat(2,minmax(0,1fr));}
+.nkj-invoice-detail-actions {justify-content: flex-start; flex-wrap: wrap;}
+
+}
+@media (max-width: 460px) {
+.nkj-invoice-detail-grid {grid-template-columns: 1fr;}
+
+}
+@media print {
+body:has(.nkj-invoice-detail-overlay) * {visibility: hidden !important;}
+body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-overlay,
+body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-overlay * {visibility: visible !important;}
+body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-overlay {position: absolute !important; inset: 0 !important; display: block !important;
+    padding: 0 !important; overflow: visible !important; background: #fff !important;}
+body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-sheet {width: 100% !important; max-height: none !important; overflow: visible !important;
+    border: 0 !important; border-radius: 0 !important; box-shadow: none !important;}
+
+}
+.nkj-invoice-detail-breakdown {width: min(450px, 100%);
+  margin: 16px 0 0 auto;
+  border: 1px solid #e5abab;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fffaf3;}
+.nkj-invoice-detail-breakdown h3 {margin: 0;
+  padding: 9px 12px;
+  background: #fff0d4;
+  color: #8a4e00;
+  font: 700 14px Georgia,"Times New Roman",serif;}
+.nkj-invoice-detail-breakdown > div {display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 7px 12px;
+  border-top: 1px solid #f0dfc8;
+  font-size: 12px;}
+.nkj-whatsapp-action {border-color: #b8ddc1;
+  color: #176b36;
+  background: #f1fff4;}
+.nkj-whatsapp-action:hover {background: #e5f8e9;}
+.nkj-invoice-detail-brand p + p {margin-top: 3px;}
+@media (max-width: 600px) {
+.nkj-invoice-detail-breakdown {margin-left: 0;}
+
+}
+.nkj-invoice-detail-words {display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(240px, .9fr);
+  align-items: end;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid #e5c7a2;}
+.nkj-invoice-detail-words > div:first-child {padding: 10px 12px;
+  border: 1px solid #e5c7a2;
+  border-radius: 7px;}
+.nkj-invoice-detail-words > div:first-child b {color: #980b2e;
+  font: 700 14px Georgia,"Times New Roman",serif;}
+.nkj-invoice-detail-words > div:first-child p {margin: 7px 0 0;
+  font: 13px Georgia,"Times New Roman",serif;
+  line-height: 1.5;}
+.nkj-invoice-detail-signatures {display: flex;
+  justify-content: space-around;
+  gap: 14px;
+  padding: 10px 0 2px;}
+.nkj-invoice-detail-signatures span {padding: 9px 7px 0;
+  border-top: 1px solid #2b2930;
+  font: 12px Georgia,"Times New Roman",serif;
+  white-space: nowrap;}
+.nkj-invoice-detail-thankyou {display: none;}
+@media print {
+.nkj-invoice-detail-words {break-inside: avoid;}
+.nkj-invoice-detail-thankyou {display: flex;
+    grid-column: 1 / -1;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    padding-top: 5px;
+    color: #a5092d;
+    text-align: center;}
+.nkj-invoice-detail-thankyou i {font: italic 24pt cursive;}
+.nkj-invoice-detail-thankyou b {font: 700 12pt Georgia,"Times New Roman",serif;}
+
+}
+@media (max-width: 600px) {
+.nkj-invoice-detail-words {grid-template-columns: 1fr;}
+.nkj-invoice-detail-signatures {flex-wrap: wrap;}
+
+}
+.nkj-full-invoice-modal {width: min(1280px, 100%);
+  max-width: 1280px;}
+.nkj-full-invoice-modal .nkj-saved-invoice-sheet {width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;}
+.saved-invoice-empty-action {min-width: 0;}
+@media print {
+body:has(.nkj-full-invoice-modal) .nkj-invoice-detail-overlay {position: absolute !important;
+    inset: 0 !important;
+    display: block !important;
+    width: 291mm !important;
+    min-width: 291mm !important;
+    max-width: 291mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;}
+body:has(.nkj-full-invoice-modal) .nkj-full-invoice-modal {width: 291mm !important;
+    min-width: 291mm !important;
+    max-width: 291mm !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;}
+body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !important;
+    min-width: 291mm !important;
+    max-width: 291mm !important;
+    margin: 0 !important;}
+
+}
+.nkj-owner-layout .invoice-container.nkj-owner-invoice-container {width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
+  max-width: none !important;
+  margin: 0 0 0 var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
+  padding: 8px 14px 18px !important;}
+@media print {
+.nkj-owner-layout .invoice-container.nkj-owner-invoice-container {width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;}
+
+}
+
+
+/* =========================================================
+   FINAL NEW ORNAMENTS INPUT FIXES
+   - wider Purity column
+   - inputs fill their cells while typing
+   - keep the remove-action column visible
+   ========================================================= */
+.invoice-sheet .table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.invoice-sheet .new-items-table {
+  width: 100%;
+  min-width: 900px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+/* There are 10 columns in the editable New Ornaments table. */
+.invoice-sheet .new-items-table th:nth-child(1),
+.invoice-sheet .new-items-table td:nth-child(1) { width: 5% !important; }
+.invoice-sheet .new-items-table th:nth-child(2),
+.invoice-sheet .new-items-table td:nth-child(2) { width: 19% !important; }
+.invoice-sheet .new-items-table th:nth-child(3),
+.invoice-sheet .new-items-table td:nth-child(3) { width: 12% !important; }
+.invoice-sheet .new-items-table th:nth-child(4),
+.invoice-sheet .new-items-table td:nth-child(4) { width: 10% !important; }
+.invoice-sheet .new-items-table th:nth-child(5),
+.invoice-sheet .new-items-table td:nth-child(5) { width: 11% !important; }
+.invoice-sheet .new-items-table th:nth-child(6),
+.invoice-sheet .new-items-table td:nth-child(6) { width: 10% !important; }
+.invoice-sheet .new-items-table th:nth-child(7),
+.invoice-sheet .new-items-table td:nth-child(7) { width: 9% !important; }
+.invoice-sheet .new-items-table th:nth-child(8),
+.invoice-sheet .new-items-table td:nth-child(8) { width: 9% !important; }
+.invoice-sheet .new-items-table th:nth-child(9),
+.invoice-sheet .new-items-table td:nth-child(9) { width: 11% !important; }
+.invoice-sheet .new-items-table th:nth-child(10),
+.invoice-sheet .new-items-table td:nth-child(10) { width: 4% !important; }
+
+.invoice-sheet .new-items-table th:last-child,
+.invoice-sheet .new-items-table td:last-child {
+  display: table-cell !important;
+  padding: 3px !important;
+  font-size: 12px !important;
+}
+
+.invoice-sheet .new-items-table td input {
+  display: block;
+  box-sizing: border-box;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  height: 29px;
+  padding: 4px 5px;
+}
+
+.invoice-sheet .new-items-table td:nth-child(2) input,
+.invoice-sheet .new-items-table td:nth-child(3) input {
+  text-align: left;
+  padding-left: 7px;
+}
+
+.invoice-sheet .new-items-table td:nth-child(n+4):nth-child(-n+8) input {
+  text-align: center;
+}
+
+.invoice-sheet .new-items-table td input:focus {
+  outline: 2px solid rgba(165, 9, 45, 0.16);
+  border-color: #a5092d;
+}
+
+.invoice-sheet .new-items-table td:last-child .icon-btn {
+  display: inline-grid;
+  place-items: center;
+  opacity: 1;
+  width: 22px;
+  height: 24px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.invoice-sheet .row-end .small-action {
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+@media print {
+  .invoice-sheet .table-wrap { overflow: visible !important; }
+  .invoice-sheet .new-items-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+  .invoice-sheet .new-items-table td input {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 8px !important;
+  }
+}
+
+
+/* =========================================================
+   FINAL PRINT SETUP — STRAIGHT A4 LANDSCAPE
+   - Prints only the invoice sheet
+   - Keeps the invoice and its text horizontal
+   - Does not rotate or transform the invoice
+   ========================================================= */
+@page {
+  size: A4 landscape;
+  margin: 3mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: 204mm !important;
+    min-height: 204mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Remove transformed ancestors that can affect print positioning. */
+  body:has(#invoice-print) #root,
+  body:has(#invoice-print) main,
+  body:has(#invoice-print) .invoice-container,
+  body:has(#invoice-print) .nkj-owner-layout,
+  body:has(#invoice-print) .nkj-invoice-detail-overlay,
+  body:has(#invoice-print) .nkj-invoice-detail-sheet,
+  body:has(#invoice-print) .nkj-full-invoice-modal {
+    transform: none !important;
+    filter: none !important;
+    perspective: none !important;
+    contain: none !important;
+  }
+
+  /* Hide the ERP shell, navigation, buttons, and everything outside the invoice. */
+  body:has(#invoice-print) * {
+    visibility: hidden !important;
+  }
+
+  /* Reveal only the invoice and its contents. */
+  body:has(#invoice-print) #invoice-print,
+  body:has(#invoice-print) #invoice-print * {
+    visibility: visible !important;
+  }
+
+  /* Place the invoice straight on the A4 landscape page. */
+  body:has(#invoice-print) #invoice-print {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    display: block !important;
+
+    width: 291mm !important;
+    min-width: 291mm !important;
+    max-width: 291mm !important;
+    height: 204mm !important;
+    min-height: 0 !important;
+    max-height: none !important;
+
+    margin: 0 !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+    transform-origin: top left !important;
+    rotate: none !important;
+    writing-mode: horizontal-tb !important;
+    direction: ltr !important;
+    zoom: 1 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Keep all invoice text horizontal. */
+  #invoice-print,
+  #invoice-print * {
+    writing-mode: horizontal-tb !important;
+    direction: ltr !important;
+  }
+
+  /* Never print interactive controls or action buttons. */
+  #invoice-print .no-print,
+  #invoice-print .invoice-actions,
+  #invoice-print .nkj-invoice-detail-actions,
+  #invoice-print button,
+  #invoice-print .icon-btn {
+    display: none !important;
+  }
+
+  /* Keep item tables within the landscape invoice width. */
+  #invoice-print .table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  #invoice-print table,
+  #invoice-print .items-table,
+  #invoice-print .new-items-table,
+  #invoice-print .old-items-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  #invoice-print img {
+    max-width: 100% !important;
+  }
+}
+/* =========================================
+   FINAL FIX: STRAIGHT A4 LANDSCAPE INVOICE
+   NO ROTATION
+   ========================================= */
+
+@page {
+    size: A4 landscape;
+    margin: 3mm;
+}
+
+@media print {
+
+    html,
+    body,
+    #root {
+        width: 291mm !important;
+        min-width: 0 !important;
+        max-width: 291mm !important;
+
+        height: auto !important;
+        min-height: 0 !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        overflow: visible !important;
+        background: #fff !important;
+    }
+
+    /* Reset all invoice parent containers */
+    body:has(#invoice-print) #root,
+    body:has(#invoice-print) main,
+    body:has(#invoice-print) .invoice-container,
+    body:has(#invoice-print) .nkj-owner-layout,
+    body:has(#invoice-print) .nkj-invoice-detail-overlay,
+    body:has(#invoice-print) .nkj-invoice-detail-sheet,
+    body:has(#invoice-print) .nkj-full-invoice-modal {
+
+        display: block !important;
+
+        width: 291mm !important;
+        min-width: 0 !important;
+        max-width: 291mm !important;
+
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+
+        position: static !important;
+        inset: auto !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        transform: none !important;
+        transform-origin: center center !important;
+
+        rotate: none !important;
+        translate: none !important;
+
+        filter: none !important;
+        perspective: none !important;
+        contain: none !important;
+
+        overflow: visible !important;
+        box-shadow: none !important;
+        background: #fff !important;
+    }
+
+    /* Hide everything except the invoice */
+    body:has(#invoice-print) * {
+        visibility: hidden !important;
+    }
+
+    body:has(#invoice-print) #invoice-print,
+    body:has(#invoice-print) #invoice-print * {
+        visibility: visible !important;
+    }
+
+    /* THE MAIN FIX: KEEP INVOICE STRAIGHT */
+    body:has(#invoice-print) #invoice-print {
+
+        display: block !important;
+        position: static !important;
+
+        width: 291mm !important;
+        min-width: 291mm !important;
+        max-width: 291mm !important;
+
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+
+        margin: 0 !important;
+        padding: 2mm !important;
+
+        box-sizing: border-box !important;
+
+        transform: none !important;
+        transform-origin: center center !important;
+
+        rotate: none !important;
+        translate: none !important;
+
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+
+        zoom: 1 !important;
+
+        overflow: visible !important;
+
+        border: 0.35mm solid #c98a2a !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Keep the invoice design unchanged */
+    #invoice-print,
+    #invoice-print * {
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+    }
+
+    /* Hide action buttons */
+    #invoice-print button,
+    #invoice-print .icon-btn,
+    #invoice-print .invoice-actions,
+    #invoice-print .no-print,
+    #invoice-print .nkj-invoice-detail-actions {
+        display: none !important;
+    }
+
+    /* Tables fit landscape width */
+    #invoice-print .table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+    }
+
+    #invoice-print table,
+    #invoice-print .items-table,
+    #invoice-print .new-items-table,
+    #invoice-print .old-items-table {
+
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+
+        table-layout: fixed !important;
+    }
+
+    #invoice-print img {
+        max-width: 100% !important;
+    }
+
+}
+/* ==========================================
+   NKJ INVOICE
+   A4 PORTRAIT - ORIGINAL DESIGN PRESERVED
+   NO ROTATION / NO GRID REARRANGEMENT
+========================================== */
+
+@page {
+    size: A4 portrait;
+    margin: 4mm;
+}
+
+@media print {
+
+    html, body, #root {
+        width: 202mm !important;
+        min-width: 0 !important;
+        max-width: 202mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: #fff !important;
+    }
+
+    body:has(#invoice-print) #root,
+    body:has(#invoice-print) main,
+    body:has(#invoice-print) .invoice-container,
+    body:has(#invoice-print) .nkj-owner-layout {
+        display: block !important;
+        position: static !important;
+        width: 202mm !important;
+        max-width: 202mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        rotate: none !important;
+        overflow: visible !important;
+    }
+
+    body:has(#invoice-print) * {
+        visibility: hidden !important;
+    }
+
+    body:has(#invoice-print) #invoice-print,
+    body:has(#invoice-print) #invoice-print * {
+        visibility: visible !important;
+    }
+
+    /* Preserve original invoice dimensions and scale as one sheet */
+    body:has(#invoice-print) #invoice-print {
+        display: block !important;
+        position: relative !important;
+
+        width: 291mm !important;
+        min-width: 291mm !important;
+        max-width: 291mm !important;
+
+        height: auto !important;
+        margin: 0 !important;
+        padding: 2mm !important;
+
+        box-sizing: border-box !important;
+
+        zoom: 0.69 !important;
+
+        transform: none !important;
+        rotate: none !important;
+        translate: none !important;
+
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+
+        box-shadow: none !important;
+
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Original three-column header */
+    #invoice-print .inv-head {
+        grid-template-columns: 30mm minmax(0,1fr) 68mm !important;
+    }
+
+    /* Original side-by-side customer and payment sections */
+    #invoice-print .inv-two {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* Original ornaments left and totals right */
+    #invoice-print .inv-main {
+        grid-template-columns: minmax(0,1fr) 68mm !important;
+        gap: 2mm !important;
+    }
+
+    /* Original bottom layout */
+    #invoice-print .inv-bottom {
+        grid-template-columns: 40% minmax(0,1fr) !important;
+    }
+
+    #invoice-print .words-sign {
+        grid-template-columns: minmax(0,1fr) 75mm !important;
+    }
+
+    #invoice-print .table-wrap {
+        overflow: visible !important;
+        width: 100% !important;
+    }
+
+    #invoice-print table {
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+    }
+
+    #invoice-print .invoice-actions,
+    #invoice-print button,
+    #invoice-print .icon-btn,
+    #invoice-print .no-print {
+        display: none !important;
+    }
+
+    #invoice-print img {
+        object-fit: contain !important;
+    }
+}
+/* GSTIN - compact shop header badge */
+
+.inv-shop {
+    text-align: center;
+}
+
+.invoice-gstin {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+
+    width: auto !important;
+    max-width: max-content !important;
+
+    margin: 4px auto 0 !important;
+    padding: 3px 10px !important;
+
+    background: #fff9ec !important;
+    border: 1px solid #dfbd78 !important;
+    border-radius: 4px;
+    font-size: larger;
+
+    color: #090909 !important;
+    font-family: Arial, sans-serif;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.35px;
+
+    line-height: 1.4;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+@media print {
+    .invoice-gstin {
+        display: inline-flex !important;
+        margin-top: 2px !important;
+        padding: 2px 7px !important;
+        font-size: 8px !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+.invoice-gstin {
+    font-weight: 800 !important;
+    color: #86132f;
+}

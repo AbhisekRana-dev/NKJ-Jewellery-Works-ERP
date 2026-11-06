@@ -1,0 +1,52 @@
+NKJ JEWELLERY WORKS ERP — SOURCE UPDATE STATUS
+==============================================
+
+This source package reorganizes the existing React + Spring Boot + PostgreSQL ERP into a feature-first frontend and a layered backend. Existing invoice fields, calculations, and A4 print rules were intentionally preserved during the structural work.
+
+PROJECT STRUCTURE
+-----------------
+- React routes: frontend/src/app/
+- API client and session provider: frontend/src/core/
+- Business pages: frontend/src/features/<feature>/
+- Shared navigation/layout and styles: frontend/src/shared/layouts/ and frontend/src/shared/styles/
+- Every page/component has a same-named colocated stylesheet. shared/styles/common.css holds design tokens and truly shared primitives; the Home and invoice/A4 rules are grouped beside their respective pages.
+- Shared formatters: frontend/src/shared/utils/
+- Spring controllers, models, repositories and services: backend/src/main/java/com/nkj/billing/
+- Database schema changes: versioned Flyway migrations
+
+GOLD & SILVER RATE RULES
+------------------------
+1. The public board displays 24K gold, 22K gold and 999 silver per 10 grams.
+2. The database continues to store the rate per gram so existing invoice calculations are not changed. The frontend multiplies by 10 for display and manual input.
+3. The daily Anandabazar adapter job runs once at 06:15 Asia/Kolkata. The fixed cron is in code and cannot be changed to multiple intraday refreshes using an environment variable.
+4. An import is accepted only for the current Kolkata publication date, with all three positive rate values, a publication timestamp and a source reference.
+5. Duplicate imports for the same Anandabazar publication date are ignored. If today's issue/feed is missing, invalid or unavailable, the active rates and their original rate date remain unchanged.
+6. A valid manual edit switches the source to Manual Admin Entry and the mode to MANUAL. Scheduled imports do not overwrite the active rates while in MANUAL mode.
+7. Switch to AUTO preserves the current rates and rate date until a newer current-day issue is successfully imported.
+8. The admin rate editor is rendered only for a validated owner session. Logout/session expiry clears the owner state immediately and hides the editor.
+9. GET /api/rates is public/read-only. PUT /api/admin/rates, PUT /api/admin/rates/auto and GET /api/admin/rates/history are protected by the backend AuthInterceptor, not just hidden by React.
+10. Every manual edit stores before/after 24K, 22K and silver values, previous/new rate dates, source metadata, changed_at timestamp and the administrator username in metal_rate_history. A database row lock serializes an admin edit against the daily import.
+
+ANANDABAZAR PUBLISHER ACCESS
+----------------------------
+Automatic newspaper import is implemented as a scheduled integration adapter, not a scraper. It requests a JSON payload from a configured feed endpoint that the owner is authorized to use. The project does not bypass an e-paper subscription or claim Anandabazar Patrika provides a public rate API. The adapter is disabled by default. Until a permitted endpoint/feed is configured, rate status remains NOT_CONFIGURED and existing rates are retained. Details and the JSON contract are in RATE_SOURCE_SETUP.md.
+
+OTHER PROJECT AREAS
+-------------------
+The previous project update includes dedicated installment/EMI, inventory, karigar, staff-details, profile, dashboard and audit features. The current structural refactor moved authentication UI out of the invoice file, moved shared navigation/layout out of the invoice feature, centralized currency formatting, and separated feature and shared stylesheets. Invoice content and print CSS remain in the legacy invoice feature/global stylesheet to avoid changing the approved A4 output.
+
+BUILD / VERIFICATION STATUS
+---------------------------
+Source-level checks completed in this environment:
+- 23 frontend JS/JSX files parsed with TypeScript transpile diagnostics: 0 syntax errors.
+- Relative frontend import check: 0 missing imports.
+- 8 CSS files parsed with tinycss2: 0 top-level parse errors.
+- 33 declared React routes checked against literal internal link targets: 0 missing exact targets.
+- 23 Java source files parsed with the JDK compiler parser: 0 Java syntax errors.
+
+Full production builds were attempted but could not run here:
+- `npm run build` could not start because Vite is not installed in the prepared node_modules folder (`vite: not found`). `npm ci` was attempted, but npm package downloads failed with DNS error `EAI_AGAIN registry.npmjs.org` (the npm process also reported an exit-handler error after those network failures).
+- `mvn clean package` could not start because Maven is not installed in this environment (`mvn: command not found`).
+- No PostgreSQL server was available for Flyway migration or integration tests.
+
+Therefore this package is source-checked but NOT full-build-verified or production-certified in this environment. Build and test locally before deploying. See README.md and BUILD_VERIFICATION.md for the commands and exact verification limits, and RATE_SOURCE_SETUP.md for the external newspaper feed prerequisite.
