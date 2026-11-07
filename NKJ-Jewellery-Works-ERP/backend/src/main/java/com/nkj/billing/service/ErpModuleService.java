@@ -465,14 +465,15 @@ public class ErpModuleService {
                 dueDate = month.atDay(Math.min(dueDay, month.lengthOfMonth()));
             }
             BigDecimal amount = amounts.get(index);
+            String initialStatus = dueDate.isBefore(today) ? "OVERDUE" : "PENDING";
             Long scheduleId = jdbc.queryForObject("""
                 INSERT INTO installments(
                     booking_id, installment_no, due_date, amount_due, amount_paid,
                     remaining_amount, payment_status, created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, 0, ?, 'PENDING', NOW(), NOW())
+                VALUES (?, ?, ?, ?, 0, ?, ?, NOW(), NOW())
                 RETURNING id
-                """, Long.class, bookingId, number, java.sql.Date.valueOf(dueDate), amount, amount);
+                """, Long.class, bookingId, number, java.sql.Date.valueOf(dueDate), amount, amount, initialStatus);
             Map<String,Object> scheduleRow = new LinkedHashMap<>();
             scheduleRow.put("id", scheduleId);
             scheduleRow.put("installmentNo", number);
