@@ -539,20 +539,35 @@ public class ErpModuleService {
                 .filter(row -> Objects.equals(((Number) row.get("bookingId")).longValue(), bookingId))
                 .toList();
         List<Map<String,Object>> payments = jdbc.queryForList("""
-            SELECT p.id, p.installment_id AS "installmentId",
-                   i.installment_no AS "installmentNo",
-                   p.payment_date AS "paymentDate", p.amount,
-                   p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
-                   p.recorded_by AS "recordedBy", p.created_at AS "createdAt",
-                   r.id AS "reversalId", r.reversal_date AS "reversalDate",
-                   r.amount AS "reversedAmount", r.reason AS "reversalReason",
-                   r.recorded_by AS "reversedBy"
-              FROM installment_payments p
-              JOIN installments i ON i.id=p.installment_id
-              LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-             WHERE i.booking_id=?
-             ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
-            """, bookingId);
+            SELECT * FROM (
+                SELECT p.id, p.installment_id AS "installmentId",
+                       i.installment_no AS "installmentNo",
+                       p.payment_date AS "paymentDate", p.amount,
+                       p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
+                       p.recorded_by AS "recordedBy", p.created_at AS "createdAt",
+                       r.id AS "reversalId", r.reversal_date AS "reversalDate",
+                       r.amount AS "reversedAmount", r.reason AS "reversalReason",
+                       r.recorded_by AS "reversedBy",
+                       'INSTALLMENT_PAYMENT'::VARCHAR AS "entryType"
+                  FROM installment_payments p
+                  JOIN installments i ON i.id=p.installment_id
+                  LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
+                 WHERE i.booking_id=?
+                UNION ALL
+                SELECT -b.id AS id, NULL::BIGINT AS "installmentId",
+                       NULL::INTEGER AS "installmentNo",
+                       b.down_payment_date AS "paymentDate", b.advance_amount AS amount,
+                       'Cash'::VARCHAR AS "paymentMethod", 'DOWN PAYMENT'::VARCHAR AS "referenceNo",
+                       COALESCE(b.down_payment_recorded_by, 'SYSTEM MIGRATION')::VARCHAR AS "recordedBy",
+                       b.created_at AS "createdAt", NULL::BIGINT AS "reversalId",
+                       NULL::DATE AS "reversalDate", NULL::NUMERIC AS "reversedAmount",
+                       NULL::TEXT AS "reversalReason", NULL::VARCHAR AS "reversedBy",
+                       'DOWN_PAYMENT'::VARCHAR AS "entryType"
+                  FROM bookings b
+                 WHERE b.id=? AND b.is_installment_plan=TRUE AND b.advance_amount>0
+            ) payment_history
+            ORDER BY "paymentDate" DESC,"createdAt" DESC,id DESC
+            """, bookingId, bookingId);
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("plan", booking);
         response.put("schedule", schedule);
