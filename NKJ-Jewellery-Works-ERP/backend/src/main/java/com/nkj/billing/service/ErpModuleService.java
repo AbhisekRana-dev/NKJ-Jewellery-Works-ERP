@@ -282,6 +282,10 @@ public class ErpModuleService {
         if (module.equals("pre-bookings") && data.get("bookingNo") == null) data.put("bookingNo", "PENDING-" + UUID.randomUUID());
         if (module.equals("repairs") && data.get("orderNo") == null) data.put("orderNo", "PENDING-" + UUID.randomUUID());
         validate(d, data);
+        if (module.equals("payments")
+                && nonNegative(data.get("amount"), "Amount received").signum() <= 0) {
+            throw new IllegalArgumentException("A customer receipt must contain an amount greater than zero.");
+        }
         if (module.equals("customers") && data.get("phone") != null
                 && !String.valueOf(data.get("phone")).isBlank()) {
             Customer customer = customerService.registerOrReuseFromInvoice(
@@ -360,8 +364,7 @@ public class ErpModuleService {
                     id, advance, "Advance received for " + data.get("bookingNo") + " / " + data.get("customerName"));
                 cashFlow.recordMovement("PRE_BOOKINGS", "ADVANCE_RECEIPT", id,
                         "PREBOOK-ADVANCE:" + id,
-                        data.get("bookingDate") == null ? shopToday() : parseDate(data.get("bookingDate"), "Booking date"),
-                        advance, String.valueOf(data.get("customerName")),
+                        shopToday(), advance, String.valueOf(data.get("customerName")),
                         "Pre-Booking advance received", null, null,
                         String.valueOf(data.get("bookingNo")), requestKey, null);
             }
