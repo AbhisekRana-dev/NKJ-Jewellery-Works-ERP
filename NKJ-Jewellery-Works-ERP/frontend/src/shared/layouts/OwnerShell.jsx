@@ -223,7 +223,8 @@ export function Nav({ active = "home" }) {
     document.addEventListener("click", handleClickCapture, true);
     return () => {
       document.removeEventListener("click", handleClickCapture, true);
-      previousSidebarClick = null;
+      // Keep the first-click record while an owner route is replaced.
+      // The next Nav instance consumes it if the second click arrives.
     };
   }, [ownerWorkspace]);
 
