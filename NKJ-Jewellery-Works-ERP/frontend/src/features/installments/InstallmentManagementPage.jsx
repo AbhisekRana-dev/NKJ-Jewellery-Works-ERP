@@ -523,6 +523,7 @@ export default function InstallmentManagementPage() {
   );
 
   const renderPaymentHistory = (rows) => (
+    <div className="table-wrap">
       <table>
         <thead><tr><th>Transaction ID</th><th>Customer</th><th>Invoice Number</th><th>Installment</th><th>Payment Date</th><th>Amount (₹)</th><th>Method</th><th>Reference</th><th>Recorded By</th><th>Status / Action</th></tr></thead>
         <tbody>
