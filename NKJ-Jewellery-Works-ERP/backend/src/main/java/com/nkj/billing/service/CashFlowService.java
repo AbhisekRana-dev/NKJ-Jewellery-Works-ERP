@@ -71,8 +71,13 @@ public class CashFlowService {
         BigDecimal amount = rawAmount == null ? BigDecimal.ZERO
                 : rawAmount.setScale(2, RoundingMode.HALF_UP);
         if (amount.signum() <= 0) return null;
+        if (sourceRecordId <= 0) {
+            throw new IllegalArgumentException("A valid source record ID is required for a cash transaction.");
+        }
 
-        String direction = directionFor(sourceModule, operation);
+        String normalizedSource = sourceModule == null ? "" : sourceModule.trim().toUpperCase(Locale.ROOT);
+        String normalizedOperation = operation == null ? "" : operation.trim().toUpperCase(Locale.ROOT);
+        String direction = directionFor(normalizedSource, normalizedOperation);
         String eventKey = sourceEventKey == null ? "" : sourceEventKey.trim();
         if (eventKey.isBlank() || eventKey.length() > 220) {
             throw new IllegalArgumentException("A valid cash transaction source key is required.");
@@ -82,7 +87,27 @@ public class CashFlowService {
         if (method != null && !PAYMENT_METHODS.contains(method)) {
             throw new IllegalArgumentException("Select a valid payment method for the cash transaction.");
         }
+        String idempotency = nullIfBlank(clean(idempotencyKey, 120));
+        LocalDate effectiveDate = transactionDate == null ? LocalDate.now(SHOP_ZONE) : transactionDate;
 
+        // A source event is the business-level idempotency boundary. A retry
+        // with the same key is accepted only when it describes the same movement.
+        List<Map<String,Object>> existingEvent = jdbc.queryForList("""
+            SELECT id, transaction_date, direction, amount, source_module,
+                   source_operation, source_record_id, original_transaction_id
+              FROM cash_transactions
+             WHERE source_event_key=?
+             FOR UPDATE
+            """, eventKey);
+        if (!existingEvent.isEmpty()) {
+            Map<String,Object> existing = existingEvent.get(0);
+            verifySameMovement(existing, effectiveDate, direction, amount,
+                    normalizedSource, normalizedOperation, sourceRecordId, originalTransactionId);
+            return ((Number) existing.get("id")).longValue();
+        }
+
+        // DO NOTHING on any unique conflict so an Idempotency-Key collision
+        // cannot produce a duplicate row or an opaque PostgreSQL exception.
         jdbc.update("""
             INSERT INTO cash_transactions(
                 transaction_date, direction, amount, source_module, source_operation,
@@ -91,19 +116,71 @@ public class CashFlowService {
                 idempotency_key, created_by
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (source_event_key) DO NOTHING
+            ON CONFLICT DO NOTHING
             """,
-                Date.valueOf(transactionDate == null ? LocalDate.now(SHOP_ZONE) : transactionDate),
-                direction, amount, sourceModule.toUpperCase(Locale.ROOT),
-                operation.toUpperCase(Locale.ROOT), sourceRecordId, eventKey,
+                Date.valueOf(effectiveDate), direction, amount, normalizedSource,
+                normalizedOperation, sourceRecordId, eventKey,
                 clean(sourceReference, 180), clean(partyName, 200),
                 defaultText(description, "Cash movement"), method,
                 nullIfBlank(clean(referenceNo, 120)), originalTransactionId,
-                nullIfBlank(clean(idempotencyKey, 120)), auth.getUsername());
+                idempotency, auth.getUsername());
 
-        return jdbc.queryForObject(
-                "SELECT id FROM cash_transactions WHERE source_event_key=?",
-                Long.class, eventKey);
+        List<Map<String,Object>> savedEvent = jdbc.queryForList("""
+            SELECT id, transaction_date, direction, amount, source_module,
+                   source_operation, source_record_id, original_transaction_id
+              FROM cash_transactions
+             WHERE source_event_key=?
+            """, eventKey);
+        if (!savedEvent.isEmpty()) {
+            Map<String,Object> saved = savedEvent.get(0);
+            verifySameMovement(saved, effectiveDate, direction, amount,
+                    normalizedSource, normalizedOperation, sourceRecordId, originalTransactionId);
+            return ((Number) saved.get("id")).longValue();
+        }
+
+        if (idempotency != null) {
+            List<Map<String,Object>> keyOwner = jdbc.queryForList("""
+                SELECT id, source_event_key
+                  FROM cash_transactions
+                 WHERE idempotency_key=?
+                """, idempotency);
+            if (!keyOwner.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "This Idempotency-Key has already been used for a different cash transaction.");
+            }
+        }
+        throw new IllegalStateException("The cash transaction could not be recorded.");
+    }
+
+    private void verifySameMovement(
+            Map<String,Object> existing,
+            LocalDate transactionDate,
+            String direction,
+            BigDecimal amount,
+            String sourceModule,
+            String sourceOperation,
+            long sourceRecordId,
+            Long originalTransactionId) {
+        Object rawDate = existing.get("transaction_date");
+        LocalDate existingDate = rawDate instanceof Date sqlDate
+                ? sqlDate.toLocalDate()
+                : rawDate instanceof LocalDate localDate
+                    ? localDate
+                    : rawDate == null ? null : LocalDate.parse(String.valueOf(rawDate).substring(0, 10));
+        Object rawOriginalId = existing.get("original_transaction_id");
+        Long existingOriginalId = rawOriginalId == null
+                ? null : ((Number) rawOriginalId).longValue();
+        boolean same = transactionDate.equals(existingDate)
+                && direction.equals(String.valueOf(existing.get("direction")))
+                && amount.compareTo(decimal(existing.get("amount"))) == 0
+                && sourceModule.equals(String.valueOf(existing.get("source_module")))
+                && sourceOperation.equals(String.valueOf(existing.get("source_operation")))
+                && ((Number) existing.get("source_record_id")).longValue() == sourceRecordId
+                && java.util.Objects.equals(existingOriginalId, originalTransactionId);
+        if (!same) {
+            throw new IllegalArgumentException(
+                    "This cash transaction source key is already linked to different payment details.");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -139,7 +216,6 @@ public class CashFlowService {
                                    c.source_module, c.source_operation, c.reference_no,
                                    c.source_record_id::TEXT) ILIKE CAST(? AS VARCHAR))
              ORDER BY c.transaction_date DESC, c.id DESC
-             LIMIT 2000
             """, selectedDirection, selectedDirection, query, pattern);
     }
 
