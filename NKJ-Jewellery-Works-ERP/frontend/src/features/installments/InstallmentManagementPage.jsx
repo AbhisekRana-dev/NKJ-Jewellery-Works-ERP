@@ -125,22 +125,27 @@ export default function InstallmentManagementPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    try {
-      const [inv, bk, sch, pay] = await Promise.all([
-        request("/admin/installments/eligible-invoices"),
-        request("/admin/modules/bookings"),
-        request("/admin/modules/installments"),
-        request("/admin/modules/installment-payments"),
-      ]);
-      setEligibleInvoices(Array.isArray(inv) ? inv : []);
-      setBookings(Array.isArray(bk) ? bk : []);
-      setSchedules(Array.isArray(sch) ? sch : []);
-      setReceipts(Array.isArray(pay) ? pay : []);
-    } catch (e) {
-      setError(e.message || "Could not load installment data.");
-    } finally {
-      setLoading(false);
+    const endpoints = [
+      ["/admin/installments/eligible-invoices", setEligibleInvoices],
+      ["/admin/modules/bookings", setBookings],
+      ["/admin/modules/installments", setSchedules],
+      ["/admin/modules/installment-payments", setReceipts],
+    ];
+    const results = await Promise.allSettled(endpoints.map(([url]) => request(url)));
+    const failures = [];
+    results.forEach((result, index) => {
+      const [url, setter] = endpoints[index];
+      if (result.status === "fulfilled") {
+        setter(Array.isArray(result.value) ? result.value : []);
+      } else {
+        failures.push(`${url}: ${result.reason?.message || "request failed"}`);
+      }
+    });
+    if (failures.length) {
+      setError(`Some installment data could not be refreshed: ${failures.join(" | ")}`);
     }
+    setLoading(false);
+    return failures.length === 0;
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -296,8 +301,8 @@ export default function InstallmentManagementPage() {
       setTab("accounts");
       window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${result.bookingNo || result.bookingId}\nInstallments: ${result.scheduleCount || 0}`);
     } catch (e) {
-      setError(e.message || "Could not create the installment plan.");
       await load();
+      setError(e.message || "Could not create the installment plan.");
     } finally {
       setSaving(false);
     }
