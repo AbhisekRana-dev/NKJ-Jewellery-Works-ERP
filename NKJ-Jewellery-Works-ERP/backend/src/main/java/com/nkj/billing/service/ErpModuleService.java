@@ -246,7 +246,6 @@ public class ErpModuleService {
             calculateSalary(data);
         }
         if (module.equals("bookings")) calculateBooking(data);
-        if (module.equals("installments")) calculateInstallment(data);
         if (module.equals("purchases")) calculatePurchase(data);
         List<Field> included = d.fields().stream().filter(x -> data.containsKey(x.key()) && data.get(x.key()) != null).toList();
         if (included.isEmpty()) throw new IllegalArgumentException("Enter at least one field.");
@@ -1092,17 +1091,6 @@ public class ErpModuleService {
         }
     }
 
-    private void calculateInstallment(Map<String,Object> data) {
-        BigDecimal due = nonNegative(data.get("amountDue"), "Installment amount");
-        BigDecimal paid = nonNegative(data.get("amountPaid"), "Paid amount");
-        if (due.signum() <= 0) throw new IllegalArgumentException("Installment amount must be greater than zero.");
-        if (paid.compareTo(due) > 0) throw new IllegalArgumentException("Paid amount cannot exceed installment amount.");
-        if (data.get("remainingAmount") == null) data.put("remainingAmount", due.subtract(paid));
-        if (data.get("paymentStatus") == null) {
-            data.put("paymentStatus", paid.signum() == 0 ? "DUE" : paid.compareTo(due) >= 0 ? "PAID" : "PARTIAL");
-        }
-    }
-
     private void calculatePurchase(Map<String,Object> data) {
         BigDecimal total = nonNegative(data.get("totalAmount"), "Purchase total");
         BigDecimal paid = nonNegative(data.get("paidAmount"), "Paid amount");
@@ -1111,25 +1099,6 @@ public class ErpModuleService {
         if (data.get("status") == null) {
             data.put("status", paid.signum() == 0 ? "PENDING" : paid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
         }
-    }
-
-    private void applyInstallmentReceipt(Map<String,Object> data) {
-        long installmentId = requiredId(data.get("installmentId"), "Installment ID");
-        BigDecimal receipt = nonNegative(data.get("amount"), "Payment amount");
-        Map<String,Object> installment = jdbc.queryForMap(
-                "SELECT id, booking_id, amount_due, amount_paid FROM installments WHERE id=? FOR UPDATE",
-                installmentId);
-        BigDecimal due = decimal(installment.get("amount_due"));
-        BigDecimal oldPaid = decimal(installment.get("amount_paid"));
-        BigDecimal paid = oldPaid.add(receipt);
-        if (receipt.signum() <= 0 || paid.compareTo(due) > 0) {
-            throw new IllegalArgumentException("Installment payment must be positive and cannot exceed the remaining due amount.");
-        }
-        BigDecimal remaining = due.subtract(paid).max(BigDecimal.ZERO);
-        jdbc.update("UPDATE installments SET amount_paid=?, remaining_amount=?, payment_status=? WHERE id=?",
-                paid, remaining, remaining.signum() == 0 ? "PAID" : "PARTIAL", installmentId);
-        jdbc.update("UPDATE bookings SET remaining_amount=GREATEST(0, remaining_amount-?), status=CASE WHEN GREATEST(0, remaining_amount-?)<=0 THEN 'COMPLETED' ELSE status END, updated_at=NOW() WHERE id=?",
-                receipt, receipt, installment.get("booking_id"));
     }
 
     private void applySalaryReceipt(Map<String,Object> data) {
