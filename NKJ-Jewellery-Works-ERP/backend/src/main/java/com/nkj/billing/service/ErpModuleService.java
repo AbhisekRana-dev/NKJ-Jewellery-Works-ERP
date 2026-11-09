@@ -862,6 +862,13 @@ public class ErpModuleService {
         }
         jdbc.update("UPDATE installments SET due_date=?, updated_at=NOW() WHERE id=?",
                 java.sql.Date.valueOf(newDueDate), installmentId);
+        // A due-date edit changes the schedule state immediately. Recompute
+        // PENDING / DUE / OVERDUE from the current Kolkata date while retaining
+        // the already-posted payment ledger and amount_paid.
+        recalculateInstallment(
+                installmentId,
+                ((Number) before.get("booking_id")).longValue()
+        );
         Map<String,Object> after = new LinkedHashMap<>();
         after.put("installmentId", installmentId);
         after.put("bookingId", before.get("booking_id"));
