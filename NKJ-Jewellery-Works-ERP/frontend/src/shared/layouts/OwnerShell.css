@@ -855,3 +855,10 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
   margin-left: var(--nkj-owner-sidebar-width) !important;
   min-width: 0 !important;
 }
+
+/* Keep the established mobile overlay behavior when the owner sidebar is opened. */
+@media (max-width: 760px) {
+  body.nkj-owner-layout {
+    --nkj-owner-sidebar-width: var(--nkj-owner-collapsed-width);
+  }
+}
