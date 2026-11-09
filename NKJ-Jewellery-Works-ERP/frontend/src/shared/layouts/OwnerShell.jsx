@@ -191,7 +191,7 @@ export function Nav({ active = "home" }) {
             collapsedMenuLink.getAttribute("aria-label")
             || collapsedMenuLink.textContent
             || ""
-          ).trim().replace(/\\s+/g, " ");
+          ).trim().replace(/\s+/g, " ");
           const isSecondMenuClick = event.detail === 2
             || isSecondSidebarClick(event, `collapsed-sidebar-icon:${label}`);
           if (!isSecondMenuClick) return;
