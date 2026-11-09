@@ -47,39 +47,41 @@ jobs:
               "ERP sidebar items must continue using the shared navigation renderer."
           )
 
-          effect_start = shell.index("const handleDoubleClick = (event) => {")
-          effect_end = shell.index("document.addEventListener(\"dblclick\"", effect_start)
+          effect_start = shell.index("const handleClickCapture = (event) => {")
+          effect_end = shell.index('document.addEventListener("click", handleClickCapture, true)', effect_start)
           handlers = shell[effect_start:effect_end]
-          assert 'if (sidebarCollapsed)' in handlers, "Collapsed-state double-click branch is missing."
+          assert "event.detail !== 2" in handlers, "Sidebar toggle must run only on the second click."
+          assert 'if (sidebarCollapsed)' in handlers, "Collapsed-state click branch is missing."
           assert 'target.closest(".app-content main")' in handlers, (
               "Double-click anywhere in page content must expand the collapsed sidebar."
           )
-          assert "setSidebarCollapsed(false)" in handlers, "Page-content double-click does not expand the sidebar."
+          assert "flushSync(() => setSidebarCollapsed(false))" in handlers, (
+              "Collapsed sidebar is not expanded synchronously on the second click."
+          )
           assert 'target.closest(".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span")' in handlers, (
               "Expanded-state double-click must target menu text, not icons."
           )
-          assert "setSidebarCollapsed(true)" in handlers, "Menu-text double-click does not collapse the sidebar."
-          assert 'target.closest(".nkj-owner-sidebar a")' in handlers, (
-              "Second sidebar click is not guarded against duplicate navigation."
+          assert "flushSync(() => setSidebarCollapsed(true))" in handlers, (
+              "Menu-text double-click does not synchronously collapse the sidebar."
           )
-          assert "event.detail < 2" in handlers, "The first click must remain unaffected."
-          assert "if (!sidebarCollapsed && sidebarText)" in handlers, (
-              "The second click on expanded menu text must collapse even after a route remount."
+          assert "event.preventDefault()" in handlers and "event.stopImmediatePropagation()" in handlers, (
+              "Duplicate second-click navigation/actions are not suppressed."
           )
-          assert "const repeatedContentControl = sidebarCollapsed" in handlers, (
-              "Double-clicking a page control can trigger the same action twice."
+          assert "const repeatedContentAction = target.closest(" in handlers, (
+              "Double-clicking a page action can trigger that action twice."
           )
-          assert "event.stopImmediatePropagation()" in handlers, (
-              "The second click on page buttons is not suppressed."
-          )
-          assert 'document.addEventListener("dblclick", handleDoubleClick)' in shell
           assert 'document.addEventListener("click", handleClickCapture, true)' in shell
+          assert "document.addEventListener(\"dblclick\"" not in shell, (
+              "Sidebar should not wait for the later native dblclick event."
+          )
           assert "useLayoutEffect(() => {" in shell
           assert "<Nav active={active} />" in shell and "<main className={active === \"invoice\"" in shell, (
               "Shared Page layout is missing the event-handling surface across ERP pages."
           )
-          assert "setTimeout(" not in handlers, "Sidebar double-click must not delay normal single clicks."
-          print("Sidebar double-click regression checks passed for both states and all 28 menu items.")
+          assert "setTimeout(" not in handlers and "debounce" not in handlers.lower(), (
+              "Sidebar double-click must not use timers or debounce."
+          )
+          print("Instant sidebar toggle regression checks passed for both states and all 28 menu items.")
           PY
 
   backend-build-and-migration:
