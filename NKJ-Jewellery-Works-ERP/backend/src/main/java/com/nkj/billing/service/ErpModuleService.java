@@ -24,14 +24,18 @@ public class ErpModuleService {
     private final ObjectMapper mapper;
     private final AuthService auth;
     private final CustomerService customerService;
+    private final CashFlowService cashFlow;
     private final Map<String, Definition> definitions = new LinkedHashMap<>();
     private static final Set<String> APPEND_ONLY_MODULES = Set.of(
-            "stock-movements", "installment-payments", "salary-payments");
+            "stock-movements", "installment-payments", "salary-payments", "payments");
+    private static final Set<String> CASH_CREATE_MODULES = Set.of(
+            "payments", "pre-bookings", "expenses", "purchases", "salary", "salary-payments");
 
     public ErpModuleService(JdbcTemplate jdbc, ObjectMapper mapper, AuthService auth,
-                            CustomerService customerService) {
+                            CustomerService customerService, CashFlowService cashFlow) {
         this.jdbc = jdbc; this.mapper = mapper; this.auth = auth;
         this.customerService = customerService;
+        this.cashFlow = cashFlow;
         register("staff", "staff", true, List.of(
             f("fullName","full_name","text","Full name"), f("photoUrl","photo_url","text","Photo URL"),
             f("mobile","mobile","text","Mobile"), f("email","email","text","Email"), f("aadhaarNumber","aadhaar_number","text","Aadhaar number"), f("panNumber","pan_number","text","PAN number"), f("address","address","text","Address"),
@@ -61,6 +65,8 @@ public class ErpModuleService {
         register("expenses", "expenses", true, List.of(
             f("expenseDate","expense_date","date","Expense date"), f("category","category","text","Category"),
             f("description","description","text","Description"), f("amount","amount","number","Amount"),
+            f("paidAmount","paid_amount","number","Paid amount"),
+            f("paymentStatus","payment_status","text","Payment status"),
             f("paymentMethod","payment_method","text","Payment method"), f("referenceNo","reference_no","text","Reference no.")
         ), "category", "amount");
         register("inventory", "products", true, List.of(
@@ -236,8 +242,23 @@ public class ErpModuleService {
     }
 
     @Transactional
-    public Map<String,Object> create(String module, Map<String,Object> body, String ip) {
+    public Map<String,Object> create(String module, Map<String,Object> body, String ip, String idempotencyKey) {
         Definition d = writableDefinition(module);
+        String requestKey = idempotencyKey == null || idempotencyKey.isBlank()
+                ? null : requiredIdempotencyKey(idempotencyKey, "cash entry");
+        if (requestKey != null && CASH_CREATE_MODULES.contains(module)) {
+            lockIdempotencyKey("cash-create:" + requestKey);
+            List<Map<String,Object>> prior = jdbc.queryForList(
+                    "SELECT id, source_record_id FROM cash_transactions WHERE idempotency_key=?",
+                    requestKey);
+            if (!prior.isEmpty()) {
+                Map<String,Object> saved = prior.get(0);
+                return Map.of("success", true, "duplicate", true,
+                        "id", saved.get("source_record_id"),
+                        "transactionId", saved.get("id"),
+                        "message", "This cash transaction was already recorded.");
+            }
+        }
         Map<String,Object> data = new LinkedHashMap<>(body);
         // Browser forms submit empty strings for optional inputs. Convert them to null
         // so empty date/time values do not reach PostgreSQL CAST operations.
@@ -265,10 +286,12 @@ public class ErpModuleService {
             if (data.get("basicSalary") == null && data.get("staffId") != null) {
                 data.put("basicSalary", jdbc.queryForObject("SELECT monthly_salary FROM staff WHERE id=?", BigDecimal.class, requiredId(data.get("staffId"), "Staff ID")));
             }
+            data.putIfAbsent("amountPaid", BigDecimal.ZERO);
             calculateSalary(data);
         }
         if (module.equals("pre-bookings")) calculateBooking(data);
         if (module.equals("purchases")) calculatePurchase(data);
+        if (module.equals("expenses")) prepareExpensePayment(data);
         List<Field> included = d.fields().stream().filter(x -> data.containsKey(x.key()) && data.get(x.key()) != null).toList();
         if (included.isEmpty()) throw new IllegalArgumentException("Enter at least one field.");
         String columns = included.stream().map(Field::column).reduce((a,b)->a+", "+b).orElseThrow();
@@ -320,12 +343,88 @@ public class ErpModuleService {
             if (advance.signum() > 0) {
                 jdbc.update("INSERT INTO customer_ledger(entry_type,reference_type,reference_id,credit,notes) VALUES ('BOOKING_ADVANCE','BOOKING',?,?,?)",
                     id, advance, "Advance received for " + data.get("bookingNo") + " / " + data.get("customerName"));
+                cashFlow.recordMovement("PRE_BOOKINGS", "ADVANCE_RECEIPT", id,
+                        "PREBOOK-ADVANCE:" + id,
+                        data.get("bookingDate") == null ? shopToday() : parseDate(data.get("bookingDate"), "Booking date"),
+                        advance, String.valueOf(data.get("customerName")),
+                        "Pre-Booking advance received", null, null,
+                        String.valueOf(data.get("bookingNo")), requestKey, null);
+            }
+        }
+        if (module.equals("payments")) {
+            BigDecimal received = nonNegative(data.get("amount"), "Payment amount");
+            if (received.signum() > 0) {
+                cashFlow.recordMovement("PAYMENTS", "CUSTOMER_RECEIPT", id,
+                        "PAYMENT:" + id,
+                        data.get("paymentDate") == null ? shopToday() : parseDate(data.get("paymentDate"), "Payment date"),
+                        received,
+                        data.get("customerName") == null ? "Customer" : String.valueOf(data.get("customerName")),
+                        data.get("invoiceId") == null ? "Customer advance / receipt" : "Invoice collection",
+                        data.get("paymentMethod") == null ? "Cash" : String.valueOf(data.get("paymentMethod")),
+                        data.get("referenceNo") == null ? null : String.valueOf(data.get("referenceNo")),
+                        data.get("invoiceNo") == null ? "PAY-" + id : String.valueOf(data.get("invoiceNo")),
+                        requestKey, null);
+            }
+        }
+        if (module.equals("expenses")) {
+            BigDecimal paid = nonNegative(data.get("paidAmount"), "Paid expense amount");
+            if (paid.signum() > 0) {
+                cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT", id,
+                        expenseEventKey(id, paid),
+                        data.get("expenseDate") == null ? shopToday() : parseDate(data.get("expenseDate"), "Expense date"),
+                        paid, null,
+                        data.get("description") == null ? String.valueOf(data.get("category")) : String.valueOf(data.get("description")),
+                        data.get("paymentMethod") == null ? null : String.valueOf(data.get("paymentMethod")),
+                        data.get("referenceNo") == null ? null : String.valueOf(data.get("referenceNo")),
+                        String.valueOf(data.get("category")), requestKey, null);
+            }
+        }
+        if (module.equals("purchases")) {
+            BigDecimal paid = nonNegative(data.get("paidAmount"), "Paid supplier amount");
+            if (paid.signum() > 0) {
+                cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT", id,
+                        "PURCHASE-INITIAL:" + id,
+                        data.get("purchaseDate") == null ? shopToday() : parseDate(data.get("purchaseDate"), "Purchase date"),
+                        paid, String.valueOf(data.get("supplierName")), "Supplier purchase payment",
+                        null, null,
+                        data.get("invoiceNo") == null ? "PURCHASE-" + id : String.valueOf(data.get("invoiceNo")),
+                        requestKey, null);
+            }
+        }
+        if (module.equals("salary")) {
+            BigDecimal paid = nonNegative(data.get("amountPaid"), "Amount paid");
+            if (paid.signum() > 0) {
+                String staffName = jdbc.queryForObject("SELECT full_name FROM staff WHERE id=?",
+                        String.class, requiredId(data.get("staffId"), "Staff ID"));
+                cashFlow.recordMovement("SALARY", "INITIAL_SALARY_PAYMENT", id,
+                        "SALARY-INITIAL:" + id,
+                        data.get("paymentDate") == null ? shopToday() : parseDate(data.get("paymentDate"), "Payment date"),
+                        paid, staffName, "Initial salary payment",
+                        data.get("paymentMethod") == null ? null : String.valueOf(data.get("paymentMethod")),
+                        null, "SALARY-" + id, requestKey, null);
             }
         }
         if (module.equals("installment-payments")) {
             throw new IllegalArgumentException("Installment receipts must be posted through the protected idempotent payment endpoint.");
         }
-        if (module.equals("salary-payments")) applySalaryReceipt(data);
+        if (module.equals("salary-payments")) {
+            applySalaryReceipt(data);
+            BigDecimal paid = nonNegative(data.get("amount"), "Salary payment amount");
+            if (paid.signum() > 0) {
+                long salaryId = requiredId(data.get("salaryId"), "Salary record ID");
+                String staffName = jdbc.queryForObject("""
+                    SELECT s.full_name FROM staff_salary ss
+                    JOIN staff s ON s.id=ss.staff_id WHERE ss.id=?
+                    """, String.class, salaryId);
+                cashFlow.recordMovement("SALARY_PAYMENTS", "SALARY_PAYMENT", id,
+                        "SALARY-PAYMENT:" + id,
+                        data.get("paymentDate") == null ? shopToday() : parseDate(data.get("paymentDate"), "Payment date"),
+                        paid, staffName, "Staff salary payment",
+                        data.get("paymentMethod") == null ? null : String.valueOf(data.get("paymentMethod")),
+                        data.get("referenceNo") == null ? null : String.valueOf(data.get("referenceNo")),
+                        "SALARY-" + salaryId, requestKey, null);
+            }
+        }
         if (module.equals("stock-movements")) applyStockMovement(data);
         audit("CREATE", module, id, null, data, ip);
         return Map.of("success", true, "id", id, "message", "Record created successfully.");
@@ -1069,6 +1168,41 @@ public class ErpModuleService {
         }
     }
 
+
+    private java.time.LocalDate shopToday() {
+        return java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+    }
+
+    private String moneyKey(BigDecimal amount) {
+        return amount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String expenseEventKey(long id, BigDecimal cumulativePaid) {
+        return "EXPENSE:" + id + ":PAID_TO:" + moneyKey(cumulativePaid);
+    }
+
+    private String purchaseEventKey(long id, BigDecimal cumulativePaid) {
+        return "PURCHASE-PAYMENT:" + id + ":PAID_TO:" + moneyKey(cumulativePaid);
+    }
+
+    private void prepareExpensePayment(Map<String,Object> data) {
+        BigDecimal total = nonNegative(data.get("amount"), "Expense amount");
+        String status = data.get("paymentStatus") == null
+                ? "PAID" : String.valueOf(data.get("paymentStatus")).trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("PAID", "PARTIAL", "PENDING").contains(status)) {
+            throw new IllegalArgumentException("Expense payment status must be PAID, PARTIAL or PENDING.");
+        }
+        BigDecimal paid = data.get("paidAmount") == null
+                ? ("PENDING".equals(status) ? BigDecimal.ZERO : total)
+                : nonNegative(data.get("paidAmount"), "Paid expense amount");
+        if (paid.compareTo(total) > 0) {
+            throw new IllegalArgumentException("Paid expense amount cannot exceed the expense amount.");
+        }
+        String calculatedStatus = paid.signum() == 0 ? "PENDING"
+                : paid.compareTo(total) >= 0 ? "PAID" : "PARTIAL";
+        data.put("paidAmount", paid);
+        data.put("paymentStatus", calculatedStatus);
+    }
 
     private void calculateSalary(Map<String,Object> data) {
         BigDecimal basic = nonNegative(data.get("basicSalary"), "Basic salary");
