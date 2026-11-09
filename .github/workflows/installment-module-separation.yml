@@ -94,6 +94,15 @@ jobs:
           assert "<Nav active={active} />" in shell
           assert '<main className={active === "invoice"' in shell
           css = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.css").read_text()
+          assert ":root {" in css and "--nkj-owner-expanded-width: 250px;" in css
+          assert "--nkj-owner-collapsed-width: 65px;" in css
+          assert "width: calc(100% - var(--nkj-owner-sidebar-width)) !important;" in css
+          assert "margin-left: var(--nkj-owner-sidebar-width) !important;" in css
+          assert "white-space: nowrap;" in css and "text-overflow: ellipsis;" in css
+          assert "margin-top: auto !important;" in css, "Home and Exit must remain anchored at the sidebar bottom."
+          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {" in css
+          profile_css = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/profile/Profile.css").read_text()
+          assert "var(--nkj-owner-sidebar-width" in profile_css, "Profile must follow the same shared sidebar width."
           assert "pointer-events: none" not in css
           assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {" in css
           collapsed_label_css = css.split(".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {", 1)[1].split("}", 1)[0]
