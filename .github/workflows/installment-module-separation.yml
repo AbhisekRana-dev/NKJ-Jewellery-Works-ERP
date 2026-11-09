@@ -1,0 +1,227 @@
+name: Verify Jewellery ERP build and installment separation
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: NKJ-Jewellery-Works-ERP/frontend/package-lock.json
+      - run: npm ci
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
+      - run: npm run build
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
+
+  backend-build-and-migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nkj_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nkj_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: mvn -B -DskipTests package
+        working-directory: NKJ-Jewellery-Works-ERP/backend
+
+      # Apply the historical schema first, so the V20 migration is exercised
+      # against real legacy booking/schedule/payment rows rather than an empty DB.
+      - name: Start backend at schema version 19
+        working-directory: NKJ-Jewellery-Works-ERP/backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/nkj_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          ADMIN_USERNAME: ci-owner
+          ADMIN_PASSWORD: ci-only-password
+          TOTP_SECRET: JBSWY3DPEHPK3PXP
+        run: |
+          java -jar target/nkj-billing-1.0.0.jar --spring.flyway.target=19 > /tmp/nkj-v19.log 2>&1 &
+          echo $! > /tmp/nkj-backend.pid
+          for attempt in $(seq 1 90); do
+            if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='19' AND success=true" 2>/dev/null | grep -q '^1$'; then
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/nkj-backend.pid)" 2>/dev/null; then
+              cat /tmp/nkj-v19.log
+              exit 1
+            fi
+            sleep 2
+          done
+          cat /tmp/nkj-v19.log
+          exit 1
+
+      - name: Seed one legacy EMI and one genuine Pre-Booking
+        run: |
+          psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          INSERT INTO invoices(invoice_no, invoice_date, customer_name, mobile, address, grand_total)
+          VALUES ('NKJ-CI-EMI-001', CURRENT_DATE, 'EMI Migration Customer', '9000000001', 'EMI address', 1000.00);
+
+          INSERT INTO bookings(
+              booking_no, invoice_no, invoice_id, customer_name, mobile, booking_date,
+              description, metal_type, purity, estimated_weight, estimated_rate,
+              estimated_value, making_estimate, advance_amount, remaining_amount,
+              delivery_date, status, is_installment_plan, total_installments,
+              payment_frequency, down_payment_date, down_payment_method,
+              down_payment_reference_no, down_payment_recorded_by, converted_at
+          )
+          SELECT 'NKJ-CI-LEGACY-EMI', i.invoice_no, i.id, i.customer_name, i.mobile,
+                 CURRENT_DATE, 'Legacy EMI fixture', 'GOLD', '22K', 0, 0,
+                 i.grand_total, 0, 500, 400, CURRENT_DATE, 'OPEN', TRUE, 2,
+                 'MONTHLY', CURRENT_DATE, 'UPI', 'CI-DOWNPAY', 'CI', NOW()
+            FROM invoices i WHERE i.invoice_no='NKJ-CI-EMI-001';
+
+          INSERT INTO installments(booking_id, installment_no, due_date, amount_due, amount_paid, remaining_amount, payment_status)
+          SELECT b.id, 1, CURRENT_DATE + 30, 250, 100, 150, 'PARTIAL'
+            FROM bookings b WHERE b.booking_no='NKJ-CI-LEGACY-EMI';
+          INSERT INTO installments(booking_id, installment_no, due_date, amount_due, amount_paid, remaining_amount, payment_status)
+          SELECT b.id, 2, CURRENT_DATE + 60, 250, 0, 250, 'PENDING'
+            FROM bookings b WHERE b.booking_no='NKJ-CI-LEGACY-EMI';
+
+          INSERT INTO installment_payments(
+              installment_id, booking_id, entry_type, payment_date, amount,
+              payment_method, reference_no, idempotency_key, recorded_by
+          )
+          SELECT s.id, s.booking_id, 'INSTALLMENT', CURRENT_DATE, 100,
+                 'UPI', 'CI-INSTALLMENT-RECEIPT', 'CI-EMI-PAY-1', 'CI'
+            FROM installments s JOIN bookings b ON b.id=s.booking_id
+           WHERE b.booking_no='NKJ-CI-LEGACY-EMI' AND s.installment_no=1;
+
+          INSERT INTO installment_payments(
+              installment_id, booking_id, entry_type, payment_date, amount,
+              payment_method, reference_no, idempotency_key, recorded_by
+          )
+          SELECT NULL, b.id, 'DOWN_PAYMENT', CURRENT_DATE, 500,
+                 'UPI', 'CI-DOWNPAY', 'CI-EMI-DOWNPAY-1', 'CI'
+            FROM bookings b WHERE b.booking_no='NKJ-CI-LEGACY-EMI';
+
+          INSERT INTO installment_payment_reversals(
+              payment_id, reversal_date, amount, reason, idempotency_key, recorded_by
+          )
+          SELECT p.id, CURRENT_DATE, 10, 'CI fixture reversal', 'CI-EMI-REV-1', 'CI'
+            FROM installment_payments p WHERE p.idempotency_key='CI-EMI-PAY-1';
+
+          INSERT INTO bookings(
+              booking_no, customer_name, mobile, booking_date, description,
+              metal_type, purity, estimated_value, making_estimate,
+              advance_amount, remaining_amount, status, is_installment_plan
+          )
+          VALUES (
+              'NKJ-CI-GENUINE-BOOKING', 'Pre-Booking Customer', '9000000002',
+              CURRENT_DATE, 'Genuine pre-booking fixture', 'GOLD', '22K',
+              2000, 0, 200, 1800, 'OPEN', FALSE
+          );
+
+          INSERT INTO installments(booking_id, installment_no, due_date, amount_due, amount_paid, remaining_amount, payment_status)
+          SELECT b.id, 1, CURRENT_DATE + 20, 1000, 0, 1000, 'PENDING'
+            FROM bookings b WHERE b.booking_no='NKJ-CI-GENUINE-BOOKING';
+          COMMIT;
+          SQL
+
+      - name: Apply V20 and verify module separation
+        working-directory: NKJ-Jewellery-Works-ERP/backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/nkj_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          ADMIN_USERNAME: ci-owner
+          ADMIN_PASSWORD: ci-only-password
+          TOTP_SECRET: JBSWY3DPEHPK3PXP
+        run: |
+          kill "$(cat /tmp/nkj-backend.pid)"
+          for attempt in $(seq 1 30); do
+            kill -0 "$(cat /tmp/nkj-backend.pid)" 2>/dev/null || break
+            sleep 1
+          done
+          java -jar target/nkj-billing-1.0.0.jar > /tmp/nkj-v20.log 2>&1 &
+          echo $! > /tmp/nkj-backend.pid
+          for attempt in $(seq 1 90); do
+            if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='20' AND success=true" 2>/dev/null | grep -q '^1$'; then
+              break
+            fi
+            if ! kill -0 "$(cat /tmp/nkj-backend.pid)" 2>/dev/null; then
+              cat /tmp/nkj-v20.log
+              exit 1
+            fi
+            sleep 2
+          done
+          psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE n BIGINT;
+          BEGIN
+            SELECT COUNT(*) INTO n
+              FROM installment_accounts a
+              JOIN invoices i ON i.id=a.invoice_id
+             WHERE i.invoice_no='NKJ-CI-EMI-001';
+            IF n <> 1 THEN RAISE EXCEPTION 'Expected exactly one migrated EMI account, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM installment_schedules s
+              JOIN installment_accounts a ON a.id=s.account_id
+             WHERE a.invoice_no='NKJ-CI-EMI-001';
+            IF n <> 2 THEN RAISE EXCEPTION 'Expected 2 migrated EMI schedules, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM installment_transactions p
+              JOIN installment_accounts a ON a.id=p.account_id
+             WHERE a.invoice_no='NKJ-CI-EMI-001';
+            IF n <> 2 THEN RAISE EXCEPTION 'Expected down-payment and installment transactions, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM installment_transaction_reversals r
+              JOIN installment_transactions p ON p.id=r.transaction_id
+              JOIN installment_accounts a ON a.id=p.account_id
+             WHERE a.invoice_no='NKJ-CI-EMI-001';
+            IF n <> 1 THEN RAISE EXCEPTION 'Expected 1 migrated payment reversal, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM bookings
+             WHERE is_installment_plan IS NOT TRUE;
+            IF n <> 1 THEN RAISE EXCEPTION 'Expected only the genuine Pre-Booking in the Pre-Booking filter, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM installment_schedules s
+              JOIN installment_accounts a ON a.id=s.account_id
+             WHERE a.invoice_no IS NULL;
+            IF n <> 0 THEN RAISE EXCEPTION 'A genuine Pre-Booking schedule leaked into EMI schedules'; END IF;
+
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public'
+                   AND table_name IN ('installment_accounts','installment_schedules','installment_transactions')
+                   AND column_name IN ('booking_id','legacy_booking_id')
+            ) THEN
+              RAISE EXCEPTION 'An active EMI table still has a Pre-Booking/booking relationship';
+            END IF;
+
+            SELECT COUNT(*) INTO n FROM invoices WHERE invoice_no='NKJ-CI-EMI-001';
+            IF n <> 1 THEN RAISE EXCEPTION 'The original invoice was not preserved'; END IF;
+          END $$;
+          SQL
