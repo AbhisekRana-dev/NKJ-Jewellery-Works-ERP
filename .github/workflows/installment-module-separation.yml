@@ -190,7 +190,7 @@ jobs:
 
           assert 'module.equals("payments")' in modules
           assert "A customer receipt must contain an amount greater than zero." in modules
-          assert '"PENDING".equals(status)' in modules
+          assert '? "PENDING" :' in modules and "paymentStatus" in modules
           assert 'cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT"' in modules
           assert 'cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT"' in modules
           print("Source-aware cash flow rules, signs, filters, idempotency and full-history checks passed.")
