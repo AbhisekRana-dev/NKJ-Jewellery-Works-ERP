@@ -40,7 +40,7 @@ jobs:
           shell = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.jsx").read_text()
           app = Path("NKJ-Jewellery-Works-ERP/frontend/src/app/App.jsx").read_text()
           nav_start = shell.index("const ownerNavigation = [")
-          nav_end = shell.index("\\n];", nav_start)
+          nav_end = shell.index("\n];", nav_start)
           nav_items = shell[nav_start:nav_end].count('["')
           assert nav_items == 28, f"Expected all 28 owner sidebar menu items, found {nav_items}."
           assert "group.items.map(([key, label, to, Icon])" in shell, (
