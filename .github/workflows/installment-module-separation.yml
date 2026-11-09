@@ -225,3 +225,150 @@ jobs:
             IF n <> 1 THEN RAISE EXCEPTION 'The original invoice was not preserved'; END IF;
           END $$;
           SQL
+- name: Verify live Pre-Booking and EMI API independence
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/nkj_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+        run: |
+          set -euo pipefail
+          DB="postgresql://postgres:postgres@localhost:5432/nkj_test"
+
+          # Seed a second saved invoice that can be converted by the real API.
+          psql "$DB" -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO invoices(invoice_no, invoice_date, customer_name, mobile, address, grand_total)
+          VALUES ('NKJ-CI-NEW-EMI-002',
+                  (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE,
+                  'New EMI API Customer', '9000000003', 'API EMI address', 900.00);
+          SQL
+
+          # Wait until the migrated backend has finished starting.
+          for attempt in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8086/api/auth/session || true)
+            if [ "$code" != "000" ]; then break; fi
+            sleep 2
+          done
+          if [ "${code:-000}" = "000" ]; then
+            echo "Backend did not become reachable."
+            cat /tmp/nkj-v20.log
+            exit 1
+          fi
+
+          CHALLENGE_JSON=$(curl -fsS -X POST http://localhost:8086/api/auth/login \
+            -H 'Content-Type: application/json' \
+            --data '{"username":"ci-owner","password":"ci-only-password"}')
+          CHALLENGE_ID=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["challengeId"])' <<< "$CHALLENGE_JSON")
+          OTP=$(python3 - <<'PY'
+          import base64, hashlib, hmac, struct, time
+          secret = "JBSWY3DPEHPK3PXP"
+          key = base64.b32decode(secret + "=" * ((8 - len(secret) % 8) % 8))
+          counter = int(time.time() // 30)
+          digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+          offset = digest[-1] & 0x0F
+          binary = int.from_bytes(digest[offset:offset + 4], "big") & 0x7FFFFFFF
+          print(f"{binary % 1000000:06d}")
+          PY
+          )
+          VERIFY_JSON=$(curl -fsS -X POST http://localhost:8086/api/auth/verify \
+            -H 'Content-Type: application/json' \
+            --data "{\"challengeId\":\"$CHALLENGE_ID\",\"code\":\"$OTP\"}")
+          TOKEN=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<< "$VERIFY_JSON")
+          AUTH=(-H "Authorization: Bearer $TOKEN")
+
+          TODAY=$(psql "$DB" -tAc "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE")
+          FIRST_DUE=$(date -u -d "$TODAY + 7 days" +%F)
+          DUE_DAY=$(date -u -d "$FIRST_DUE" +%d)
+          INVOICE_ID=$(psql "$DB" -tAc "SELECT id FROM invoices WHERE invoice_no='NKJ-CI-NEW-EMI-002'")
+          BOOKINGS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM bookings")
+          ACCOUNTS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")
+          SCHEDULES_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_schedules")
+          TRANSACTIONS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")
+
+          PLAN_JSON=$(curl -fsS -X POST http://localhost:8086/api/admin/installments/plans \
+            "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PLAN-002' \
+            --data "{\"invoiceId\":$INVOICE_ID,\"downPayment\":100,\"installmentCount\":2,\"paymentFrequency\":\"MONTHLY\",\"firstDueDate\":\"$FIRST_DUE\",\"downPaymentDate\":\"$TODAY\",\"dueDay\":$DUE_DAY,\"downPaymentMethod\":\"Cash\",\"downPaymentReferenceNo\":\"CI-EMI-DP\"}")
+          ACCOUNT_ID=$(python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["success"] is True; print(x["accountId"])' <<< "$PLAN_JSON")
+
+          # Invoice conversion creates only EMI rows. It must not create or mutate a Pre-Booking.
+          BOOKINGS_AFTER_PLAN=$(psql "$DB" -tAc "SELECT COUNT(*) FROM bookings")
+          ACCOUNTS_AFTER_PLAN=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")
+          if [ "$BOOKINGS_AFTER_PLAN" != "$BOOKINGS_BEFORE" ]; then
+            echo "EMI plan creation unexpectedly changed Pre-Booking rows."
+            exit 1
+          fi
+          if [ "$ACCOUNTS_AFTER_PLAN" -ne "$((ACCOUNTS_BEFORE + 1))" ]; then
+            echo "EMI plan creation did not create exactly one independent EMI account."
+            exit 1
+          fi
+
+          # All Invoices remains independent and must continue to show the converted invoice.
+          curl -fsS http://localhost:8086/api/invoices "${AUTH[@]}" > /tmp/nkj-invoices.json
+          python3 - <<'PY'
+          import json
+          rows = json.load(open("/tmp/nkj-invoices.json"))
+          assert any(row.get("invoiceNo") == "NKJ-CI-NEW-EMI-002" for row in rows), "Converted invoice disappeared from All Invoices."
+          PY
+
+          # A payment is written to the EMI ledger only.
+          DETAILS_JSON=$(curl -fsS http://localhost:8086/api/admin/installments/plans/$ACCOUNT_ID "${AUTH[@]}")
+          SCHEDULE_ID=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["schedule"][0]["id"])' <<< "$DETAILS_JSON")
+          curl -fsS -X POST http://localhost:8086/api/admin/installments/payments \
+            "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PAYMENT-002' \
+            --data "{\"installmentId\":$SCHEDULE_ID,\"paymentDate\":\"$TODAY\",\"amount\":50,\"paymentMethod\":\"UPI\",\"referenceNo\":\"CI-EMI-PAYMENT\"}" \
+            > /tmp/nkj-payment.json
+          BOOKINGS_AFTER_PAYMENT=$(psql "$DB" -tAc "SELECT COUNT(*) FROM bookings")
+          if [ "$BOOKINGS_AFTER_PAYMENT" != "$BOOKINGS_BEFORE" ]; then
+            echo "EMI payment unexpectedly changed Pre-Booking rows."
+            exit 1
+          fi
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")" -ne "$((TRANSACTIONS_BEFORE + 2))" ]; then
+            echo "Expected one down-payment and one installment payment in the independent EMI ledger."
+            exit 1
+          fi
+
+          # Editing a genuine Pre-Booking with legacy booking-owned history must not
+          # be blocked by an EMI-module guard and must not mutate that history.
+          PREBOOK_ID=$(psql "$DB" -tAc "SELECT id FROM bookings WHERE booking_no='NKJ-CI-GENUINE-BOOKING'")
+          curl -fsS -X PUT http://localhost:8086/api/admin/modules/bookings/$PREBOOK_ID \
+            "${AUTH[@]}" -H 'Content-Type: application/json' \
+            --data '{"description":"Edited genuine Pre-Booking fixture"}' > /tmp/nkj-prebooking-update.json
+          psql "$DB" -v ON_ERROR_STOP=1 <<SQL
+          DO \$\$
+          DECLARE n BIGINT;
+          BEGIN
+            SELECT COUNT(*) INTO n FROM bookings
+             WHERE id=$PREBOOK_ID AND description='Edited genuine Pre-Booking fixture';
+            IF n <> 1 THEN RAISE EXCEPTION 'Genuine Pre-Booking update was not saved'; END IF;
+            SELECT COUNT(*) INTO n FROM installments
+             WHERE booking_id=$PREBOOK_ID AND installment_no=1 AND amount_due=1000 AND remaining_amount=1000;
+            IF n <> 1 THEN RAISE EXCEPTION 'Pre-Booking edit unexpectedly changed its legacy schedule history'; END IF;
+          END
+          \$\$;
+          SQL
+
+          # Creating a genuine Pre-Booking must not create or update any EMI data.
+          curl -fsS -X POST http://localhost:8086/api/admin/modules/bookings \
+            "${AUTH[@]}" -H 'Content-Type: application/json' \
+            --data "{\"bookingNo\":\"NKJ-CI-NEW-PREBOOKING\",\"customerName\":\"New Pre-Booking API Customer\",\"mobile\":\"9000000004\",\"bookingDate\":\"$TODAY\",\"description\":\"Independent Pre-Booking API fixture\",\"metalType\":\"GOLD\",\"purity\":\"22K\",\"estimatedWeight\":1,\"estimatedRate\":5000,\"estimatedValue\":5000,\"makingEstimate\":0,\"advanceAmount\":1000,\"remainingAmount\":4000,\"deliveryDate\":\"$FIRST_DUE\",\"status\":\"OPEN\"}" \
+            > /tmp/nkj-prebooking-create.json
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")" != "$ACCOUNTS_AFTER_PLAN" ]; then
+            echo "Pre-Booking creation unexpectedly changed EMI account rows."
+            exit 1
+          fi
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_schedules")" -ne "$((SCHEDULES_BEFORE + 2))" ]; then
+            echo "Pre-Booking creation unexpectedly changed EMI schedules."
+            exit 1
+          fi
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")" -ne "$((TRANSACTIONS_BEFORE + 2))" ]; then
+            echo "Pre-Booking creation unexpectedly changed EMI transactions."
+            exit 1
+          fi
+          PREBOOK_JSON=$(curl -fsS http://localhost:8086/api/admin/modules/bookings "${AUTH[@]}")
+          python3 - <<'PY'
+          import json
+          rows = json.loads('''$PREBOOK_JSON''')
+          labels = {row.get("bookingNo") for row in rows}
+          assert "NKJ-CI-LEGACY-EMI" not in labels, "Archived EMI booking leaked into Pre-Booking."
+          assert "NKJ-CI-GENUINE-BOOKING" in labels, "Genuine Pre-Booking is missing."
+          assert "NKJ-CI-NEW-PREBOOKING" in labels, "New Pre-Booking is missing."
+          PY
