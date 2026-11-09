@@ -1173,8 +1173,12 @@ public class ErpModuleService {
         Definition d = writableDefinition(module);
         if (body == null || body.isEmpty()) throw new IllegalArgumentException("Update data is required.");
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
-        if ("bookings".equals(module) && Boolean.TRUE.equals(before.get("is_installment_plan"))) {
-            throw new IllegalArgumentException("Converted invoice installment plans cannot be edited through generic booking fields. Use the installment detail actions so schedule and accounting records stay consistent.");
+        if ("bookings".equals(module) && (
+                Boolean.TRUE.equals(before.get("is_installment_plan"))
+                || Boolean.TRUE.equals(jdbc.queryForObject(
+                    "SELECT EXISTS (SELECT 1 FROM installments WHERE booking_id=?)",
+                    Boolean.class, id)))) {
+            throw new IllegalArgumentException("Installment accounts cannot be edited through generic booking fields. Use the installment account actions so schedule and accounting records stay consistent.");
         }
         Map<String,Object> normalized = new LinkedHashMap<>(body);
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
@@ -1228,8 +1232,12 @@ public class ErpModuleService {
         }
         Definition d = writableDefinition(module);
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
-        if ("bookings".equals(module) && Boolean.TRUE.equals(before.get("is_installment_plan"))) {
-            throw new IllegalArgumentException("An invoice installment plan cannot be deleted because it has financial history. Reverse or correct posted transactions instead.");
+        if ("bookings".equals(module) && (
+                Boolean.TRUE.equals(before.get("is_installment_plan"))
+                || Boolean.TRUE.equals(jdbc.queryForObject(
+                    "SELECT EXISTS (SELECT 1 FROM installments WHERE booking_id=?)",
+                    Boolean.class, id)))) {
+            throw new IllegalArgumentException("An installment account cannot be deleted because it has financial history. Reverse or correct posted transactions instead.");
         }
         jdbc.update("DELETE FROM " + d.table() + " WHERE id=?", id);
         audit("DELETE", module, id, before, null, ip);
