@@ -105,7 +105,10 @@ jobs:
           assert "var(--nkj-owner-sidebar-width" in profile_css, "Profile must follow the same shared sidebar width."
           assert "pointer-events: none" not in css
           assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {" in css
-          collapsed_label_css = css.split(".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {", 1)[1].split("}", 1)[0]
+          collapsed_label_selector = ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {"
+          collapsed_label_start = css.rfind(collapsed_label_selector)
+          assert collapsed_label_start >= 0, "Collapsed compact labels are missing."
+          collapsed_label_css = css[collapsed_label_start + len(collapsed_label_selector):].split("}", 1)[0]
           assert "display: block !important" in collapsed_label_css and "font-size: 7px" in collapsed_label_css
           assert "white-space: nowrap;" in collapsed_label_css and "overflow: hidden;" in collapsed_label_css
           assert "@media (max-width: 760px)" in css and "--nkj-owner-sidebar-width: var(--nkj-owner-collapsed-width);" in css
