@@ -301,17 +301,34 @@ export default function InstallmentManagementPage() {
           downPaymentReferenceNo: plan.downPaymentReferenceNo,
         }),
       });
-      if (result?.success !== true || !result?.accountId) {
-        throw new Error("The server did not confirm that the installment plan was saved. No success message was shown.");
+      // A wrapped API response is accepted only when it still carries the
+      // independent EMI account contract. Never treat a legacy bookingId as success.
+      const payload = result?.data?.accountId
+        ? result.data
+        : result?.result?.accountId
+          ? result.result
+          : result;
+      if (payload?.bookingId || payload?.bookingNo) {
+        throw new Error(
+          "The connected backend is outdated: it returned a bookingId/bookingNo instead of an independent EMI accountId. Do not retry this invoice. Restart the backend from branch fix/installment-emi-workflow and ensure Flyway migration V20 has completed. Check Pre-Booking and Installment Management before trying again, because the old backend may have saved this plan as a booking."
+        );
       }
-      setMessage(result.message || `Installment account created for invoice ${selectedInvoice.invoiceNo}.`);
+      if (payload?.success !== true || !payload?.accountId) {
+        const fields = payload && typeof payload === "object"
+          ? Object.keys(payload).join(", ") || "no response fields"
+          : "an empty response";
+        throw new Error(
+          `The backend response is missing the required independent EMI accountId (received: ${fields}). Verify that the matching backend build is running and database migration V20 is applied. Do not submit this invoice again until its current status is checked.`
+        );
+      }
+      setMessage(payload.message || `Installment account created for invoice ${selectedInvoice.invoiceNo}.`);
       setInvoiceId("");
       setPlan(emptyPlan());
       setPlanIdempotencyKey(newIdempotencyKey());
       setInvoiceSearch("");
       await load();
       setTab("accounts");
-      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${result.accountNo || result.accountId}\nInstallments: ${result.scheduleCount || 0}`);
+      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${payload.accountNo || payload.accountId}\nInstallments: ${payload.scheduleCount || 0}`);
     } catch (e) {
       await load();
       setError(e.message || "Could not create the installment plan.");
