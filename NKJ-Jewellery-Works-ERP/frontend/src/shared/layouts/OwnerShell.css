@@ -895,3 +895,45 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
   max-width: 65px !important;
   flex: 0 0 65px !important;
 }
+
+
+/* Dedicated compact labels: do not reuse the full-name span hidden by legacy responsive rules. */
+.nkj-owner-sidebar .nkj-owner-nav a > small.nkj-owner-compact-label {
+  display: none !important;
+}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > span.nkj-owner-nav-label {
+  display: none !important;
+}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {
+  display: block !important;
+  width: 100%;
+  max-width: 57px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  line-height: 9px !important;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: none;
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  min-height: 48px !important;
+  padding: 4px 1px !important;
+}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a span,
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button span {
+  display: block !important;
+  font-size: 8px !important;
+  line-height: 9px !important;
+  white-space: nowrap !important;
+}
