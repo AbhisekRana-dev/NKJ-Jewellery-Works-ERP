@@ -1,5 +1,5 @@
 import "./OwnerShell.css";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
@@ -97,6 +97,59 @@ export function Nav({ active = "home" }) {
       // The navigation still works if session storage is disabled.
     }
   }, [ownerWorkspace]);
+
+  useEffect(() => {
+    if (!ownerWorkspace) return undefined;
+
+    const elementFromTarget = (target) => (
+      target instanceof Element ? target : target?.parentElement
+    );
+
+    // Delegated handling survives route changes because it is attached to
+    // document, while the page and its shared sidebar are re-rendered.
+    const handleDoubleClick = (event) => {
+      const target = elementFromTarget(event.target);
+      if (!target) return;
+
+      if (sidebarCollapsed) {
+        // Expand only for double-clicks inside actual page content.
+        // Clicks on the sidebar itself, header, or footer do not toggle it.
+        if (target.closest(".app-content main") && !target.closest(".nkj-owner-sidebar")) {
+          setSidebarCollapsed(false);
+        }
+        return;
+      }
+
+      // When expanded, only menu text (not its icon, arrow, brand, or user
+      // profile) collapses the sidebar. Public Home text is included.
+      if (target.closest(".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span")) {
+        event.preventDefault();
+        setSidebarCollapsed(true);
+      }
+    };
+
+    const handleClickCapture = (event) => {
+      if (event.detail < 2) return;
+      const target = elementFromTarget(event.target);
+      if (!target) return;
+
+      // Suppress only the second click of a double-click sequence. The first
+      // click is untouched, so ordinary sidebar/page navigation stays instant.
+      const repeatedSidebarClick = target.closest(".nkj-owner-sidebar a");
+      const repeatedContentLink = sidebarCollapsed
+        && target.closest(".app-content main a");
+      if (repeatedSidebarClick || repeatedContentLink) {
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("dblclick", handleDoubleClick);
+    document.addEventListener("click", handleClickCapture, true);
+    return () => {
+      document.removeEventListener("dblclick", handleDoubleClick);
+      document.removeEventListener("click", handleClickCapture, true);
+    };
+  }, [ownerWorkspace, sidebarCollapsed]);
 
   if (ownerWorkspace) {
     return (
