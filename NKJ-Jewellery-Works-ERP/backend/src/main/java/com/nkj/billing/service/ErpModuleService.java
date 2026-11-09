@@ -455,9 +455,15 @@ public class ErpModuleService {
         BigDecimal invoiceTotal = decimal(invoice.get("grand_total")).setScale(2, java.math.RoundingMode.HALF_UP);
         if (invoiceTotal.signum() <= 0) throw new IllegalArgumentException("The selected invoice has no payable amount.");
 
-        Long duplicate = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM bookings WHERE is_installment_plan=TRUE AND (invoice_id=? OR invoice_no=?)",
-                Long.class, invoiceId, invoiceNo);
+        Long duplicate = jdbc.queryForObject("""
+            SELECT COUNT(*)
+              FROM bookings b
+             WHERE (b.invoice_id=? OR b.invoice_no=?)
+               AND (
+                    b.is_installment_plan=TRUE
+                    OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
+               )
+            """, Long.class, invoiceId, invoiceNo);
         if (duplicate != null && duplicate > 0) {
             throw new IllegalArgumentException("Invoice " + invoiceNo + " has already been converted into an installment plan.");
         }
