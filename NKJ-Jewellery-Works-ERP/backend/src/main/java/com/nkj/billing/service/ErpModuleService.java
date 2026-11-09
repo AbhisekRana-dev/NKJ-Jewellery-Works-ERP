@@ -201,7 +201,8 @@ public class ErpModuleService {
         }
         if (module.equals("installment-payments")) {
             return jdbc.queryForList("""
-                SELECT p.id, p.installment_id AS "installmentId", b.id AS "bookingId",
+                SELECT p.id, ('NKJ-EMI-TXN-' || LPAD(p.id::TEXT, 8, '0')) AS "transactionId",
+                       p.installment_id AS "installmentId", b.id AS "bookingId",
                        COALESCE(b.invoice_no,b.booking_no) AS "invoiceNo",
                        b.customer_name AS "customerName", i.installment_no AS "installmentNo",
                        p.entry_type AS "entryType", p.payment_date AS "paymentDate",
@@ -697,7 +698,8 @@ public class ErpModuleService {
              ORDER BY id ASC
             """, linkedInvoiceId);
         List<Map<String,Object>> payments = jdbc.queryForList("""
-            SELECT p.id, p.installment_id AS "installmentId",
+            SELECT p.id, ('NKJ-EMI-TXN-' || LPAD(p.id::TEXT, 8, '0')) AS "transactionId",
+                   p.installment_id AS "installmentId",
                    i.installment_no AS "installmentNo",
                    p.entry_type AS "entryType",
                    p.payment_date AS "paymentDate", p.amount,
@@ -763,7 +765,7 @@ public class ErpModuleService {
             Map<String,Object> duplicateResponse = new LinkedHashMap<>();
             duplicateResponse.put("success", true);
             duplicateResponse.put("paymentId", saved.get("id"));
-            duplicateResponse.put("transactionId", saved.get("id"));
+            duplicateResponse.put("transactionId", installmentTransactionId(saved.get("id")));
             duplicateResponse.put("duplicate", true);
             duplicateResponse.put("invoiceNo", saved.get("invoice_no"));
             duplicateResponse.put("amount", saved.get("amount"));
@@ -840,7 +842,7 @@ public class ErpModuleService {
                 "SELECT remaining_amount FROM bookings WHERE id=?",
                 BigDecimal.class, ((Number) installment.get("booking_id")).longValue());
         response.put("paymentId", paymentId);
-        response.put("transactionId", paymentId);
+        response.put("transactionId", installmentTransactionId(paymentId));
         response.put("invoiceNo", installment.get("invoice_no"));
         response.put("amount", amount);
         response.put("paymentDate", paymentDate);
@@ -957,13 +959,20 @@ public class ErpModuleService {
                 "SELECT amount_due, due_date FROM installments WHERE id=?", installmentId);
         BigDecimal due = decimal(row.get("amount_due")).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal remaining = due.subtract(paid).max(BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
-        java.time.LocalDate dueDate = row.get("due_date") instanceof java.sql.Date date
-                ? date.toLocalDate() : java.time.LocalDate.parse(String.valueOf(row.get("due_date")));
+        Object rawDueDate = row.get("due_date");
+        java.time.LocalDate dueDate = null;
+        if (rawDueDate instanceof java.sql.Date sqlDate) {
+            dueDate = sqlDate.toLocalDate();
+        } else if (rawDueDate instanceof java.time.LocalDate localDate) {
+            dueDate = localDate;
+        } else if (rawDueDate != null && !String.valueOf(rawDueDate).isBlank()) {
+            dueDate = java.time.LocalDate.parse(String.valueOf(rawDueDate));
+        }
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
         String status = remaining.signum() == 0 ? "PAID"
-                : dueDate.isBefore(today) ? "OVERDUE"
+                : dueDate != null && dueDate.isBefore(today) ? "OVERDUE"
                 : paid.signum() > 0 ? "PARTIAL"
-                : dueDate.isEqual(today) ? "DUE" : "PENDING";
+                : dueDate != null && dueDate.isEqual(today) ? "DUE" : "PENDING";
         jdbc.update("UPDATE installments SET amount_paid=?, remaining_amount=?, payment_status=?, updated_at=NOW() WHERE id=?",
                 paid, remaining, status, installmentId);
         jdbc.update("""
@@ -974,6 +983,15 @@ public class ErpModuleService {
                    updated_at=NOW()
              WHERE id=?
             """, bookingId, bookingId, bookingId);
+    }
+
+    /**
+     * Public, stable receipt identifier derived from the immutable payment
+     * primary key. The database sequence guarantees uniqueness; this label is
+     * shared by the notebook, account statement and save confirmation.
+     */
+    private String installmentTransactionId(Object id) {
+        return "NKJ-EMI-TXN-" + String.format(Locale.ROOT, "%08d", requiredId(id, "Transaction ID"));
     }
 
     private BigDecimal netPaidForInstallment(long installmentId) {
