@@ -185,7 +185,7 @@ export default function InstallmentManagementPage() {
       const rows = schedules
         .filter((schedule) => Number(schedule.bookingId) === Number(booking.id))
         .sort((a, b) => Number(a.installmentNo) - Number(b.installmentNo));
-      const total = Number(booking.estimatedValue || 0) + Number(booking.makingEstimate || 0);
+      const total = Number(booking.originalInvoiceAmount ?? (Number(booking.estimatedValue || 0) + Number(booking.makingEstimate || 0)));
       const outstanding = Math.max(0, Number(
         booking.remainingAmount ?? rows.reduce((sum, row) => sum + Number(row.remainingAmount || 0), 0),
       ));
