@@ -195,6 +195,7 @@ public class ErpModuleService {
                   FROM installments i
                   JOIN bookings b ON b.id=i.booking_id
                  WHERE b.is_installment_plan = TRUE
+                    OR EXISTS (SELECT 1 FROM installments legacy_plan WHERE legacy_plan.booking_id=b.id)
                  ORDER BY i.due_date ASC,i.installment_no ASC
                 """);
         }
@@ -380,6 +381,11 @@ public class ErpModuleService {
                AND LOWER(COALESCE(
                     NULLIF(i.payload_json,'')::jsonb->>'cancelled',
                     NULLIF(i.payload_json,'')::jsonb->>'isCancelled',
+                    NULLIF(i.payload_json,'')::jsonb->>'is_cancelled',
+                    NULLIF(i.payload_json,'')::jsonb->>'deleted',
+                    NULLIF(i.payload_json,'')::jsonb->>'isDeleted',
+                    NULLIF(i.payload_json,'')::jsonb->>'isDraft',
+                    NULLIF(i.payload_json,'')::jsonb->>'draft',
                     'false'
                )) <> 'true'
                AND NOT EXISTS (
@@ -394,13 +400,16 @@ public class ErpModuleService {
                AND (
                     ( ? = '' AND i.invoice_date >=
                         (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE - INTERVAL '2 days'
+                        AND i.invoice_date <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE
                     )
                     OR
-                    ( ? <> '' AND (
-                        LOWER(COALESCE(i.invoice_no,'')) LIKE ?
-                        OR LOWER(COALESCE(i.customer_name,'')) LIKE ?
-                        OR LOWER(COALESCE(i.mobile,'')) LIKE ?
-                    ))
+                    ( ? <> '' AND i.invoice_date <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE
+                        AND (
+                            LOWER(COALESCE(i.invoice_no,'')) LIKE ?
+                            OR LOWER(COALESCE(i.customer_name,'')) LIKE ?
+                            OR LOWER(COALESCE(i.mobile,'')) LIKE ?
+                        )
+                    )
                )
              ORDER BY i.invoice_date DESC, i.created_at DESC, i.id DESC
              LIMIT 500
@@ -751,13 +760,15 @@ public class ErpModuleService {
 
         long installmentId = requiredId(body.get("installmentId"), "Installment ID");
         Map<String,Object> installment = jdbc.queryForMap("""
-            SELECT i.id, i.booking_id, i.amount_due, b.invoice_no, b.is_installment_plan
+            SELECT i.id, i.booking_id, i.amount_due, b.invoice_no, b.is_installment_plan,
+                   EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id) AS has_schedule
               FROM installments i
               JOIN bookings b ON b.id=i.booking_id
              WHERE i.id=? FOR UPDATE
             """, installmentId);
-        if (!Boolean.TRUE.equals(installment.get("is_installment_plan"))) {
-            throw new IllegalArgumentException("This schedule row is not linked to a converted invoice.");
+        if (!Boolean.TRUE.equals(installment.get("is_installment_plan"))
+                && !Boolean.TRUE.equals(installment.get("has_schedule"))) {
+            throw new IllegalArgumentException("This schedule row is not linked to an installment account.");
         }
         BigDecimal due = decimal(installment.get("amount_due")).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal paid = netPaidForInstallment(installmentId);
