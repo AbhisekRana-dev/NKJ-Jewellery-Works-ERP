@@ -389,8 +389,7 @@ public class ErpModuleService {
             if (paid.signum() > 0) {
                 cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT", id,
                         expenseEventKey(id, paid),
-                        data.get("expenseDate") == null ? shopToday() : parseDate(data.get("expenseDate"), "Expense date"),
-                        paid, null,
+                        shopToday(), paid, null,
                         data.get("description") == null ? String.valueOf(data.get("category")) : String.valueOf(data.get("description")),
                         data.get("paymentMethod") == null ? null : String.valueOf(data.get("paymentMethod")),
                         data.get("referenceNo") == null ? null : String.valueOf(data.get("referenceNo")),
@@ -402,8 +401,7 @@ public class ErpModuleService {
             if (paid.signum() > 0) {
                 cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT", id,
                         "PURCHASE-INITIAL:" + id,
-                        data.get("purchaseDate") == null ? shopToday() : parseDate(data.get("purchaseDate"), "Purchase date"),
-                        paid, String.valueOf(data.get("supplierName")), "Supplier purchase payment",
+                        shopToday(), paid, String.valueOf(data.get("supplierName")), "Supplier purchase payment",
                         null, null,
                         data.get("invoiceNo") == null ? "PURCHASE-" + id : String.valueOf(data.get("invoiceNo")),
                         requestKey, null);
