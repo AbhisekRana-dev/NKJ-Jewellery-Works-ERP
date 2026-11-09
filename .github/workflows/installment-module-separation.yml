@@ -456,3 +456,245 @@ jobs:
           assert "NKJ-CI-GENUINE-BOOKING" in labels, "Genuine Pre-Booking is missing."
           assert "NKJ-CI-NEW-PREBOOKING" in labels, "New Pre-Booking is missing."
           PY
+
+          # Exercise the real public invoice-save endpoint and the protected Customer Management API.
+          export NKJ_CI_DB="$DB"
+          export NKJ_CI_TOKEN="$TOKEN"
+          python3 - <<'PY'
+          import concurrent.futures
+          import datetime
+          import json
+          import os
+          import subprocess
+          import urllib.error
+          import urllib.request
+
+          BASE = "http://localhost:8086"
+          DB = os.environ["NKJ_CI_DB"]
+          TOKEN = os.environ["NKJ_CI_TOKEN"]
+          TODAY = subprocess.check_output(
+              ["psql", DB, "-tAc", "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE"],
+              text=True
+          ).strip()
+
+          def sql(query):
+              return subprocess.check_output(["psql", DB, "-tAc", query], text=True).strip()
+
+          def invoice_payload(name, phone, email="", address=""):
+              return {
+                  "invoiceDate": TODAY,
+                  "showGstin": True,
+                  "customerName": name,
+                  "mobile": phone,
+                  "customerEmail": email,
+                  "address": address,
+                  "paymentMode": "Cash",
+                  "referenceNo": "",
+                  "description": "CI customer synchronization test",
+                  "newItems": [{
+                      "description": "CI gold ring",
+                      "purity": "22K",
+                      "netWeight": 1,
+                      "rate": 1000,
+                      "makingCharge": 0,
+                      "stampCharge": 0,
+                      "extraCharge": 0
+                  }],
+                  "oldItems": [],
+                  "newTotal": 1000,
+                  "oldTotal": 0,
+                  "makingCharge": 0,
+                  "extraCharge": 0,
+                  "discount": 0,
+                  "subTotal": 1000,
+                  "gstPercent": 0,
+                  "gstAmount": 0,
+                  "otherCharge": 0,
+                  "grandTotal": 1000,
+                  "paymentAmount": 0
+              }
+
+          def request_json(path, method="GET", payload=None, headers=None):
+              request_headers = {"Accept": "application/json"}
+              if payload is not None:
+                  request_headers["Content-Type"] = "application/json"
+              if headers:
+                  request_headers.update(headers)
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(
+                  BASE + path, data=data, headers=request_headers, method=method
+              )
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  body = response.read()
+                  return json.loads(body) if body else {}
+
+          def save_invoice(name, phone, email="", address="", key=None):
+              return request_json(
+                  "/api/invoices",
+                  method="POST",
+                  payload=invoice_payload(name, phone, email, address),
+                  headers={"Idempotency-Key": key or ("CI-CUSTOMER-" + name.replace(" ", "-"))}
+              )
+
+          # 1. First invoice creates one customer; a later invoice with the same
+          # phone reuses its ID and fills only blank email/address fields.
+          first = save_invoice(
+              "CI Customer Alpha", "9876543210", "", "",
+              "CI-CUSTOMER-FIRST-001"
+          )
+          assert first.get("id") and first.get("customerId"), "First invoice did not create/link a customer."
+          first_customer_id = first["customerId"]
+
+          second = save_invoice(
+              "CI Different Display Name", "9876543210",
+              "alpha@example.test", "Customer address from second invoice",
+              "CI-CUSTOMER-SECOND-001"
+          )
+          assert second.get("customerId") == first_customer_id, "Same phone created a second customer."
+          preserved = sql(
+              "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
+              f"FROM customers WHERE id={first_customer_id}"
+          )
+          assert preserved == (
+              "CI Customer Alpha|alpha@example.test|Customer address from second invoice"
+          ), "Customer sync overwrote a non-empty name/email/address or failed to fill blank fields."
+
+          third = save_invoice(
+              "CI Later Different Name", "9876543210",
+              "replacement@example.test", "Replacement address",
+              "CI-CUSTOMER-THIRD-001"
+          )
+          assert third.get("customerId") == first_customer_id, "A different name with an existing phone did not reuse the customer."
+          preserved_again = sql(
+              "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
+              f"FROM customers WHERE id={first_customer_id}"
+          )
+          assert preserved_again == preserved, "A later invoice replaced existing non-empty customer details."
+
+          # 2. The same name with different phone numbers creates separate customers.
+          same_name_a = save_invoice(
+              "CI Same Name", "9876543211", "same-a@example.test", "Address A",
+              "CI-SAME-NAME-A-001"
+          )
+          same_name_b = save_invoice(
+              "CI Same Name", "9876543212", "same-b@example.test", "Address B",
+              "CI-SAME-NAME-B-001"
+          )
+          assert same_name_a.get("customerId") != same_name_b.get("customerId"), (
+              "Customer name was incorrectly used as the duplicate key."
+          )
+
+          # 3. A different name with an existing phone, including +91 and
+          # formatting characters, resolves to the same normalized 10 digits.
+          different_name_same_phone = save_invoice(
+              "CI Other Person", "9876543211", "other@example.test", "Other address",
+              "CI-DIFF-NAME-SAME-PHONE-001"
+          )
+          formatted_phone = save_invoice(
+              "CI Formatted Phone", "+91 98765-43211", "",
+              "", "CI-FORMATTED-PHONE-001"
+          )
+          assert different_name_same_phone.get("customerId") == same_name_a.get("customerId"), (
+              "Different customer name with an existing phone created a duplicate."
+          )
+          assert formatted_phone.get("customerId") == same_name_a.get("customerId"), (
+              "Formatted +91 phone was not normalized to the existing customer."
+          )
+
+          # 4. No phone means no customer registration and no customer_id link.
+          no_phone = save_invoice(
+              "CI Customer Without Phone", "", "no-phone@example.test",
+              "No phone address", "CI-NO-PHONE-001"
+          )
+          assert no_phone.get("id") and no_phone.get("customerId") is None, (
+              "An invoice without a phone must save without creating an unidentifiable customer."
+          )
+
+          # 5. Failed invoice validation must roll back before customer creation.
+          bad_payload = invoice_payload(
+              "CI Failed Invoice Customer", "9876543213",
+              "failed@example.test", "Must not be registered"
+          )
+          bad_payload["newItems"] = []
+          failed_req = urllib.request.Request(
+              BASE + "/api/invoices",
+              data=json.dumps(bad_payload).encode(),
+              headers={
+                  "Content-Type": "application/json",
+                  "Idempotency-Key": "CI-CUSTOMER-FAILED-001"
+              },
+              method="POST"
+          )
+          try:
+              urllib.request.urlopen(failed_req, timeout=30)
+              raise AssertionError("Invalid invoice unexpectedly saved.")
+          except urllib.error.HTTPError as error:
+              assert 400 <= error.code < 500, f"Expected invoice validation error, got HTTP {error.code}."
+          assert sql("SELECT COUNT(*) FROM customers WHERE normalized_phone='9876543213'") == "0", (
+              "Failed invoice created a customer."
+          )
+          assert sql("SELECT COUNT(*) FROM invoices WHERE mobile='9876543213'") == "0", (
+              "Failed invoice left an invoice row behind."
+          )
+
+          # 6. Repeating the same save key returns the same invoice/customer;
+          # it must not create another invoice or customer.
+          retry_payload = invoice_payload(
+              "CI Idempotent Customer", "9876543214",
+              "retry@example.test", "Retry address"
+          )
+          retry_key = "CI-CUSTOMER-IDEMPOTENT-001"
+          retry_one = request_json(
+              "/api/invoices", "POST", retry_payload,
+              {"Idempotency-Key": retry_key}
+          )
+          retry_two = request_json(
+              "/api/invoices", "POST", retry_payload,
+              {"Idempotency-Key": retry_key}
+          )
+          assert retry_one.get("id") == retry_two.get("id"), "Repeated invoice save created a second invoice."
+          assert retry_one.get("customerId") == retry_two.get("customerId"), "Repeated invoice save changed Customer ID."
+          assert sql("SELECT COUNT(*) FROM customers WHERE normalized_phone='9876543214'") == "1", (
+              "Repeated invoice save created duplicate customers."
+          )
+          assert sql("SELECT COUNT(*) FROM invoices WHERE idempotency_key='CI-CUSTOMER-IDEMPOTENT-001'") == "1", (
+              "Repeated invoice save created duplicate invoice rows."
+          )
+
+          # 7. Simultaneous first invoices for the same phone must resolve to one
+          # customer under the PostgreSQL unique index/ON CONFLICT upsert.
+          def concurrent_save(index):
+              return save_invoice(
+                  f"CI Concurrent Customer {index}", "9876543215",
+                  f"concurrent{index}@example.test", f"Concurrent address {index}",
+                  f"CI-CUSTOMER-CONCURRENT-{index}-001"
+              )
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+              concurrent_results = list(pool.map(concurrent_save, [1, 2]))
+          concurrent_ids = {row.get("customerId") for row in concurrent_results}
+          assert len(concurrent_ids) == 1 and None not in concurrent_ids, (
+              "Concurrent invoice saves created multiple customers for one phone."
+          )
+          assert sql("SELECT COUNT(*) FROM customers WHERE normalized_phone='9876543215'") == "1", (
+              "Concurrent phone upsert produced duplicate customer rows."
+          )
+
+          # 8. Customer Management endpoint returns all retained and newly
+          # registered customers, including the automatic invoice-created rows.
+          customer_rows = request_json(
+              "/api/admin/modules/customers",
+              headers={"Authorization": "Bearer " + TOKEN}
+          )
+          customer_by_id = {int(row["id"]): row for row in customer_rows}
+          assert first_customer_id in customer_by_id, "Customer Management is missing the automatically registered customer."
+          assert customer_by_id[first_customer_id].get("customerCode"), "Automatic customer ID/code was not generated."
+          assert any(row.get("customerCode") == "NKJ-CI-CUSTOMER-DUP-01" for row in customer_rows), (
+              "Customer Management is missing the first preserved legacy duplicate."
+          )
+          assert any(row.get("customerCode") == "NKJ-CI-CUSTOMER-DUP-02" for row in customer_rows), (
+              "Customer Management is missing the second preserved legacy duplicate."
+          )
+
+          print("Invoice-to-customer synchronization tests passed.")
+          PY
