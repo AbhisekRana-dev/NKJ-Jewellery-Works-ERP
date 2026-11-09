@@ -181,7 +181,7 @@ jobs:
           assert "uq_cash_transactions_source_event" in migration
           assert "uq_cash_transactions_idempotency" in migration
 
-          assert "direction=\"INCOMING\"" in page and "direction=\"OUTGOING\"" in page
+          assert 'row.direction === "INCOMING"' in page, "Rows must be classified using the source-derived direction."
           assert '["INCOMING", "Incoming"]' in page and '["OUTGOING", "Outgoing"]' in page
           assert 'incoming ? "+" : "−"' in page
           assert "is-incoming" in styles and "is-outgoing" in styles
