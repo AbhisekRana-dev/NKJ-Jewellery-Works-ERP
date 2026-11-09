@@ -37,7 +37,7 @@ body.nkj-owner-layout {background:#f6f5f2;}
 .nkj-owner-top-user {display:flex;align-items:center;gap:6px;color:#655d59;font-size:11px;font-weight:700}
 .container.nkj-owner-container {width:calc(100% - 250px);max-width:none;margin:0 0 0 250px;padding:25px 27px 32px;min-height:calc(100vh - 66px)}
 @media (max-width:1100px) {
-.nkj-owner-sidebar {width:65px}
+.nkj-owner-sidebar {width:75px}
 .nkj-owner-brand {justify-content:center;padding:14px 5px}
 .nkj-owner-brand>span:last-child,
 .nkj-owner-user>span:last-child,
@@ -53,8 +53,8 @@ body.nkj-owner-layout {background:#f6f5f2;}
 .nkj-owner-sidebar-bottom a,
 .nkj-owner-sidebar-bottom button {justify-content:center;font-size:0;padding:10px 6px}
 .nkj-owner-sidebar-bottom button svg {width:19px;height:19px}
-.nkj-owner-topbar {margin-left:65px;width:calc(100% - 65px)}
-.container.nkj-owner-container {width:calc(100% - 65px);margin-left:65px}
+.nkj-owner-topbar {margin-left:75px;width:calc(100% - 75px)}
+.container.nkj-owner-container {width:calc(100% - 75px);margin-left:75px}
 
 }
 @media (max-width:800px) {
@@ -78,7 +78,7 @@ body.nkj-owner-layout {background:#f6f5f2;}
 }
 .nkj-sidebar-toggle {position:absolute;right:8px;top:13px;z-index:3;width:29px;height:29px;display:grid;place-items:center;border:1px solid rgba(245,215,145,.35);border-radius:7px;background:rgba(255,255,255,.09);color:#f6d98c;cursor:pointer}
 .nkj-sidebar-toggle svg {transition:transform .18s ease}
-.nkj-owner-sidebar.is-collapsed {width:65px}
+.nkj-owner-sidebar.is-collapsed {width:75px}
 .nkj-owner-sidebar.is-collapsed .nkj-sidebar-toggle {right:24px;transform:rotate(180deg)}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-brand {justify-content:center;padding-left:5px;padding-right:5px}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-brand>span:last-child,
@@ -89,9 +89,9 @@ body.nkj-owner-layout {background:#f6f5f2;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-user {justify-content:center;margin:10px 7px;padding:8px 4px}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav {padding:5px 8px}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {justify-content:center;padding:10px 6px}
-.nkj-owner-sidebar.is-collapsed .nkj-owner-topbar {margin-left:65px;width:calc(100% - 65px)}
-body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar {margin-left:65px;width:calc(100% - 65px)}
-body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .container.nkj-owner-container {width:calc(100% - 65px);margin-left:65px}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-topbar {margin-left:75px;width:calc(100% - 75px)}
+body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar {margin-left:75px;width:calc(100% - 75px)}
+body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .container.nkj-owner-container {width:calc(100% - 75px);margin-left:75px}
 @media (max-width:1100px) {
 .nkj-sidebar-toggle {display:none}
 
@@ -184,8 +184,8 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .container.nkj-owner-
 .topbar nav {width: 100%; justify-content: flex-start;}
 .topbar nav a,
 .topbar nav button {min-height: 38px; padding: 8px 11px;}
-.nkj-owner-topbar {margin-left:65px; width: calc(100% - 65px);}
-.container.nkj-owner-container {width: calc(100% - 65px); margin-left:65px;}
+.nkj-owner-topbar {margin-left:75px; width: calc(100% - 75px);}
+.container.nkj-owner-container {width: calc(100% - 75px); margin-left:75px;}
 
 }
 @media (max-width: 650px) {
@@ -629,7 +629,7 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
 /* Shared compact owner sidebar sizing. These variables also drive page content offsets. */
 :root {
   --nkj-owner-expanded-width: 250px;
-  --nkj-owner-collapsed-width: 65px;
+  --nkj-owner-collapsed-width: 75px;
 }
 body.nkj-owner-layout {
   --nkj-owner-sidebar-width: var(--nkj-owner-expanded-width);
@@ -768,7 +768,7 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
   height: 26px !important;
 }
 
-/* Collapsed sidebar: icons and short labels remain centered within 65px. */
+/* Collapsed sidebar: icons and short labels remain centered within 75px. */
 .nkj-owner-sidebar.is-collapsed {
   width: var(--nkj-owner-collapsed-width) !important;
 }
@@ -890,10 +890,10 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
 }
 .nkj-owner-sidebar.is-collapsed {
   box-sizing: border-box !important;
-  width: 65px !important;
-  min-width: 65px !important;
-  max-width: 65px !important;
-  flex: 0 0 65px !important;
+  width: 75px !important;
+  min-width: 75px !important;
+  max-width: 75px !important;
+  flex: 0 0 75px !important;
 }
 
 
@@ -971,11 +971,11 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > svg:first-child {
   display: block !important;
-  width: 27px !important;
-  height: 27px !important;
-  min-width: 27px !important;
-  min-height: 27px !important;
-  flex: 0 0 27px !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  flex: 0 0 30px !important;
   margin: 0 !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {
@@ -1028,9 +1028,9 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a > svg,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button > svg {
   display: block !important;
-  width: 27px !important;
-  height: 27px !important;
-  flex: 0 0 27px !important;
+  width: 30px !important;
+  height: 30px !important;
+  flex: 0 0 30px !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a span,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button span {
