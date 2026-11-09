@@ -51,9 +51,9 @@ public class ErpModuleController {
         return modules.createInstallmentPlan(body, idempotencyKey, request.getRemoteAddr());
     }
 
-    @GetMapping("/installments/plans/{bookingId}")
-    public Map<String,Object> installmentPlanDetails(@PathVariable long bookingId) {
-        return modules.getInstallmentPlanDetails(bookingId);
+    @GetMapping("/installments/plans/{accountId}")
+    public Map<String,Object> installmentPlanDetails(@PathVariable long accountId) {
+        return modules.getInstallmentPlanDetails(accountId);
     }
 
     @PostMapping("/installments/payments")
