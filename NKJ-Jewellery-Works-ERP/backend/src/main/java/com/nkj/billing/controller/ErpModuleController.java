@@ -17,16 +17,19 @@ public class ErpModuleController {
     private final JdbcTemplate jdbc;
     private final DataSource dataSource;
     private final com.nkj.billing.service.SalesAccountingService salesAccounting;
+    private final com.nkj.billing.service.CashFlowService cashFlow;
 
     public ErpModuleController(
             ErpModuleService modules,
             JdbcTemplate jdbc,
             DataSource dataSource,
-            com.nkj.billing.service.SalesAccountingService salesAccounting) {
+            com.nkj.billing.service.SalesAccountingService salesAccounting,
+            com.nkj.billing.service.CashFlowService cashFlow) {
         this.modules = modules;
         this.jdbc = jdbc;
         this.dataSource = dataSource;
         this.salesAccounting = salesAccounting;
+        this.cashFlow = cashFlow;
     }
 
     @GetMapping("/modules/{module}")
@@ -82,10 +85,36 @@ public class ErpModuleController {
         return modules.reverseInstallmentPayment(paymentId, body, idempotencyKey, request.getRemoteAddr());
     }
 
+    @GetMapping("/transactions")
+    public Object transactions(
+            @RequestParam(name = "direction", required = false) String direction,
+            @RequestParam(name = "search", required = false) String search) {
+        return cashFlow.list(direction, search);
+    }
+
+    @GetMapping("/transactions/summary")
+    public Map<String,Object> transactionSummary() {
+        return cashFlow.summary();
+    }
+
+    @GetMapping("/transactions/refundable")
+    public Object refundableTransactions() {
+        return cashFlow.refundableTransactions();
+    }
+
+    @PostMapping("/transactions/refunds")
+    public Map<String,Object> createRefund(
+            @RequestBody Map<String,Object> body,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            jakarta.servlet.http.HttpServletRequest request) {
+        return cashFlow.createRefund(body, idempotencyKey, request.getRemoteAddr());
+    }
+
     @PostMapping("/modules/{module}")
     public Map<String,Object> create(@PathVariable String module, @RequestBody Map<String,Object> body,
+                                     @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                      jakarta.servlet.http.HttpServletRequest request) {
-        return modules.create(module, body, request.getRemoteAddr());
+        return modules.create(module, body, request.getRemoteAddr(), idempotencyKey);
     }
 
     @PutMapping("/modules/{module}/{id}")
