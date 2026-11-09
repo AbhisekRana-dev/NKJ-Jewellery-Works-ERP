@@ -539,7 +539,7 @@ public class ErpModuleService {
             downPaymentReference.isBlank() ? null : downPaymentReference,
             downPayment.signum() > 0 ? auth.getUsername() : null,
             remainingBalance, count, frequency, key, mapper.writeValueAsString(request),
-            remainingBalance.signum() == 0 ? "COMPLETED" : "OPEN");
+            remainingBalance.signum() == 0 ? "COMPLETED" : "OPEN", today);
 
         String accountNo = "NKJ-EMI-" + today.format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy"))
                 + "-" + String.format(Locale.ROOT, "%04d", accountId);
