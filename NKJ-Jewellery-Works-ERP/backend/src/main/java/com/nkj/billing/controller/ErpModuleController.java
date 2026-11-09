@@ -118,14 +118,20 @@ public class ErpModuleController {
         result.put("staffCount", jdbc.queryForObject("SELECT COUNT(*) FROM staff WHERE status='ACTIVE'", Long.class));
         result.put("presentToday", jdbc.queryForObject("SELECT COUNT(*) FROM staff_attendance WHERE attendance_date=CURRENT_DATE AND status='PRESENT'", Long.class));
         result.put("absentToday", jdbc.queryForObject("SELECT COUNT(*) FROM staff_attendance WHERE attendance_date=CURRENT_DATE AND status='ABSENT'", Long.class));
-        result.put("openBookings", jdbc.queryForObject("SELECT COUNT(*) FROM bookings WHERE status IN ('OPEN','IN_PROGRESS')", Long.class));
+        result.put("openBookings", jdbc.queryForObject("SELECT COUNT(*) FROM bookings b
+          WHERE b.status IN ('OPEN','IN_PROGRESS')
+            AND b.is_installment_plan IS NOT TRUE
+            AND NOT EXISTS (SELECT 1 FROM installment_accounts a WHERE a.legacy_booking_id=b.id)", Long.class));
         result.put("monthlySalaryExpense", jdbc.queryForObject("SELECT COALESCE(SUM(net_salary),0) FROM staff_salary WHERE payroll_month=to_char(CURRENT_DATE,'YYYY-MM')", BigDecimal.class));
         result.put("pendingSalary", jdbc.queryForObject("SELECT COALESCE(SUM(remaining_salary),0) FROM staff_salary WHERE payment_status<>'PAID'", BigDecimal.class));
         result.put("goldStockQuantity", jdbc.queryForObject("SELECT COALESCE(SUM(stock_quantity),0) FROM products WHERE UPPER(COALESCE(metal_type,''))='GOLD'", BigDecimal.class));
         result.put("silverStockQuantity", jdbc.queryForObject("SELECT COALESCE(SUM(stock_quantity),0) FROM products WHERE UPPER(COALESCE(metal_type,''))='SILVER'", BigDecimal.class));
         result.put("lowStockCount", jdbc.queryForObject("SELECT COUNT(*) FROM products WHERE stock_quantity>0 AND stock_quantity<=2 AND status='IN_STOCK'", Long.class));
         result.put("supplierOutstanding", jdbc.queryForObject("SELECT COALESCE(SUM(balance),0) FROM purchases", BigDecimal.class));
-        result.put("bookingOutstanding", jdbc.queryForObject("SELECT COALESCE(SUM(remaining_amount),0) FROM bookings WHERE status IN ('OPEN','IN_PROGRESS')", BigDecimal.class));
+        result.put("bookingOutstanding", jdbc.queryForObject("SELECT COALESCE(SUM(b.remaining_amount),0) FROM bookings b
+          WHERE b.status IN ('OPEN','IN_PROGRESS')
+            AND b.is_installment_plan IS NOT TRUE
+            AND NOT EXISTS (SELECT 1 FROM installment_accounts a WHERE a.legacy_booking_id=b.id)", BigDecimal.class));
         // This is deliberately labelled operating result, not net profit: purchases/COGS are not yet reconciled.
         result.put("operatingResultBeforeCogs", ((BigDecimal) result.get("monthSales")).subtract((BigDecimal) result.get("monthExpenses")));
         return result;
