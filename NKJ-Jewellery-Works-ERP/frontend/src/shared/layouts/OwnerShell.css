@@ -878,3 +878,20 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
     --nkj-owner-sidebar-width: var(--nkj-owner-collapsed-width);
   }
 }
+
+
+/* Final width constraints: avoid intrinsic child sizing changing the sidebar width. */
+.nkj-owner-sidebar:not(.is-collapsed) {
+  box-sizing: border-box !important;
+  width: 250px !important;
+  min-width: 250px !important;
+  max-width: 250px !important;
+  flex: 0 0 250px !important;
+}
+.nkj-owner-sidebar.is-collapsed {
+  box-sizing: border-box !important;
+  width: 65px !important;
+  min-width: 65px !important;
+  max-width: 65px !important;
+  flex: 0 0 65px !important;
+}
