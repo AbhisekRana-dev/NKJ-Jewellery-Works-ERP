@@ -117,7 +117,7 @@ jobs:
           assert "Collapsed sidebar icon and label sizing" in css
           compact_ui_start = css.rfind("/* Collapsed sidebar icon and label sizing")
           compact_ui = css[compact_ui_start:]
-          assert "width: 30px !important;" in compact_ui and "height: 30px !important;" in compact_ui
+          assert "width: 28px !important;" in compact_ui and "height: 28px !important;" in compact_ui
           assert "font-size: 11px !important;" in compact_ui
           assert "flex: 0 0 72px !important;" in compact_ui and "min-height: 72px !important;" in compact_ui
           assert "overflow-y: auto !important;" in compact_ui and "min-height: 0 !important;" in compact_ui
