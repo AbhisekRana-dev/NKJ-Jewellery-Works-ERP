@@ -119,7 +119,7 @@ public class ErpModuleService {
         ), "customerName", "weight", "rate", "amount");
         register("customers", "customers", true, List.of(
             f("customerCode","customer_code","text","Customer ID"), f("name","name","text","Customer name"), f("phone","phone","text","Phone"),
-            f("email","email","text","Email"), f("address","address","text","Address"), f("notes","notes","text","Notes")
+            f("address","address","text","Address"), f("notes","notes","text","Notes")
         ), "name");
         register("karigars", "karigars", true, List.of(
             f("karigarCode","karigar_code","text","Karigar ID"), f("name","name","text","Karigar name"), f("mobile","mobile","text","Mobile"), f("aadhaarNumber","aadhaar_number","text","Aadhaar number"), f("speciality","speciality","text","Speciality"),
@@ -154,7 +154,7 @@ public class ErpModuleService {
         if (module.equals("customers")) {
             // Customer Management must show the complete customer master.
             return jdbc.queryForList("""
-                SELECT id, customer_code AS "customerCode", name, phone, email,
+                SELECT id, customer_code AS "customerCode", name, phone,
                        address, notes, created_at AS "createdAt", updated_at AS "updatedAt"
                   FROM customers
                  ORDER BY id DESC
@@ -251,7 +251,7 @@ public class ErpModuleService {
             Customer customer = customerService.registerOrReuseFromInvoice(
                     String.valueOf(data.get("name")),
                     String.valueOf(data.get("phone")),
-                    data.get("email") == null ? null : String.valueOf(data.get("email")),
+                    null,
                     data.get("address") == null ? null : String.valueOf(data.get("address")));
             Map<String,Object> auditData = new LinkedHashMap<>(data);
             auditData.put("customerCode", customer.getCustomerCode());
