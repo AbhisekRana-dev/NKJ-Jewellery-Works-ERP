@@ -169,7 +169,7 @@ jobs:
           java -jar target/nkj-billing-1.0.0.jar > /tmp/nkj-v20.log 2>&1 &
           echo $! > /tmp/nkj-backend.pid
           for attempt in $(seq 1 90); do
-            if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='21' AND success=true" 2>/dev/null | grep -q '^1$'; then
+            if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='22' AND success=true" 2>/dev/null | grep -q '^1$'; then
               break
             fi
             if ! kill -0 "$(cat /tmp/nkj-backend.pid)" 2>/dev/null; then
@@ -255,6 +255,34 @@ jobs:
 
             SELECT COUNT(*) INTO n FROM invoices WHERE invoice_no='NKJ-CI-EMI-001';
             IF n <> 1 THEN RAISE EXCEPTION 'The original invoice was not preserved'; END IF;
+
+            SELECT COUNT(*) INTO n FROM customers
+             WHERE customer_code IN ('NKJ-CI-CUSTOMER-DUP-01','NKJ-CI-CUSTOMER-DUP-02');
+            IF n <> 2 THEN RAISE EXCEPTION 'V22 removed one of the existing duplicate-phone customer rows'; END IF;
+
+            SELECT COUNT(*) INTO n FROM customers
+             WHERE normalized_phone='9876500000';
+            IF n <> 1 THEN RAISE EXCEPTION 'V22 did not select exactly one canonical normalized phone'; END IF;
+
+            SELECT COUNT(*) INTO n FROM customers
+             WHERE customer_code IN ('NKJ-CI-CUSTOMER-DUP-01','NKJ-CI-CUSTOMER-DUP-02')
+               AND email IS NOT NULL AND address IS NOT NULL;
+            IF n <> 2 THEN RAISE EXCEPTION 'V22 failed to preserve customer email/address on legacy duplicate rows'; END IF;
+
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public' AND table_name='invoices' AND column_name='customer_email'
+            ) THEN
+              RAISE EXCEPTION 'V22 did not add customer email to saved invoices';
+            END IF;
+
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_indexes
+                 WHERE schemaname='public' AND tablename='customers'
+                   AND indexname='uq_customers_normalized_phone'
+            ) THEN
+              RAISE EXCEPTION 'V22 did not create the normalized-phone unique index';
+            END IF;
           END $$;
           SQL
       - name: Verify live Pre-Booking and EMI API independence
