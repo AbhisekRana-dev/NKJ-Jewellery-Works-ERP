@@ -165,11 +165,6 @@ public class ErpModuleService {
                        b.delivery_date AS "deliveryDate", b.status, b.created_at AS "createdAt"
                   FROM bookings b
                  WHERE b.is_installment_plan IS NOT TRUE
-                   AND NOT EXISTS (
-                       SELECT 1
-                         FROM installment_accounts emi
-                        WHERE emi.legacy_booking_id = b.id
-                   )
                  ORDER BY b.booking_date DESC,b.id DESC
                  LIMIT 1000
                 """);
@@ -331,8 +326,7 @@ public class ErpModuleService {
                    a.total_installments AS "totalInstallments",
                    a.payment_frequency AS "paymentFrequency",
                    a.plan_created_date AS "bookingDate",
-                   a.status, a.legacy_booking_id AS "legacyBookingId",
-                   a.created_at AS "createdAt"
+                   a.status, a.created_at AS "createdAt"
               FROM installment_accounts a
               LEFT JOIN invoices inv ON inv.id=a.invoice_id
              ORDER BY a.plan_created_date DESC,a.id DESC
