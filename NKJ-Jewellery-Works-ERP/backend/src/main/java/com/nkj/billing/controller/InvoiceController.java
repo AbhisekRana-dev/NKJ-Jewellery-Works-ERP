@@ -32,6 +32,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nkj.billing.model.Invoice;
 import com.nkj.billing.repo.InvoiceRepository;
 import com.nkj.billing.service.AuthService;
+import com.nkj.billing.service.CustomerService;
+import com.nkj.billing.model.Customer;
 
 @RestController
 @RequestMapping("/api/invoices")
@@ -41,13 +43,15 @@ public class InvoiceController {
     private final ObjectMapper mapper;
     private final AuthService auth;
     private final JdbcTemplate jdbc;
+    private final CustomerService customerService;
 
     public InvoiceController(InvoiceRepository repo, ObjectMapper mapper, AuthService auth,
-                             JdbcTemplate jdbc) {
+                             JdbcTemplate jdbc, CustomerService customerService) {
         this.repo = repo;
         this.mapper = mapper;
         this.auth = auth;
         this.jdbc = jdbc;
+        this.customerService = customerService;
     }
 
     /**
@@ -134,6 +138,7 @@ public class InvoiceController {
                         )),
                         servletRequest.getRemoteAddr());
             }
+            syncInvoiceCustomer(existingInvoice);
             return view(existingInvoice);
         }
 
@@ -150,7 +155,8 @@ public class InvoiceController {
         invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
 
         invoice.setCustomerName(customerName);
-        invoice.setMobile(clean(body.get("mobile")));
+        invoice.setMobile(customerService.normalizePhone(clean(body.get("mobile"))));
+        invoice.setCustomerEmail(clean(body.get("customerEmail")));
         invoice.setAddress(clean(body.get("address")));
         invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
         invoice.setReferenceNo(clean(body.get("referenceNo")));
@@ -183,6 +189,10 @@ public class InvoiceController {
             jdbc.update("INSERT INTO payments(invoice_id, invoice_no, customer_name, payment_date, amount, payment_method, reference_no, notes) VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?)",
                     invoice.getId(), invoice.getInvoiceNo(), invoice.getCustomerName(), decimalValue(paymentAmount), invoice.getPaymentMode(), invoice.getReferenceNo(), "Initial invoice payment");
         }
+        // Customer registration is part of this invoice transaction. A failure
+        // rolls back the invoice, its items and its initial payment as well.
+        syncInvoiceCustomer(invoice);
+
         jdbc.update("INSERT INTO audit_logs(actor_identity,action,module,record_id,new_value,ip_address) VALUES ('PUBLIC','INVOICE_CREATED','INVOICES',?,CAST(? AS JSONB),?)",
                 String.valueOf(invoice.getId()),
                 mapper.writeValueAsString(Map.of(
@@ -225,7 +235,8 @@ public class InvoiceController {
 
         invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
         invoice.setCustomerName(customerName);
-        invoice.setMobile(clean(body.get("mobile")));
+        invoice.setMobile(customerService.normalizePhone(clean(body.get("mobile"))));
+        invoice.setCustomerEmail(clean(body.get("customerEmail")));
         invoice.setAddress(clean(body.get("address")));
         invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
         invoice.setReferenceNo(clean(body.get("referenceNo")));
@@ -249,8 +260,10 @@ public class InvoiceController {
         persistInvoiceItems(invoice.getId(), body.get("newItems"), "NEW");
         persistInvoiceItems(invoice.getId(), body.get("oldItems"), "OLD_EXCHANGE");
 
+        syncInvoiceCustomer(invoice);
+
         jdbc.update(
-                "INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
+                "INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) 
                         + "VALUES ('OWNER','INVOICE_UPDATED','INVOICES',?,CAST(? AS JSONB),CAST(? AS JSONB),?)",
                 String.valueOf(invoice.getId()),
                 mapper.writeValueAsString(Map.of("showGstin", previousShowGstin)),
@@ -537,10 +550,19 @@ public class InvoiceController {
 
 
     private void validateMobileNumber(Map<String, Object> body) {
-        String mobile = clean(body.get("mobile"));
-        if (!mobile.isEmpty() && !mobile.matches("[0-9]{10}")) {
-            throw new IllegalArgumentException("Mobile number must contain exactly 10 digits (0-9 only).");
-        }
+        // Accept spaces, hyphens, parentheses and an optional Indian +91/0
+        // prefix; the customer service stores/compares the canonical 10 digits.
+        customerService.normalizePhone(clean(body.get("mobile")));
+    }
+
+    private void syncInvoiceCustomer(Invoice invoice) {
+        Customer customer = customerService.registerOrReuseFromInvoice(
+                invoice.getCustomerName(),
+                invoice.getMobile(),
+                invoice.getCustomerEmail(),
+                invoice.getAddress());
+        invoice.setCustomerId(customer == null ? null : customer.getId());
+        repo.saveAndFlush(invoice);
     }
 
     private void validateNonNegativeDecimal(Object value, String field) {
@@ -596,7 +618,9 @@ public class InvoiceController {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", invoice.getId());
         response.put("invoiceNo", invoice.getInvoiceNo());
+        response.put("customerId", invoice.getCustomerId());
         response.put("customerName", invoice.getCustomerName());
+        response.put("customerEmail", invoice.getCustomerEmail());
         response.put("mobile", invoice.getMobile());
         response.put("address", invoice.getAddress());
         response.put("paymentMode", invoice.getPaymentMode());
