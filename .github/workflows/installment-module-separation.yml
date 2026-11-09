@@ -130,6 +130,72 @@ jobs:
           print("Route-safe instant sidebar checks passed for both states and all 28 menu items.")
           PY
 
+      - name: Verify source-aware cash flow classification and history
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path("NKJ-Jewellery-Works-ERP")
+          cash = (root / "backend/src/main/java/com/nkj/billing/service/CashFlowService.java").read_text()
+          modules = (root / "backend/src/main/java/com/nkj/billing/service/ErpModuleService.java").read_text()
+          invoice = (root / "backend/src/main/java/com/nkj/billing/controller/InvoiceController.java").read_text()
+          migration = (root / "backend/src/main/resources/db/migration/V23__cash_flow_transaction_ledger.sql").read_text()
+          page = (root / "frontend/src/features/transactions/TransactionsPage.jsx").read_text()
+          styles = (root / "frontend/src/features/transactions/TransactionsPage.css").read_text()
+
+          for key in (
+              "INVOICE:INITIAL_COLLECTION",
+              "PAYMENTS:CUSTOMER_RECEIPT",
+              "PRE_BOOKINGS:ADVANCE_RECEIPT",
+              "INSTALLMENTS:DOWN_PAYMENT",
+              "INSTALLMENTS:INSTALLMENT_RECEIPT",
+          ):
+              assert key in cash, f"Missing Incoming source rule: {key}"
+          for key in (
+              "EXPENSES:EXPENSE_PAYMENT",
+              "PURCHASES:SUPPLIER_PAYMENT",
+              "SALARY:INITIAL_SALARY_PAYMENT",
+              "SALARY_PAYMENTS:SALARY_PAYMENT",
+              "REFUNDS:CUSTOMER_REFUND",
+          ):
+              assert key in cash, f"Missing Outgoing source rule: {key}"
+
+          for operation in (
+              '"PRE_BOOKINGS", "ADVANCE_RECEIPT"',
+              '"PAYMENTS", "CUSTOMER_RECEIPT"',
+              '"EXPENSES", "EXPENSE_PAYMENT"',
+              '"PURCHASES", "SUPPLIER_PAYMENT"',
+              '"SALARY", "INITIAL_SALARY_PAYMENT"',
+              '"SALARY_PAYMENTS", "SALARY_PAYMENT"',
+              '"INSTALLMENTS", "DOWN_PAYMENT"',
+              '"INSTALLMENTS", "INSTALLMENT_RECEIPT"',
+          ):
+              assert operation in modules, f"Missing actual-payment source hook: {operation}"
+          assert '"INVOICE", "INITIAL_COLLECTION"' in invoice
+
+          assert "ON CONFLICT DO NOTHING" in cash, "Cash movements must be idempotent across every unique key."
+          assert "verifySameMovement(" in cash, "A reused source event key must be checked against the original movement."
+          assert "This Idempotency-Key has already been used for a different cash transaction." in cash
+          assert "LIMIT 2000" not in cash, "The Cashbook API must not truncate older transaction history."
+          assert "status='POSTED'" in cash and "netCashFlow" in cash
+          assert "uq_cash_transactions_source_event" in migration
+          assert "uq_cash_transactions_idempotency" in migration
+
+          assert "direction=\"INCOMING\"" in page and "direction=\"OUTGOING\"" in page
+          assert '["INCOMING", "Incoming"]' in page and '["OUTGOING", "Outgoing"]' in page
+          assert 'incoming ? "+" : "−"' in page
+          assert "is-incoming" in styles and "is-outgoing" in styles
+          assert "#16834a" in styles and "#bd3030" in styles
+          assert "Only recorded payments and receipts appear here" in page
+
+          assert 'module.equals("payments")' in modules
+          assert "A customer receipt must contain an amount greater than zero." in modules
+          assert '"PENDING".equals(status)' in modules
+          assert 'cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT"' in modules
+          assert 'cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT"' in modules
+          print("Source-aware cash flow rules, signs, filters, idempotency and full-history checks passed.")
+          PY
+
   backend-build-and-migration:
     runs-on: ubuntu-latest
     services:
