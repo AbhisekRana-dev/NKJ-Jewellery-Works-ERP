@@ -43,7 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_installment_accounts_created
 CREATE TABLE IF NOT EXISTS public.installment_schedules (
     id BIGSERIAL PRIMARY KEY,
     account_id BIGINT NOT NULL REFERENCES public.installment_accounts(id) ON DELETE RESTRICT,
-    installment_no INTEGER NOT NULL CHECK (installment_no > 0),
+    installment_no INTEGER NOT NULL,
     due_date DATE,
     amount_due NUMERIC(16,2) NOT NULL DEFAULT 0,
     amount_paid NUMERIC(16,2) NOT NULL DEFAULT 0,
