@@ -63,6 +63,15 @@ jobs:
               "Second sidebar click is not guarded against duplicate navigation."
           )
           assert "event.detail < 2" in handlers, "The first click must remain unaffected."
+          assert "if (!sidebarCollapsed && sidebarText)" in handlers, (
+              "The second click on expanded menu text must collapse even after a route remount."
+          )
+          assert "const repeatedContentControl = sidebarCollapsed" in handlers, (
+              "Double-clicking a page control can trigger the same action twice."
+          )
+          assert "event.stopImmediatePropagation()" in handlers, (
+              "The second click on page buttons is not suppressed."
+          )
           assert 'document.addEventListener("dblclick", handleDoubleClick)' in shell
           assert 'document.addEventListener("click", handleClickCapture, true)' in shell
           assert "useEffect(() => {" in shell
