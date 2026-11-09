@@ -196,7 +196,6 @@ public class ErpModuleService {
                   JOIN bookings b ON b.id=i.booking_id
                  WHERE b.is_installment_plan = TRUE
                  ORDER BY i.due_date ASC,i.installment_no ASC
-                 LIMIT 5000
                 """);
         }
         if (module.equals("installment-payments")) {
@@ -220,7 +219,6 @@ public class ErpModuleService {
                  WHERE b.is_installment_plan=TRUE
                     OR EXISTS (SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id)
                  ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
-                 LIMIT 5000
                 """);
         }
         if (module.equals("attendance")) {
@@ -316,6 +314,45 @@ public class ErpModuleService {
         if (module.equals("stock-movements")) applyStockMovement(data);
         audit("CREATE", module, id, null, data, ip);
         return Map.of("success", true, "id", id, "message", "Record created successfully.");
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String,Object>> installmentAccounts() {
+        return jdbc.queryForList("""
+            SELECT b.id, b.booking_no AS "bookingNo",
+                   COALESCE(b.invoice_id, inv.id) AS "invoiceId",
+                   b.invoice_no AS "invoiceNo",
+                   COALESCE(inv.customer_name,b.customer_name) AS "customerName",
+                   COALESCE(inv.mobile,b.mobile) AS mobile,
+                   inv.address AS address,
+                   inv.invoice_date AS "invoiceDate",
+                   COALESCE(inv.grand_total,b.estimated_value + b.making_estimate) AS "originalInvoiceAmount",
+                   b.estimated_value AS "estimatedValue",
+                   b.making_estimate AS "makingEstimate",
+                   b.advance_amount AS "advanceAmount",
+                   b.down_payment_date AS "downPaymentDate",
+                   b.down_payment_method AS "downPaymentMethod",
+                   b.down_payment_recorded_by AS "downPaymentRecordedBy",
+                   b.remaining_amount AS "remainingAmount",
+                   (b.is_installment_plan OR EXISTS (
+                       SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id
+                   )) AS "isInstallmentPlan",
+                   COALESCE(b.total_installments, (
+                       SELECT COUNT(*)::INTEGER FROM installments count_i WHERE count_i.booking_id=b.id
+                   )) AS "totalInstallments",
+                   b.payment_frequency AS "paymentFrequency",
+                   b.booking_date AS "bookingDate",
+                   b.status, b.created_at AS "createdAt"
+              FROM bookings b
+              LEFT JOIN invoices inv ON inv.id=COALESCE(
+                  b.invoice_id,
+                  (SELECT legacy_invoice.id FROM invoices legacy_invoice
+                    WHERE legacy_invoice.invoice_no=b.invoice_no LIMIT 1)
+              )
+             WHERE b.is_installment_plan=TRUE
+                OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
+             ORDER BY b.booking_date DESC,b.id DESC
+            """);
     }
 
     /**
