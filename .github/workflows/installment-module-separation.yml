@@ -202,8 +202,7 @@ jobs:
             IF n <> 1 THEN RAISE EXCEPTION 'Expected 1 migrated payment reversal, found %', n; END IF;
 
             SELECT COUNT(*) INTO n
-              FROM bookings
-             WHERE is_installment_plan IS NOT TRUE;
+              FROM pre_booking_bills;
             IF n <> 1 THEN RAISE EXCEPTION 'Expected only the genuine Pre-Booking in the Pre-Booking filter, found %', n; END IF;
 
             SELECT COUNT(*) INTO n
