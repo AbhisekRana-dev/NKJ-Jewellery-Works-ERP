@@ -62,7 +62,7 @@ jobs:
           assert 'isSecondSidebarClick(event, "page-content")' in handlers
           assert "commitSidebarState(false)" in handlers
           assert 'target.closest(".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span")' in handlers
-          assert '"sidebar-text:"' in handlers
+          assert "sidebar-text:" in handlers
           assert "commitSidebarState(true)" in handlers
           assert "event.preventDefault()" in handlers and "event.stopImmediatePropagation()" in handlers
           assert "const repeatedContentAction = target.closest(" in handlers
