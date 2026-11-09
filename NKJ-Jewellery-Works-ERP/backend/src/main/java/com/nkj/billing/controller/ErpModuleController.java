@@ -60,8 +60,9 @@ public class ErpModuleController {
     public Map<String,Object> collectInstallmentPayment(
             @RequestBody Map<String,Object> body,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader("X-Admin-Password") String adminPassword,
             jakarta.servlet.http.HttpServletRequest request) throws Exception {
-        return modules.collectInstallmentPayment(body, idempotencyKey, request.getRemoteAddr());
+        return modules.collectInstallmentPayment(body, idempotencyKey, adminPassword, request.getRemoteAddr());
     }
 
     @PutMapping("/installments/schedules/{installmentId}/due-date")
