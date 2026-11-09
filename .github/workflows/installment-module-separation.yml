@@ -74,7 +74,7 @@ jobs:
           )
           assert 'document.addEventListener("dblclick", handleDoubleClick)' in shell
           assert 'document.addEventListener("click", handleClickCapture, true)' in shell
-          assert "useEffect(() => {" in shell
+          assert "useLayoutEffect(() => {" in shell
           assert "<Nav active={active} />" in shell and "<main className={active === \"invoice\"" in shell, (
               "Shared Page layout is missing the event-handling surface across ERP pages."
           )
