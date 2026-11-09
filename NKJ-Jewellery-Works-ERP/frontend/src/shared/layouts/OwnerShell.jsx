@@ -136,11 +136,19 @@ export function Nav({ active = "home" }) {
       const sidebarText = target.closest(
         ".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span"
       );
-      if (!sidebarText) return;
+      if (sidebarText) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        flushSync(() => setSidebarCollapsed(true));
+        return;
+      }
 
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      flushSync(() => setSidebarCollapsed(true));
+      // A double-click on an icon must not toggle the sidebar, but its
+      // second click must not repeat the same route navigation either.
+      if (target.closest(".nkj-owner-sidebar a")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
     };
 
     document.addEventListener("click", handleClickCapture, true);
