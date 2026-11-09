@@ -292,3 +292,34 @@
     grid-template-columns: 1fr;
   }
 }
+
+.nkj-due-reminder-panel {
+  padding: 14px;
+}
+.nkj-due-group {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #eadfd6;
+  border-radius: 11px;
+  background: #fffdf9;
+}
+.nkj-due-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.nkj-due-group-heading h4 {
+  margin: 0;
+  color: #850b2b;
+  font: 700 15px Georgia,serif;
+}
+.nkj-due-group-heading span {
+  color: #786d66;
+  font-size: 11px;
+  font-weight: 700;
+}
+.nkj-due-group table {
+  min-width: 980px;
+}
