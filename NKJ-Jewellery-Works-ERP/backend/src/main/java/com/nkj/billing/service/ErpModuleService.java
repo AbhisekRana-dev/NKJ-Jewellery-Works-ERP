@@ -171,8 +171,8 @@ public class ErpModuleService {
         }
         if (module.equals("installments")) {
             return jdbc.queryForList("""
-                SELECT s.id, s.account_id AS "bookingId", a.invoice_id AS "invoiceId",
-                       a.invoice_no AS "invoiceNo", a.account_no AS "bookingNo",
+                SELECT s.id, s.account_id AS "accountId", a.invoice_id AS "invoiceId",
+                       a.invoice_no AS "invoiceNo", a.account_no AS "accountNo",
                        a.customer_name AS "customerName", a.mobile,
                        s.installment_no AS "installmentNo", a.total_installments AS "totalInstallments",
                        s.due_date AS "dueDate", s.amount_due AS "amountDue",
@@ -194,7 +194,7 @@ public class ErpModuleService {
         if (module.equals("installment-payments")) {
             return jdbc.queryForList("""
                 SELECT p.id, ('NKJ-EMI-TXN-' || LPAD(p.id::TEXT, 8, '0')) AS "transactionId",
-                       p.schedule_id AS "installmentId", a.id AS "bookingId",
+                       p.schedule_id AS "installmentId", a.id AS "accountId",
                        a.invoice_no AS "invoiceNo", a.customer_name AS "customerName",
                        s.installment_no AS "installmentNo", p.entry_type AS "entryType",
                        p.payment_date AS "paymentDate", p.created_at AS "paidAt", p.amount,
@@ -307,25 +307,22 @@ public class ErpModuleService {
     @Transactional(readOnly = true)
     public List<Map<String,Object>> installmentAccounts() {
         return jdbc.queryForList("""
-            SELECT a.id, a.account_no AS "bookingNo", a.invoice_id AS "invoiceId",
+            SELECT a.id, a.account_no AS "accountNo", a.invoice_id AS "invoiceId",
                    a.invoice_no AS "invoiceNo",
                    COALESCE(inv.customer_name,a.customer_name) AS "customerName",
                    COALESCE(inv.mobile,a.mobile) AS mobile,
                    COALESCE(inv.address,a.customer_address) AS address,
                    inv.invoice_date AS "invoiceDate",
                    a.original_invoice_amount AS "originalInvoiceAmount",
-                   a.original_invoice_amount AS "estimatedValue",
-                   0::NUMERIC(16,2) AS "makingEstimate",
-                   a.down_payment AS "advanceAmount",
+                                      a.down_payment AS "advanceAmount",
                    a.down_payment_date AS "downPaymentDate",
                    a.down_payment_method AS "downPaymentMethod",
                    a.down_payment_reference_no AS "downPaymentReferenceNo",
                    a.down_payment_recorded_by AS "downPaymentRecordedBy",
                    a.remaining_balance AS "remainingAmount",
-                   TRUE AS "isInstallmentPlan",
                    a.total_installments AS "totalInstallments",
                    a.payment_frequency AS "paymentFrequency",
-                   a.plan_created_date AS "bookingDate",
+                   a.plan_created_date AS "planCreatedDate",
                    a.status, a.created_at AS "createdAt"
               FROM installment_accounts a
               LEFT JOIN invoices inv ON inv.id=a.invoice_id
@@ -420,8 +417,8 @@ public class ErpModuleService {
             long scheduleCount = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM installment_schedules WHERE account_id=?",
                     Long.class, existingId);
-            return Map.of("success", true, "bookingId", existingId, "accountId", existingId,
-                    "bookingNo", String.valueOf(existing.get("accountNo")),
+            return Map.of("success", true, "accountId", existingId,
+                    "accountNo", String.valueOf(existing.get("accountNo")),
                     "invoiceNo", String.valueOf(existing.get("invoiceNo")),
                     "totalInstallments", existing.get("totalInstallments") == null ? 0 : existing.get("totalInstallments"),
                     "scheduleCount", scheduleCount, "duplicate", true,
@@ -617,9 +614,7 @@ public class ErpModuleService {
 
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("bookingId", accountId); // compatibility alias for the current React screen
         response.put("accountId", accountId);
-        response.put("bookingNo", accountNo);
         response.put("accountNo", accountNo);
         response.put("invoiceId", invoiceId);
         response.put("invoiceNo", invoiceNo);
@@ -636,9 +631,9 @@ public class ErpModuleService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String,Object> getInstallmentPlanDetails(long bookingId) {
+    public Map<String,Object> getInstallmentPlanDetails(long accountId) {
         Map<String,Object> account = jdbc.queryForMap("""
-            SELECT a.id AS "bookingId", a.account_no AS "bookingNo",
+            SELECT a.id AS "accountId", a.account_no AS "accountNo",
                    a.invoice_id AS "invoiceId", a.invoice_no AS "invoiceNo",
                    COALESCE(inv.customer_name,a.customer_name) AS "customerName",
                    COALESCE(inv.mobile,a.mobile) AS mobile,
@@ -658,10 +653,10 @@ public class ErpModuleService {
               FROM installment_accounts a
               LEFT JOIN invoices inv ON inv.id=a.invoice_id
              WHERE a.id=?
-            """, bookingId);
+            """, accountId);
 
         List<Map<String,Object>> schedule = jdbc.queryForList("""
-            SELECT s.id, s.account_id AS "bookingId", a.invoice_no AS "invoiceNo",
+            SELECT s.id, s.account_id AS "accountId", a.account_no AS "accountNo", a.invoice_no AS "invoiceNo",
                    a.customer_name AS "customerName", a.mobile,
                    s.installment_no AS "installmentNo",
                    a.total_installments AS "totalInstallments",
@@ -672,7 +667,7 @@ public class ErpModuleService {
               JOIN installment_accounts a ON a.id=s.account_id
              WHERE s.account_id=?
              ORDER BY s.installment_no
-            """, bookingId);
+            """, accountId);
 
         Object linkedInvoiceId = account.get("invoiceId");
         List<Map<String,Object>> invoiceItems = linkedInvoiceId == null ? List.of() : jdbc.queryForList("""
@@ -702,13 +697,13 @@ public class ErpModuleService {
              WHERE p.account_id=?
                AND p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
              ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
-            """, bookingId);
+            """, accountId);
 
         BigDecimal legacyBalanceReconciliation = jdbc.queryForObject("""
             SELECT COALESCE(SUM(amount),0)
               FROM installment_transactions
              WHERE account_id=? AND entry_type='LEGACY_RECONCILIATION'
-            """, BigDecimal.class, bookingId);
+            """, BigDecimal.class, accountId);
 
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("plan", account);
