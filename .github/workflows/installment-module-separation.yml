@@ -77,7 +77,7 @@ jobs:
           label_end = shell.index("};", label_start)
           compact_labels = re.findall(r'^\s*(?:"[^"]+"|[a-z-]+):\s*"[^"]+"', shell[label_start:label_end], re.MULTILINE)
           assert len(compact_labels) == 28, f"Expected 28 compact menu labels, found {len(compact_labels)}."
-          assert "sidebarCollapsed ? (compactNavigationLabels[key] || label) : label" in shell, "Compact labels should only appear when the sidebar is collapsed."
+          assert '<small className="nkj-owner-compact-label" aria-hidden="true">' in shell, "Dedicated compact labels are missing from each navigation link."
           assert "flushSync(() => setSidebarCollapsed(nextCollapsed))" in shell
           assert 'document.addEventListener("click", handleClickCapture, true)' in shell
           assert 'document.addEventListener("dblclick"' not in shell
@@ -103,16 +103,16 @@ jobs:
           assert "margin-left: var(--nkj-owner-sidebar-width) !important;" in css
           assert "white-space: nowrap;" in css and "text-overflow: ellipsis;" in css
           assert "margin-top: auto !important;" in css, "Home and Exit must remain anchored at the sidebar bottom."
-          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {" in css
+          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {" in css
           profile_css = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/profile/Profile.css").read_text()
           assert "var(--nkj-owner-sidebar-width" in profile_css, "Profile must follow the same shared sidebar width."
           assert "pointer-events: none" not in css
-          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {" in css
-          collapsed_label_selector = ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {"
+          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {" in css
+          collapsed_label_selector = ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {"
           collapsed_label_start = css.rfind(collapsed_label_selector)
           assert collapsed_label_start >= 0, "Collapsed compact labels are missing."
           collapsed_label_css = css[collapsed_label_start + len(collapsed_label_selector):].split("}", 1)[0]
-          assert "display: block !important" in collapsed_label_css and "font-size: 7px" in collapsed_label_css
+          assert "display: block !important" in collapsed_label_css and "font-size: 8px" in collapsed_label_css
           assert "white-space: nowrap;" in collapsed_label_css and "overflow: hidden;" in collapsed_label_css
           assert "@media (max-width: 1100px)" in css
           assert ".nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav a span" in css
