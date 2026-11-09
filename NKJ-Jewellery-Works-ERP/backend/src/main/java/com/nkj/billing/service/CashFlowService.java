@@ -98,8 +98,8 @@ public class CashFlowService {
                 operation.toUpperCase(Locale.ROOT), sourceRecordId, eventKey,
                 clean(sourceReference, 180), clean(partyName, 200),
                 defaultText(description, "Cash movement"), method,
-                clean(referenceNo, 120), originalTransactionId,
-                clean(idempotencyKey, 120), auth.getUsername());
+                nullIfBlank(clean(referenceNo, 120)), originalTransactionId,
+                nullIfBlank(clean(idempotencyKey, 120)), auth.getUsername());
 
         return jdbc.queryForObject(
                 "SELECT id FROM cash_transactions WHERE source_event_key=?",
@@ -133,8 +133,7 @@ public class CashFlowService {
                    c.status,
                    c.created_at AS "createdAt"
               FROM cash_transactions c
-             WHERE c.status='POSTED'
-               AND (CAST(? AS VARCHAR) IS NULL OR c.direction=CAST(? AS VARCHAR))
+             WHERE (CAST(? AS VARCHAR) IS NULL OR c.direction=CAST(? AS VARCHAR))
                AND (CAST(? AS VARCHAR) IS NULL OR
                     CONCAT_WS(' ', c.source_reference, c.party_name, c.description,
                                    c.source_module, c.source_operation, c.reference_no,
