@@ -1175,12 +1175,11 @@ public class ErpModuleService {
         Definition d = writableDefinition(module);
         if (body == null || body.isEmpty()) throw new IllegalArgumentException("Update data is required.");
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
-        if ("bookings".equals(module) && (
-                Boolean.TRUE.equals(before.get("is_installment_plan"))
-                || Boolean.TRUE.equals(jdbc.queryForObject(
-                    "SELECT EXISTS (SELECT 1 FROM installments WHERE booking_id=?)",
-                    Boolean.class, id)))) {
-            throw new IllegalArgumentException("Installment accounts cannot be edited through generic booking fields. Use the installment account actions so schedule and accounting records stay consistent.");
+        // Only archived legacy EMI conversion rows are protected here. A genuine
+        // Pre-Booking may have legacy booking-specific schedule history; editing
+        // its own booking fields must not be coupled to the independent EMI module.
+        if ("bookings".equals(module) && Boolean.TRUE.equals(before.get("is_installment_plan"))) {
+            throw new IllegalArgumentException("This is an archived legacy EMI conversion record, not a Pre-Booking. Manage its account in Installment Management.");
         }
         Map<String,Object> normalized = new LinkedHashMap<>(body);
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
@@ -1234,12 +1233,20 @@ public class ErpModuleService {
         }
         Definition d = writableDefinition(module);
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
-        if ("bookings".equals(module) && (
-                Boolean.TRUE.equals(before.get("is_installment_plan"))
-                || Boolean.TRUE.equals(jdbc.queryForObject(
-                    "SELECT EXISTS (SELECT 1 FROM installments WHERE booking_id=?)",
-                    Boolean.class, id)))) {
-            throw new IllegalArgumentException("An installment account cannot be deleted because it has financial history. Reverse or correct posted transactions instead.");
+        if ("bookings".equals(module) && Boolean.TRUE.equals(before.get("is_installment_plan"))) {
+            throw new IllegalArgumentException("This is an archived legacy EMI conversion record. Manage its account in Installment Management.");
+        }
+        // Preserve booking-owned legacy schedule/receipt history. This guard is
+        // a delete-safety check only; it does not make Pre-Booking edits depend
+        // on, or write to, any active EMI account or transaction table.
+        if ("bookings".equals(module) && Boolean.TRUE.equals(jdbc.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM installments WHERE booking_id=?
+                    UNION ALL
+                    SELECT 1 FROM installment_payments WHERE booking_id=?
+                )
+                """, Boolean.class, id, id))) {
+            throw new IllegalArgumentException("This Pre-Booking has historical scheduled-payment records and cannot be deleted. Change its status to CANCELLED to preserve the financial history.");
         }
         jdbc.update("DELETE FROM " + d.table() + " WHERE id=?", id);
         audit("DELETE", module, id, before, null, ip);
