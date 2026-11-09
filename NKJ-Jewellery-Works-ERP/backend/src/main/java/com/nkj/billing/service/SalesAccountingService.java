@@ -46,7 +46,7 @@ public class SalesAccountingService {
               JOIN installment_accounts a ON a.id=p.account_id
              WHERE p.entry_type = 'INSTALLMENT'
         )
-
+        """;
 
     private final JdbcTemplate jdbc;
 
