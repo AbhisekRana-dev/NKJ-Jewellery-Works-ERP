@@ -263,7 +263,7 @@ public class InvoiceController {
         syncInvoiceCustomer(invoice);
 
         jdbc.update(
-                "INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) 
+                "INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
                         + "VALUES ('OWNER','INVOICE_UPDATED','INVOICES',?,CAST(? AS JSONB),CAST(? AS JSONB),?)",
                 String.valueOf(invoice.getId()),
                 mapper.writeValueAsString(Map.of("showGstin", previousShowGstin)),
