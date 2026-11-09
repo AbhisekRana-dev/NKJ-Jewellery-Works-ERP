@@ -508,6 +508,12 @@ public class InvoiceController {
             throw new IllegalArgumentException("At least one new or old ornament detail is required.");
         }
 
+        String customerEmail = clean(body.get("customerEmail"));
+        if (customerEmail.length() > 200
+                || (!customerEmail.isEmpty() && !customerEmail.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))) {
+            throw new IllegalArgumentException("Enter a valid customer email address (maximum 200 characters).");
+        }
+
         for (String field : List.of(
                 "newTotal", "oldTotal", "makingCharge", "extraCharge", "discount",
                 "subTotal", "gstPercent", "gstAmount", "otherCharge", "grandTotal", "paymentAmount")) {
