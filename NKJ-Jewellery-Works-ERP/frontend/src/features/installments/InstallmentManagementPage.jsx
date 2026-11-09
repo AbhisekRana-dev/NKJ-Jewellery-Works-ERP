@@ -180,7 +180,7 @@ export default function InstallmentManagementPage() {
   }, [selectedInvoice, plan]);
 
   const accounts = useMemo(() => bookings
-    .filter((booking) => booking.isInstallmentPlan && booking.invoiceNo)
+    .filter((booking) => booking.isInstallmentPlan)
     .map((booking) => {
       const rows = schedules
         .filter((schedule) => Number(schedule.bookingId) === Number(booking.id))
@@ -204,7 +204,7 @@ export default function InstallmentManagementPage() {
   [bookings, schedules]);
 
   const filteredAccounts = accounts.filter((account) =>
-    `${account.invoiceNo} ${account.customerName} ${account.mobile || ""}`
+    `${account.invoiceNo || account.bookingNo || ""} ${account.customerName || ""} ${account.mobile || ""}`
       .toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -292,6 +292,9 @@ export default function InstallmentManagementPage() {
           downPaymentReferenceNo: plan.downPaymentReferenceNo,
         }),
       });
+      if (result?.success !== true || !result?.bookingId) {
+        throw new Error("The server did not confirm that the installment plan was saved. No success message was shown.");
+      }
       setMessage(result.message || `Installment account created for invoice ${selectedInvoice.invoiceNo}.`);
       setInvoiceId("");
       setPlan(emptyPlan());
@@ -338,6 +341,9 @@ export default function InstallmentManagementPage() {
           referenceNo: receiptForm.referenceNo,
         }),
       });
+      if (result?.success !== true || !(result?.transactionId || result?.paymentId)) {
+        throw new Error("The server did not confirm that the payment transaction was saved. No success message was shown.");
+      }
       setMessage(`₹ ${money(result.amount || amountCents / 100)} receipt saved against invoice ${schedule.invoiceNo}.`);
       setReceiptForm(emptyReceipt());
       setPaymentIdempotencyKey(newIdempotencyKey());
@@ -394,7 +400,7 @@ export default function InstallmentManagementPage() {
   };
 
   const reversePayment = async (payment) => {
-    if (payment.entryType !== "INSTALLMENT_PAYMENT" || payment.reversedAmount) return;
+    if (payment.entryType !== "INSTALLMENT" || payment.reversedAmount) return;
     const reason = window.prompt(
       `Why are you reversing payment #${payment.id}? The original payment will remain in history.`,
     );
@@ -501,10 +507,12 @@ export default function InstallmentManagementPage() {
                   <span className="nkj-downpayment-tag">Down payment</span>
                 ) : payment.reversedAmount ? (
                   <span className="nkj-installment-status overdue">Reversed · {fmtDate(payment.reversalDate)}</span>
-                ) : (
+                ) : payment.entryType === "INSTALLMENT" ? (
                   <button type="button" className="small-action" disabled={saving} onClick={() => reversePayment(payment)}>
                     <RotateCcw size={13}/> Reverse
                   </button>
+                ) : (
+                  <span>—</span>
                 )}
               </td>
             </tr>
@@ -702,7 +710,7 @@ export default function InstallmentManagementPage() {
                       const progress = account.total > 0 ? Math.min(100, account.paid / account.total * 100) : 0;
                       return (
                         <tr key={account.id}>
-                          <td><b>{account.invoiceNo}</b><small className="nkj-table-sub">{account.bookingNo}</small></td>
+                          <td><b>{account.invoiceNo || account.bookingNo}</b><small className="nkj-table-sub">{account.invoiceNo ? account.bookingNo : "Legacy installment account"}</small></td>
                           <td>{account.customerName}<small className="nkj-table-sub">{account.mobile || "—"}</small></td>
                           <td>{account.paidCount}/{account.count}<small className="nkj-table-sub">{account.count} selected</small></td>
                           <td>{money(account.total)}</td>
