@@ -323,7 +323,10 @@ export function Nav({ active = "home" }) {
                       aria-current={selected ? "page" : undefined}
                     >
                       <Icon size={18} aria-hidden="true" />
-                      <span>{sidebarCollapsed ? (compactNavigationLabels[key] || label) : label}</span>
+                      <span className="nkj-owner-nav-label">{label}</span>
+                      <small className="nkj-owner-compact-label" aria-hidden="true">
+                        {compactNavigationLabels[key] || label}
+                      </small>
                       <ChevronRight className="nkj-owner-nav-arrow" size={14} aria-hidden="true" />
                     </Link>
                   );
