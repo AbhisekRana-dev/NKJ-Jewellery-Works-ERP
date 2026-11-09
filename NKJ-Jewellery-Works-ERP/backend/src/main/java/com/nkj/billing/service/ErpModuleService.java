@@ -398,8 +398,9 @@ public class ErpModuleService {
     }
 
     /**
-     * Convert a saved invoice into an installment plan. The server owns all
-     * financial arithmetic and creates the schedule inside one transaction.
+     * Convert a saved invoice into an EMI account. This workflow writes only to
+     * installment_accounts, installment_schedules and installment_transactions.
+     * It never creates or updates a Pre-Booking (bookings) record.
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String,Object> createInstallmentPlan(
@@ -408,9 +409,13 @@ public class ErpModuleService {
         String key = requiredIdempotencyKey(idempotencyKey, "plan");
         lockIdempotencyKey("installment-plan:" + key);
 
-        List<Map<String,Object>> existingByKey = jdbc.queryForList(
-                "SELECT id, booking_no AS \"bookingNo\", invoice_no AS \"invoiceNo\", total_installments AS \"totalInstallments\", plan_request_json AS \"planRequestJson\" FROM bookings WHERE plan_idempotency_key=? LIMIT 1",
-                key);
+        List<Map<String,Object>> existingByKey = jdbc.queryForList("""
+            SELECT id, account_no AS "accountNo", invoice_no AS "invoiceNo",
+                   total_installments AS "totalInstallments", plan_request_json AS "planRequestJson"
+              FROM installment_accounts
+             WHERE plan_idempotency_key=?
+             LIMIT 1
+            """, key);
         if (!existingByKey.isEmpty()) {
             Map<String,Object> existing = existingByKey.get(0);
             JsonNode priorRequest = mapper.readTree(String.valueOf(existing.get("planRequestJson")));
@@ -420,8 +425,10 @@ public class ErpModuleService {
             }
             long existingId = ((Number) existing.get("id")).longValue();
             long scheduleCount = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM installments WHERE booking_id=?", Long.class, existingId);
-            return Map.of("success", true, "bookingId", existingId,
+                    "SELECT COUNT(*) FROM installment_schedules WHERE account_id=?",
+                    Long.class, existingId);
+            return Map.of("success", true, "bookingId", existingId, "accountId", existingId,
+                    "bookingNo", String.valueOf(existing.get("accountNo")),
                     "invoiceNo", String.valueOf(existing.get("invoiceNo")),
                     "totalInstallments", existing.get("totalInstallments") == null ? 0 : existing.get("totalInstallments"),
                     "scheduleCount", scheduleCount, "duplicate", true,
@@ -429,21 +436,23 @@ public class ErpModuleService {
         }
 
         long invoiceId = requiredId(request.get("invoiceId"), "Invoice ID");
-        Map<String,Object> invoice = jdbc.queryForMap(
-                "SELECT id, invoice_no, customer_name, mobile, grand_total FROM invoices WHERE id=? FOR UPDATE",
-                invoiceId);
+        Map<String,Object> invoice = jdbc.queryForMap("""
+            SELECT id, invoice_no, customer_name, mobile, address, grand_total
+              FROM invoices
+             WHERE id=?
+             FOR UPDATE
+            """, invoiceId);
         String invoiceNo = String.valueOf(invoice.get("invoice_no"));
-        BigDecimal invoiceTotal = decimal(invoice.get("grand_total")).setScale(2, java.math.RoundingMode.HALF_UP);
-        if (invoiceTotal.signum() <= 0) throw new IllegalArgumentException("The selected invoice has no payable amount.");
+        BigDecimal invoiceTotal = decimal(invoice.get("grand_total"))
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        if (invoiceTotal.signum() <= 0) {
+            throw new IllegalArgumentException("The selected invoice has no payable amount.");
+        }
 
         Long duplicate = jdbc.queryForObject("""
             SELECT COUNT(*)
-              FROM bookings b
-             WHERE (b.invoice_id=? OR b.invoice_no=?)
-               AND (
-                    b.is_installment_plan=TRUE
-                    OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
-               )
+              FROM installment_accounts
+             WHERE invoice_id=? OR invoice_no=?
             """, Long.class, invoiceId, invoiceNo);
         if (duplicate != null && duplicate > 0) {
             throw new IllegalArgumentException("Invoice " + invoiceNo + " has already been converted into an installment plan.");
@@ -464,7 +473,8 @@ public class ErpModuleService {
         if (downPayment.compareTo(invoiceTotal) > 0) {
             throw new IllegalArgumentException("Down payment cannot exceed the original invoice amount.");
         }
-        BigDecimal remainingBalance = invoiceTotal.subtract(downPayment).setScale(2, java.math.RoundingMode.UNNECESSARY);
+        BigDecimal remainingBalance = invoiceTotal.subtract(downPayment)
+                .setScale(2, java.math.RoundingMode.UNNECESSARY);
         String frequency = request.get("paymentFrequency") == null
                 ? "MONTHLY" : String.valueOf(request.get("paymentFrequency")).trim().toUpperCase(Locale.ROOT);
         if (!"MONTHLY".equals(frequency) && !"WEEKLY".equals(frequency)) {
@@ -478,10 +488,27 @@ public class ErpModuleService {
         if (downPaymentDate.isAfter(today)) {
             throw new IllegalArgumentException("Down payment date cannot be in the future.");
         }
-        int dueDay = request.get("dueDay") == null
-                ? firstDueDate.getDayOfMonth()
-                : decimal(request.get("dueDay")).intValueExact();
-        if (dueDay < 1 || dueDay > 31) throw new IllegalArgumentException("Monthly due day must be between 1 and 31.");
+        int dueDay;
+        try {
+            dueDay = request.get("dueDay") == null
+                    ? firstDueDate.getDayOfMonth()
+                    : decimal(request.get("dueDay")).intValueExact();
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException("Monthly due day must be a whole number from 1 to 31.");
+        }
+        if (dueDay < 1 || dueDay > 31) {
+            throw new IllegalArgumentException("Monthly due day must be between 1 and 31.");
+        }
+
+        String downPaymentMethod = String.valueOf(request.getOrDefault("downPaymentMethod", "Cash")).trim();
+        if (!Set.of("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "NEFT", "RTGS").contains(downPaymentMethod)) {
+            throw new IllegalArgumentException("Select a valid down payment method.");
+        }
+        String downPaymentReference = request.get("downPaymentReferenceNo") == null
+                ? "" : String.valueOf(request.get("downPaymentReferenceNo")).trim();
+        if (downPaymentReference.length() > 100) {
+            throw new IllegalArgumentException("Down payment reference cannot exceed 100 characters.");
+        }
 
         List<BigDecimal> amounts = new ArrayList<>();
         if (remainingBalance.signum() > 0) {
@@ -504,59 +531,40 @@ public class ErpModuleService {
             }
         }
 
-        String bookingNoSeed = "PENDING-" + UUID.randomUUID();
-        Long bookingId = jdbc.queryForObject("""
-            INSERT INTO bookings(
-                booking_no, invoice_id, invoice_no, is_installment_plan,
+        String accountNoSeed = "PENDING-EMI-" + UUID.randomUUID();
+        Long accountId = jdbc.queryForObject("""
+            INSERT INTO installment_accounts(
+                account_no, invoice_id, invoice_no, customer_name, mobile, customer_address,
+                original_invoice_amount, down_payment, down_payment_date, down_payment_method,
+                down_payment_reference_no, down_payment_recorded_by, remaining_balance,
                 total_installments, payment_frequency, plan_idempotency_key, plan_request_json,
-                down_payment_date, down_payment_recorded_by, customer_name, mobile, booking_date,
-                description, metal_type, purity, estimated_weight, estimated_rate,
-                estimated_value, making_estimate, advance_amount, remaining_amount,
-                delivery_date, status, converted_at, created_at, updated_at
+                status, plan_created_date, converted_at, created_at, updated_at
             )
-            VALUES (?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, 'GOLD', '', 0, 0, ?, 0, ?, ?, ?, ?, NOW(), NOW(), NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
             RETURNING id
-            """,
-            Long.class,
-            bookingNoSeed, invoiceId, invoiceNo, count, frequency, key, mapper.writeValueAsString(request),
-            downPaymentDate, auth.getUsername(), invoice.get("customer_name"), invoice.get("mobile"),
-            today, "Installment plan linked to invoice " + invoiceNo,
-            invoiceTotal, downPayment, remainingBalance, firstDueDate,
+            """, Long.class,
+            accountNoSeed, invoiceId, invoiceNo, invoice.get("customer_name"), invoice.get("mobile"),
+            invoice.get("address"), invoiceTotal, downPayment, downPaymentDate,
+            downPayment.signum() > 0 ? downPaymentMethod : null,
+            downPaymentReference.isBlank() ? null : downPaymentReference,
+            downPayment.signum() > 0 ? auth.getUsername() : null,
+            remainingBalance, count, frequency, key, mapper.writeValueAsString(request),
             remainingBalance.signum() == 0 ? "COMPLETED" : "OPEN");
-        String bookingNo = "NKJ-BKG-" + today.format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy"))
-                + "-" + String.format(Locale.ROOT, "%04d", bookingId);
-        jdbc.update("UPDATE bookings SET booking_no=? WHERE id=?", bookingNo, bookingId);
+
+        String accountNo = "NKJ-EMI-" + today.format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy"))
+                + "-" + String.format(Locale.ROOT, "%04d", accountId);
+        jdbc.update("UPDATE installment_accounts SET account_no=? WHERE id=?", accountNo, accountId);
 
         if (downPayment.signum() > 0) {
-            String downPaymentMethod = String.valueOf(request.getOrDefault("downPaymentMethod", "Cash")).trim();
-            if (!Set.of("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "NEFT", "RTGS").contains(downPaymentMethod)) {
-                throw new IllegalArgumentException("Select a valid down payment method.");
-            }
-            String downPaymentReference = request.get("downPaymentReferenceNo") == null
-                    ? "" : String.valueOf(request.get("downPaymentReferenceNo")).trim();
-            if (downPaymentReference.length() > 100) {
-                throw new IllegalArgumentException("Down payment reference cannot exceed 100 characters.");
-            }
             jdbc.update("""
-                UPDATE bookings
-                   SET down_payment_method=?, down_payment_reference_no=?
-                 WHERE id=?
-                """, downPaymentMethod, downPaymentReference.isBlank() ? null : downPaymentReference, bookingId);
-            jdbc.update("""
-                INSERT INTO installment_payments(
-                    installment_id, booking_id, entry_type, payment_date, amount,
+                INSERT INTO installment_transactions(
+                    account_id, schedule_id, entry_type, payment_date, amount,
                     payment_method, reference_no, idempotency_key, recorded_by, created_at
                 )
-                VALUES (NULL, ?, 'DOWN_PAYMENT', ?, ?, ?, ?, ?, ?, NOW())
-                """, bookingId, java.sql.Date.valueOf(downPaymentDate), downPayment,
+                VALUES (?, NULL, 'DOWN_PAYMENT', ?, ?, ?, ?, ?, ?, NOW())
+                """, accountId, java.sql.Date.valueOf(downPaymentDate), downPayment,
                     downPaymentMethod, downPaymentReference.isBlank() ? "DOWN PAYMENT" : downPaymentReference,
-                    "PLAN-DOWNPAY-" + bookingId, auth.getUsername());
-            jdbc.update("""
-                INSERT INTO customer_ledger(entry_date, entry_type, reference_type, reference_id, credit, notes)
-                VALUES (?, 'INSTALLMENT_DOWN_PAYMENT', 'BOOKING', ?, ?, ?)
-                """, downPaymentDate, bookingId, downPayment,
-                    "Down payment received for invoice " + invoiceNo + " / " + bookingNo);
+                    "PLAN-DOWNPAY-" + accountId, auth.getUsername());
         }
 
         List<Map<String,Object>> createdSchedule = new ArrayList<>();
@@ -575,28 +583,32 @@ public class ErpModuleService {
             String initialStatus = dueDate.isBefore(today) ? "OVERDUE"
                     : dueDate.isEqual(today) ? "DUE" : "PENDING";
             Long scheduleId = jdbc.queryForObject("""
-                INSERT INTO installments(
-                    booking_id, installment_no, due_date, amount_due, amount_paid,
+                INSERT INTO installment_schedules(
+                    account_id, installment_no, due_date, amount_due, amount_paid,
                     remaining_amount, payment_status, created_at, updated_at
                 )
                 VALUES (?, ?, ?, ?, 0, ?, ?, NOW(), NOW())
                 RETURNING id
-                """, Long.class, bookingId, number, java.sql.Date.valueOf(dueDate), amount, amount, initialStatus);
+                """, Long.class, accountId, number, java.sql.Date.valueOf(dueDate),
+                    amount, amount, initialStatus);
             Map<String,Object> scheduleRow = new LinkedHashMap<>();
             scheduleRow.put("id", scheduleId);
+            scheduleRow.put("bookingId", accountId);
             scheduleRow.put("installmentNo", number);
             scheduleRow.put("totalInstallments", count);
             scheduleRow.put("dueDate", dueDate.toString());
             scheduleRow.put("amountDue", amount);
             scheduleRow.put("amountPaid", BigDecimal.ZERO.setScale(2));
             scheduleRow.put("remainingAmount", amount);
-            scheduleRow.put("paymentStatus", "PENDING");
+            scheduleRow.put("paymentStatus", initialStatus);
             createdSchedule.add(scheduleRow);
         }
 
         Map<String,Object> auditValues = new LinkedHashMap<>();
         auditValues.put("invoiceId", invoiceId);
         auditValues.put("invoiceNo", invoiceNo);
+        auditValues.put("accountId", accountId);
+        auditValues.put("accountNo", accountNo);
         auditValues.put("originalInvoiceAmount", invoiceTotal);
         auditValues.put("downPayment", downPayment);
         auditValues.put("downPaymentDate", downPaymentDate);
@@ -604,16 +616,18 @@ public class ErpModuleService {
         auditValues.put("totalInstallments", count);
         auditValues.put("paymentFrequency", frequency);
         auditValues.put("scheduledCount", amounts.size());
-        audit("INSTALLMENT_PLAN_CREATED", "installments", bookingId, null, auditValues, ip);
+        audit("INSTALLMENT_PLAN_CREATED", "installment-accounts", accountId, null, auditValues, ip);
         audit("INVOICE_SALES_REVERSED_FOR_INSTALLMENT", "invoices", invoiceId,
                 Map.of("invoiceNo", invoiceNo, "salesAmount", invoiceTotal),
-                Map.of("installmentBookingId", bookingId, "downPayment", downPayment,
+                Map.of("installmentAccountId", accountId, "downPayment", downPayment,
                         "downPaymentDate", downPaymentDate, "futureReceiptsCountAsSalesOnReceiptDate", true), ip);
 
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("bookingId", bookingId);
-        response.put("bookingNo", bookingNo);
+        response.put("bookingId", accountId); // compatibility alias for the current React screen
+        response.put("accountId", accountId);
+        response.put("bookingNo", accountNo);
+        response.put("accountNo", accountNo);
         response.put("invoiceId", invoiceId);
         response.put("invoiceNo", invoiceNo);
         response.put("originalInvoiceAmount", invoiceTotal);
@@ -630,43 +644,44 @@ public class ErpModuleService {
 
     @Transactional(readOnly = true)
     public Map<String,Object> getInstallmentPlanDetails(long bookingId) {
-        Map<String,Object> booking = jdbc.queryForMap("""
-            SELECT b.id AS "bookingId", b.booking_no AS "bookingNo",
-                   COALESCE(b.invoice_id, inv.id) AS "invoiceId",
-                   b.invoice_no AS "invoiceNo",
-                   COALESCE(inv.customer_name,b.customer_name) AS "customerName",
-                   COALESCE(inv.mobile,b.mobile) AS mobile,
-                   inv.address AS "customerAddress",
+        Map<String,Object> account = jdbc.queryForMap("""
+            SELECT a.id AS "bookingId", a.account_no AS "bookingNo",
+                   a.invoice_id AS "invoiceId", a.invoice_no AS "invoiceNo",
+                   COALESCE(inv.customer_name,a.customer_name) AS "customerName",
+                   COALESCE(inv.mobile,a.mobile) AS mobile,
+                   COALESCE(inv.address,a.customer_address) AS "customerAddress",
                    inv.invoice_date AS "invoiceDate",
                    inv.payment_mode AS "originalPaymentMode",
-                   COALESCE(inv.grand_total,b.estimated_value + b.making_estimate) AS "originalInvoiceAmount",
-                   GREATEST(
-                       COALESCE(inv.grand_total,b.estimated_value + b.making_estimate)
-                       - b.remaining_amount, 0
-                   ) AS "paidAmount",
-                   b.advance_amount AS "downPayment", b.down_payment_date AS "downPaymentDate",
-                   b.down_payment_method AS "downPaymentMethod",
-                   b.down_payment_reference_no AS "downPaymentReferenceNo",
-                   b.down_payment_recorded_by AS "downPaymentRecordedBy",
-                   b.remaining_amount AS "remainingBalance",
-                   b.total_installments AS "totalInstallments",
-                   b.payment_frequency AS "paymentFrequency",
-                   b.booking_date AS "planCreatedDate", b.status
-              FROM bookings b
-              LEFT JOIN invoices inv ON inv.id=COALESCE(
-                  b.invoice_id,
-                  (SELECT legacy_invoice.id FROM invoices legacy_invoice
-                    WHERE legacy_invoice.invoice_no=b.invoice_no LIMIT 1)
-              )
-             WHERE b.id=? AND (
-                 b.is_installment_plan=TRUE
-                 OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
-             )
+                   a.original_invoice_amount AS "originalInvoiceAmount",
+                   GREATEST(a.original_invoice_amount-a.remaining_balance,0) AS "paidAmount",
+                   a.down_payment AS "downPayment", a.down_payment_date AS "downPaymentDate",
+                   a.down_payment_method AS "downPaymentMethod",
+                   a.down_payment_reference_no AS "downPaymentReferenceNo",
+                   a.down_payment_recorded_by AS "downPaymentRecordedBy",
+                   a.remaining_balance AS "remainingBalance",
+                   a.total_installments AS "totalInstallments",
+                   a.payment_frequency AS "paymentFrequency",
+                   a.plan_created_date AS "planCreatedDate", a.status
+              FROM installment_accounts a
+              LEFT JOIN invoices inv ON inv.id=a.invoice_id
+             WHERE a.id=?
             """, bookingId);
-        List<Map<String,Object>> schedule = list("installments").stream()
-                .filter(row -> Objects.equals(((Number) row.get("bookingId")).longValue(), bookingId))
-                .toList();
-        Object linkedInvoiceId = booking.get("invoiceId");
+
+        List<Map<String,Object>> schedule = jdbc.queryForList("""
+            SELECT s.id, s.account_id AS "bookingId", a.invoice_no AS "invoiceNo",
+                   a.customer_name AS "customerName", a.mobile,
+                   s.installment_no AS "installmentNo",
+                   a.total_installments AS "totalInstallments",
+                   s.due_date AS "dueDate", s.amount_due AS "amountDue",
+                   s.amount_paid AS "amountPaid", s.remaining_amount AS "remainingAmount",
+                   s.payment_status AS "paymentStatus"
+              FROM installment_schedules s
+              JOIN installment_accounts a ON a.id=s.account_id
+             WHERE s.account_id=?
+             ORDER BY s.installment_no
+            """, bookingId);
+
+        Object linkedInvoiceId = account.get("invoiceId");
         List<Map<String,Object>> invoiceItems = linkedInvoiceId == null ? List.of() : jdbc.queryForList("""
             SELECT item_type AS "itemType", description, purity,
                    gross_weight AS "grossWeight", stone_weight AS "stoneWeight",
@@ -676,10 +691,11 @@ public class ErpModuleService {
              WHERE invoice_id=?
              ORDER BY id ASC
             """, linkedInvoiceId);
+
         List<Map<String,Object>> payments = jdbc.queryForList("""
             SELECT p.id, ('NKJ-EMI-TXN-' || LPAD(p.id::TEXT, 8, '0')) AS "transactionId",
-                   p.installment_id AS "installmentId",
-                   i.installment_no AS "installmentNo",
+                   p.schedule_id AS "installmentId",
+                   s.installment_no AS "installmentNo",
                    p.entry_type AS "entryType",
                    p.payment_date AS "paymentDate", p.amount,
                    p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
@@ -687,23 +703,24 @@ public class ErpModuleService {
                    r.id AS "reversalId", r.reversal_date AS "reversalDate",
                    r.amount AS "reversedAmount", r.reason AS "reversalReason",
                    r.recorded_by AS "reversedBy"
-              FROM installment_payments p
-              LEFT JOIN installments i ON i.id=p.installment_id
-              LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-             WHERE (p.booking_id=? OR i.booking_id=?)
+              FROM installment_transactions p
+              LEFT JOIN installment_schedules s ON s.id=p.schedule_id
+              LEFT JOIN installment_transaction_reversals r ON r.transaction_id=p.id
+             WHERE p.account_id=?
                AND p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
              ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
-            """, bookingId, bookingId);
+            """, bookingId);
+
         BigDecimal legacyBalanceReconciliation = jdbc.queryForObject("""
-            SELECT COALESCE(SUM(p.amount),0)
-              FROM installment_payments p
-              LEFT JOIN installments i ON i.id=p.installment_id
-             WHERE (p.booking_id=? OR i.booking_id=?)
-               AND p.entry_type='LEGACY_RECONCILIATION'
-            """, BigDecimal.class, bookingId, bookingId);
+            SELECT COALESCE(SUM(amount),0)
+              FROM installment_transactions
+             WHERE account_id=? AND entry_type='LEGACY_RECONCILIATION'
+            """, BigDecimal.class, bookingId);
+
         Map<String,Object> response = new LinkedHashMap<>();
-        response.put("plan", booking);
-        response.put("legacyBalanceReconciliation", legacyBalanceReconciliation == null ? BigDecimal.ZERO : legacyBalanceReconciliation);
+        response.put("plan", account);
+        response.put("legacyBalanceReconciliation",
+                legacyBalanceReconciliation == null ? BigDecimal.ZERO : legacyBalanceReconciliation);
         response.put("invoiceItems", invoiceItems);
         response.put("schedule", schedule);
         response.put("payments", payments);
