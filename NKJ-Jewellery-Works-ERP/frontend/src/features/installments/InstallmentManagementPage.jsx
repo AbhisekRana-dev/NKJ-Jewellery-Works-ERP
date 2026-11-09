@@ -88,6 +88,8 @@ const emptyPlan = () => ({
   paymentFrequency: "MONTHLY",
   firstDueDate: today(),
   downPaymentDate: today(),
+  downPaymentMethod: "Cash",
+  downPaymentReferenceNo: "",
   dueDay: String(Number(today().slice(8, 10))),
 });
 
@@ -101,7 +103,8 @@ const emptyReceipt = () => ({
 
 export default function InstallmentManagementPage() {
   const [tab, setTab] = useState("new");
-  const [invoices, setInvoices] = useState([]);
+  const [eligibleInvoices, setEligibleInvoices] = useState([]);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
   const [bookings, setBookings] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [receipts, setReceipts] = useState([]);
@@ -124,12 +127,12 @@ export default function InstallmentManagementPage() {
     setError("");
     try {
       const [inv, bk, sch, pay] = await Promise.all([
-        request("/invoices"),
+        request("/admin/installments/eligible-invoices"),
         request("/admin/modules/bookings"),
         request("/admin/modules/installments"),
         request("/admin/modules/installment-payments"),
       ]);
-      setInvoices(Array.isArray(inv) ? inv : []);
+      setEligibleInvoices(Array.isArray(inv) ? inv : []);
       setBookings(Array.isArray(bk) ? bk : []);
       setSchedules(Array.isArray(sch) ? sch : []);
       setReceipts(Array.isArray(pay) ? pay : []);
@@ -142,16 +145,7 @@ export default function InstallmentManagementPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const selectedInvoice = invoices.find((invoice) => String(invoice.id) === String(invoiceId));
-  const convertedInvoiceIds = useMemo(() => new Set(
-    bookings.filter((booking) => booking.isInstallmentPlan).map((booking) => String(booking.invoiceId)),
-  ), [bookings]);
-  const convertedInvoiceNos = useMemo(() => new Set(
-    bookings.filter((booking) => booking.isInstallmentPlan).map((booking) => String(booking.invoiceNo)),
-  ), [bookings]);
-  const eligibleInvoices = invoices.filter((invoice) =>
-    !convertedInvoiceIds.has(String(invoice.id)) && !convertedInvoiceNos.has(String(invoice.invoiceNo)),
-  );
+  const selectedInvoice = eligibleInvoices.find((invoice) => String(invoice.id) === String(invoiceId));
 
   const remainingBalance = selectedInvoice
     ? Math.max(0, (asCents(selectedInvoice.grandTotal) - asCents(plan.downPayment)) / 100)
@@ -231,8 +225,25 @@ export default function InstallmentManagementPage() {
     }
   };
 
+  const searchEligibleInvoices = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (invoiceSearch.trim()) params.set("search", invoiceSearch.trim());
+      const result = await request(`/admin/installments/eligible-invoices${params.toString() ? `?${params.toString()}` : ""}`);
+      setEligibleInvoices(Array.isArray(result) ? result : []);
+      setInvoiceId("");
+    } catch (e) {
+      setError(e.message || "Could not search eligible invoices.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const createPlan = async (event) => {
     event.preventDefault();
+    if (saving) return;
     setError("");
     setMessage("");
     if (!selectedInvoice) {
@@ -272,12 +283,16 @@ export default function InstallmentManagementPage() {
           firstDueDate: plan.firstDueDate,
           downPaymentDate: plan.downPaymentDate,
           dueDay: Number(plan.dueDay || 1),
+          downPaymentMethod: plan.downPaymentMethod,
+          downPaymentReferenceNo: plan.downPaymentReferenceNo,
         }),
       });
       setMessage(result.message || `Installment account created for invoice ${selectedInvoice.invoiceNo}.`);
+      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${result.bookingNo || result.bookingId}\nInstallments: ${result.scheduleCount || 0}`);
       setInvoiceId("");
       setPlan(emptyPlan());
       setPlanIdempotencyKey(newIdempotencyKey());
+      setInvoiceSearch("");
       await load();
       setTab("accounts");
     } catch (e) {
@@ -290,6 +305,7 @@ export default function InstallmentManagementPage() {
 
   const postReceipt = async (event) => {
     event.preventDefault();
+    if (saving) return;
     setSaving(true);
     setError("");
     setMessage("");
@@ -318,6 +334,9 @@ export default function InstallmentManagementPage() {
         }),
       });
       setMessage(`₹ ${money(result.amount || amountCents / 100)} receipt saved against invoice ${schedule.invoiceNo}.`);
+      window.alert(
+        `Installment Payment Received Successfully!\nTransaction ID: ${result.transactionId || result.paymentId}\nInvoice: ${result.invoiceNo || schedule.invoiceNo}\nAmount: ₹ ${money(result.amount || amountCents / 100)}\nPayment Date: ${fmtDate(result.paymentDate || receiptForm.paymentDate)}\nRemaining Account Balance: ₹ ${money(result.accountRemainingBalance ?? result.remainingAmount ?? 0)}`
+      );
       setReceiptForm(emptyReceipt());
       setPaymentIdempotencyKey(newIdempotencyKey());
       await load();
@@ -459,12 +478,14 @@ export default function InstallmentManagementPage() {
   const renderPaymentHistory = (rows) => (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>Transaction ID</th><th>Installment</th><th>Payment Date</th><th>Amount (₹)</th><th>Method</th><th>Reference</th><th>Recorded By</th><th>Status / Action</th></tr></thead>
+        <thead><tr><th>Transaction ID</th><th>Customer</th><th>Invoice Number</th><th>Installment</th><th>Payment Date</th><th>Amount (₹)</th><th>Method</th><th>Reference</th><th>Recorded By</th><th>Status / Action</th></tr></thead>
         <tbody>
           {rows.map((payment) => (
             <tr key={payment.id}>
               <td>{payment.id}</td>
-              <td>{payment.installmentNo ? `${payment.installmentNo}` : "Down payment"}</td>
+              <td>{payment.customerName || "—"}</td>
+              <td>{payment.invoiceNo || "—"}</td>
+              <td>{payment.installmentNo ? `${payment.installmentNo}` : payment.entryType === "DOWN_PAYMENT" ? "Down payment" : "—"}</td>
               <td>{fmtDate(payment.paymentDate)}</td>
               <td>{money(payment.amount)}</td>
               <td>{payment.paymentMethod || "—"}</td>
@@ -483,7 +504,7 @@ export default function InstallmentManagementPage() {
               </td>
             </tr>
           ))}
-          {!rows.length && <tr><td colSpan="8" className="empty">No payment transactions recorded yet.</td></tr>}
+          {!rows.length && <tr><td colSpan="10" className="empty">No payment transactions recorded yet.</td></tr>
         </tbody>
       </table>
     </div>
@@ -527,12 +548,28 @@ export default function InstallmentManagementPage() {
               <section>
                 <h4>Customer / Invoice Details</h4>
                 <label>
+                  <span>Search older or recent invoices</span>
+                  <input
+                    type="search"
+                    value={invoiceSearch}
+                    onChange={(event) => setInvoiceSearch(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); searchEligibleInvoices(); } }}
+                    placeholder="Invoice number, customer name or mobile"
+                  />
+                </label>
+                <div className="nkj-module-form-actions">
+                  <button type="button" className="secondary" onClick={searchEligibleInvoices} disabled={loading}>
+                    <Search size={15}/> Search invoices
+                  </button>
+                  <small>Default list shows the last 3 calendar days. Search includes older eligible invoices.</small>
+                </div>
+                <label>
                   <span>Select eligible saved invoice *</span>
                   <select value={invoiceId} onChange={(event) => setInvoiceId(event.target.value)} required>
-                    <option value="">Choose saved invoice</option>
+                    <option value="">Choose saved invoice ({eligibleInvoices.length} found)</option>
                     {eligibleInvoices.map((invoice) => (
                       <option key={invoice.id} value={invoice.id}>
-                        {invoice.invoiceNo} · {invoice.customerName} · ₹ {money(invoice.grandTotal)}
+                        {invoice.invoiceNo} · {invoice.customerName} · {invoice.mobile || "—"} · ₹ {money(invoice.grandTotal)}
                       </option>
                     ))}
                   </select>
@@ -584,6 +621,16 @@ export default function InstallmentManagementPage() {
                   <label>
                     <span>Actual down payment date *</span>
                     <input type="date" max={today()} value={plan.downPaymentDate} onChange={(event) => setPlan({ ...plan, downPaymentDate: event.target.value })} required/>
+                  </label>
+                  <label>
+                    <span>Down payment method *</span>
+                    <select value={plan.downPaymentMethod} onChange={(event) => setPlan({ ...plan, downPaymentMethod: event.target.value })}>
+                      <option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Cheque</option><option>NEFT</option><option>RTGS</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Down payment reference</span>
+                    <input type="text" maxLength="100" value={plan.downPaymentReferenceNo} onChange={(event) => setPlan({ ...plan, downPaymentReferenceNo: event.target.value })} placeholder="Optional transaction reference"/>
                   </label>
                   {plan.paymentFrequency === "MONTHLY" && (
                     <label>
@@ -659,7 +706,7 @@ export default function InstallmentManagementPage() {
                           <td><div className="nkj-installment-progress"><i style={{ width: `${progress}%` }}/></div><small>{progress.toFixed(0)}%</small></td>
                           <td>{next ? fmtDate(next.dueDate) : "Completed"}</td>
                           <td className="nkj-installment-row-actions">
-                            <button type="button" className="small-action" onClick={() => openAccountDetails(account)}><Eye size={14}/> Details</button>
+                            <button type="button" className="small-action" onClick={() => openAccountDetails(account)}><Eye size={14}/> View</button>
                             <button type="button" className="small-action" onClick={() => printAccount(account)}><Printer size={14}/> Print</button>
                             {next && <button type="button" className="small-action" onClick={() => startReceipt(next)}><CreditCard size={14}/> Collect</button>}
                           </td>
