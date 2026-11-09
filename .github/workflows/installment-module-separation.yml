@@ -42,7 +42,7 @@ jobs:
           nav_start = shell.index("const ownerNavigation = [")
           nav_end = shell.index(chr(10) + "];", nav_start)
           nav_items = shell[nav_start:nav_end].count('["')
-          assert nav_items == 28, f"Expected all 28 owner sidebar menu items, found {nav_items}."
+          assert nav_items == 29, f"Expected all 29 owner sidebar menu items, found {nav_items}."
           assert "group.items.map(([key, label, to, Icon])" in shell
 
           # First click must survive route navigation replacing the DOM.
@@ -76,7 +76,7 @@ jobs:
           label_start = shell.index("const compactNavigationLabels = {")
           label_end = shell.index("};", label_start)
           compact_labels = re.findall(r'^\s*(?:"[^"]+"|[a-z-]+):\s*"[^"]+"', shell[label_start:label_end], re.MULTILINE)
-          assert len(compact_labels) == 28, f"Expected 28 compact menu labels, found {len(compact_labels)}."
+          assert len(compact_labels) == 29, f"Expected 29 compact menu labels, found {len(compact_labels)}."
           assert '<small className="nkj-owner-compact-label" aria-hidden="true">' in shell, "Dedicated compact labels are missing from each navigation link."
           assert "flushSync(() => setSidebarCollapsed(nextCollapsed))" in shell
           assert 'document.addEventListener("click", handleClickCapture, true)' in shell
