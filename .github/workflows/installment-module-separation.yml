@@ -163,7 +163,7 @@ jobs:
           java -jar target/nkj-billing-1.0.0.jar > /tmp/nkj-v20.log 2>&1 &
           echo $! > /tmp/nkj-backend.pid
           for attempt in $(seq 1 90); do
-            if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='20' AND success=true" 2>/dev/null | grep -q '^1$'; then
+            if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='21' AND success=true" 2>/dev/null | grep -q '^1$'; then
               break
             fi
             if ! kill -0 "$(cat /tmp/nkj-backend.pid)" 2>/dev/null; then
@@ -204,6 +204,33 @@ jobs:
             SELECT COUNT(*) INTO n
               FROM pre_booking_bills;
             IF n <> 1 THEN RAISE EXCEPTION 'Expected only the genuine Pre-Booking in the Pre-Booking filter, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n FROM legacy_booking_records
+             WHERE booking_no='NKJ-CI-LEGACY-EMI';
+            IF n <> 1 THEN RAISE EXCEPTION 'Legacy EMI booking was not preserved in archive'; END IF;
+
+            SELECT COUNT(*) INTO n FROM legacy_installments
+             WHERE booking_id=(SELECT id FROM legacy_booking_records WHERE booking_no='NKJ-CI-LEGACY-EMI');
+            IF n <> 2 THEN RAISE EXCEPTION 'Legacy EMI schedules were not preserved in archive'; END IF;
+
+            SELECT COUNT(*) INTO n FROM legacy_installment_payments
+             WHERE booking_id=(SELECT id FROM legacy_booking_records WHERE booking_no='NKJ-CI-LEGACY-EMI');
+            IF n <> 2 THEN RAISE EXCEPTION 'Legacy EMI receipts were not preserved in archive'; END IF;
+
+            IF to_regclass('public.bookings') IS NOT NULL
+               OR to_regclass('public.installments') IS NOT NULL
+               OR to_regclass('public.installment_payments') IS NOT NULL THEN
+              RAISE EXCEPTION 'Old shared tables are still exposed under active names';
+            END IF;
+
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public'
+                   AND table_name='pre_booking_bills'
+                   AND column_name IN ('is_installment_plan','total_installments','payment_frequency','plan_idempotency_key','down_payment_date')
+            ) THEN
+              RAISE EXCEPTION 'Dedicated Pre-Booking table contains EMI-only columns';
+            END IF;
 
             SELECT COUNT(*) INTO n
               FROM installment_schedules s
