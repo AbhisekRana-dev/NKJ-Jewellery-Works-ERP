@@ -186,7 +186,7 @@ export function Nav({ active = "home" }) {
               className="nkj-owner-public-link"
               title={sidebarCollapsed ? "Public Home" : undefined}
               onClick={(event) => {
-                if (active === "home" || location.pathname === "/" || event.detail > 1) {
+                if (event.detail > 1) {
                   event.preventDefault();
                 }
                 lastSidebarItemClickRef.current = "/";
