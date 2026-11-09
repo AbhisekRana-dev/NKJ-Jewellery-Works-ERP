@@ -857,6 +857,21 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
   min-width: 0 !important;
 }
 
+/* Restore the full expanded navigation at the tablet breakpoint. */
+@media (max-width: 1100px) {
+  .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-brand > span:last-child,
+  .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-user > span:last-child,
+  .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav-title,
+  .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav a span,
+  .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav-arrow {
+    display: block !important;
+  }
+  .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-sidebar-bottom a,
+  .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-sidebar-bottom button {
+    display: flex !important;
+  }
+}
+
 /* Keep the established mobile overlay behavior when the owner sidebar is opened. */
 @media (max-width: 760px) {
   body.nkj-owner-layout {
