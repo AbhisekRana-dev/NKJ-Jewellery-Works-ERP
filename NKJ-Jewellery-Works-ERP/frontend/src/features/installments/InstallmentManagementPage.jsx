@@ -783,6 +783,11 @@ export default function InstallmentManagementPage() {
                     )}
                     <h4>Installment Schedule</h4>
                     {renderScheduleTable(accountDetails.schedule || [], accountDetails.plan.totalInstallments)}
+                    {Number(accountDetails.legacyBalanceReconciliation || 0) > 0 && (
+                      <p className="nkj-module-footnote">
+                        ₹ {money(accountDetails.legacyBalanceReconciliation)} is retained as a legacy paid-balance adjustment because the original receipt transaction date and method were not recorded in the older system. It is included in the paid and remaining balance calculations, but is not shown as an actual receipt transaction.
+                      </p>
+                    )}
                     <h4>Payment History</h4>
                     {renderPaymentHistory(accountDetails.payments || [])}
                   </>
