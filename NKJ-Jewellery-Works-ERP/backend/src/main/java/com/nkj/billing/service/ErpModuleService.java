@@ -596,17 +596,31 @@ public class ErpModuleService {
     public Map<String,Object> getInstallmentPlanDetails(long bookingId) {
         Map<String,Object> booking = jdbc.queryForMap("""
             SELECT b.id AS "bookingId", b.booking_no AS "bookingNo",
-                   b.invoice_id AS "invoiceId", b.invoice_no AS "invoiceNo",
-                   b.customer_name AS "customerName", b.mobile,
-                   b.estimated_value + b.making_estimate AS "originalInvoiceAmount",
+                   COALESCE(b.invoice_id, inv.id) AS "invoiceId",
+                   b.invoice_no AS "invoiceNo",
+                   COALESCE(inv.customer_name,b.customer_name) AS "customerName",
+                   COALESCE(inv.mobile,b.mobile) AS mobile,
+                   inv.address AS "customerAddress",
+                   inv.invoice_date AS "invoiceDate",
+                   COALESCE(inv.grand_total,b.estimated_value + b.making_estimate) AS "originalInvoiceAmount",
                    b.advance_amount AS "downPayment", b.down_payment_date AS "downPaymentDate",
+                   b.down_payment_method AS "downPaymentMethod",
+                   b.down_payment_reference_no AS "downPaymentReferenceNo",
                    b.down_payment_recorded_by AS "downPaymentRecordedBy",
                    b.remaining_amount AS "remainingBalance",
                    b.total_installments AS "totalInstallments",
                    b.payment_frequency AS "paymentFrequency",
                    b.booking_date AS "planCreatedDate", b.status
               FROM bookings b
-             WHERE b.id=? AND b.is_installment_plan=TRUE
+              LEFT JOIN invoices inv ON inv.id=COALESCE(
+                  b.invoice_id,
+                  (SELECT legacy_invoice.id FROM invoices legacy_invoice
+                    WHERE legacy_invoice.invoice_no=b.invoice_no LIMIT 1)
+              )
+             WHERE b.id=? AND (
+                 b.is_installment_plan=TRUE
+                 OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
+             )
             """, bookingId);
         List<Map<String,Object>> schedule = list("installments").stream()
                 .filter(row -> Objects.equals(((Number) row.get("bookingId")).longValue(), bookingId))
