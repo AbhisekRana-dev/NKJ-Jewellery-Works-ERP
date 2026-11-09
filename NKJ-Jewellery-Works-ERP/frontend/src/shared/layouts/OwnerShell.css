@@ -440,10 +440,41 @@ body.nkj-owner-layout .app-content {width: 100%;
 .nkj-owner-sidebar.is-collapsed .nkj-owner-brand > span:last-child,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-user > span:last-child,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-title,
-.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span,
-.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-arrow,
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-arrow {display: none !important;}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px !important;
+  min-height: 49px !important;
+  padding: 5px 2px !important;
+}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {
+  display: block !important;
+  flex: 0 0 auto;
+  max-width: 66px;
+  color: inherit;
+  font-size: 8px !important;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a,
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button {
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px !important;
+  min-height: 44px;
+  padding: 7px 4px !important;
+}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a span,
-.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button span {display: none !important;}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button span {
+  display: block !important;
+  font-size: 8px !important;
+  line-height: 1.05;
+}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-user {justify-content: center;
   margin: 8px 8px 6px;
   padding: 7px 4px;
