@@ -188,6 +188,7 @@ public class ErpModuleService {
                          WHEN i.amount_paid > 0 AND i.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
                          WHEN i.amount_paid > 0 THEN 'PARTIAL'
                          WHEN i.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
+                         WHEN i.due_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'DUE'
                          ELSE 'PENDING'
                        END AS "paymentStatus",
                        i.created_at AS "createdAt", i.updated_at AS "updatedAt"
@@ -537,7 +538,8 @@ public class ErpModuleService {
                 dueDate = month.atDay(Math.min(dueDay, month.lengthOfMonth()));
             }
             BigDecimal amount = amounts.get(index);
-            String initialStatus = dueDate.isBefore(today) ? "OVERDUE" : "PENDING";
+            String initialStatus = dueDate.isBefore(today) ? "OVERDUE"
+                    : dueDate.isEqual(today) ? "DUE" : "PENDING";
             Long scheduleId = jdbc.queryForObject("""
                 INSERT INTO installments(
                     booking_id, installment_no, due_date, amount_due, amount_paid,
@@ -693,7 +695,9 @@ public class ErpModuleService {
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
         if (paymentDate.isAfter(today)) throw new IllegalArgumentException("Payment date cannot be in the future.");
         String paymentMethod = String.valueOf(body.getOrDefault("paymentMethod", "Cash")).trim();
-        if (paymentMethod.isBlank() || paymentMethod.length() > 40) throw new IllegalArgumentException("Select a valid payment method.");
+        if (!Set.of("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "NEFT", "RTGS").contains(paymentMethod)) {
+            throw new IllegalArgumentException("Select a valid payment method.");
+        }
         String referenceNo = body.get("referenceNo") == null ? "" : String.valueOf(body.get("referenceNo")).trim();
         if (referenceNo.length() > 100) throw new IllegalArgumentException("Transaction reference cannot exceed 100 characters.");
 
@@ -831,7 +835,8 @@ public class ErpModuleService {
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
         String status = remaining.signum() == 0 ? "PAID"
                 : dueDate.isBefore(today) ? "OVERDUE"
-                : paid.signum() > 0 ? "PARTIAL" : "PENDING";
+                : paid.signum() > 0 ? "PARTIAL"
+                : dueDate.isEqual(today) ? "DUE" : "PENDING";
         jdbc.update("UPDATE installments SET amount_paid=?, remaining_amount=?, payment_status=?, updated_at=NOW() WHERE id=?",
                 paid, remaining, status, installmentId);
         jdbc.update("""
