@@ -114,6 +114,15 @@ jobs:
           collapsed_label_css = css[collapsed_label_start + len(collapsed_label_selector):].split("}", 1)[0]
           assert "display: block !important" in collapsed_label_css and "font-size: 8px" in collapsed_label_css
           assert "white-space: nowrap;" in collapsed_label_css and "overflow: hidden;" in collapsed_label_css
+          assert "Collapsed sidebar icon and label sizing" in css
+          compact_ui_start = css.rfind("/* Collapsed sidebar icon and label sizing")
+          compact_ui = css[compact_ui_start:]
+          assert "width: 27px !important;" in compact_ui and "height: 27px !important;" in compact_ui
+          assert "font-size: 11px !important;" in compact_ui
+          assert "flex: 0 0 72px !important;" in compact_ui and "min-height: 72px !important;" in compact_ui
+          assert "overflow-y: auto !important;" in compact_ui and "min-height: 0 !important;" in compact_ui
+          assert "margin-top: auto !important;" in compact_ui, "Home and Exit must remain fixed below the scrolling navigation."
+          assert "background: #f3d892 !important;" in compact_ui and "color: #5a0a20 !important;" in compact_ui
           assert "@media (max-width: 1100px)" in css
           assert ".nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav a span" in css
           assert "@media (max-width: 760px)" in css and "--nkj-owner-sidebar-width: var(--nkj-owner-collapsed-width);" in css
