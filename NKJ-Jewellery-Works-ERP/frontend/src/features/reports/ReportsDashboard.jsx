@@ -34,7 +34,7 @@ export default function ReportsDashboard({ type = "overview" }) {
           {(type === "expenses" ? [
             [Wallet,"Today's expenses",data.todayExpenses,"Today"],[Wallet,"This month",data.monthExpenses,"Month to date"],[Receipt,"Recorded expenses",data.totalExpenses,"All recorded entries"]
           ] : type === "sales" ? [
-            [Receipt,"Today's sales",data.todaySales,"Saved invoices"],[BarChart3,"This month's sales",data.monthSales,"Month to date"],[TrendingUp,"All-time sales",data.totalSales,"Saved invoices"]
+            [Receipt,"Today's sales",data.todaySales,"Invoices and receipts received today"],[BarChart3,"This month's sales",data.monthSales,"Month-to-date realized sales"],[TrendingUp,"All-time sales",data.totalSales,"Normal invoices and installment receipts"]
           ] : [
             [Receipt,"This month's sales",data.monthSales,"Invoice totals"],[Wallet,"This month's expenses",data.monthExpenses,"Recorded expenses"],[TrendingUp,"Operating result",data.operatingResultBeforeCogs,"Before cost of goods sold"]
           ]).map(([icon,label,value,note])=><Kpi key={label} icon={icon} title={label} value={value} note={note}/>) }
