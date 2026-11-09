@@ -51,13 +51,33 @@ function initialSidebarState() {
 
 const compactNavigationLabels = {
   dashboard: "Dash",
+  invoice: "New",
   saved: "Bills",
-  bookings: "Booking",
-  customers: "Clients",
-  attendance: "Attend.",
+  bookings: "Book",
   installments: "EMI",
+  "old-gold": "Old Gold",
   inventory: "Stock",
+  purchases: "Buy",
+  "stock-movements": "Moves",
+  rates: "Rates",
+  customers: "Clients",
+  suppliers: "Supply",
   expenses: "Expense",
+  payments: "Pay",
+  reports: "Reports",
+  "reports-sales": "Sales",
+  "reports-profit": "P&L",
+  "reports-expenses": "Exp.",
+  staff: "Staff",
+  attendance: "Attend.",
+  leaves: "Leave",
+  salary: "Salary",
+  "salary-payments": "Pay",
+  karigars: "Karigar",
+  repairs: "Repair",
+  database: "Data",
+  "audit-logs": "Logs",
+  profile: "Profile",
 };
 
 const ownerNavigation = [
@@ -160,6 +180,29 @@ export function Nav({ active = "home" }) {
       const collapsed = sidebarCollapsedRef.current;
 
       if (collapsed) {
+        // A collapsed menu item must open the sidebar on its second click.
+        // The first click may navigate and replace the Nav DOM, so click memory
+        // is retained at module scope and matched again by the next Nav instance.
+        const collapsedMenuLink = target.closest(
+          ".nkj-owner-nav a, .nkj-owner-sidebar-bottom a"
+        );
+        if (collapsedMenuLink) {
+          const label = (
+            collapsedMenuLink.getAttribute("aria-label")
+            || collapsedMenuLink.textContent
+            || ""
+          ).trim().replace(/\\s+/g, " ");
+          const isSecondMenuClick = event.detail === 2
+            || isSecondSidebarClick(event, `collapsed-sidebar-icon:${label}`);
+          if (!isSecondMenuClick) return;
+
+          previousSidebarClick = null;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          commitSidebarState(false);
+          return;
+        }
+
         const pageContent = target.closest(".app-content main");
         if (!pageContent) {
           previousSidebarClick = null;
@@ -280,7 +323,7 @@ export function Nav({ active = "home" }) {
                       aria-current={selected ? "page" : undefined}
                     >
                       <Icon size={18} aria-hidden="true" />
-                      <span>{compactNavigationLabels[key] || label}</span>
+                      <span>{sidebarCollapsed ? (compactNavigationLabels[key] || label) : label}</span>
                       <ChevronRight className="nkj-owner-nav-arrow" size={14} aria-hidden="true" />
                     </Link>
                   );
