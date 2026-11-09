@@ -27,8 +27,14 @@ public class SalesAccountingService {
              WHERE NOT EXISTS (
                  SELECT 1
                    FROM bookings b
-                  WHERE b.invoice_id = i.id
-                    AND b.is_installment_plan = TRUE
+                  WHERE (b.invoice_id = i.id OR b.invoice_no = i.invoice_no)
+                    AND (
+                        b.is_installment_plan = TRUE
+                        OR EXISTS (
+                            SELECT 1 FROM installments legacy_schedule
+                             WHERE legacy_schedule.booking_id = b.id
+                        )
+                    )
              )
             UNION ALL
             SELECT COALESCE(b.down_payment_date, b.booking_date), b.advance_amount
