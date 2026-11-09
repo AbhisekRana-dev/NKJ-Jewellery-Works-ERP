@@ -312,10 +312,15 @@ jobs:
           # A payment is written to the EMI ledger only.
           DETAILS_JSON=$(curl -fsS http://localhost:8086/api/admin/installments/plans/$ACCOUNT_ID "${AUTH[@]}")
           SCHEDULE_ID=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["schedule"][0]["id"])' <<< "$DETAILS_JSON")
-          curl -fsS -X POST http://localhost:8086/api/admin/installments/payments \
+          PAYMENT_HTTP=$(curl -sS -o /tmp/nkj-payment.json -w '%{http_code}' -X POST http://localhost:8086/api/admin/installments/payments \
             "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PAYMENT-002' \
-            --data "{\"installmentId\":$SCHEDULE_ID,\"paymentDate\":\"$TODAY\",\"amount\":50,\"paymentMethod\":\"UPI\",\"referenceNo\":\"CI-EMI-PAYMENT\"}" \
-            > /tmp/nkj-payment.json
+            --data "{\"installmentId\":$SCHEDULE_ID,\"paymentDate\":\"$TODAY\",\"amount\":50,\"paymentMethod\":\"UPI\",\"referenceNo\":\"CI-EMI-PAYMENT\"}")
+          if [ "$PAYMENT_HTTP" -lt 200 ] || [ "$PAYMENT_HTTP" -ge 300 ]; then
+            echo "Installment payment API returned HTTP $PAYMENT_HTTP:"
+            cat /tmp/nkj-payment.json
+            cat /tmp/nkj-v20.log
+            exit 1
+          fi
           BOOKINGS_AFTER_PAYMENT=$(psql "$DB" -tAc "SELECT COUNT(*) FROM bookings")
           if [ "$BOOKINGS_AFTER_PAYMENT" != "$BOOKINGS_BEFORE" ]; then
             echo "EMI payment unexpectedly changed Pre-Booking rows."
