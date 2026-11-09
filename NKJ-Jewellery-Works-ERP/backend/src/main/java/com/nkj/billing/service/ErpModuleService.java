@@ -162,8 +162,13 @@ public class ErpModuleService {
                        b.advance_amount AS "advanceAmount", b.down_payment_date AS "downPaymentDate",
                        b.down_payment_recorded_by AS "downPaymentRecordedBy",
                        b.remaining_amount AS "remainingAmount", b.delivery_date AS "deliveryDate",
-                       b.status, b.is_installment_plan AS "isInstallmentPlan",
-                       b.total_installments AS "totalInstallments",
+                       b.status,
+                       (b.is_installment_plan OR EXISTS (
+                           SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id
+                       )) AS "isInstallmentPlan",
+                       COALESCE(b.total_installments, (
+                           SELECT COUNT(*)::INTEGER FROM installments count_i WHERE count_i.booking_id=b.id
+                       )) AS "totalInstallments",
                        b.payment_frequency AS "paymentFrequency", b.created_at AS "createdAt"
                   FROM bookings b
                  ORDER BY b.booking_date DESC,b.id DESC
@@ -195,34 +200,26 @@ public class ErpModuleService {
         }
         if (module.equals("installment-payments")) {
             return jdbc.queryForList("""
-                SELECT * FROM (
-                    SELECT p.id, i.id AS "installmentId", i.booking_id AS "bookingId",
-                           COALESCE(b.invoice_no,b.booking_no) AS "invoiceNo",
-                           b.customer_name AS "customerName", i.installment_no AS "installmentNo",
-                           p.payment_date AS "paymentDate", p.created_at AS "paidAt",
-                           p.amount, p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
-                           p.recorded_by AS "recordedBy", r.amount AS "reversedAmount",
-                           r.reversal_date AS "reversalDate", r.reason AS "reversalReason",
-                           r.recorded_by AS "reversedBy", 'INSTALLMENT_PAYMENT'::VARCHAR AS "entryType"
-                      FROM installment_payments p
-                      JOIN installments i ON i.id=p.installment_id
-                      JOIN bookings b ON b.id=i.booking_id
-                      LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-                     WHERE b.is_installment_plan=TRUE
-                    UNION ALL
-                    SELECT -b.id AS id, NULL::BIGINT AS "installmentId", b.id AS "bookingId",
-                           b.invoice_no AS "invoiceNo", b.customer_name AS "customerName",
-                           NULL::INTEGER AS "installmentNo", b.down_payment_date AS "paymentDate",
-                           b.created_at AS "paidAt", b.advance_amount AS amount,
-                           'Cash'::VARCHAR AS "paymentMethod", 'DOWN PAYMENT'::VARCHAR AS "referenceNo",
-                           COALESCE(b.down_payment_recorded_by, 'SYSTEM MIGRATION')::VARCHAR AS "recordedBy", NULL::NUMERIC AS "reversedAmount",
-                           NULL::DATE AS "reversalDate", NULL::TEXT AS "reversalReason",
-                           NULL::VARCHAR AS "reversedBy", 'DOWN_PAYMENT'::VARCHAR AS "entryType"
-                      FROM bookings b
-                     WHERE b.is_installment_plan=TRUE AND b.advance_amount>0
-                ) receipts
-                ORDER BY "paidAt" DESC,id DESC
-                LIMIT 5000
+                SELECT p.id, p.installment_id AS "installmentId", b.id AS "bookingId",
+                       COALESCE(b.invoice_no,b.booking_no) AS "invoiceNo",
+                       b.customer_name AS "customerName", i.installment_no AS "installmentNo",
+                       p.entry_type AS "entryType", p.payment_date AS "paymentDate",
+                       p.created_at AS "paidAt", p.amount,
+                       p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
+                       p.recorded_by AS "recordedBy", r.amount AS "reversedAmount",
+                       r.reversal_date AS "reversalDate", r.reason AS "reversalReason",
+                       r.recorded_by AS "reversedBy"
+                  FROM installment_payments p
+                  JOIN bookings b ON b.id=COALESCE(p.booking_id, (
+                      SELECT schedule.booking_id FROM installments schedule
+                       WHERE schedule.id=p.installment_id
+                  ))
+                  LEFT JOIN installments i ON i.id=p.installment_id
+                  LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
+                 WHERE b.is_installment_plan=TRUE
+                    OR EXISTS (SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id)
+                 ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
+                 LIMIT 5000
                 """);
         }
         if (module.equals("attendance")) {
@@ -445,6 +442,29 @@ public class ErpModuleService {
         jdbc.update("UPDATE bookings SET booking_no=? WHERE id=?", bookingNo, bookingId);
 
         if (downPayment.signum() > 0) {
+            String downPaymentMethod = String.valueOf(request.getOrDefault("downPaymentMethod", "Cash")).trim();
+            if (!Set.of("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "NEFT", "RTGS").contains(downPaymentMethod)) {
+                throw new IllegalArgumentException("Select a valid down payment method.");
+            }
+            String downPaymentReference = request.get("downPaymentReferenceNo") == null
+                    ? "" : String.valueOf(request.get("downPaymentReferenceNo")).trim();
+            if (downPaymentReference.length() > 100) {
+                throw new IllegalArgumentException("Down payment reference cannot exceed 100 characters.");
+            }
+            jdbc.update("""
+                UPDATE bookings
+                   SET down_payment_method=?, down_payment_reference_no=?
+                 WHERE id=?
+                """, downPaymentMethod, downPaymentReference.isBlank() ? null : downPaymentReference, bookingId);
+            jdbc.update("""
+                INSERT INTO installment_payments(
+                    installment_id, booking_id, entry_type, payment_date, amount,
+                    payment_method, reference_no, idempotency_key, recorded_by, created_at
+                )
+                VALUES (NULL, ?, 'DOWN_PAYMENT', ?, ?, ?, ?, ?, ?, NOW())
+                """, bookingId, java.sql.Date.valueOf(downPaymentDate), downPayment,
+                    downPaymentMethod, downPaymentReference.isBlank() ? "DOWN PAYMENT" : downPaymentReference,
+                    "PLAN-DOWNPAY-" + bookingId, auth.getUsername());
             jdbc.update("""
                 INSERT INTO customer_ledger(entry_date, entry_type, reference_type, reference_id, credit, notes)
                 VALUES (?, 'INSTALLMENT_DOWN_PAYMENT', 'BOOKING', ?, ?, ?)
@@ -540,34 +560,20 @@ public class ErpModuleService {
                 .filter(row -> Objects.equals(((Number) row.get("bookingId")).longValue(), bookingId))
                 .toList();
         List<Map<String,Object>> payments = jdbc.queryForList("""
-            SELECT * FROM (
-                SELECT p.id, p.installment_id AS "installmentId",
-                       i.installment_no AS "installmentNo",
-                       p.payment_date AS "paymentDate", p.amount,
-                       p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
-                       p.recorded_by AS "recordedBy", p.created_at AS "createdAt",
-                       r.id AS "reversalId", r.reversal_date AS "reversalDate",
-                       r.amount AS "reversedAmount", r.reason AS "reversalReason",
-                       r.recorded_by AS "reversedBy",
-                       'INSTALLMENT_PAYMENT'::VARCHAR AS "entryType"
-                  FROM installment_payments p
-                  JOIN installments i ON i.id=p.installment_id
-                  LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-                 WHERE i.booking_id=?
-                UNION ALL
-                SELECT -b.id AS id, NULL::BIGINT AS "installmentId",
-                       NULL::INTEGER AS "installmentNo",
-                       b.down_payment_date AS "paymentDate", b.advance_amount AS amount,
-                       'Cash'::VARCHAR AS "paymentMethod", 'DOWN PAYMENT'::VARCHAR AS "referenceNo",
-                       COALESCE(b.down_payment_recorded_by, 'SYSTEM MIGRATION')::VARCHAR AS "recordedBy",
-                       b.created_at AS "createdAt", NULL::BIGINT AS "reversalId",
-                       NULL::DATE AS "reversalDate", NULL::NUMERIC AS "reversedAmount",
-                       NULL::TEXT AS "reversalReason", NULL::VARCHAR AS "reversedBy",
-                       'DOWN_PAYMENT'::VARCHAR AS "entryType"
-                  FROM bookings b
-                 WHERE b.id=? AND b.is_installment_plan=TRUE AND b.advance_amount>0
-            ) payment_history
-            ORDER BY "paymentDate" DESC,"createdAt" DESC,id DESC
+            SELECT p.id, p.installment_id AS "installmentId",
+                   i.installment_no AS "installmentNo",
+                   p.entry_type AS "entryType",
+                   p.payment_date AS "paymentDate", p.amount,
+                   p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
+                   p.recorded_by AS "recordedBy", p.created_at AS "createdAt",
+                   r.id AS "reversalId", r.reversal_date AS "reversalDate",
+                   r.amount AS "reversedAmount", r.reason AS "reversalReason",
+                   r.recorded_by AS "reversedBy"
+              FROM installment_payments p
+              LEFT JOIN installments i ON i.id=p.installment_id
+              LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
+             WHERE p.booking_id=? OR i.booking_id=?
+             ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
             """, bookingId, bookingId);
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("plan", booking);
@@ -627,13 +633,14 @@ public class ErpModuleService {
 
         Long paymentId = jdbc.queryForObject("""
             INSERT INTO installment_payments(
-                installment_id, payment_date, amount, payment_method, reference_no,
-                idempotency_key, recorded_by, created_at
+                installment_id, booking_id, entry_type, payment_date, amount,
+                payment_method, reference_no, idempotency_key, recorded_by, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, 'INSTALLMENT', ?, ?, ?, ?, ?, ?, NOW())
             RETURNING id
             """, Long.class,
-            installmentId, java.sql.Date.valueOf(paymentDate), amount, paymentMethod,
+            installmentId, ((Number) installment.get("booking_id")).longValue(),
+            java.sql.Date.valueOf(paymentDate), amount, paymentMethod,
             referenceNo.isBlank() ? null : referenceNo, key, auth.getUsername());
         recalculateInstallment(installmentId, ((Number) installment.get("booking_id")).longValue());
         Map<String,Object> auditValues = new LinkedHashMap<>();
@@ -647,10 +654,17 @@ public class ErpModuleService {
 
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("success", true);
+        BigDecimal scheduleRemaining = due.subtract(netPaidForInstallment(installmentId)).max(BigDecimal.ZERO);
+        BigDecimal accountRemaining = jdbc.queryForObject(
+                "SELECT remaining_amount FROM bookings WHERE id=?",
+                BigDecimal.class, ((Number) installment.get("booking_id")).longValue());
         response.put("paymentId", paymentId);
+        response.put("transactionId", paymentId);
         response.put("invoiceNo", installment.get("invoice_no"));
         response.put("amount", amount);
-        response.put("remainingAmount", due.subtract(netPaidForInstallment(installmentId)));
+        response.put("paymentDate", paymentDate);
+        response.put("remainingAmount", scheduleRemaining);
+        response.put("accountRemainingBalance", accountRemaining == null ? BigDecimal.ZERO : accountRemaining);
         response.put("message", "Installment payment recorded successfully.");
         return response;
     }
@@ -694,13 +708,16 @@ public class ErpModuleService {
         }
 
         Map<String,Object> payment = jdbc.queryForMap("""
-            SELECT p.id, p.installment_id, p.amount, p.payment_date,
+            SELECT p.id, p.installment_id, p.amount, p.payment_date, p.entry_type,
                    i.booking_id, b.invoice_no
               FROM installment_payments p
-              JOIN installments i ON i.id=p.installment_id
-              JOIN bookings b ON b.id=i.booking_id
+              LEFT JOIN installments i ON i.id=p.installment_id
+              JOIN bookings b ON b.id=COALESCE(p.booking_id, i.booking_id)
              WHERE p.id=? FOR UPDATE
             """, paymentId);
+        if (!"INSTALLMENT".equals(String.valueOf(payment.get("entry_type")))) {
+            throw new IllegalArgumentException("Down payments are preserved in the account ledger and cannot be reversed from the installment schedule action.");
+        }
         Long existingReversal = jdbc.query(
                 "SELECT id FROM installment_payment_reversals WHERE payment_id=?",
                 rs -> rs.next() ? rs.getLong(1) : null, paymentId);
