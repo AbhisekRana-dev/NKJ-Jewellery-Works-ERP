@@ -1350,10 +1350,64 @@ public class ErpModuleService {
         }
         Definition d = writableDefinition(module);
         if (body == null || body.isEmpty()) throw new IllegalArgumentException("Update data is required.");
-        Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
+        Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=? FOR UPDATE", id);
         // Pre-Bookings are loaded and updated only from pre_booking_bills.
         Map<String,Object> normalized = new LinkedHashMap<>(body);
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
+        // A paid amount is a cumulative cash figure. It may only increase here;
+        // decreases/refunds must be recorded as separate cash operations.
+        if ("purchases".equals(module) && normalized.containsKey("paidAmount")) {
+            BigDecimal oldPaid = decimal(before.get("paid_amount"));
+            BigDecimal newPaid = nonNegative(normalized.get("paidAmount"), "Paid supplier amount");
+            BigDecimal total = decimal(normalized.get("total_amount"));
+            if (newPaid.compareTo(oldPaid) < 0) {
+                throw new IllegalArgumentException("Paid supplier amount cannot be reduced. Record a refund or correction as a separate transaction.");
+            }
+            if (newPaid.compareTo(total) > 0) {
+                throw new IllegalArgumentException("Paid supplier amount cannot exceed the supplier purchase total.");
+            }
+            if (newPaid.compareTo(oldPaid) > 0) {
+                normalized.put("balance", total.subtract(newPaid).max(BigDecimal.ZERO));
+                normalized.put("status", newPaid.signum() == 0 ? "PENDING"
+                        : newPaid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
+            }
+        }
+        if ("expenses".equals(module)) {
+            BigDecimal oldPaid = decimal(before.get("paid_amount"));
+            BigDecimal total = normalized.containsKey("amount")
+                    ? nonNegative(normalized.get("amount"), "Expense amount")
+                    : decimal(before.get("amount"));
+            BigDecimal newPaid = normalized.containsKey("paidAmount")
+                    ? nonNegative(normalized.get("paidAmount"), "Paid expense amount")
+                    : oldPaid;
+            if (newPaid.compareTo(oldPaid) < 0) {
+                throw new IllegalArgumentException("Paid expense amount cannot be reduced. Record an actual refund separately.");
+            }
+            if (newPaid.compareTo(total) > 0) {
+                throw new IllegalArgumentException("Paid expense amount cannot exceed the expense amount.");
+            }
+            if (normalized.containsKey("amount") && total.compareTo(oldPaid) < 0) {
+                throw new IllegalArgumentException("Expense amount cannot be reduced below the amount already paid.");
+            }
+            if (normalized.containsKey("paidAmount") || normalized.containsKey("amount")) {
+                normalized.put("paidAmount", newPaid);
+                normalized.put("paymentStatus", newPaid.signum() == 0 ? "PENDING"
+                        : newPaid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
+            }
+        }
+        if ("pre-bookings".equals(module) && normalized.containsKey("advanceAmount")) {
+            BigDecimal oldAdvance = decimal(before.get("advance_amount"));
+            BigDecimal newAdvance = nonNegative(normalized.get("advanceAmount"), "Booking advance");
+            if (newAdvance.compareTo(oldAdvance) < 0) {
+                throw new IllegalArgumentException("A recorded Pre-Booking advance cannot be reduced. Record a refund separately.");
+            }
+        }
+        if ("salary".equals(module) && normalized.containsKey("amountPaid")
+                && nonNegative(normalized.get("amountPaid"), "Amount paid")
+                        .compareTo(decimal(before.get("amount_paid"))) != 0) {
+            throw new IllegalArgumentException("Do not edit paid salary directly. Use Salary Payments to record each actual payment.");
+        }
+
         if ("customers".equals(module) && normalized.containsKey("phone")
                 && normalized.get("phone") != null) {
             String normalizedPhone = customerService.normalizePhone(String.valueOf(normalized.get("phone")));
@@ -1393,6 +1447,48 @@ public class ErpModuleService {
         String sql = "UPDATE " + d.table() + " SET " + assignments + (hasUpdatedAt ? ", updated_at=NOW()" : "") + " WHERE id=?";
         int changed = jdbc.update(sql, values.toArray());
         if (changed == 0) throw new IllegalArgumentException("Record not found.");
+
+        if ("pre-bookings".equals(module) && normalized.containsKey("advanceAmount")) {
+            BigDecimal oldAdvance = decimal(before.get("advance_amount"));
+            BigDecimal newAdvance = nonNegative(normalized.get("advanceAmount"), "Booking advance");
+            BigDecimal delta = newAdvance.subtract(oldAdvance).max(BigDecimal.ZERO);
+            if (delta.signum() > 0) {
+                jdbc.update("INSERT INTO customer_ledger(entry_type,reference_type,reference_id,credit,notes) VALUES ('BOOKING_ADVANCE','BOOKING',?,?,?)",
+                        id, delta, "Additional Pre-Booking advance received");
+                cashFlow.recordMovement("PRE_BOOKINGS", "ADVANCE_RECEIPT", id,
+                        "PREBOOK-ADVANCE:" + id + ":ADVANCE_TO:" + moneyKey(newAdvance),
+                        shopToday(), delta, String.valueOf(before.get("customer_name")),
+                        "Additional Pre-Booking advance received", null, null,
+                        String.valueOf(before.get("booking_no")), null, null);
+            }
+        }
+        if ("purchases".equals(module) && normalized.containsKey("paidAmount")) {
+            BigDecimal oldPaid = decimal(before.get("paid_amount"));
+            BigDecimal newPaid = nonNegative(normalized.get("paidAmount"), "Paid supplier amount");
+            BigDecimal delta = newPaid.subtract(oldPaid).max(BigDecimal.ZERO);
+            if (delta.signum() > 0) {
+                cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT", id,
+                        purchaseEventKey(id, newPaid), shopToday(), delta,
+                        String.valueOf(before.get("supplier_name")), "Additional supplier payment",
+                        null, null, before.get("invoice_no") == null ? "PURCHASE-" + id : String.valueOf(before.get("invoice_no")),
+                        null, null);
+            }
+        }
+        if ("expenses".equals(module)
+                && (normalized.containsKey("paidAmount") || normalized.containsKey("amount"))) {
+            BigDecimal oldPaid = decimal(before.get("paid_amount"));
+            BigDecimal newPaid = nonNegative(normalized.get("paidAmount"), "Paid expense amount");
+            BigDecimal delta = newPaid.subtract(oldPaid).max(BigDecimal.ZERO);
+            if (delta.signum() > 0) {
+                cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT", id,
+                        expenseEventKey(id, newPaid), shopToday(), delta, null,
+                        before.get("description") == null ? String.valueOf(before.get("category")) : String.valueOf(before.get("description")),
+                        before.get("payment_method") == null ? null : String.valueOf(before.get("payment_method")),
+                        before.get("reference_no") == null ? null : String.valueOf(before.get("reference_no")),
+                        String.valueOf(before.get("category")), null, null);
+            }
+        }
+
         if (module.equals("staff") && normalized.containsKey("notes") && normalized.get("notes") != null) {
             String latestNote = String.valueOf(normalized.get("notes")).trim();
             Object previousNote = before.get("notes");
@@ -1411,7 +1507,20 @@ public class ErpModuleService {
             throw new IllegalArgumentException("Posted stock and payment transactions cannot be deleted. Record a correcting transaction instead.");
         }
         Definition d = writableDefinition(module);
-        Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
+        Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=? FOR UPDATE", id);
+        String cashSourceModule = switch (module) {
+            case "payments" -> "PAYMENTS";
+            case "pre-bookings" -> "PRE_BOOKINGS";
+            case "expenses" -> "EXPENSES";
+            case "purchases" -> "PURCHASES";
+            case "salary" -> "SALARY";
+            default -> null;
+        };
+        if (cashSourceModule != null && Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS(SELECT 1 FROM cash_transactions WHERE source_module=? AND source_record_id=? AND status='POSTED')",
+                Boolean.class, cashSourceModule, id))) {
+            throw new IllegalArgumentException("This record has posted cash history and cannot be deleted. Keep the source reference and record a separate refund/correction if money was returned.");
+        }
         // Preserve the Pre-Booking's own received advance. This check does not
         // read or depend on any Installment/EMI table.
         if ("pre-bookings".equals(module)
