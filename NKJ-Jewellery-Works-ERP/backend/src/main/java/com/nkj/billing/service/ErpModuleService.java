@@ -75,23 +75,23 @@ public class ErpModuleService {
             f("referenceType","reference_type","text","Reference type"), f("referenceId","reference_id","number","Reference ID"), f("remarks","remarks","text","Remarks")
         ), "productId", "transactionType", "quantity");
         register("bookings", "bookings", true, List.of(
-            f("bookingNo","booking_no","text","Booking number"), f("invoiceNo","invoice_no","text","Invoice number"), f("customerName","customer_name","text","Customer name"),
+            f("bookingNo","booking_no","text","Booking number"), f("customerName","customer_name","text","Customer name"),
             f("mobile","mobile","text","Mobile"), f("bookingDate","booking_date","date","Booking date"), f("description","description","text","Ornament description"),
             f("metalType","metal_type","text","Metal type"), f("purity","purity","text","Purity"), f("estimatedWeight","estimated_weight","number","Estimated weight"),
             f("estimatedRate","estimated_rate","number","Estimated rate"), f("estimatedValue","estimated_value","number","Estimated value"),
             f("makingEstimate","making_estimate","number","Making estimate"), f("advanceAmount","advance_amount","number","Advance amount"),
             f("remainingAmount","remaining_amount","number","Remaining amount"), f("deliveryDate","delivery_date","date","Expected delivery"), f("status","status","text","Status")
         ), "bookingNo", "customerName");
-        register("installments", "installments", false, List.of(
-            f("bookingId","booking_id","number","Booking ID"), f("installmentNo","installment_no","number","Installment no."),
+        register("installments", "installment_schedules", false, List.of(
+            f("accountId","account_id","number","Installment Account ID"), f("installmentNo","installment_no","number","Installment no."),
             f("dueDate","due_date","date","Due date"), f("amountDue","amount_due","number","Amount due"),
             f("amountPaid","amount_paid","number","Amount paid"), f("remainingAmount","remaining_amount","number","Remaining amount"),
             f("paymentStatus","payment_status","text","Payment status")
-        ), "bookingId", "installmentNo", "amountDue");
-        register("installment-payments", "installment_payments", false, List.of(
-            f("installmentId","installment_id","number","Installment ID"), f("paymentDate","payment_date","date","Payment date"),
+        ), "accountId", "installmentNo", "amountDue");
+        register("installment-payments", "installment_transactions", false, List.of(
+            f("scheduleId","schedule_id","number","Installment Schedule ID"), f("paymentDate","payment_date","date","Payment date"),
             f("amount","amount","number","Amount"), f("paymentMethod","payment_method","text","Payment method"), f("referenceNo","reference_no","text","Reference no.")
-        ), "installmentId", "amount", "paymentMethod");
+        ), "scheduleId", "amount", "paymentMethod");
         register("suppliers", "suppliers", true, List.of(
             f("supplierCode","supplier_code","text","Supplier ID"), f("name","name","text","Supplier name"), f("phone","phone","text","Phone"), f("email","email","text","Email"),
             f("address","address","text","Address"), f("gstNumber","gst_number","text","GST number"),
@@ -155,31 +155,20 @@ public class ErpModuleService {
         }
         if (module.equals("bookings")) {
             return jdbc.queryForList("""
-                SELECT b.id, b.booking_no AS "bookingNo", b.invoice_id AS "invoiceId",
-                       b.invoice_no AS "invoiceNo", b.customer_name AS "customerName",
-                       b.mobile, b.booking_date AS "bookingDate", b.description,
+                SELECT b.id, b.booking_no AS "bookingNo",
+                       b.customer_name AS "customerName", b.mobile,
+                       b.booking_date AS "bookingDate", b.description,
+                       b.metal_type AS "metalType", b.purity,
+                       b.estimated_weight AS "estimatedWeight", b.estimated_rate AS "estimatedRate",
                        b.estimated_value AS "estimatedValue", b.making_estimate AS "makingEstimate",
-                       b.advance_amount AS "advanceAmount", b.down_payment_date AS "downPaymentDate",
-                       b.down_payment_recorded_by AS "downPaymentRecordedBy",
-                       b.remaining_amount AS "remainingAmount", b.delivery_date AS "deliveryDate",
-                       b.status,
-                       (b.is_installment_plan OR EXISTS (
-                           SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id
-                       )) AS "isInstallmentPlan",
-                       COALESCE(b.total_installments, (
-                           SELECT COUNT(*)::INTEGER FROM installments count_i WHERE count_i.booking_id=b.id
-                       )) AS "totalInstallments",
-                       b.payment_frequency AS "paymentFrequency", b.created_at AS "createdAt"
+                       b.advance_amount AS "advanceAmount", b.remaining_amount AS "remainingAmount",
+                       b.delivery_date AS "deliveryDate", b.status, b.created_at AS "createdAt"
                   FROM bookings b
-                 -- Pre-Booking Bills must contain only genuine pre-booking records.
-                 -- Invoice conversions stay in the dedicated Installment Accounts API.
-                 -- The EXISTS check also catches legacy conversions whose flag was
-                 -- not set but which already have installment schedule rows.
                  WHERE b.is_installment_plan IS NOT TRUE
                    AND NOT EXISTS (
                        SELECT 1
-                         FROM installments emi
-                        WHERE emi.booking_id = b.id
+                         FROM installment_accounts emi
+                        WHERE emi.legacy_booking_id = b.id
                    )
                  ORDER BY b.booking_date DESC,b.id DESC
                  LIMIT 1000
@@ -187,50 +176,42 @@ public class ErpModuleService {
         }
         if (module.equals("installments")) {
             return jdbc.queryForList("""
-                SELECT i.id, i.booking_id AS "bookingId", b.invoice_id AS "invoiceId",
-                       COALESCE(b.invoice_no,b.booking_no) AS "invoiceNo",
-                       b.customer_name AS "customerName", b.mobile,
-                       i.installment_no AS "installmentNo", b.total_installments AS "totalInstallments",
-                       i.due_date AS "dueDate", i.amount_due AS "amountDue",
-                       i.amount_paid AS "amountPaid", i.remaining_amount AS "remainingAmount",
+                SELECT s.id, s.account_id AS "bookingId", a.invoice_id AS "invoiceId",
+                       a.invoice_no AS "invoiceNo", a.account_no AS "bookingNo",
+                       a.customer_name AS "customerName", a.mobile,
+                       s.installment_no AS "installmentNo", a.total_installments AS "totalInstallments",
+                       s.due_date AS "dueDate", s.amount_due AS "amountDue",
+                       s.amount_paid AS "amountPaid", s.remaining_amount AS "remainingAmount",
                        CASE
-                         WHEN i.remaining_amount <= 0 THEN 'PAID'
-                         WHEN i.amount_paid > 0 AND i.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
-                         WHEN i.amount_paid > 0 THEN 'PARTIAL'
-                         WHEN i.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
-                         WHEN i.due_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'DUE'
+                         WHEN s.remaining_amount <= 0 THEN 'PAID'
+                         WHEN s.amount_paid > 0 AND s.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
+                         WHEN s.amount_paid > 0 THEN 'PARTIAL'
+                         WHEN s.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
+                         WHEN s.due_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'DUE'
                          ELSE 'PENDING'
                        END AS "paymentStatus",
-                       i.created_at AS "createdAt", i.updated_at AS "updatedAt"
-                  FROM installments i
-                  JOIN bookings b ON b.id=i.booking_id
-                 WHERE b.is_installment_plan = TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_plan WHERE legacy_plan.booking_id=b.id)
-                 ORDER BY i.due_date ASC,i.installment_no ASC
+                       s.created_at AS "createdAt", s.updated_at AS "updatedAt"
+                  FROM installment_schedules s
+                  JOIN installment_accounts a ON a.id=s.account_id
+                 ORDER BY s.due_date ASC,s.installment_no ASC
                 """);
         }
         if (module.equals("installment-payments")) {
             return jdbc.queryForList("""
                 SELECT p.id, ('NKJ-EMI-TXN-' || LPAD(p.id::TEXT, 8, '0')) AS "transactionId",
-                       p.installment_id AS "installmentId", b.id AS "bookingId",
-                       COALESCE(b.invoice_no,b.booking_no) AS "invoiceNo",
-                       b.customer_name AS "customerName", i.installment_no AS "installmentNo",
-                       p.entry_type AS "entryType", p.payment_date AS "paymentDate",
-                       p.created_at AS "paidAt", p.amount,
+                       p.schedule_id AS "installmentId", a.id AS "bookingId",
+                       a.invoice_no AS "invoiceNo", a.customer_name AS "customerName",
+                       s.installment_no AS "installmentNo", p.entry_type AS "entryType",
+                       p.payment_date AS "paymentDate", p.created_at AS "paidAt", p.amount,
                        p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
                        p.recorded_by AS "recordedBy", r.amount AS "reversedAmount",
                        r.reversal_date AS "reversalDate", r.reason AS "reversalReason",
                        r.recorded_by AS "reversedBy"
-                  FROM installment_payments p
-                  JOIN bookings b ON b.id=COALESCE(p.booking_id, (
-                      SELECT schedule.booking_id FROM installments schedule
-                       WHERE schedule.id=p.installment_id
-                  ))
-                  LEFT JOIN installments i ON i.id=p.installment_id
-                  LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-                 WHERE (b.is_installment_plan=TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id))
-                   AND p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
+                  FROM installment_transactions p
+                  JOIN installment_accounts a ON a.id=p.account_id
+                  LEFT JOIN installment_schedules s ON s.id=p.schedule_id
+                  LEFT JOIN installment_transaction_reversals r ON r.transaction_id=p.id
+                 WHERE p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
                  ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
                 """);
         }
