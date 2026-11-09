@@ -23,6 +23,15 @@ jobs:
         working-directory: NKJ-Jewellery-Works-ERP/frontend
       - run: npm run build
         working-directory: NKJ-Jewellery-Works-ERP/frontend
+      - name: Verify customer email fields are absent from invoice and customer UI
+        run: |
+          ! grep -Eq 'Email Address|customerEmail|customer\.email' NKJ-Jewellery-Works-ERP/frontend/src/features/invoices/InvoicePages.jsx
+          python3 - <<'PY'
+          from pathlib import Path
+          config = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/admin/moduleConfig.js").read_text()
+          customer = config.split("  customers: {", 1)[1].split("  suppliers: {", 1)[0]
+          assert '"email"' not in customer and '"Email"' not in customer, "Customer Management still defines an email field or column."
+          PY
 
   backend-build-and-migration:
     runs-on: ubuntu-latest
@@ -555,6 +564,8 @@ jobs:
               "CI-CUSTOMER-SECOND-001"
           )
           assert second.get("customerId") == first_customer_id, "Same phone created a second customer."
+          assert "customerEmail" not in second and "email" not in second, "Invoice response exposed a supplied legacy email field."
+          assert "customerEmail" not in second.get("details", {}) and "email" not in second.get("details", {}), "Invoice details exposed a supplied legacy email field."
           preserved = sql(
               "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
               f"FROM customers WHERE id={first_customer_id}"
@@ -588,6 +599,7 @@ jobs:
           assert updated_invoice.get("customerId") == first_customer_id, (
               "Editing an invoice did not retain/reuse the phone-matched Customer ID."
           )
+          assert "customerEmail" not in updated_invoice and "email" not in updated_invoice, "Updated invoice response exposed email."
           after_edit = sql(
               "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
               f"FROM customers WHERE id={first_customer_id}"
