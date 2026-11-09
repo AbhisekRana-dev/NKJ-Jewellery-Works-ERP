@@ -106,7 +106,7 @@ jobs:
           assert "pointer-events: none" not in css
           assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {" in css
           collapsed_label_css = css.split(".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {", 1)[1].split("}", 1)[0]
-          assert "display: block !important" in collapsed_label_css and "font-size: 8px" in collapsed_label_css
+          assert "display: block !important" in collapsed_label_css and "font-size: 7px" in collapsed_label_css
           assert "setTimeout(" not in handlers and "debounce" not in handlers.lower()
           print("Route-safe instant sidebar checks passed for both states and all 28 menu items.")
           PY
