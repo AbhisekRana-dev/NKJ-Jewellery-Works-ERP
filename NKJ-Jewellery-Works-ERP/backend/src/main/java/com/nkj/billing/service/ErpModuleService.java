@@ -765,20 +765,26 @@ public class ErpModuleService {
         }
 
         long installmentId = requiredId(body.get("installmentId"), "Installment ID");
+        Long bookingIdForPayment = jdbc.queryForObject(
+                "SELECT booking_id FROM installments WHERE id=?", Long.class, installmentId);
+        if (bookingIdForPayment == null) {
+            throw new IllegalArgumentException("Installment schedule was not found.");
+        }
+        // Use a consistent lock order: account first, then schedule. This serializes
+        // receipts on different schedules within the same account without deadlocks.
+        jdbc.queryForObject("SELECT id FROM bookings WHERE id=? FOR UPDATE", Long.class, bookingIdForPayment);
         Map<String,Object> installment = jdbc.queryForMap("""
             SELECT i.id, i.booking_id, i.amount_due, b.invoice_no, b.is_installment_plan,
                    EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id) AS has_schedule
               FROM installments i
               JOIN bookings b ON b.id=i.booking_id
-             WHERE i.id=? FOR UPDATE
+             WHERE i.id=? FOR UPDATE OF i
             """, installmentId);
-        if (!Boolean.TRUE.equals(installment.get("is_installment_plan"))
-                && !Boolean.TRUE.equals(installment.get("has_schedule"))) {
-            throw new IllegalArgumentException("This schedule row is not linked to an installment account.");
+        if (((Number) installment.get("booking_id")).longValue() != bookingIdForPayment.longValue()
+                || (!Boolean.TRUE.equals(installment.get("is_installment_plan"))
+                    && !Boolean.TRUE.equals(installment.get("has_schedule")))) {
+            throw new IllegalArgumentException("This schedule row is not linked to the selected installment account.");
         }
-        long bookingIdForPayment = ((Number) installment.get("booking_id")).longValue();
-        // Serialize all receipts for one account, even when they target different schedules.
-        jdbc.query("SELECT id FROM bookings WHERE id=? FOR UPDATE", rs -> rs.next() ? rs.getLong(1) : null, bookingIdForPayment);
         BigDecimal due = decimal(installment.get("amount_due")).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal paid = netPaidForInstallment(installmentId);
         BigDecimal remaining = due.subtract(paid).setScale(2, java.math.RoundingMode.HALF_UP);
@@ -872,6 +878,15 @@ public class ErpModuleService {
                     "message", "This payment reversal was already recorded.");
         }
 
+        Long bookingIdForReversal = jdbc.queryForObject("""
+            SELECT COALESCE(p.booking_id, i.booking_id)
+              FROM installment_payments p
+              LEFT JOIN installments i ON i.id=p.installment_id
+             WHERE p.id=?
+            """, Long.class, paymentId);
+        if (bookingIdForReversal == null) throw new IllegalArgumentException("Payment account was not found.");
+        // Match the collection lock order: account first, then transaction row.
+        jdbc.queryForObject("SELECT id FROM bookings WHERE id=? FOR UPDATE", Long.class, bookingIdForReversal);
         Map<String,Object> payment = jdbc.queryForMap("""
             SELECT p.id, p.installment_id, p.amount, p.payment_date, p.entry_type,
                    COALESCE(p.booking_id, i.booking_id) AS booking_id, b.invoice_no
@@ -907,8 +922,6 @@ public class ErpModuleService {
             decimal(payment.get("amount")), reason, key, auth.getUsername());
         long installmentId = ((Number) payment.get("installment_id")).longValue();
         long bookingId = ((Number) payment.get("booking_id")).longValue();
-        // Serialize reversals and collections against the same account balance.
-        jdbc.query("SELECT id FROM bookings WHERE id=? FOR UPDATE", rs -> rs.next() ? rs.getLong(1) : null, bookingId);
         recalculateInstallment(installmentId, bookingId);
         Map<String,Object> auditValues = new LinkedHashMap<>();
         auditValues.put("paymentId", paymentId);
