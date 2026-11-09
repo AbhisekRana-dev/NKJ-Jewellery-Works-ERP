@@ -118,6 +118,9 @@ export default function InstallmentManagementPage() {
   const [planIdempotencyKey, setPlanIdempotencyKey] = useState(newIdempotencyKey);
   const [receiptForm, setReceiptForm] = useState(emptyReceipt);
   const [paymentIdempotencyKey, setPaymentIdempotencyKey] = useState(newIdempotencyKey);
+  const [receiptConfirmationOpen, setReceiptConfirmationOpen] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [receiptConfirmationError, setReceiptConfirmationError] = useState("");
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [accountDetails, setAccountDetails] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -340,25 +343,49 @@ export default function InstallmentManagementPage() {
   const postReceipt = async (event) => {
     event.preventDefault();
     if (saving) return;
-    setSaving(true);
     setError("");
     setMessage("");
     const schedule = schedules.find((row) => String(row.id) === String(receiptForm.installmentId));
     const amountCents = asCents(receiptForm.amount);
     if (!schedule || amountCents <= 0 || amountCents > asCents(schedule.remainingAmount)) {
       setError("Choose an installment and enter an amount no greater than its remaining balance.");
-      setSaving(false);
       return;
     }
     if (!receiptForm.paymentDate || receiptForm.paymentDate > today()) {
       setError("Enter a valid payment date that is not in the future.");
-      setSaving(false);
       return;
     }
+
+    // Do not post anything yet. Ask the administrator to re-enter the password.
+    setAdminPassword("");
+    setReceiptConfirmationError("");
+    setReceiptConfirmationOpen(true);
+  };
+
+  const confirmReceipt = async (event) => {
+    event.preventDefault();
+    if (saving) return;
+    if (!adminPassword) {
+      setReceiptConfirmationError("Enter the administrator password to confirm this receipt.");
+      return;
+    }
+
+    const schedule = schedules.find((row) => String(row.id) === String(receiptForm.installmentId));
+    const amountCents = asCents(receiptForm.amount);
+    if (!schedule || amountCents <= 0) {
+      setReceiptConfirmationError("The selected installment or receipt amount is no longer valid. Close this window and review the receipt details.");
+      return;
+    }
+
+    setSaving(true);
+    setReceiptConfirmationError("");
     try {
       const result = await request("/admin/installments/payments", {
         method: "POST",
-        headers: { "Idempotency-Key": paymentIdempotencyKey },
+        headers: {
+          "Idempotency-Key": paymentIdempotencyKey,
+          "X-Admin-Password": adminPassword,
+        },
         body: JSON.stringify({
           installmentId: Number(receiptForm.installmentId),
           paymentDate: receiptForm.paymentDate,
@@ -370,20 +397,32 @@ export default function InstallmentManagementPage() {
       if (result?.success !== true || !(result?.transactionId || result?.paymentId)) {
         throw new Error("The server did not confirm that the payment transaction was saved. No success message was shown.");
       }
+
+      const transactionId = result.transactionId || result.paymentId;
       setMessage(`₹ ${money(result.amount || amountCents / 100)} receipt saved against invoice ${schedule.invoiceNo}.`);
       setReceiptForm(emptyReceipt());
       setPaymentIdempotencyKey(newIdempotencyKey());
+      setReceiptConfirmationOpen(false);
+      setAdminPassword("");
+      setReceiptConfirmationError("");
       await load();
       setTab("receipts");
       if (selectedAccount) await openAccountDetails(selectedAccount);
       window.alert(
-        `Installment Payment Received Successfully!\nTransaction ID: ${result.transactionId || result.paymentId}\nInvoice: ${result.invoiceNo || schedule.invoiceNo}\nAmount: ₹ ${money(result.amount || amountCents / 100)}\nPayment Date: ${fmtDate(result.paymentDate || receiptForm.paymentDate)}\nRemaining Account Balance: ₹ ${money(result.accountRemainingBalance ?? result.remainingAmount ?? 0)}`
+        `Installment Payment Received Successfully!\\nTransaction ID: ${transactionId}\\nInvoice: ${result.invoiceNo || schedule.invoiceNo}\\nAmount: ₹ ${money(result.amount || amountCents / 100)}\\nPayment Date: ${fmtDate(result.paymentDate || receiptForm.paymentDate)}\\nRemaining Account Balance: ₹ ${money(result.accountRemainingBalance ?? result.remainingAmount ?? 0)}`
       );
     } catch (e) {
-      setError(e.message || "Could not post receipt.");
+      setReceiptConfirmationError(e.message || "Could not confirm and save the receipt.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const cancelReceiptConfirmation = () => {
+    if (saving) return;
+    setReceiptConfirmationOpen(false);
+    setAdminPassword("");
+    setReceiptConfirmationError("");
   };
 
   const startReceipt = (schedule) => {
@@ -909,6 +948,55 @@ export default function InstallmentManagementPage() {
           </section>
         )}
       </section>
+
+      {receiptConfirmationOpen && (
+        <div className="nkj-receipt-confirm-overlay">
+          <form
+            className="nkj-receipt-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nkj-receipt-confirm-title"
+            onSubmit={confirmReceipt}
+          >
+            <div className="nkj-receipt-confirm-heading">
+              <span className="nkj-receipt-confirm-icon"><Wallet size={20}/></span>
+              <div>
+                <h3 id="nkj-receipt-confirm-title">Administrator Confirmation</h3>
+                <p>Verify the administrator password before recording this payment.</p>
+              </div>
+            </div>
+            <div className="nkj-receipt-confirm-summary">
+              <div><span>Invoice</span><strong>{schedules.find((row) => String(row.id) === String(receiptForm.installmentId))?.invoiceNo || "—"}</strong></div>
+              <div><span>Amount received</span><strong>₹ {money(receiptForm.amount)}</strong></div>
+              <div><span>Payment date</span><strong>{fmtDate(receiptForm.paymentDate)}</strong></div>
+              <div><span>Method</span><strong>{receiptForm.paymentMethod}</strong></div>
+            </div>
+            <label className="nkj-receipt-confirm-password">
+              <span>Admin password *</span>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(event) => {
+                  setAdminPassword(event.target.value);
+                  if (receiptConfirmationError) setReceiptConfirmationError("");
+                }}
+                placeholder="Enter administrator password"
+                autoComplete="current-password"
+                autoFocus
+                required
+              />
+            </label>
+            {receiptConfirmationError && <p className="nkj-receipt-confirm-error" role="alert">{receiptConfirmationError}</p>}
+            <p className="nkj-receipt-confirm-note">The receipt will be saved and the installment balance updated only after the server verifies this password.</p>
+            <div className="nkj-receipt-confirm-actions">
+              <button type="button" className="secondary" onClick={cancelReceiptConfirmation} disabled={saving}>Cancel</button>
+              <button type="submit" className="primary" disabled={saving || !adminPassword}>
+                {saving ? "Verifying & Saving…" : "Confirm & Save Receipt"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </Page>
   );
 }
