@@ -8,6 +8,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nkj.billing.model.Customer;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
@@ -22,12 +23,15 @@ public class ErpModuleService {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final AuthService auth;
+    private final CustomerService customerService;
     private final Map<String, Definition> definitions = new LinkedHashMap<>();
     private static final Set<String> APPEND_ONLY_MODULES = Set.of(
             "stock-movements", "installment-payments", "salary-payments");
 
-    public ErpModuleService(JdbcTemplate jdbc, ObjectMapper mapper, AuthService auth) {
+    public ErpModuleService(JdbcTemplate jdbc, ObjectMapper mapper, AuthService auth,
+                            CustomerService customerService) {
         this.jdbc = jdbc; this.mapper = mapper; this.auth = auth;
+        this.customerService = customerService;
         register("staff", "staff", true, List.of(
             f("fullName","full_name","text","Full name"), f("photoUrl","photo_url","text","Photo URL"),
             f("mobile","mobile","text","Mobile"), f("email","email","text","Email"), f("aadhaarNumber","aadhaar_number","text","Aadhaar number"), f("panNumber","pan_number","text","PAN number"), f("address","address","text","Address"),
@@ -147,6 +151,15 @@ public class ErpModuleService {
     public List<Map<String,Object>> list(String module) {
         Definition d = definition(module);
         String select = "id" + d.fields().stream().map(x -> ", " + x.column() + " AS \"" + x.key() + "\"").reduce("", String::concat);
+        if (module.equals("customers")) {
+            // Customer Management must show the complete customer master.
+            return jdbc.queryForList("""
+                SELECT id, customer_code AS "customerCode", name, phone, email,
+                       address, notes, created_at AS "createdAt", updated_at AS "updatedAt"
+                  FROM customers
+                 ORDER BY id DESC
+                """);
+        }
         if (module.equals("staff")) {
             return jdbc.queryForList("SELECT id, staff_code AS \"staffCode\", full_name AS \"fullName\", photo_url AS \"photoUrl\", mobile, email, aadhaar_number AS \"aadhaarNumber\", pan_number AS \"panNumber\", address, dob, joining_date AS \"joiningDate\", designation, department, monthly_salary AS \"monthlySalary\", salary_method AS \"salaryMethod\", emergency_contact AS \"emergencyContact\", status, notes FROM staff ORDER BY id DESC LIMIT 500");
         }
@@ -233,6 +246,21 @@ public class ErpModuleService {
         if (module.equals("pre-bookings") && data.get("bookingNo") == null) data.put("bookingNo", "PENDING-" + UUID.randomUUID());
         if (module.equals("repairs") && data.get("orderNo") == null) data.put("orderNo", "PENDING-" + UUID.randomUUID());
         validate(d, data);
+        if (module.equals("customers") && data.get("phone") != null
+                && !String.valueOf(data.get("phone")).isBlank()) {
+            Customer customer = customerService.registerOrReuseFromInvoice(
+                    String.valueOf(data.get("name")),
+                    String.valueOf(data.get("phone")),
+                    data.get("email") == null ? null : String.valueOf(data.get("email")),
+                    data.get("address") == null ? null : String.valueOf(data.get("address")));
+            Map<String,Object> auditData = new LinkedHashMap<>(data);
+            auditData.put("customerCode", customer.getCustomerCode());
+            auditData.put("phoneMatchedExistingCustomer", true);
+            audit("CUSTOMER_PHONE_UPSERT", "customers", customer.getId(), null, auditData, ip);
+            return Map.of("success", true, "id", customer.getId(),
+                    "customerCode", customer.getCustomerCode(),
+                    "message", "Customer saved. Existing customers with this phone number are reused.");
+        }
         if (module.equals("salary")) {
             if (data.get("basicSalary") == null && data.get("staffId") != null) {
                 data.put("basicSalary", jdbc.queryForObject("SELECT monthly_salary FROM staff WHERE id=?", BigDecimal.class, requiredId(data.get("staffId"), "Staff ID")));
@@ -1180,6 +1208,14 @@ public class ErpModuleService {
         // Pre-Bookings are loaded and updated only from pre_booking_bills.
         Map<String,Object> normalized = new LinkedHashMap<>(body);
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
+        if ("customers".equals(module) && normalized.containsKey("phone")
+                && normalized.get("phone") != null) {
+            String normalizedPhone = customerService.normalizePhone(String.valueOf(normalized.get("phone")));
+            if (customerService.phoneBelongsToAnotherCustomer(normalizedPhone, id)) {
+                throw new IllegalArgumentException("This phone number already belongs to another customer. Use that existing Customer ID instead of creating a duplicate.");
+            }
+            normalized.put("phone", normalizedPhone);
+        }
         // Business identifiers are generated once and must not be accidentally
         // erased when an edit form is submitted with an empty optional code field.
         for (String codeField : List.of("bookingNo", "orderNo", "customerCode", "itemCode", "supplierCode", "karigarCode")) {
