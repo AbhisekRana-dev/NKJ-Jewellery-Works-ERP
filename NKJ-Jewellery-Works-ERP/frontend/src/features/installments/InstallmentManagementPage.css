@@ -323,3 +323,116 @@
 .nkj-due-group table {
   min-width: 980px;
 }
+
+
+/* Administrator password confirmation before an EMI receipt is committed. */
+.nkj-receipt-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(28, 13, 18, .55);
+  backdrop-filter: blur(3px);
+}
+.nkj-receipt-confirm-modal {
+  width: min(100%, 470px);
+  padding: 22px;
+  border: 1px solid #ead8cd;
+  border-radius: 16px;
+  background: #fffdf9;
+  box-shadow: 0 24px 70px rgba(25, 10, 15, .28);
+}
+.nkj-receipt-confirm-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.nkj-receipt-confirm-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #fff0d5;
+  color: #920b2b;
+}
+.nkj-receipt-confirm-heading h3 {
+  margin: 0 0 4px;
+  color: #870b2b;
+  font: 700 19px Georgia,serif;
+}
+.nkj-receipt-confirm-heading p {
+  margin: 0;
+  color: #756966;
+  font-size: 12px;
+}
+.nkj-receipt-confirm-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-bottom: 16px;
+}
+.nkj-receipt-confirm-summary > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #efdfcf;
+  border-radius: 9px;
+  background: #fff9ef;
+}
+.nkj-receipt-confirm-summary span {
+  color: #766c66;
+  font-size: 11px;
+}
+.nkj-receipt-confirm-summary strong {
+  color: #870b2b;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.nkj-receipt-confirm-password {
+  display: grid;
+  gap: 7px;
+  color: #4d4443;
+  font-size: 12px;
+  font-weight: 800;
+}
+.nkj-receipt-confirm-password input {
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 12px;
+  border: 1px solid #d9d2ce;
+  border-radius: 9px;
+  background: #fff;
+  font: inherit;
+}
+.nkj-receipt-confirm-password input:focus {
+  outline: 2px solid rgba(146,11,43,.18);
+  border-color: #920b2b;
+}
+.nkj-receipt-confirm-error {
+  margin: 10px 0 0;
+  color: #a20b2f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.nkj-receipt-confirm-note {
+  margin: 12px 0 16px;
+  color: #776b65;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.nkj-receipt-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+@media (max-width: 480px) {
+  .nkj-receipt-confirm-modal {padding: 17px}
+  .nkj-receipt-confirm-summary {grid-template-columns: 1fr 1fr}
+}
