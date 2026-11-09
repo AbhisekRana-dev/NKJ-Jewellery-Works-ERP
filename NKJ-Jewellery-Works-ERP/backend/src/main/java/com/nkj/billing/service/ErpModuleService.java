@@ -605,7 +605,12 @@ public class ErpModuleService {
                    COALESCE(inv.mobile,b.mobile) AS mobile,
                    inv.address AS "customerAddress",
                    inv.invoice_date AS "invoiceDate",
+                   inv.payment_mode AS "originalPaymentMode",
                    COALESCE(inv.grand_total,b.estimated_value + b.making_estimate) AS "originalInvoiceAmount",
+                   GREATEST(
+                       COALESCE(inv.grand_total,b.estimated_value + b.making_estimate)
+                       - b.remaining_amount, 0
+                   ) AS "paidAmount",
                    b.advance_amount AS "downPayment", b.down_payment_date AS "downPaymentDate",
                    b.down_payment_method AS "downPaymentMethod",
                    b.down_payment_reference_no AS "downPaymentReferenceNo",
@@ -628,6 +633,16 @@ public class ErpModuleService {
         List<Map<String,Object>> schedule = list("installments").stream()
                 .filter(row -> Objects.equals(((Number) row.get("bookingId")).longValue(), bookingId))
                 .toList();
+        Object linkedInvoiceId = booking.get("invoiceId");
+        List<Map<String,Object>> invoiceItems = linkedInvoiceId == null ? List.of() : jdbc.queryForList("""
+            SELECT item_type AS "itemType", description, purity,
+                   gross_weight AS "grossWeight", stone_weight AS "stoneWeight",
+                   net_weight AS "netWeight", rate, making_charge AS "makingCharge",
+                   stamp_charge AS "stampCharge", extra_charge AS "extraCharge", amount
+              FROM invoice_items
+             WHERE invoice_id=?
+             ORDER BY id ASC
+            """, linkedInvoiceId);
         List<Map<String,Object>> payments = jdbc.queryForList("""
             SELECT p.id, p.installment_id AS "installmentId",
                    i.installment_no AS "installmentNo",
@@ -646,6 +661,7 @@ public class ErpModuleService {
             """, bookingId, bookingId);
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("plan", booking);
+        response.put("invoiceItems", invoiceItems);
         response.put("schedule", schedule);
         response.put("payments", payments);
         return response;
