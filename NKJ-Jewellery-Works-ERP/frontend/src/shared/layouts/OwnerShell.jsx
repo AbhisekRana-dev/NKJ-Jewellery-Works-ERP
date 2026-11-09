@@ -23,6 +23,17 @@ function initialSidebarState() {
   }
 }
 
+const compactNavigationLabels = {
+  dashboard: "Dash",
+  saved: "Bills",
+  bookings: "Booking",
+  customers: "Clients",
+  attendance: "Attend.",
+  installments: "EMI",
+  inventory: "Stock",
+  expenses: "Expense",
+};
+
 const ownerNavigation = [
   { title: "OVERVIEW", items: [
     ["dashboard", "Dashboard", "/dashboard", LayoutDashboard],
@@ -209,7 +220,7 @@ export function Nav({ active = "home" }) {
                       aria-current={selected ? "page" : undefined}
                     >
                       <Icon size={18} aria-hidden="true" />
-                      <span>{label}</span>
+                      <span>{compactNavigationLabels[key] || label}</span>
                       <ChevronRight className="nkj-owner-nav-arrow" size={14} aria-hidden="true" />
                     </Link>
                   );
@@ -220,10 +231,10 @@ export function Nav({ active = "home" }) {
 
           <div className="nkj-owner-sidebar-bottom">
             <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined}>
-              <HomeIcon size={18} /><span>Public Home</span>
+              <HomeIcon size={18} /><span>Home</span>
             </Link>
             <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
-              <LogOut size={18} /><span>Logout</span>
+              <LogOut size={18} /><span>Exit</span>
             </button>
           </div>
         </aside>
