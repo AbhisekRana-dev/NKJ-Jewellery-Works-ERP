@@ -113,8 +113,12 @@ public class InvoiceController {
                 // Keep denormalized invoice-number references consistent.
                 jdbc.update("UPDATE payments SET invoice_no=? WHERE invoice_id=?",
                         correctedInvoiceNo, existingInvoice.getId());
-                jdbc.update("UPDATE bookings SET invoice_no=? WHERE invoice_no=?",
+                jdbc.update("UPDATE pre_booking_bills SET invoice_no=? WHERE invoice_no=?",
                         correctedInvoiceNo, previousInvoiceNo);
+                // Invoice number corrections update the EMI's denormalized reference
+                // directly by invoice_id, never through a Pre-Booking record.
+                jdbc.update("UPDATE installment_accounts SET invoice_no=? WHERE invoice_id=?",
+                        correctedInvoiceNo, existingInvoice.getId());
 
                 jdbc.update("INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
                                 + "VALUES ('PUBLIC','INVOICE_BUSINESS_DATE_CORRECTED','INVOICES',?,CAST(? AS JSONB),CAST(? AS JSONB),?)",
