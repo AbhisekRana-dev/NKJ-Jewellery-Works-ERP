@@ -127,7 +127,7 @@ export default function InstallmentManagementPage() {
     setError("");
     const endpoints = [
       ["/admin/installments/eligible-invoices", setEligibleInvoices],
-      ["/admin/modules/bookings", setBookings],
+      ["/admin/installments/accounts", setBookings],
       ["/admin/modules/installments", setSchedules],
       ["/admin/modules/installment-payments", setReceipts],
     ];
