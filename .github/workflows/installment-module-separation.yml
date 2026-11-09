@@ -112,7 +112,7 @@ jobs:
           collapsed_label_start = css.rfind(collapsed_label_selector)
           assert collapsed_label_start >= 0, "Collapsed compact labels are missing."
           collapsed_label_css = css[collapsed_label_start + len(collapsed_label_selector):].split("}", 1)[0]
-          assert "display: block !important" in collapsed_label_css and "font-size: 8px" in collapsed_label_css
+          assert "display: block !important" in collapsed_label_css and "font-size: 11px" in collapsed_label_css
           assert "white-space: nowrap;" in collapsed_label_css and "overflow: hidden;" in collapsed_label_css
           assert "Collapsed sidebar icon and label sizing" in css
           compact_ui_start = css.rfind("/* Collapsed sidebar icon and label sizing")
