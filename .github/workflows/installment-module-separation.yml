@@ -193,6 +193,10 @@ jobs:
           assert '? "PENDING" :' in modules and "paymentStatus" in modules
           assert 'cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT"' in modules
           assert 'cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT"' in modules
+          expense_hook = modules.split('cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT"', 1)[1].split(");", 1)[0]
+          purchase_hook = modules.split('cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT"', 1)[1].split(");", 1)[0]
+          assert "shopToday()" in expense_hook, "Initial expense cash should be dated when it is actually posted."
+          assert "shopToday()" in purchase_hook, "Initial supplier cash should be dated when it is actually paid."
           print("Source-aware cash flow rules, signs, filters, idempotency and full-history checks passed.")
           PY
 
