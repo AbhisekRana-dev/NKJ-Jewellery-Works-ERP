@@ -571,6 +571,25 @@ jobs:
           )
           assert preserved_again == preserved, "A later invoice replaced existing non-empty customer details."
 
+          # Editing an already saved invoice must keep the same Customer ID and
+          # must not overwrite non-empty customer master details with new values.
+          edit_payload = invoice_payload(
+              "CI Edited Invoice Customer", "9876543210",
+              "edited@example.test", "Edited invoice address"
+          )
+          updated_invoice = request_json(
+              f"/api/invoices/{first['id']}", "PUT", edit_payload,
+              {"Authorization": "Bearer " + TOKEN}
+          )
+          assert updated_invoice.get("customerId") == first_customer_id, (
+              "Editing an invoice did not retain/reuse the phone-matched Customer ID."
+          )
+          after_edit = sql(
+              "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
+              f"FROM customers WHERE id={first_customer_id}"
+          )
+          assert after_edit == preserved, "Invoice editing overwrote existing non-empty customer details."
+
           # 2. The same name with different phone numbers creates separate customers.
           same_name_a = save_invoice(
               "CI Same Name", "9876543211", "same-a@example.test", "Address A",
@@ -694,6 +713,43 @@ jobs:
           )
           assert any(row.get("customerCode") == "NKJ-CI-CUSTOMER-DUP-02" for row in customer_rows), (
               "Customer Management is missing the second preserved legacy duplicate."
+          )
+
+          # The existing Customer Management Add Record API also reuses a
+          # customer by phone instead of inserting another row.
+          manual_one = request_json(
+              "/api/admin/modules/customers", "POST",
+              {
+                  "name": "CI Manual Customer",
+                  "phone": "9876543216",
+                  "email": "manual@example.test",
+                  "address": "Manual saved address"
+              },
+              {"Authorization": "Bearer " + TOKEN}
+          )
+          manual_two = request_json(
+              "/api/admin/modules/customers", "POST",
+              {
+                  "name": "CI Manual Different Name",
+                  "phone": "+91 98765-43216",
+                  "email": "manual-new@example.test",
+                  "address": "Manual replacement address"
+              },
+              {"Authorization": "Bearer " + TOKEN}
+          )
+          assert manual_one.get("id") == manual_two.get("id"), (
+              "Customer Management Add Record created a duplicate phone record."
+          )
+          assert sql("SELECT COUNT(*) FROM customers WHERE normalized_phone='9876543216'") == "1", (
+              "Manual Customer Management create bypassed phone uniqueness."
+          )
+
+          customer_rows = request_json(
+              "/api/admin/modules/customers",
+              headers={"Authorization": "Bearer " + TOKEN}
+          )
+          assert len(customer_rows) == int(sql("SELECT COUNT(*) FROM customers")), (
+              "Customer Management did not return the full customer table."
           )
 
           print("Invoice-to-customer synchronization tests passed.")
