@@ -318,6 +318,58 @@ public class ErpModuleService {
     }
 
     /**
+     * Invoice selector: default to the last three Kolkata calendar dates.
+     * A non-empty search explicitly includes older saved invoices.
+     * Drafts never enter invoices; cancelled/void payloads and already
+     * converted invoices are excluded at the database boundary.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String,Object>> eligibleInstallmentInvoices(String search) {
+        String query = search == null ? "" : search.trim();
+        String pattern = "%" + query.toLowerCase(Locale.ROOT) + "%";
+        return jdbc.queryForList("""
+            SELECT i.id, i.invoice_no AS "invoiceNo",
+                   i.invoice_date AS "invoiceDate",
+                   i.customer_name AS "customerName", i.mobile,
+                   i.address, i.grand_total AS "grandTotal"
+              FROM invoices i
+             WHERE BTRIM(COALESCE(i.invoice_no,'')) <> ''
+               AND UPPER(COALESCE(
+                    NULLIF(i.payload_json,'')::jsonb->>'status',
+                    NULLIF(i.payload_json,'')::jsonb->>'invoiceStatus',
+                    'SAVED'
+               )) NOT IN ('DRAFT','CANCELLED','CANCELED','VOID','DELETED')
+               AND LOWER(COALESCE(
+                    NULLIF(i.payload_json,'')::jsonb->>'cancelled',
+                    NULLIF(i.payload_json,'')::jsonb->>'isCancelled',
+                    'false'
+               )) <> 'true'
+               AND NOT EXISTS (
+                   SELECT 1
+                     FROM bookings b
+                    WHERE (b.invoice_id=i.id OR b.invoice_no=i.invoice_no)
+                      AND (
+                          b.is_installment_plan=TRUE
+                          OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
+                      )
+               )
+               AND (
+                    ( ? = '' AND i.invoice_date >=
+                        (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE - INTERVAL '2 days'
+                    )
+                    OR
+                    ( ? <> '' AND (
+                        LOWER(COALESCE(i.invoice_no,'')) LIKE ?
+                        OR LOWER(COALESCE(i.customer_name,'')) LIKE ?
+                        OR LOWER(COALESCE(i.mobile,'')) LIKE ?
+                    ))
+               )
+             ORDER BY i.invoice_date DESC, i.created_at DESC, i.id DESC
+             LIMIT 500
+            """, query, query, pattern, pattern, pattern);
+    }
+
+    /**
      * Convert a saved invoice into an installment plan. The server owns all
      * financial arithmetic and creates the schedule inside one transaction.
      */
