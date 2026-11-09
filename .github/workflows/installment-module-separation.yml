@@ -40,30 +40,42 @@ jobs:
           shell = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.jsx").read_text()
           app = Path("NKJ-Jewellery-Works-ERP/frontend/src/app/App.jsx").read_text()
           nav_start = shell.index("const ownerNavigation = [")
-          nav_end = shell.index("\n];", nav_start)
+          nav_end = shell.index("\\n];", nav_start)
           nav_items = shell[nav_start:nav_end].count('["')
           assert nav_items == 28, f"Expected all 28 owner sidebar menu items, found {nav_items}."
           assert "group.items.map(([key, label, to, Icon])" in shell, (
               "ERP sidebar items must continue using the shared navigation renderer."
           )
 
+          # The helper is outside Nav, so the first-click record survives route
+          # changes which replace the Page/Nav DOM after a Link click.
+          assert "let previousSidebarClick = null;" in shell
+          helper_start = shell.index("function isSecondSidebarClick(event, zone) {")
+          helper_end = shell.index("\\n}", helper_start)
+          helper = shell[helper_start:helper_end]
+          assert "event.timeStamp - previous.timeStamp" in helper
+          assert "Math.hypot(event.clientX - previous.x, event.clientY - previous.y)" in helper
+          assert "SIDEBAR_DOUBLE_CLICK_MS" in helper and "SIDEBAR_DOUBLE_CLICK_DISTANCE" in helper
+          assert "setTimeout(" not in helper, "Double-click detection must not schedule a timer."
+
           effect_start = shell.index("const handleClickCapture = (event) => {")
           effect_end = shell.index('document.addEventListener("click", handleClickCapture, true)', effect_start)
           handlers = shell[effect_start:effect_end]
-          assert "event.detail !== 2" in handlers, "Sidebar toggle must run only on the second click."
-          assert 'if (sidebarCollapsed)' in handlers, "Collapsed-state click branch is missing."
+          assert "sidebarCollapsedRef.current" in handlers, "Shared sidebar state ref is missing."
+          assert "event.detail === 2" in handlers and "isSecondSidebarClick(event, \"page-content\")" in handlers, (
+              "Collapsed-state page content does not handle both native and route-remounted double-clicks."
+          )
           assert 'target.closest(".app-content main")' in handlers, (
               "Double-click anywhere in page content must expand the collapsed sidebar."
           )
-          assert "flushSync(() => setSidebarCollapsed(false))" in handlers, (
-              "Collapsed sidebar is not expanded synchronously on the second click."
-          )
+          assert "commitSidebarState(false)" in handlers, "Page-content double-click does not expand the sidebar."
           assert 'target.closest(".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span")' in handlers, (
               "Expanded-state double-click must target menu text, not icons."
           )
-          assert "flushSync(() => setSidebarCollapsed(true))" in handlers, (
-              "Menu-text double-click does not synchronously collapse the sidebar."
+          assert "isSecondSidebarClick(event, `sidebar-text:${label}`)" in handlers, (
+              "Menu-text double-click must be recognized after the first click navigates/remounts."
           )
+          assert "commitSidebarState(true)" in handlers, "Menu-text double-click does not collapse the sidebar."
           assert "event.preventDefault()" in handlers and "event.stopImmediatePropagation()" in handlers, (
               "Duplicate second-click navigation/actions are not suppressed."
           )
@@ -74,17 +86,24 @@ jobs:
               "Double-clicking a menu icon must not navigate twice."
           )
           assert 'document.addEventListener("click", handleClickCapture, true)' in shell
-          assert "document.addEventListener(\"dblclick\"" not in shell, (
+          assert "document.addEventListener(\\"dblclick\\"" not in shell, (
               "Sidebar should not wait for the later native dblclick event."
           )
-          assert "useLayoutEffect(() => {" in shell
-          assert "<Nav active={active} />" in shell and "<main className={active === \"invoice\"" in shell, (
+          assert "flushSync(() => setSidebarCollapsed(nextCollapsed))" in shell, (
+              "Sidebar React state must be committed immediately on the second click."
+          )
+          assert "useLayoutEffect(() => {" in shell and "}, [ownerWorkspace]);" in shell, (
+              "The document click listener must be stable across sidebar state changes."
+          )
+          assert "<Nav active={active} />" in shell and "<main className={active === \\"invoice\\"" in shell, (
               "Shared Page layout is missing the event-handling surface across ERP pages."
           )
           assert "setTimeout(" not in handlers and "debounce" not in handlers.lower(), (
               "Sidebar double-click must not use timers or debounce."
           )
-          print("Instant sidebar toggle regression checks passed for both states and all 28 menu items.")
+          css = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.css").read_text()
+          assert "pointer-events: none" not in css, "Sidebar/page layout must not block main-content pointer events."
+          print("Route-safe instant sidebar checks passed for both states and all 28 menu items.")
           PY
 
   backend-build-and-migration:
