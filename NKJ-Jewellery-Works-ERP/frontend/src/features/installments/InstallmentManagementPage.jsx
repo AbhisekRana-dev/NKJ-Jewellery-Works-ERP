@@ -220,6 +220,7 @@ export default function InstallmentManagementPage() {
     const dueDate = String(schedule.dueDate || "").slice(0, 10);
     return Boolean(dueDate) && dueDate > today();
   });
+  const undatedRows = dueRows.filter((schedule) => !String(schedule.dueDate || "").slice(0, 10));
 
   const totalOutstanding = accounts.reduce((sum, account) => sum + account.outstanding, 0);
   const totalCollected = accounts.reduce((sum, account) => sum + account.paid, 0);
@@ -883,6 +884,12 @@ export default function InstallmentManagementPage() {
               <div className="nkj-due-group-heading"><h4>Upcoming Due Dates</h4><span>{upcomingRows.length} installments</span></div>
               {renderDueTable(upcomingRows)}
             </section>
+            {undatedRows.length > 0 && (
+              <section className="nkj-due-group">
+                <div className="nkj-due-group-heading"><h4>Due Date Not Set</h4><span>{undatedRows.length} installments</span></div>
+                {renderDueTable(undatedRows)}
+              </section>
+            )}
           </section>
         )}
       </section>
