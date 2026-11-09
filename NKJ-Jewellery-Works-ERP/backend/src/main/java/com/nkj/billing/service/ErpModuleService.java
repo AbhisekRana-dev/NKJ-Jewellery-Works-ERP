@@ -735,29 +735,32 @@ public class ErpModuleService {
         lockIdempotencyKey("installment-payment:" + key);
 
         List<Map<String,Object>> existing = jdbc.queryForList("""
-            SELECT p.id, p.installment_id, p.booking_id, p.payment_date, p.amount,
-                   p.payment_method, p.reference_no, i.amount_due, b.invoice_no
-              FROM installment_payments p
-              JOIN installments i ON i.id=p.installment_id
-              JOIN bookings b ON b.id=i.booking_id
+            SELECT p.id, p.schedule_id, p.account_id, p.payment_date, p.amount,
+                   p.payment_method, p.reference_no, s.amount_due, a.invoice_no
+              FROM installment_transactions p
+              JOIN installment_schedules s ON s.id=p.schedule_id
+              JOIN installment_accounts a ON a.id=p.account_id
              WHERE p.idempotency_key=?
             """, key);
         if (!existing.isEmpty()) {
             Map<String,Object> saved = existing.get(0);
-            boolean same = Objects.equals(((Number) saved.get("installment_id")).longValue(),
+            boolean same = Objects.equals(((Number) saved.get("schedule_id")).longValue(),
                     requiredId(body.get("installmentId"), "Installment ID"))
                     && Objects.equals(String.valueOf(saved.get("payment_date")), String.valueOf(body.get("paymentDate")))
                     && decimal(saved.get("amount")).compareTo(decimal(body.get("amount"))) == 0
                     && Objects.equals(String.valueOf(saved.get("payment_method")), String.valueOf(body.get("paymentMethod")))
                     && Objects.equals(saved.get("reference_no") == null ? "" : String.valueOf(saved.get("reference_no")),
                             body.get("referenceNo") == null ? "" : String.valueOf(body.get("referenceNo")));
-            if (!same) throw new IllegalArgumentException("This payment idempotency key was already used for different payment details.");
-            long savedInstallmentId = ((Number) saved.get("installment_id")).longValue();
-            long savedBookingId = ((Number) saved.get("booking_id")).longValue();
+            if (!same) {
+                throw new IllegalArgumentException("This payment idempotency key was already used for different payment details.");
+            }
+            long savedScheduleId = ((Number) saved.get("schedule_id")).longValue();
+            long savedAccountId = ((Number) saved.get("account_id")).longValue();
             BigDecimal scheduleRemaining = decimal(saved.get("amount_due"))
-                    .subtract(netPaidForInstallment(savedInstallmentId)).max(BigDecimal.ZERO);
+                    .subtract(netPaidForInstallment(savedScheduleId)).max(BigDecimal.ZERO);
             BigDecimal accountRemaining = jdbc.queryForObject(
-                    "SELECT remaining_amount FROM bookings WHERE id=?", BigDecimal.class, savedBookingId);
+                    "SELECT remaining_balance FROM installment_accounts WHERE id=?",
+                    BigDecimal.class, savedAccountId);
             Map<String,Object> duplicateResponse = new LinkedHashMap<>();
             duplicateResponse.put("success", true);
             duplicateResponse.put("paymentId", saved.get("id"));
@@ -772,34 +775,37 @@ public class ErpModuleService {
             return duplicateResponse;
         }
 
-        long installmentId = requiredId(body.get("installmentId"), "Installment ID");
-        Long bookingIdForPayment = jdbc.queryForObject(
-                "SELECT booking_id FROM installments WHERE id=?", Long.class, installmentId);
-        if (bookingIdForPayment == null) {
+        long scheduleId = requiredId(body.get("installmentId"), "Installment ID");
+        Long accountIdForPayment = jdbc.queryForObject(
+                "SELECT account_id FROM installment_schedules WHERE id=?",
+                Long.class, scheduleId);
+        if (accountIdForPayment == null) {
             throw new IllegalArgumentException("Installment schedule was not found.");
         }
-        // Use a consistent lock order: account first, then schedule. This serializes
-        // receipts on different schedules within the same account without deadlocks.
-        jdbc.queryForObject("SELECT id FROM bookings WHERE id=? FOR UPDATE", Long.class, bookingIdForPayment);
+        // Lock account first, then schedule. This serializes receipts across
+        // schedules belonging to one account without touching Pre-Booking rows.
+        jdbc.queryForObject("SELECT id FROM installment_accounts WHERE id=? FOR UPDATE",
+                Long.class, accountIdForPayment);
         Map<String,Object> installment = jdbc.queryForMap("""
-            SELECT i.id, i.booking_id, i.amount_due, b.invoice_no, b.is_installment_plan,
-                   EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id) AS has_schedule
-              FROM installments i
-              JOIN bookings b ON b.id=i.booking_id
-             WHERE i.id=? FOR UPDATE OF i
-            """, installmentId);
-        if (((Number) installment.get("booking_id")).longValue() != bookingIdForPayment.longValue()
-                || (!Boolean.TRUE.equals(installment.get("is_installment_plan"))
-                    && !Boolean.TRUE.equals(installment.get("has_schedule")))) {
+            SELECT s.id, s.account_id, s.amount_due, a.invoice_no
+              FROM installment_schedules s
+              JOIN installment_accounts a ON a.id=s.account_id
+             WHERE s.id=?
+             FOR UPDATE OF s
+            """, scheduleId);
+        if (((Number) installment.get("account_id")).longValue() != accountIdForPayment.longValue()) {
             throw new IllegalArgumentException("This schedule row is not linked to the selected installment account.");
         }
+
         BigDecimal due = decimal(installment.get("amount_due")).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal paid = netPaidForInstallment(installmentId);
+        BigDecimal paid = netPaidForInstallment(scheduleId);
         BigDecimal remaining = due.subtract(paid).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal amount = nonNegative(body.get("amount"), "Payment amount").setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal amount = nonNegative(body.get("amount"), "Payment amount")
+                .setScale(2, java.math.RoundingMode.HALF_UP);
         if (amount.signum() <= 0 || amount.compareTo(remaining) > 0) {
             throw new IllegalArgumentException("Payment must be positive and cannot exceed this installment's outstanding balance of ₹ " + remaining + ".");
         }
+
         java.time.LocalDate paymentDate = parseDate(body.get("paymentDate"), "Payment date");
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
         if (paymentDate.isAfter(today)) throw new IllegalArgumentException("Payment date cannot be in the future.");
@@ -808,35 +814,39 @@ public class ErpModuleService {
             throw new IllegalArgumentException("Select a valid payment method.");
         }
         String referenceNo = body.get("referenceNo") == null ? "" : String.valueOf(body.get("referenceNo")).trim();
-        if (referenceNo.length() > 100) throw new IllegalArgumentException("Transaction reference cannot exceed 100 characters.");
+        if (referenceNo.length() > 100) {
+            throw new IllegalArgumentException("Transaction reference cannot exceed 100 characters.");
+        }
 
         Long paymentId = jdbc.queryForObject("""
-            INSERT INTO installment_payments(
-                installment_id, booking_id, entry_type, payment_date, amount,
+            INSERT INTO installment_transactions(
+                account_id, schedule_id, entry_type, payment_date, amount,
                 payment_method, reference_no, idempotency_key, recorded_by, created_at
             )
             VALUES (?, ?, 'INSTALLMENT', ?, ?, ?, ?, ?, ?, NOW())
             RETURNING id
             """, Long.class,
-            installmentId, ((Number) installment.get("booking_id")).longValue(),
-            java.sql.Date.valueOf(paymentDate), amount, paymentMethod,
-            referenceNo.isBlank() ? null : referenceNo, key, auth.getUsername());
-        recalculateInstallment(installmentId, ((Number) installment.get("booking_id")).longValue());
+            accountIdForPayment, scheduleId, java.sql.Date.valueOf(paymentDate),
+            amount, paymentMethod, referenceNo.isBlank() ? null : referenceNo,
+            key, auth.getUsername());
+
+        recalculateInstallment(scheduleId, accountIdForPayment);
         Map<String,Object> auditValues = new LinkedHashMap<>();
         auditValues.put("invoiceNo", installment.get("invoice_no"));
-        auditValues.put("installmentId", installmentId);
+        auditValues.put("accountId", accountIdForPayment);
+        auditValues.put("installmentId", scheduleId);
         auditValues.put("amount", amount);
         auditValues.put("paymentDate", paymentDate);
         auditValues.put("paymentMethod", paymentMethod);
         auditValues.put("referenceNo", referenceNo);
-        audit("INSTALLMENT_PAYMENT_POSTED", "installment-payments", paymentId, null, auditValues, ip);
+        audit("INSTALLMENT_PAYMENT_POSTED", "installment-transactions", paymentId, null, auditValues, ip);
 
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        BigDecimal scheduleRemaining = due.subtract(netPaidForInstallment(installmentId)).max(BigDecimal.ZERO);
+        BigDecimal scheduleRemaining = due.subtract(netPaidForInstallment(scheduleId)).max(BigDecimal.ZERO);
         BigDecimal accountRemaining = jdbc.queryForObject(
-                "SELECT remaining_amount FROM bookings WHERE id=?",
-                BigDecimal.class, ((Number) installment.get("booking_id")).longValue());
+                "SELECT remaining_balance FROM installment_accounts WHERE id=?",
+                BigDecimal.class, accountIdForPayment);
         response.put("paymentId", paymentId);
         response.put("transactionId", installmentTransactionId(paymentId));
         response.put("invoiceNo", installment.get("invoice_no"));
@@ -852,27 +862,22 @@ public class ErpModuleService {
     public Map<String,Object> updateInstallmentDueDate(long installmentId, Object dueDateValue, String ip) {
         java.time.LocalDate newDueDate = parseDate(dueDateValue, "Due date");
         Map<String,Object> before = jdbc.queryForMap(
-                "SELECT id, booking_id, installment_no, due_date FROM installments WHERE id=? FOR UPDATE",
+                "SELECT id, account_id, installment_no, due_date FROM installment_schedules WHERE id=? FOR UPDATE",
                 installmentId);
         if (before.get("due_date") != null
                 && before.get("due_date").toString().equals(newDueDate.toString())) {
             return Map.of("success", true, "message", "Due date is unchanged.");
         }
-        jdbc.update("UPDATE installments SET due_date=?, updated_at=NOW() WHERE id=?",
+        jdbc.update("UPDATE installment_schedules SET due_date=?, updated_at=NOW() WHERE id=?",
                 java.sql.Date.valueOf(newDueDate), installmentId);
-        // A due-date edit changes the schedule state immediately. Recompute
-        // PENDING / DUE / OVERDUE from the current Kolkata date while retaining
-        // the already-posted payment ledger and amount_paid.
-        recalculateInstallment(
-                installmentId,
-                ((Number) before.get("booking_id")).longValue()
-        );
+        long accountId = ((Number) before.get("account_id")).longValue();
+        recalculateInstallment(installmentId, accountId);
         Map<String,Object> after = new LinkedHashMap<>();
         after.put("installmentId", installmentId);
-        after.put("bookingId", before.get("booking_id"));
+        after.put("accountId", accountId);
         after.put("installmentNo", before.get("installment_no"));
         after.put("dueDate", newDueDate);
-        audit("INSTALLMENT_DUE_DATE_UPDATED", "installments", installmentId, before, after, ip);
+        audit("INSTALLMENT_DUE_DATE_UPDATED", "installment-schedules", installmentId, before, after, ip);
         return Map.of("success", true, "message", "Installment due date updated.");
     }
 
@@ -882,41 +887,44 @@ public class ErpModuleService {
         if (body == null) throw new IllegalArgumentException("A reversal reason is required.");
         String key = requiredIdempotencyKey(idempotencyKey, "reversal");
         lockIdempotencyKey("installment-reversal:" + key);
+
         List<Map<String,Object>> existingByKey = jdbc.queryForList(
-                "SELECT id, payment_id FROM installment_payment_reversals WHERE idempotency_key=?", key);
+                "SELECT id, transaction_id FROM installment_transaction_reversals WHERE idempotency_key=?",
+                key);
         if (!existingByKey.isEmpty()) {
             Map<String,Object> existing = existingByKey.get(0);
-            if (((Number) existing.get("payment_id")).longValue() != paymentId) {
+            if (((Number) existing.get("transaction_id")).longValue() != paymentId) {
                 throw new IllegalArgumentException("This reversal idempotency key belongs to another payment.");
             }
             return Map.of("success", true, "reversalId", existing.get("id"), "duplicate", true,
                     "message", "This payment reversal was already recorded.");
         }
 
-        Long bookingIdForReversal = jdbc.queryForObject("""
-            SELECT COALESCE(p.booking_id, i.booking_id)
-              FROM installment_payments p
-              LEFT JOIN installments i ON i.id=p.installment_id
-             WHERE p.id=?
-            """, Long.class, paymentId);
-        if (bookingIdForReversal == null) throw new IllegalArgumentException("Payment account was not found.");
-        // Match the collection lock order: account first, then transaction row.
-        jdbc.queryForObject("SELECT id FROM bookings WHERE id=? FOR UPDATE", Long.class, bookingIdForReversal);
+        Long accountIdForReversal = jdbc.queryForObject(
+                "SELECT account_id FROM installment_transactions WHERE id=?",
+                Long.class, paymentId);
+        if (accountIdForReversal == null) {
+            throw new IllegalArgumentException("Payment account was not found.");
+        }
+        jdbc.queryForObject("SELECT id FROM installment_accounts WHERE id=? FOR UPDATE",
+                Long.class, accountIdForReversal);
         Map<String,Object> payment = jdbc.queryForMap("""
-            SELECT p.id, p.installment_id, p.amount, p.payment_date, p.entry_type,
-                   COALESCE(p.booking_id, i.booking_id) AS booking_id, b.invoice_no
-              FROM installment_payments p
-              LEFT JOIN installments i ON i.id=p.installment_id
-              JOIN bookings b ON b.id=COALESCE(p.booking_id, i.booking_id)
-             WHERE p.id=? FOR UPDATE OF p
+            SELECT p.id, p.schedule_id, p.amount, p.payment_date, p.entry_type,
+                   p.account_id, a.invoice_no
+              FROM installment_transactions p
+              JOIN installment_accounts a ON a.id=p.account_id
+             WHERE p.id=?
+             FOR UPDATE OF p
             """, paymentId);
         if (!"INSTALLMENT".equals(String.valueOf(payment.get("entry_type")))) {
-            throw new IllegalArgumentException("Down payments are preserved in the account ledger and cannot be reversed from the installment schedule action.");
+            throw new IllegalArgumentException("Down payments and reconciliation entries cannot be reversed from the installment schedule action.");
         }
         Long existingReversal = jdbc.query(
-                "SELECT id FROM installment_payment_reversals WHERE payment_id=?",
+                "SELECT id FROM installment_transaction_reversals WHERE transaction_id=?",
                 rs -> rs.next() ? rs.getLong(1) : null, paymentId);
-        if (existingReversal != null) throw new IllegalArgumentException("This payment has already been reversed.");
+        if (existingReversal != null) {
+            throw new IllegalArgumentException("This payment has already been reversed.");
+        }
         String reason = body.get("reason") == null ? "" : String.valueOf(body.get("reason")).trim();
         if (reason.length() < 5 || reason.length() > 500) {
             throw new IllegalArgumentException("Enter a reversal reason between 5 and 500 characters.");
@@ -928,31 +936,32 @@ public class ErpModuleService {
             throw new IllegalArgumentException("Reversal date cannot be in the future.");
         }
         Long reversalId = jdbc.queryForObject("""
-            INSERT INTO installment_payment_reversals(
-                payment_id, reversal_date, amount, reason, idempotency_key, recorded_by
+            INSERT INTO installment_transaction_reversals(
+                transaction_id, reversal_date, amount, reason, idempotency_key, recorded_by
             )
             VALUES (?, ?, ?, ?, ?, ?)
             RETURNING id
             """, Long.class, paymentId, java.sql.Date.valueOf(reversalDate),
             decimal(payment.get("amount")), reason, key, auth.getUsername());
-        long installmentId = ((Number) payment.get("installment_id")).longValue();
-        long bookingId = ((Number) payment.get("booking_id")).longValue();
-        recalculateInstallment(installmentId, bookingId);
+
+        long scheduleId = ((Number) payment.get("schedule_id")).longValue();
+        long accountId = ((Number) payment.get("account_id")).longValue();
+        recalculateInstallment(scheduleId, accountId);
         Map<String,Object> auditValues = new LinkedHashMap<>();
-        auditValues.put("paymentId", paymentId);
+        auditValues.put("transactionId", paymentId);
         auditValues.put("invoiceNo", payment.get("invoice_no"));
         auditValues.put("amount", payment.get("amount"));
         auditValues.put("reversalDate", reversalDate);
         auditValues.put("reason", reason);
-        audit("INSTALLMENT_PAYMENT_REVERSED", "installment-payment-reversals", reversalId, payment, auditValues, ip);
+        audit("INSTALLMENT_PAYMENT_REVERSED", "installment-transaction-reversals", reversalId, payment, auditValues, ip);
         return Map.of("success", true, "reversalId", reversalId,
                 "message", "Payment reversed. The original receipt remains in history.");
     }
 
-    private void recalculateInstallment(long installmentId, long bookingId) {
+    private void recalculateInstallment(long installmentId, long accountId) {
         BigDecimal paid = netPaidForInstallment(installmentId);
         Map<String,Object> row = jdbc.queryForMap(
-                "SELECT amount_due, due_date FROM installments WHERE id=?", installmentId);
+                "SELECT amount_due, due_date FROM installment_schedules WHERE id=?", installmentId);
         BigDecimal due = decimal(row.get("amount_due")).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal remaining = due.subtract(paid).max(BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
         Object rawDueDate = row.get("due_date");
@@ -969,16 +978,26 @@ public class ErpModuleService {
                 : dueDate != null && dueDate.isBefore(today) ? "OVERDUE"
                 : paid.signum() > 0 ? "PARTIAL"
                 : dueDate != null && dueDate.isEqual(today) ? "DUE" : "PENDING";
-        jdbc.update("UPDATE installments SET amount_paid=?, remaining_amount=?, payment_status=?, updated_at=NOW() WHERE id=?",
-                paid, remaining, status, installmentId);
         jdbc.update("""
-            UPDATE bookings
-               SET remaining_amount=COALESCE((SELECT SUM(remaining_amount) FROM installments WHERE booking_id=?),0),
-                   status=CASE WHEN COALESCE((SELECT SUM(remaining_amount) FROM installments WHERE booking_id=?),0)<=0
-                               THEN 'COMPLETED' ELSE 'OPEN' END,
+            UPDATE installment_schedules
+               SET amount_paid=?, remaining_amount=?, payment_status=?, updated_at=NOW()
+             WHERE id=?
+            """, paid, remaining, status, installmentId);
+        jdbc.update("""
+            UPDATE installment_accounts
+               SET remaining_balance=COALESCE((
+                       SELECT SUM(remaining_amount)
+                         FROM installment_schedules
+                        WHERE account_id=?
+                   ),0),
+                   status=CASE WHEN COALESCE((
+                       SELECT SUM(remaining_amount)
+                         FROM installment_schedules
+                        WHERE account_id=?
+                   ),0)<=0 THEN 'COMPLETED' ELSE 'OPEN' END,
                    updated_at=NOW()
              WHERE id=?
-            """, bookingId, bookingId, bookingId);
+            """, accountId, accountId, accountId);
     }
 
     /**
@@ -994,14 +1013,18 @@ public class ErpModuleService {
         BigDecimal paid = jdbc.queryForObject("""
             SELECT COALESCE(SUM(p.amount),0) - COALESCE((
                 SELECT SUM(r.amount)
-                  FROM installment_payment_reversals r
-                  JOIN installment_payments rp ON rp.id=r.payment_id
-                 WHERE rp.installment_id=?
+                  FROM installment_transaction_reversals r
+                 WHERE r.transaction_id IN (
+                       SELECT p2.id
+                         FROM installment_transactions p2
+                        WHERE p2.schedule_id=?
+                 )
             ),0)
-              FROM installment_payments p
-             WHERE p.installment_id=?
+              FROM installment_transactions p
+             WHERE p.schedule_id=?
             """, BigDecimal.class, installmentId, installmentId);
-        return (paid == null ? BigDecimal.ZERO : paid).max(BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
+        return (paid == null ? BigDecimal.ZERO : paid)
+                .max(BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     private void lockIdempotencyKey(String key) {
