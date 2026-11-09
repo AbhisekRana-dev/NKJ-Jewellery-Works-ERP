@@ -32,6 +32,46 @@ jobs:
           customer = config.split("  customers: {", 1)[1].split("  suppliers: {", 1)[0]
           assert '"email"' not in customer and '"Email"' not in customer, "Customer Management still defines an email field or column."
           PY
+      - name: Verify sidebar double-click behavior in both states
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          shell = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.jsx").read_text()
+          app = Path("NKJ-Jewellery-Works-ERP/frontend/src/app/App.jsx").read_text()
+          nav_start = shell.index("const ownerNavigation = [")
+          nav_end = shell.index("\\n];", nav_start)
+          nav_items = shell[nav_start:nav_end].count('["')
+          assert nav_items == 28, f"Expected all 28 owner sidebar menu items, found {nav_items}."
+          assert "group.items.map(([key, label, to, Icon])" in shell, (
+              "ERP sidebar items must continue using the shared navigation renderer."
+          )
+
+          effect_start = shell.index("const handleDoubleClick = (event) => {")
+          effect_end = shell.index("document.addEventListener(\"dblclick\"", effect_start)
+          handlers = shell[effect_start:effect_end]
+          assert 'if (sidebarCollapsed)' in handlers, "Collapsed-state double-click branch is missing."
+          assert 'target.closest(".app-content main")' in handlers, (
+              "Double-click anywhere in page content must expand the collapsed sidebar."
+          )
+          assert "setSidebarCollapsed(false)" in handlers, "Page-content double-click does not expand the sidebar."
+          assert 'target.closest(".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span")' in handlers, (
+              "Expanded-state double-click must target menu text, not icons."
+          )
+          assert "setSidebarCollapsed(true)" in handlers, "Menu-text double-click does not collapse the sidebar."
+          assert 'target.closest(".nkj-owner-sidebar a")' in handlers, (
+              "Second sidebar click is not guarded against duplicate navigation."
+          )
+          assert "event.detail < 2" in handlers, "The first click must remain unaffected."
+          assert 'document.addEventListener("dblclick", handleDoubleClick)' in shell
+          assert 'document.addEventListener("click", handleClickCapture, true)' in shell
+          assert "useEffect(() => {" in shell
+          assert "<Nav active={active} />" in shell and "<main className={active === \"invoice\"" in shell, (
+              "Shared Page layout is missing the event-handling surface across ERP pages."
+          )
+          assert "setTimeout(" not in handlers, "Sidebar double-click must not delay normal single clicks."
+          print("Sidebar double-click regression checks passed for both states and all 28 menu items.")
+          PY
 
   backend-build-and-migration:
     runs-on: ubuntu-latest
