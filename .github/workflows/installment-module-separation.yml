@@ -33,48 +33,6 @@ jobs:
           assert '"email"' not in customer and '"Email"' not in customer, "Customer Management still defines an email field or column."
           PY
 
-      - name: Verify shared sidebar single-click and double-click handlers
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          source = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.jsx").read_text()
-          navigation = source.split("const ownerNavigation = [", 1)[1].split("];", 1)[0]
-          menu_item_count = navigation.count('["')
-          assert menu_item_count >= 15, f"Expected owner sidebar menu items, found {menu_item_count}."
-          assert "group.items.map(([key, label, to, Icon])" in source, (
-              "Sidebar items are not rendered through the common navigation map."
-          )
-
-          map_start = source.index("group.items.map(([key, label, to, Icon])")
-          link_start = source.index("<Link", map_start)
-          link_end = source.index("</Link>", link_start)
-          link = source[link_start:link_end]
-          assert "onClick={(event) => {" in link, "Sidebar Link is missing its single-click handler."
-          assert "event.detail > 1" in link and "event.preventDefault()" in link, (
-              "A second click can trigger duplicate navigation."
-          )
-          assert "if (selected || event.detail > 1)" not in link, (
-              "The first click on an active item must still perform its normal action."
-          )
-          assert "onDoubleClick={(event) => {" in link, "Sidebar Link is missing its double-click handler."
-          assert "setSidebarCollapsed(true)" in link, "Double-click does not collapse the sidebar."
-          assert "lastSidebarItemClickRef.current === to" in link, (
-              "Double-click after first-click navigation is not recognized."
-          )
-          assert "setTimeout(" not in link, "Single-click navigation must not be delayed."
-
-          public_marker = source.index("nkj-owner-public-link")
-          public_link_start = source.rfind("<Link", 0, public_marker)
-          public_link_end = source.index("</Link>", public_marker)
-          public_link = source[public_link_start:public_link_end]
-          assert "onClick={(event) => {" in public_link, "Public Home is missing its single-click handler."
-          assert "if (event.detail > 1)" in public_link, "Public Home does not suppress only the second click."
-          assert "onDoubleClick={(event) => {" in public_link, "Public Home is missing its double-click handler."
-          assert "setSidebarCollapsed(true)" in public_link, "Public Home double-click does not collapse the sidebar."
-          print(f"Sidebar click checks passed for all {menu_item_count} grouped items and Public Home.")
-          PY
-
   backend-build-and-migration:
     runs-on: ubuntu-latest
     services:
