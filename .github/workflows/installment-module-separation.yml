@@ -486,7 +486,6 @@ jobs:
                   "showGstin": True,
                   "customerName": name,
                   "mobile": phone,
-                  "customerEmail": email,
                   "address": address,
                   "paymentMode": "Cash",
                   "referenceNo": "",
@@ -532,17 +531,22 @@ jobs:
               return request_json(
                   "/api/invoices",
                   method="POST",
-                  payload=invoice_payload(name, phone, email, address),
+                  payload={
+                      **invoice_payload(name, phone, email, address),
+                      **({"customerEmail": email} if email else {})
+                  },
                   headers={"Idempotency-Key": key or ("CI-CUSTOMER-" + name.replace(" ", "-"))}
               )
 
           # 1. First invoice creates one customer; a later invoice with the same
-          # phone reuses its ID and fills only blank email/address fields.
+          # phone reuses its ID and fills only blank address fields.
           first = save_invoice(
               "CI Customer Alpha", "9876543210", "", "",
               "CI-CUSTOMER-FIRST-001"
           )
           assert first.get("id") and first.get("customerId"), "First invoice did not create/link a customer."
+          assert "customerEmail" not in first and "email" not in first, "Invoice save response exposed customer email."
+          assert "customerEmail" not in first.get("details", {}) and "email" not in first.get("details", {}), "Invoice detail payload exposed customer email."
           first_customer_id = first["customerId"]
 
           second = save_invoice(
@@ -556,8 +560,8 @@ jobs:
               f"FROM customers WHERE id={first_customer_id}"
           )
           assert preserved == (
-              "CI Customer Alpha|alpha@example.test|Customer address from second invoice"
-          ), "Customer sync overwrote a non-empty name/email/address or failed to fill blank fields."
+              "CI Customer Alpha||Customer address from second invoice"
+          ), "Invoice customer sync should preserve existing master data and must not store invoice email."
 
           third = save_invoice(
               "CI Later Different Name", "9876543210",
@@ -707,6 +711,7 @@ jobs:
           )
           customer_by_id = {int(row["id"]): row for row in customer_rows}
           assert first_customer_id in customer_by_id, "Customer Management is missing the automatically registered customer."
+          assert "email" not in customer_by_id[first_customer_id], "Customer Management API exposed the removed email field."
           assert customer_by_id[first_customer_id].get("customerCode"), "Automatic customer ID/code was not generated."
           assert any(row.get("customerCode") == "NKJ-CI-CUSTOMER-DUP-01" for row in customer_rows), (
               "Customer Management is missing the first preserved legacy duplicate."
@@ -748,6 +753,7 @@ jobs:
               "/api/admin/modules/customers",
               headers={"Authorization": "Bearer " + TOKEN}
           )
+          assert all("email" not in row for row in customer_rows), "Customer Management returned email data after the field was removed."
           assert len(customer_rows) == int(sql("SELECT COUNT(*) FROM customers")), (
               "Customer Management did not return the full customer table."
           )
