@@ -36,6 +36,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           shell = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.jsx").read_text()
           nav_start = shell.index("const ownerNavigation = [")
@@ -66,7 +67,17 @@ jobs:
           assert "commitSidebarState(true)" in handlers
           assert "event.preventDefault()" in handlers and "event.stopImmediatePropagation()" in handlers
           assert "const repeatedContentAction = target.closest(" in handlers
+          collapsed_icon_start = handlers.index("const collapsedMenuLink = target.closest(")
+          page_content_start = handlers.index('const pageContent = target.closest(".app-content main")')
+          assert collapsed_icon_start < page_content_start, "Collapsed menu icon handling must run before page-content handling."
+          assert 'collapsed-sidebar-icon:' in handlers, "Collapsed menu icons are not tracked across route remounts."
+          assert "commitSidebarState(false)" in handlers[collapsed_icon_start:page_content_start], "Double-clicking a collapsed menu icon does not expand the sidebar."
           assert 'target.closest(".nkj-owner-sidebar a")' in handlers
+          label_start = shell.index("const compactNavigationLabels = {")
+          label_end = shell.index("};", label_start)
+          compact_labels = re.findall(r'^\\s*(?:"[^"]+"|[a-z-]+):\\s*"[^"]+"', shell[label_start:label_end], re.MULTILINE)
+          assert len(compact_labels) == 28, f"Expected 28 compact menu labels, found {len(compact_labels)}."
+          assert "sidebarCollapsed ? (compactNavigationLabels[key] || label) : label" in shell, "Compact labels should only appear when the sidebar is collapsed."
           assert "flushSync(() => setSidebarCollapsed(nextCollapsed))" in shell
           assert 'document.addEventListener("click", handleClickCapture, true)' in shell
           assert 'document.addEventListener("dblclick"' not in shell
@@ -84,6 +95,9 @@ jobs:
           assert '<main className={active === "invoice"' in shell
           css = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.css").read_text()
           assert "pointer-events: none" not in css
+          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {" in css
+          collapsed_label_css = css.split(".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {", 1)[1].split("}", 1)[0]
+          assert "display: block !important" in collapsed_label_css and "font-size: 8px" in collapsed_label_css
           assert "setTimeout(" not in handlers and "debounce" not in handlers.lower()
           print("Route-safe instant sidebar checks passed for both states and all 28 menu items.")
           PY
@@ -827,29 +841,7 @@ jobs:
 
           print("Invoice-to-customer synchronization tests passed.")
           PY
-,
-              source,
-              re.MULTILINE
-          )
-          assert len(nav_items) >= 15, f"Expected the owner sidebar navigation list, found {len(nav_items)} menu items."
-          assert "group.items.map(([key, label, to, Icon])" in source, (
-              "Sidebar links are no longer rendered through the shared navigation map."
-          )
 
-          link_start = source.index("                    <Link", source.index("group.items.map"))
-          link_end = source.index("                    </Link>", link_start)
-          link = source[link_start:link_end]
-          assert "onClick={(event) => {" in link, "Shared sidebar Link is missing its immediate click handler."
-          assert "event.detail > 1" in link and "event.preventDefault()" in link, (
-              "Second click of a double-click sequence is not prevented from navigating again."
-          )
-          assert "onDoubleClick={(event) => {" in link, "Shared sidebar Link is missing its double-click handler."
-          assert "setSidebarCollapsed(true)" in link, "Double-click does not collapse the sidebar."
-          assert "lastSidebarItemClickRef.current === to" in link, (
-              "Double-click after immediate first-click navigation is not recognized."
-          )
-          print(f"Sidebar handler checks passed for {len(nav_items)} menu items.")
-          PY
 
   backend-build-and-migration:
     runs-on: ubuntu-latest
