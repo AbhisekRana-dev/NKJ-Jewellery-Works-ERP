@@ -935,3 +935,274 @@ jobs:
 
           print("Invoice-to-customer synchronization tests passed.")
           PY
+
+          # Verify actual cash events across every supported source module.
+          export NKJ_CI_TODAY="$TODAY"
+          export NKJ_CI_ACCOUNT_ID="$ACCOUNT_ID"
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import urllib.error
+          import urllib.request
+          from decimal import Decimal
+
+          BASE = "http://localhost:8086"
+          DB = os.environ["NKJ_CI_DB"]
+          TOKEN = os.environ["NKJ_CI_TOKEN"]
+          TODAY = os.environ["NKJ_CI_TODAY"]
+          ACCOUNT_ID = int(os.environ["NKJ_CI_ACCOUNT_ID"])
+
+          def sql(query):
+              return subprocess.check_output(["psql", DB, "-tAc", query], text=True).strip()
+
+          def api(path, method="GET", payload=None, idempotency_key=None):
+              headers = {"Accept": "application/json", "Authorization": "Bearer " + TOKEN}
+              if payload is not None:
+                  headers["Content-Type"] = "application/json"
+              if idempotency_key:
+                  headers["Idempotency-Key"] = idempotency_key
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(BASE + path, data=data, headers=headers, method=method)
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  body = response.read()
+                  return json.loads(body) if body else {}
+
+          def cash_row(source_key):
+              rows = sql(
+                  "SELECT id || '|' || direction || '|' || amount::TEXT || '|' || source_module "
+                  f"FROM cash_transactions WHERE source_event_key='{source_key}'"
+              )
+              assert rows, f"Missing cash movement for source event {source_key}."
+              return rows.split("|")
+
+          # Customer advance/receipt: one source request must produce one Incoming row,
+          # and a same-key retry must return that same source record.
+          receipt_payload = {
+              "customerName": "CI Cash Flow Advance Customer",
+              "paymentDate": TODAY,
+              "amount": 125,
+              "paymentMethod": "Cash",
+              "referenceNo": "CI-CASH-ADVANCE-001",
+              "notes": "Customer advance cash-flow regression"
+          }
+          receipt = api(
+              "/api/admin/modules/payments", "POST", receipt_payload,
+              "CI-CASH-RECEIPT-001"
+          )
+          receipt_retry = api(
+              "/api/admin/modules/payments", "POST", receipt_payload,
+              "CI-CASH-RECEIPT-001"
+          )
+          assert receipt["id"] == receipt_retry["id"] and receipt_retry.get("duplicate") is True, (
+              "Retrying a customer receipt created a second payment record."
+          )
+          receipt_txn = cash_row("PAYMENT:" + str(receipt["id"]))
+          assert receipt_txn[1] == "INCOMING" and Decimal(receipt_txn[2]) == Decimal("125.00"), (
+              "Customer advance was not classified as Incoming for the amount actually received."
+          )
+          assert receipt_txn[3] == "PAYMENTS"
+          assert sql(f"SELECT COUNT(*) FROM cash_transactions WHERE source_event_key='PAYMENT:{receipt['id']}'") == "1", (
+              "Customer receipt retry created a duplicate cash transaction."
+          )
+
+          # A zero-value receipt is not an actual payment and must be rejected.
+          payments_before_zero = sql("SELECT COUNT(*) FROM payments")
+          zero_request = urllib.request.Request(
+              BASE + "/api/admin/modules/payments",
+              data=json.dumps({
+                  "customerName": "CI Zero Receipt Customer",
+                  "paymentDate": TODAY,
+                  "amount": 0,
+                  "paymentMethod": "Cash"
+              }).encode(),
+              headers={
+                  "Authorization": "Bearer " + TOKEN,
+                  "Content-Type": "application/json",
+                  "Idempotency-Key": "CI-CASH-ZERO-RECEIPT-001"
+              },
+              method="POST"
+          )
+          try:
+              urllib.request.urlopen(zero_request, timeout=30)
+              raise AssertionError("A zero-value customer receipt was accepted.")
+          except urllib.error.HTTPError as error:
+              assert 400 <= error.code < 500, f"Expected zero receipt rejection, got HTTP {error.code}."
+          assert sql("SELECT COUNT(*) FROM payments") == payments_before_zero, (
+              "A zero-value receipt left a payment row behind."
+          )
+
+          # Pre-Booking advance is Incoming; the estimated remaining booking value is not.
+          booking = api(
+              "/api/admin/modules/pre-bookings", "POST",
+              {
+                  "bookingNo": "NKJ-CI-CASH-BOOKING-001",
+                  "customerName": "CI Cash Flow Booking Customer",
+                  "mobile": "9000000201",
+                  "bookingDate": TODAY,
+                  "description": "Cash-flow regression booking",
+                  "metalType": "GOLD",
+                  "purity": "22K",
+                  "estimatedWeight": 1,
+                  "estimatedRate": 500,
+                  "estimatedValue": 500,
+                  "makingEstimate": 0,
+                  "advanceAmount": 120,
+                  "remainingAmount": 380,
+                  "deliveryDate": TODAY,
+                  "status": "OPEN"
+              },
+              "CI-CASH-BOOKING-001"
+          )
+          booking_txn = cash_row("PREBOOK-ADVANCE:" + str(booking["id"]))
+          assert booking_txn[1] == "INCOMING" and Decimal(booking_txn[2]) == Decimal("120.00")
+          assert booking_txn[3] == "PRE_BOOKINGS"
+
+          # Pending expenses create no Outgoing row. Only each newly-paid delta does.
+          pending_expense = api(
+              "/api/admin/modules/expenses", "POST",
+              {
+                  "expenseDate": TODAY,
+                  "category": "Other",
+                  "description": "CI pending expense must not hit cashbook",
+                  "amount": 250,
+                  "paidAmount": 0,
+                  "paymentStatus": "PENDING",
+                  "paymentMethod": "Cash"
+              },
+              "CI-CASH-PENDING-EXPENSE-001"
+          )
+          expense_id = pending_expense["id"]
+          assert sql(
+              f"SELECT COUNT(*) FROM cash_transactions WHERE source_module='EXPENSES' AND source_record_id={expense_id}"
+          ) == "0", "Pending expense was incorrectly recorded as Outgoing cash."
+          api("/api/admin/modules/expenses/" + str(expense_id), "PUT", {"paidAmount": 100})
+          api("/api/admin/modules/expenses/" + str(expense_id), "PUT", {"paidAmount": 160})
+          api("/api/admin/modules/expenses/" + str(expense_id), "PUT", {"paidAmount": 160})
+          expense_totals = sql(
+              "SELECT COUNT(*) || '|' || COALESCE(SUM(amount),0)::TEXT FROM cash_transactions "
+              f"WHERE source_module='EXPENSES' AND source_record_id={expense_id} AND status='POSTED'"
+          )
+          assert expense_totals == "2|160.00", (
+              "Expense cash flow did not record only the two actual paid deltas, or a repeated edit duplicated one."
+          )
+
+          # Unpaid supplier purchases create no cash entry. Later paid amounts record
+          # only the incremental supplier payments, not the purchase balance.
+          purchase = api(
+              "/api/admin/modules/purchases", "POST",
+              {
+                  "supplierName": "CI Cash Flow Supplier",
+                  "purchaseDate": TODAY,
+                  "invoiceNo": "CI-CASH-PURCHASE-001",
+                  "totalAmount": 1000,
+                  "paidAmount": 0
+              },
+              "CI-CASH-PURCHASE-001"
+          )
+          purchase_id = purchase["id"]
+          assert sql(
+              f"SELECT COUNT(*) FROM cash_transactions WHERE source_module='PURCHASES' AND source_record_id={purchase_id}"
+          ) == "0", "An unpaid supplier purchase was incorrectly recorded as Outgoing cash."
+          api("/api/admin/modules/purchases/" + str(purchase_id), "PUT", {"paidAmount": 300})
+          api("/api/admin/modules/purchases/" + str(purchase_id), "PUT", {"paidAmount": 700})
+          api("/api/admin/modules/purchases/" + str(purchase_id), "PUT", {"paidAmount": 700})
+          purchase_totals = sql(
+              "SELECT COUNT(*) || '|' || COALESCE(SUM(amount),0)::TEXT FROM cash_transactions "
+              f"WHERE source_module='PURCHASES' AND source_record_id={purchase_id} AND status='POSTED'"
+          )
+          assert purchase_totals == "2|700.00", (
+              "Supplier cash flow counted the unpaid balance or duplicated a cumulative payment update."
+          )
+          purchase_rows = sql(
+              "SELECT COUNT(*) FROM cash_transactions WHERE source_module='PURCHASES' "
+              f"AND source_record_id={purchase_id} AND direction='OUTGOING'"
+          )
+          assert purchase_rows == "2"
+
+          # Monthly salary creation with zero paid amount is not cash. Actual
+          # Salary Payments records an Outgoing movement.
+          staff = api(
+              "/api/admin/modules/staff", "POST",
+              {"fullName": "CI Cash Flow Salary Staff", "monthlySalary": 500, "status": "ACTIVE"}
+          )
+          salary = api(
+              "/api/admin/modules/salary", "POST",
+              {
+                  "staffId": staff["id"],
+                  "payrollMonth": TODAY[:7],
+                  "basicSalary": 500,
+                  "amountPaid": 0
+              },
+              "CI-CASH-SALARY-RECORD-001"
+          )
+          assert sql(
+              f"SELECT COUNT(*) FROM cash_transactions WHERE source_module='SALARY' AND source_record_id={salary['id']}"
+          ) == "0", "An unpaid salary record was incorrectly recorded as Outgoing cash."
+          salary_payment = api(
+              "/api/admin/modules/salary-payments", "POST",
+              {
+                  "salaryId": salary["id"],
+                  "paymentDate": TODAY,
+                  "amount": 150,
+                  "paymentMethod": "Cash",
+                  "referenceNo": "CI-CASH-SALARY-001"
+              },
+              "CI-CASH-SALARY-PAYMENT-001"
+          )
+          salary_txn = cash_row("SALARY-PAYMENT:" + str(salary_payment["id"]))
+          assert salary_txn[1] == "OUTGOING" and Decimal(salary_txn[2]) == Decimal("150.00")
+          assert salary_txn[3] == "SALARY_PAYMENTS"
+
+          # An actual refund creates a linked Outgoing movement, preserving its
+          # original Incoming receipt and source reference.
+          original_txn_id = int(receipt_txn[0])
+          refund = api(
+              "/api/admin/transactions/refunds", "POST",
+              {
+                  "originalTransactionId": original_txn_id,
+                  "refundDate": TODAY,
+                  "amount": 40,
+                  "paymentMethod": "Cash",
+                  "referenceNo": "CI-CASH-REFUND-001",
+                  "notes": "Cash-flow regression refund"
+              },
+              "CI-CASH-REFUND-001"
+          )
+          refund_txn = cash_row("REFUND:" + str(refund["refundId"]))
+          assert refund_txn[1] == "OUTGOING" and Decimal(refund_txn[2]) == Decimal("40.00")
+          assert int(sql(
+              f"SELECT original_transaction_id FROM cash_transactions WHERE id={refund_txn[0]}"
+          )) == original_txn_id
+
+          # The existing EMI scenario must post one down payment and one actual
+          # installment receipt, but never the future scheduled balances.
+          emi_cash = sql(
+              "SELECT COUNT(*) || '|' || COALESCE(SUM(c.amount),0)::TEXT "
+              "FROM cash_transactions c JOIN installment_transactions p ON p.id=c.source_record_id "
+              f"WHERE p.account_id={ACCOUNT_ID} AND c.source_module='INSTALLMENTS' "
+              "AND c.direction='INCOMING' AND c.status='POSTED'"
+          )
+          assert emi_cash == "2|150.00", (
+              "The EMI Cashbook must include only the down payment and received installment, not pending schedules."
+          )
+
+          # Cashbook filters and summary must agree with the posted ledger totals.
+          incoming_rows = api("/api/admin/transactions?direction=INCOMING")
+          outgoing_rows = api("/api/admin/transactions?direction=OUTGOING")
+          assert incoming_rows and all(row["direction"] == "INCOMING" for row in incoming_rows)
+          assert outgoing_rows and all(row["direction"] == "OUTGOING" for row in outgoing_rows)
+          summary = api("/api/admin/transactions/summary")
+          incoming_total = Decimal(sql(
+              "SELECT COALESCE(SUM(amount),0)::TEXT FROM cash_transactions "
+              "WHERE direction='INCOMING' AND status='POSTED'"
+          ))
+          outgoing_total = Decimal(sql(
+              "SELECT COALESCE(SUM(amount),0)::TEXT FROM cash_transactions "
+              "WHERE direction='OUTGOING' AND status='POSTED'"
+          ))
+          assert Decimal(str(summary["totalIncoming"])) == incoming_total
+          assert Decimal(str(summary["totalOutgoing"])) == outgoing_total
+          assert Decimal(str(summary["netCashFlow"])) == incoming_total - outgoing_total
+          print("Incoming/Outgoing cash flow API regression scenarios passed.")
+          PY
