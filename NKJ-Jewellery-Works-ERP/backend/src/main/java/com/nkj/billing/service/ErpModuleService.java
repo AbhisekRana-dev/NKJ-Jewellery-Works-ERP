@@ -657,9 +657,14 @@ public class ErpModuleService {
         String key = requiredIdempotencyKey(idempotencyKey, "payment");
         lockIdempotencyKey("installment-payment:" + key);
 
-        List<Map<String,Object>> existing = jdbc.queryForList(
-                "SELECT id, installment_id, payment_date, amount, payment_method, reference_no FROM installment_payments WHERE idempotency_key=?",
-                key);
+        List<Map<String,Object>> existing = jdbc.queryForList("""
+            SELECT p.id, p.installment_id, p.booking_id, p.payment_date, p.amount,
+                   p.payment_method, p.reference_no, i.amount_due, b.invoice_no
+              FROM installment_payments p
+              JOIN installments i ON i.id=p.installment_id
+              JOIN bookings b ON b.id=i.booking_id
+             WHERE p.idempotency_key=?
+            """, key);
         if (!existing.isEmpty()) {
             Map<String,Object> saved = existing.get(0);
             boolean same = Objects.equals(((Number) saved.get("installment_id")).longValue(),
@@ -670,8 +675,24 @@ public class ErpModuleService {
                     && Objects.equals(saved.get("reference_no") == null ? "" : String.valueOf(saved.get("reference_no")),
                             body.get("referenceNo") == null ? "" : String.valueOf(body.get("referenceNo")));
             if (!same) throw new IllegalArgumentException("This payment idempotency key was already used for different payment details.");
-            return Map.of("success", true, "paymentId", saved.get("id"), "duplicate", true,
-                    "message", "This payment was already recorded.");
+            long savedInstallmentId = ((Number) saved.get("installment_id")).longValue();
+            long savedBookingId = ((Number) saved.get("booking_id")).longValue();
+            BigDecimal scheduleRemaining = decimal(saved.get("amount_due"))
+                    .subtract(netPaidForInstallment(savedInstallmentId)).max(BigDecimal.ZERO);
+            BigDecimal accountRemaining = jdbc.queryForObject(
+                    "SELECT remaining_amount FROM bookings WHERE id=?", BigDecimal.class, savedBookingId);
+            Map<String,Object> duplicateResponse = new LinkedHashMap<>();
+            duplicateResponse.put("success", true);
+            duplicateResponse.put("paymentId", saved.get("id"));
+            duplicateResponse.put("transactionId", saved.get("id"));
+            duplicateResponse.put("duplicate", true);
+            duplicateResponse.put("invoiceNo", saved.get("invoice_no"));
+            duplicateResponse.put("amount", saved.get("amount"));
+            duplicateResponse.put("paymentDate", saved.get("payment_date"));
+            duplicateResponse.put("remainingAmount", scheduleRemaining);
+            duplicateResponse.put("accountRemainingBalance", accountRemaining == null ? BigDecimal.ZERO : accountRemaining);
+            duplicateResponse.put("message", "This payment was already recorded.");
+            return duplicateResponse;
         }
 
         long installmentId = requiredId(body.get("installmentId"), "Installment ID");
