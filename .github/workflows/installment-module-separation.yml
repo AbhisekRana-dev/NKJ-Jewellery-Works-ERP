@@ -361,7 +361,7 @@ jobs:
             SELECT COUNT(*) INTO n FROM pre_booking_bills
              WHERE id=$PREBOOK_ID AND description='Edited genuine Pre-Booking fixture';
             IF n <> 1 THEN RAISE EXCEPTION 'Genuine Pre-Booking update was not saved'; END IF;
-            SELECT COUNT(*) INTO n FROM installments
+            SELECT COUNT(*) INTO n FROM legacy_installments
              WHERE booking_id=$PREBOOK_ID AND installment_no=1 AND amount_due=1000 AND remaining_amount=1000;
             IF n <> 1 THEN RAISE EXCEPTION 'Pre-Booking edit unexpectedly changed its legacy schedule history'; END IF;
           END
