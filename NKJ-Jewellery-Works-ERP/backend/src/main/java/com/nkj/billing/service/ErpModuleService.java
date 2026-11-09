@@ -313,47 +313,38 @@ public class ErpModuleService {
     @Transactional(readOnly = true)
     public List<Map<String,Object>> installmentAccounts() {
         return jdbc.queryForList("""
-            SELECT b.id, b.booking_no AS "bookingNo",
-                   COALESCE(b.invoice_id, inv.id) AS "invoiceId",
-                   b.invoice_no AS "invoiceNo",
-                   COALESCE(inv.customer_name,b.customer_name) AS "customerName",
-                   COALESCE(inv.mobile,b.mobile) AS mobile,
-                   inv.address AS address,
+            SELECT a.id, a.account_no AS "bookingNo", a.invoice_id AS "invoiceId",
+                   a.invoice_no AS "invoiceNo",
+                   COALESCE(inv.customer_name,a.customer_name) AS "customerName",
+                   COALESCE(inv.mobile,a.mobile) AS mobile,
+                   COALESCE(inv.address,a.customer_address) AS address,
                    inv.invoice_date AS "invoiceDate",
-                   COALESCE(inv.grand_total,b.estimated_value + b.making_estimate) AS "originalInvoiceAmount",
-                   b.estimated_value AS "estimatedValue",
-                   b.making_estimate AS "makingEstimate",
-                   b.advance_amount AS "advanceAmount",
-                   b.down_payment_date AS "downPaymentDate",
-                   b.down_payment_method AS "downPaymentMethod",
-                   b.down_payment_recorded_by AS "downPaymentRecordedBy",
-                   b.remaining_amount AS "remainingAmount",
-                   (b.is_installment_plan OR EXISTS (
-                       SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id
-                   )) AS "isInstallmentPlan",
-                   COALESCE(b.total_installments, (
-                       SELECT COUNT(*)::INTEGER FROM installments count_i WHERE count_i.booking_id=b.id
-                   )) AS "totalInstallments",
-                   b.payment_frequency AS "paymentFrequency",
-                   b.booking_date AS "bookingDate",
-                   b.status, b.created_at AS "createdAt"
-              FROM bookings b
-              LEFT JOIN invoices inv ON inv.id=COALESCE(
-                  b.invoice_id,
-                  (SELECT legacy_invoice.id FROM invoices legacy_invoice
-                    WHERE legacy_invoice.invoice_no=b.invoice_no LIMIT 1)
-              )
-             WHERE b.is_installment_plan=TRUE
-                OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
-             ORDER BY b.booking_date DESC,b.id DESC
+                   a.original_invoice_amount AS "originalInvoiceAmount",
+                   a.original_invoice_amount AS "estimatedValue",
+                   0::NUMERIC(16,2) AS "makingEstimate",
+                   a.down_payment AS "advanceAmount",
+                   a.down_payment_date AS "downPaymentDate",
+                   a.down_payment_method AS "downPaymentMethod",
+                   a.down_payment_reference_no AS "downPaymentReferenceNo",
+                   a.down_payment_recorded_by AS "downPaymentRecordedBy",
+                   a.remaining_balance AS "remainingAmount",
+                   TRUE AS "isInstallmentPlan",
+                   a.total_installments AS "totalInstallments",
+                   a.payment_frequency AS "paymentFrequency",
+                   a.plan_created_date AS "bookingDate",
+                   a.status, a.legacy_booking_id AS "legacyBookingId",
+                   a.created_at AS "createdAt"
+              FROM installment_accounts a
+              LEFT JOIN invoices inv ON inv.id=a.invoice_id
+             ORDER BY a.plan_created_date DESC,a.id DESC
             """);
     }
 
     /**
      * Invoice selector: default to the last three Kolkata calendar dates.
      * A non-empty search explicitly includes older saved invoices.
-     * Drafts never enter invoices; cancelled/void payloads and already
-     * converted invoices are excluded at the database boundary.
+     * Converted invoices are excluded only by their dedicated EMI account row;
+     * Pre-Booking records are not consulted or modified by this workflow.
      */
     @Transactional(readOnly = true)
     public List<Map<String,Object>> eligibleInstallmentInvoices(String search) {
@@ -383,12 +374,9 @@ public class ErpModuleService {
                )) <> 'true'
                AND NOT EXISTS (
                    SELECT 1
-                     FROM bookings b
-                    WHERE (b.invoice_id=i.id OR b.invoice_no=i.invoice_no)
-                      AND (
-                          b.is_installment_plan=TRUE
-                          OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
-                      )
+                     FROM installment_accounts a
+                    WHERE a.invoice_id=i.id
+                       OR a.invoice_no=i.invoice_no
                )
                AND (
                     ( ? = '' AND i.invoice_date >=
