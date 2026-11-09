@@ -142,6 +142,12 @@ jobs:
           INSERT INTO installments(booking_id, installment_no, due_date, amount_due, amount_paid, remaining_amount, payment_status)
           SELECT b.id, 1, CURRENT_DATE + 20, 1000, 0, 1000, 'PENDING'
             FROM bookings b WHERE b.booking_no='NKJ-CI-GENUINE-BOOKING';
+
+          -- Existing duplicate phone rows are deliberately retained by V22.
+          INSERT INTO customers(customer_code, name, phone, email, address)
+          VALUES
+            ('NKJ-CI-CUSTOMER-DUP-01', 'Legacy Customer Primary', '+91 98765-00000', 'primary@example.test', 'Primary saved address'),
+            ('NKJ-CI-CUSTOMER-DUP-02', 'Legacy Customer Duplicate', '9876500000', 'duplicate@example.test', 'Duplicate saved address');
           COMMIT;
           SQL
 
