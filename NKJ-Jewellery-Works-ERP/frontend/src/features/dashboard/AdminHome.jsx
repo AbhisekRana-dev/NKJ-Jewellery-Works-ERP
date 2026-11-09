@@ -42,7 +42,7 @@ export function AdminHome() {
       <div className="nkj-dashboard-heading"><div><span className="eyebrow">OWNER WORKSPACE</span><h2>Business Dashboard</h2><p>Live operational overview for Nandikishor Jewellery Works.</p></div><button className="nkj-dashboard-refresh" onClick={load} disabled={loading}><RefreshCw size={16} className={loading?"nkj-spin":""}/>{loading?"Refreshing":"Refresh data"}</button></div>
       {error&&<p className="error">{error}</p>}
       <div className="nkj-stat-grid nkj-owner-kpis">
-        <StatLink to="/reports/sales" icon={<Receipt/>} label="Today's Sales" value={loading?"…":"₹ " + money(stats.todaySales)} sub="Saved invoice totals"/>
+        <StatLink to="/reports/sales" icon={<Receipt/>} label="Today's Sales" value={loading?"…":"₹ " + money(stats.todaySales)} sub="Invoices and receipts received today"/>
         <Stat icon={<ChartNoAxesColumn/>} label="Monthly Sales" value={loading?"…":"₹ " + money(stats.monthSales)} sub="Month to date"/>
         <StatLink to="/customers" icon={<Users/>} label="Customers" value={loading?"…":stats.customerCount ?? stats.totalCustomers} sub="Customer master records"/>
         <StatLink to="/saved-invoices" icon={<Receipt/>} label="Total Invoices" value={loading?"…":stats.totalInvoices} sub="Saved billing records"/>
