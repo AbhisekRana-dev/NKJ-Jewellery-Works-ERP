@@ -133,13 +133,28 @@ export function Nav({ active = "home" }) {
       const target = elementFromTarget(event.target);
       if (!target) return;
 
-      // Suppress only the second click of a double-click sequence. The first
-      // click is untouched, so ordinary sidebar/page navigation stays instant.
-      const repeatedSidebarClick = target.closest(".nkj-owner-sidebar a");
-      const repeatedContentLink = sidebarCollapsed
-        && target.closest(".app-content main a");
-      if (repeatedSidebarClick || repeatedContentLink) {
+      const sidebarText = target.closest(
+        ".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span"
+      );
+
+      // Detect the second click before React Router handles it. This also
+      // works if the first click changed routes and remounted the sidebar.
+      if (!sidebarCollapsed && sidebarText) {
         event.preventDefault();
+        setSidebarCollapsed(true);
+        return;
+      }
+
+      // Suppress only the second click. The first click remains immediate.
+      const repeatedSidebarClick = target.closest(".nkj-owner-sidebar a");
+      const repeatedContentControl = sidebarCollapsed && target.closest(
+        ".app-content main a, .app-content main button, .app-content main input[type='button'], .app-content main input[type='submit']"
+      );
+      if (repeatedSidebarClick || repeatedContentControl) {
+        event.preventDefault();
+        if (repeatedContentControl && !target.closest(".app-content main a")) {
+          event.stopImmediatePropagation();
+        }
       }
     };
 
