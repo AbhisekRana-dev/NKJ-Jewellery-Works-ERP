@@ -583,7 +583,7 @@ public class ErpModuleService {
                     amount, amount, initialStatus);
             Map<String,Object> scheduleRow = new LinkedHashMap<>();
             scheduleRow.put("id", scheduleId);
-            scheduleRow.put("bookingId", accountId);
+            scheduleRow.put("accountId", accountId);
             scheduleRow.put("installmentNo", number);
             scheduleRow.put("totalInstallments", count);
             scheduleRow.put("dueDate", dueDate.toString());
