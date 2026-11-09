@@ -95,10 +95,10 @@ jobs:
           assert '<main className={active === "invoice"' in shell
           css = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.css").read_text()
           assert ":root {" in css and "--nkj-owner-expanded-width: 250px;" in css
-          assert "--nkj-owner-collapsed-width: 65px;" in css
+          assert "--nkj-owner-collapsed-width: 75px;" in css
           assert "min-width: 250px !important;" in css and "max-width: 250px !important;" in css
-          assert "min-width: 65px !important;" in css and "max-width: 65px !important;" in css
-          assert "flex: 0 0 250px !important;" in css and "flex: 0 0 65px !important;" in css
+          assert "min-width: 75px !important;" in css and "max-width: 75px !important;" in css
+          assert "flex: 0 0 250px !important;" in css and "flex: 0 0 75px !important;" in css
           assert "width: calc(100% - var(--nkj-owner-sidebar-width)) !important;" in css
           assert "margin-left: var(--nkj-owner-sidebar-width) !important;" in css
           assert "white-space: nowrap;" in css and "text-overflow: ellipsis;" in css
@@ -117,7 +117,7 @@ jobs:
           assert "Collapsed sidebar icon and label sizing" in css
           compact_ui_start = css.rfind("/* Collapsed sidebar icon and label sizing")
           compact_ui = css[compact_ui_start:]
-          assert "width: 27px !important;" in compact_ui and "height: 27px !important;" in compact_ui
+          assert "width: 30px !important;" in compact_ui and "height: 30px !important;" in compact_ui
           assert "font-size: 11px !important;" in compact_ui
           assert "flex: 0 0 72px !important;" in compact_ui and "min-height: 72px !important;" in compact_ui
           assert "overflow-y: auto !important;" in compact_ui and "min-height: 0 !important;" in compact_ui
