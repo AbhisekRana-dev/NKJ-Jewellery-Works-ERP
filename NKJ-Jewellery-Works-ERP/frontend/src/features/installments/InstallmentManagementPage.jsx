@@ -554,7 +554,7 @@ export default function InstallmentManagementPage() {
               </td>
             </tr>
           ))}
-          {!rows.length && <tr><td colSpan="10" className="empty">No payment transactions recorded yet.</td></tr>
+          {!rows.length && <tr><td colSpan="10" className="empty">No payment transactions recorded yet.</td></tr>}
         </tbody>
       </table>
     </div>
