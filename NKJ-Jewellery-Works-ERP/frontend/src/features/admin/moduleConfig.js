@@ -30,7 +30,7 @@ export const moduleConfig = {
     columns: [["itemCode","Item ID"],["name","Ornament"],["metalType","Metal"],["purity","Purity"],["netWeight","Net wt. (g)"],["huid","HUID"],["status","Status"]]
   },
   bookings: {
-    title: "Pre-Booking Bills", description: "Create pre-booking records separately from final sales invoices. Advance remains a customer liability until adjusted against a final invoice.", api: "bookings",
+    title: "Pre-Booking Bills", description: "Create pre-booking records separately from final sales invoices. Advance remains a customer liability until adjusted against a final invoice.", api: "pre-bookings",
     fields: [["bookingNo","Booking number (optional; generated automatically)","text"],["customerName","Customer name","text",true],["mobile","Mobile","tel"],["bookingDate","Booking date","date"],["description","Jewellery description","textarea"],["metalType","Metal type","select",false,["GOLD","SILVER","DIAMOND"]],["purity","Purity","text"],["estimatedWeight","Estimated weight (g)","number"],["estimatedRate","Estimated rate / g","number"],["estimatedValue","Estimated value (₹)","number"],["makingEstimate","Making estimate (₹)","number"],["advanceAmount","Booking advance (₹)","number"],["remainingAmount","Remaining amount (₹)","number"],["deliveryDate","Expected delivery date","date"],["status","Booking status","select",false,["OPEN","IN_PROGRESS","COMPLETED","CANCELLED"]]],
     columns: [["bookingNo","Booking no."],["customerName","Customer"],["mobile","Mobile"],["bookingDate","Booking date"],["estimatedValue","Estimated value"],["advanceAmount","Advance"],["remainingAmount","Remaining"],["deliveryDate","Delivery"],["status","Status"]]
   },
