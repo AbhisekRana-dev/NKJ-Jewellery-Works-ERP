@@ -217,8 +217,9 @@ public class ErpModuleService {
                   ))
                   LEFT JOIN installments i ON i.id=p.installment_id
                   LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-                 WHERE b.is_installment_plan=TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id)
+                 WHERE (b.is_installment_plan=TRUE
+                    OR EXISTS (SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id))
+                   AND p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
                  ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
                 """);
         }
@@ -708,11 +709,20 @@ public class ErpModuleService {
               FROM installment_payments p
               LEFT JOIN installments i ON i.id=p.installment_id
               LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-             WHERE p.booking_id=? OR i.booking_id=?
+             WHERE (p.booking_id=? OR i.booking_id=?)
+               AND p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
              ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
             """, bookingId, bookingId);
+        BigDecimal legacyBalanceReconciliation = jdbc.queryForObject("""
+            SELECT COALESCE(SUM(p.amount),0)
+              FROM installment_payments p
+              LEFT JOIN installments i ON i.id=p.installment_id
+             WHERE (p.booking_id=? OR i.booking_id=?)
+               AND p.entry_type='LEGACY_RECONCILIATION'
+            """, BigDecimal.class, bookingId, bookingId);
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("plan", booking);
+        response.put("legacyBalanceReconciliation", legacyBalanceReconciliation == null ? BigDecimal.ZERO : legacyBalanceReconciliation);
         response.put("invoiceItems", invoiceItems);
         response.put("schedule", schedule);
         response.put("payments", payments);
