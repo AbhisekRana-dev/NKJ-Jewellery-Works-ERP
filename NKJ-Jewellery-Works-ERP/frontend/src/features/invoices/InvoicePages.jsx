@@ -484,6 +484,7 @@ export function InvoicePage() {
   const [customer, setCustomer] = useState(() => ({
     name: invoiceSeed?.customerName || invoiceSeed?.name || initialDraft?.customer?.name || "",
     mobile: invoiceSeed?.mobile || initialDraft?.customer?.mobile || "",
+    email: invoiceSeed?.customerEmail || invoiceSeed?.email || initialDraft?.customer?.email || "",
     address: invoiceSeed?.address || initialDraft?.customer?.address || "",
   }));
 
@@ -572,7 +573,7 @@ export function InvoicePage() {
       try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
       setInvoiceDate(getTodayIndiaDate());
       setShowGstin(true);
-      setCustomer({ name: "", mobile: "", address: "" });
+      setCustomer({ name: "", mobile: "", email: "", address: "" });
       setPaymentMode("Cash");
       setReferenceNo("");
       setNewItems([blankNew()]);
@@ -755,6 +756,7 @@ export function InvoicePage() {
       showGstin,
       customerName: customer.name,
       mobile: customer.mobile,
+      customerEmail: customer.email,
       address: customer.address,
       paymentMode,
       referenceNo,
@@ -783,7 +785,7 @@ export function InvoicePage() {
     try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
     setInvoiceDate(getTodayIndiaDate());
     setShowGstin(true);
-    setCustomer({ name: "", mobile: "", address: "" });
+    setCustomer({ name: "", mobile: "", email: "", address: "" });
     setPaymentMode("Cash");
     setReferenceNo("");
     setNewItems([blankNew()]);
@@ -803,6 +805,9 @@ export function InvoicePage() {
     if (!invoiceDate) return "Please select an invoice date.";
     if (invoiceDate > maxInvoiceDate) return "Invoice date cannot be in the future.";
     if (!customer.name.trim()) return "Please enter customer name.";
+    if (customer.email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(customer.email)) {
+      return "Please enter a valid customer email address.";
+    }
     if (customer.mobile && !/^[0-9]{10}$/.test(customer.mobile)) {
       return "Please enter a valid 10-digit Indian mobile number using digits 0-9 only.";
     }
@@ -917,6 +922,9 @@ export function InvoicePage() {
       setDraftRestored(false);
       setShowInvoicePin(false);
       setSuccessMessage(`Invoice ${result.invoiceNo} ${isEditingSavedInvoice ? "updated" : "saved"} successfully. It is now available in Invoice History.`);
+      // Customer Management reloads immediately if it is mounted; otherwise
+      // its normal page load fetches the newly committed customer row.
+      window.dispatchEvent(new Event("nkj:customers-updated"));
       return result;
     } catch (e) {
       setError(e.message || "Could not save the invoice. Printing and PDF download have been stopped; your draft is still available.");
@@ -1109,6 +1117,23 @@ export function InvoicePage() {
                   }}
                   placeholder="10-digit mobile number"
                   aria-label="10-digit mobile number"
+                />
+              </label>
+
+              <label>
+                <span>Email Address</span>
+
+                <i>:</i>
+
+                <input
+                  type="email"
+                  maxLength={200}
+                  value={customer.email}
+                  onChange={(e) => {
+                    setCustomer({ ...customer, email: e.target.value });
+                    setError("");
+                  }}
+                  placeholder="Optional email address"
                 />
               </label>
 
