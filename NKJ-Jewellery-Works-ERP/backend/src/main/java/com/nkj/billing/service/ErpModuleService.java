@@ -672,15 +672,21 @@ public class ErpModuleService {
         jdbc.update("UPDATE installment_accounts SET account_no=? WHERE id=?", accountNo, accountId);
 
         if (downPayment.signum() > 0) {
-            jdbc.update("""
+            Long downPaymentId = jdbc.queryForObject("""
                 INSERT INTO installment_transactions(
                     account_id, schedule_id, entry_type, payment_date, amount,
                     payment_method, reference_no, idempotency_key, recorded_by, created_at
                 )
                 VALUES (?, NULL, 'DOWN_PAYMENT', ?, ?, ?, ?, ?, ?, NOW())
-                """, accountId, java.sql.Date.valueOf(downPaymentDate), downPayment,
+                RETURNING id
+                """, Long.class, accountId, java.sql.Date.valueOf(downPaymentDate), downPayment,
                     downPaymentMethod, downPaymentReference.isBlank() ? "DOWN PAYMENT" : downPaymentReference,
                     "PLAN-DOWNPAY-" + accountId, auth.getUsername());
+            cashFlow.recordMovement("INSTALLMENTS", "DOWN_PAYMENT", downPaymentId,
+                    "INSTALLMENT:" + downPaymentId, downPaymentDate, downPayment,
+                    String.valueOf(invoice.get("customer_name")), "Installment plan down payment",
+                    downPaymentMethod, downPaymentReference,
+                    invoiceNo, null, null);
         }
 
         List<Map<String,Object>> createdSchedule = new ArrayList<>();
@@ -904,7 +910,7 @@ public class ErpModuleService {
         jdbc.queryForObject("SELECT id FROM installment_accounts WHERE id=? FOR UPDATE",
                 Long.class, accountIdForPayment);
         Map<String,Object> installment = jdbc.queryForMap("""
-            SELECT s.id, s.account_id, s.amount_due, a.invoice_no
+            SELECT s.id, s.account_id, s.amount_due, a.invoice_no, a.customer_name
               FROM installment_schedules s
               JOIN installment_accounts a ON a.id=s.account_id
              WHERE s.id=?
@@ -947,6 +953,11 @@ public class ErpModuleService {
             amount, paymentMethod, referenceNo.isBlank() ? null : referenceNo,
             key, auth.getUsername());
 
+        cashFlow.recordMovement("INSTALLMENTS", "INSTALLMENT_RECEIPT", paymentId,
+                "INSTALLMENT:" + paymentId, paymentDate, amount,
+                String.valueOf(installment.get("customer_name")), "Installment receipt",
+                paymentMethod, referenceNo,
+                String.valueOf(installment.get("invoice_no")), key, null);
         recalculateInstallment(scheduleId, accountIdForPayment);
         Map<String,Object> auditValues = new LinkedHashMap<>();
         auditValues.put("invoiceNo", installment.get("invoice_no"));
@@ -1070,6 +1081,7 @@ public class ErpModuleService {
         auditValues.put("amount", payment.get("amount"));
         auditValues.put("reversalDate", reversalDate);
         auditValues.put("reason", reason);
+        cashFlow.voidMovement("INSTALLMENT:" + paymentId, reason);
         audit("INSTALLMENT_PAYMENT_REVERSED", "installment-transaction-reversals", reversalId, payment, auditValues, ip);
         return Map.of("success", true, "reversalId", reversalId,
                 "message", "Payment reversed. The original receipt remains in history.");
