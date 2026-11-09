@@ -60,7 +60,15 @@ jobs:
               "Double-click after first-click navigation is not recognized."
           )
           assert "setTimeout(" not in link, "Single-click navigation must not be delayed."
-          print(f"Sidebar click checks passed for all {menu_item_count} shared menu items.")
+
+          public_marker = source.index("nkj-owner-public-link")
+          public_link_start = source.rfind("<Link", 0, public_marker)
+          public_link_end = source.index("</Link>", public_marker)
+          public_link = source[public_link_start:public_link_end]
+          assert "onClick={(event) => {" in public_link, "Public Home is missing its single-click handler."
+          assert "onDoubleClick={(event) => {" in public_link, "Public Home is missing its double-click handler."
+          assert "setSidebarCollapsed(true)" in public_link, "Public Home double-click does not collapse the sidebar."
+          print(f"Sidebar click checks passed for all {menu_item_count} grouped items and Public Home.")
           PY
 
   backend-build-and-migration:
