@@ -1,6 +1,6 @@
 import "./OwnerShell.css";
 import React, { useLayoutEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
@@ -71,8 +71,6 @@ export function Nav({ active = "home" }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
   const sidebarNavRef = useRef(null);
-  const location = useLocation();
-  const lastSidebarItemClickRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
 
   useLayoutEffect(() => {
@@ -150,25 +148,6 @@ export function Nav({ active = "home" }) {
                       title={sidebarCollapsed ? label : undefined}
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
-                      onClick={(event) => {
-                        // Always allow the first click, including active
-                        // actions such as starting a fresh invoice. Only the
-                        // second click in a double-click sequence is blocked.
-                        if (event.detail > 1) {
-                          event.preventDefault();
-                        }
-                        lastSidebarItemClickRef.current = to;
-                      }}
-                      onDoubleClick={(event) => {
-                        // One anchor wraps both icon and label, so this works
-                        // identically whether the user double-clicks either.
-                        const openedItem = selected || location.pathname === to
-                          || lastSidebarItemClickRef.current === to;
-                        if (openedItem) {
-                          event.preventDefault();
-                          setSidebarCollapsed(true);
-                        }
-                      }}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span>{label}</span>
@@ -181,25 +160,7 @@ export function Nav({ active = "home" }) {
           </nav>
 
           <div className="nkj-owner-sidebar-bottom">
-            <Link
-              to="/"
-              className="nkj-owner-public-link"
-              title={sidebarCollapsed ? "Public Home" : undefined}
-              onClick={(event) => {
-                if (event.detail > 1) {
-                  event.preventDefault();
-                }
-                lastSidebarItemClickRef.current = "/";
-              }}
-              onDoubleClick={(event) => {
-                const openedHome = active === "home" || location.pathname === "/"
-                  || lastSidebarItemClickRef.current === "/";
-                if (openedHome) {
-                  event.preventDefault();
-                  setSidebarCollapsed(true);
-                }
-              }}
-            >
+            <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined}>
               <HomeIcon size={18} /><span>Public Home</span>
             </Link>
             <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
