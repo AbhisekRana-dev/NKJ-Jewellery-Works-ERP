@@ -57,6 +57,13 @@ export default function ErpModulePage({ module }) {
   }, [config.api, module]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (module !== "customers") return undefined;
+    const refreshCustomers = () => { load(); };
+    window.addEventListener("nkj:customers-updated", refreshCustomers);
+    return () => window.removeEventListener("nkj:customers-updated", refreshCustomers);
+  }, [module, load]);
   useEffect(() => {
     setRows([]);
     setStaffOptions([]);
