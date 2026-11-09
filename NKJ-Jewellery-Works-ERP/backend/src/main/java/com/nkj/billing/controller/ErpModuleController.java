@@ -32,6 +32,11 @@ public class ErpModuleController {
     @GetMapping("/modules/{module}")
     public Object list(@PathVariable String module) { return modules.list(module); }
 
+    @GetMapping("/installments/accounts")
+    public Object installmentAccounts() {
+        return modules.installmentAccounts();
+    }
+
     @GetMapping("/installments/eligible-invoices")
     public Object eligibleInstallmentInvoices(
             @RequestParam(name = "search", required = false) String search) {
