@@ -351,7 +351,7 @@ jobs:
           # Editing a genuine Pre-Booking with legacy booking-owned history must not
           # be blocked by an EMI-module guard and must not mutate that history.
           PREBOOK_ID=$(psql "$DB" -tAc "SELECT id FROM pre_booking_bills WHERE booking_no='NKJ-CI-GENUINE-BOOKING'")
-          curl -fsS -X PUT http://localhost:8086/api/admin/modules/bookings/$PREBOOK_ID \
+          curl -fsS -X PUT http://localhost:8086/api/admin/modules/pre-bookings/$PREBOOK_ID \
             "${AUTH[@]}" -H 'Content-Type: application/json' \
             --data '{"description":"Edited genuine Pre-Booking fixture"}' > /tmp/nkj-prebooking-update.json
           psql "$DB" -v ON_ERROR_STOP=1 <<SQL
@@ -369,7 +369,7 @@ jobs:
           SQL
 
           # Creating a genuine Pre-Booking must not create or update any EMI data.
-          curl -fsS -X POST http://localhost:8086/api/admin/modules/bookings \
+          curl -fsS -X POST http://localhost:8086/api/admin/modules/pre-bookings \
             "${AUTH[@]}" -H 'Content-Type: application/json' \
             --data "{\"bookingNo\":\"NKJ-CI-NEW-PREBOOKING\",\"customerName\":\"New Pre-Booking API Customer\",\"mobile\":\"9000000004\",\"bookingDate\":\"$TODAY\",\"description\":\"Independent Pre-Booking API fixture\",\"metalType\":\"GOLD\",\"purity\":\"22K\",\"estimatedWeight\":1,\"estimatedRate\":5000,\"estimatedValue\":5000,\"makingEstimate\":0,\"advanceAmount\":1000,\"remainingAmount\":4000,\"deliveryDate\":\"$FIRST_DUE\",\"status\":\"OPEN\"}" \
             > /tmp/nkj-prebooking-create.json
@@ -385,7 +385,7 @@ jobs:
             echo "Pre-Booking creation unexpectedly changed EMI transactions."
             exit 1
           fi
-          PREBOOK_JSON=$(curl -fsS http://localhost:8086/api/admin/modules/bookings "${AUTH[@]}")
+          PREBOOK_JSON=$(curl -fsS http://localhost:8086/api/admin/modules/pre-bookings "${AUTH[@]}")
           export PREBOOK_JSON
           python3 - <<'PY'
           import json, os
