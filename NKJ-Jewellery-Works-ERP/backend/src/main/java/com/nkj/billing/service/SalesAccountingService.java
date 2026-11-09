@@ -39,21 +39,24 @@ public class SalesAccountingService {
             UNION ALL
             SELECT COALESCE(b.down_payment_date, b.booking_date), b.advance_amount
               FROM bookings b
-             WHERE b.is_installment_plan = TRUE
+             WHERE (b.is_installment_plan = TRUE
+                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
                AND b.advance_amount > 0
             UNION ALL
             SELECT p.payment_date, p.amount
               FROM installment_payments p
               JOIN installments i ON i.id = p.installment_id
               JOIN bookings b ON b.id = i.booking_id
-             WHERE b.is_installment_plan = TRUE
+             WHERE (b.is_installment_plan = TRUE
+                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
             UNION ALL
             SELECT r.reversal_date, -r.amount
               FROM installment_payment_reversals r
               JOIN installment_payments p ON p.id = r.payment_id
               JOIN installments i ON i.id = p.installment_id
               JOIN bookings b ON b.id = i.booking_id
-             WHERE b.is_installment_plan = TRUE
+             WHERE (b.is_installment_plan = TRUE
+                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
         )
         """;
 
