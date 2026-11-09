@@ -24,7 +24,7 @@ import java.util.Set;
 public class CashFlowService {
     private static final ZoneId SHOP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final Set<String> PAYMENT_METHODS =
-            Set.of("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "NEFT", "RTGS");
+            Set.of("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "NEFT", "RTGS", "Other");
 
     private final JdbcTemplate jdbc;
     private final AuthService auth;
