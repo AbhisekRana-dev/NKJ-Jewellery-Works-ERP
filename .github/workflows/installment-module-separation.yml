@@ -54,6 +54,9 @@ jobs:
           assert "event.detail > 1" in link and "event.preventDefault()" in link, (
               "A second click can trigger duplicate navigation."
           )
+          assert "if (selected || event.detail > 1)" not in link, (
+              "The first click on an active item must still perform its normal action."
+          )
           assert "onDoubleClick={(event) => {" in link, "Sidebar Link is missing its double-click handler."
           assert "setSidebarCollapsed(true)" in link, "Double-click does not collapse the sidebar."
           assert "lastSidebarItemClickRef.current === to" in link, (
@@ -66,6 +69,7 @@ jobs:
           public_link_end = source.index("</Link>", public_marker)
           public_link = source[public_link_start:public_link_end]
           assert "onClick={(event) => {" in public_link, "Public Home is missing its single-click handler."
+          assert "if (event.detail > 1)" in public_link, "Public Home does not suppress only the second click."
           assert "onDoubleClick={(event) => {" in public_link, "Public Home is missing its double-click handler."
           assert "setSidebarCollapsed(true)" in public_link, "Public Home double-click does not collapse the sidebar."
           print(f"Sidebar click checks passed for all {menu_item_count} grouped items and Public Home.")
