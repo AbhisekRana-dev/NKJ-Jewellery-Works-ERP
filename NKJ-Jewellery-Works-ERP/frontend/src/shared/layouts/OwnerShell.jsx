@@ -63,6 +63,7 @@ const compactNavigationLabels = {
   customers: "Client",
   suppliers: "Supp",
   expenses: "Exp.",
+  transactions: "Trans",
   payments: "Pay",
   reports: "Rpt.",
   "reports-sales": "Sales",
@@ -103,6 +104,7 @@ const ownerNavigation = [
   ]},
   { title: "FINANCE & REPORTS", items: [
     ["expenses", "Expenses", "/expenses", Wallet],
+    ["transactions", "Transactions", "/transactions", ArrowLeftRight],
     ["payments", "Payments", "/payments", Receipt],
     ["reports", "Reports Overview", "/reports", ChartNoAxesColumn],
     ["reports-sales", "Sales Report", "/reports/sales", ChartNoAxesColumn],
