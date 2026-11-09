@@ -235,7 +235,6 @@ public class InvoiceController {
         invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
         invoice.setCustomerName(customerName);
         invoice.setMobile(customerService.normalizePhone(clean(body.get("mobile"))));
-        invoice.setCustomerEmail(clean(body.get("customerEmail")));
         invoice.setAddress(clean(body.get("address")));
         invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
         invoice.setReferenceNo(clean(body.get("referenceNo")));
