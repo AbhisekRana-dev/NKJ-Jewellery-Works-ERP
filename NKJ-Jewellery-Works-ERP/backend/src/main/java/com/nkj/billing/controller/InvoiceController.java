@@ -111,7 +111,7 @@ public class InvoiceController {
                 existingInvoice.setInvoiceDate(invoiceDate);
                 existingInvoice.setShowGstin(booleanValue(body.get("showGstin"), true));
                 existingInvoice.setInvoiceNo(correctedInvoiceNo);
-                existingInvoice.setPayloadJson(mapper.writeValueAsString(body));
+                existingInvoice.setPayloadJson(sanitizedInvoicePayload(body));
                 repo.saveAndFlush(existingInvoice);
 
                 // Keep denormalized invoice-number references consistent.
@@ -156,11 +156,10 @@ public class InvoiceController {
 
         invoice.setCustomerName(customerName);
         invoice.setMobile(customerService.normalizePhone(clean(body.get("mobile"))));
-        invoice.setCustomerEmail(clean(body.get("customerEmail")));
         invoice.setAddress(clean(body.get("address")));
         invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
         invoice.setReferenceNo(clean(body.get("referenceNo")));
-        invoice.setPayloadJson(mapper.writeValueAsString(body));
+        invoice.setPayloadJson(sanitizedInvoicePayload(body));
 
         invoice.setNewTotal(number(body, "newTotal"));
         invoice.setOldTotal(number(body, "oldTotal"));
@@ -240,7 +239,7 @@ public class InvoiceController {
         invoice.setAddress(clean(body.get("address")));
         invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
         invoice.setReferenceNo(clean(body.get("referenceNo")));
-        invoice.setPayloadJson(mapper.writeValueAsString(body));
+        invoice.setPayloadJson(sanitizedInvoicePayload(body));
 
         invoice.setNewTotal(number(body, "newTotal"));
         invoice.setOldTotal(number(body, "oldTotal"));
@@ -508,12 +507,6 @@ public class InvoiceController {
             throw new IllegalArgumentException("At least one new or old ornament detail is required.");
         }
 
-        String customerEmail = clean(body.get("customerEmail"));
-        if (customerEmail.length() > 200
-                || (!customerEmail.isEmpty() && !customerEmail.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))) {
-            throw new IllegalArgumentException("Enter a valid customer email address (maximum 200 characters).");
-        }
-
         for (String field : List.of(
                 "newTotal", "oldTotal", "makingCharge", "extraCharge", "discount",
                 "subTotal", "gstPercent", "gstAmount", "otherCharge", "grandTotal", "paymentAmount")) {
@@ -565,7 +558,7 @@ public class InvoiceController {
         Customer customer = customerService.registerOrReuseFromInvoice(
                 invoice.getCustomerName(),
                 invoice.getMobile(),
-                invoice.getCustomerEmail(),
+                null,
                 invoice.getAddress());
         invoice.setCustomerId(customer == null ? null : customer.getId());
         repo.saveAndFlush(invoice);
@@ -611,6 +604,13 @@ public class InvoiceController {
         return value == null ? "" : String.valueOf(value).trim();
     }
 
+    private String sanitizedInvoicePayload(Map<String, Object> body) throws Exception {
+        Map<String,Object> safe = new LinkedHashMap<>(body);
+        safe.remove("customerEmail");
+        safe.remove("email");
+        return mapper.writeValueAsString(safe);
+    }
+
     private String defaultValue(String value, String fallback) {
         return value.isBlank() ? fallback : value;
     }
@@ -626,7 +626,6 @@ public class InvoiceController {
         response.put("invoiceNo", invoice.getInvoiceNo());
         response.put("customerId", invoice.getCustomerId());
         response.put("customerName", invoice.getCustomerName());
-        response.put("customerEmail", invoice.getCustomerEmail());
         response.put("mobile", invoice.getMobile());
         response.put("address", invoice.getAddress());
         response.put("paymentMode", invoice.getPaymentMode());
@@ -670,6 +669,12 @@ public class InvoiceController {
             details = Collections.emptyMap();
         }
 
+        // Older invoices may have customerEmail/email keys in payload_json.
+        // Keep that historical source unchanged, but never expose email in
+        // invoice preview/detail/print responses.
+        details = new LinkedHashMap<>(details);
+        details.remove("customerEmail");
+        details.remove("email");
         Map<String, Object> response = new LinkedHashMap<>(details);
         response.putAll(summary(invoice));
         response.put("details", details);
