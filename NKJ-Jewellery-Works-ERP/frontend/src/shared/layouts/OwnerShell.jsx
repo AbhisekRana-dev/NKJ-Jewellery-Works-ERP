@@ -1,5 +1,5 @@
 import "./OwnerShell.css";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
@@ -98,7 +98,7 @@ export function Nav({ active = "home" }) {
     }
   }, [ownerWorkspace]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!ownerWorkspace) return undefined;
 
     const elementFromTarget = (target) => (
