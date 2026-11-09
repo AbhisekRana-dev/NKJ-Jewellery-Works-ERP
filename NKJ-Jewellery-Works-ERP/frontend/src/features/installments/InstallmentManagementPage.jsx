@@ -211,6 +211,15 @@ export default function InstallmentManagementPage() {
   const dueRows = schedules
     .filter((schedule) => Number(schedule.remainingAmount || 0) > 0)
     .sort((a, b) => String(a.dueDate || "").localeCompare(String(b.dueDate || "")));
+  const dueTodayRows = dueRows.filter((schedule) => String(schedule.dueDate || "").slice(0, 10) === today());
+  const overdueRows = dueRows.filter((schedule) => {
+    const dueDate = String(schedule.dueDate || "").slice(0, 10);
+    return Boolean(dueDate) && dueDate < today();
+  });
+  const upcomingRows = dueRows.filter((schedule) => {
+    const dueDate = String(schedule.dueDate || "").slice(0, 10);
+    return Boolean(dueDate) && dueDate > today();
+  });
 
   const totalOutstanding = accounts.reduce((sum, account) => sum + account.outstanding, 0);
   const totalCollected = accounts.reduce((sum, account) => sum + account.paid, 0);
@@ -486,8 +495,34 @@ export default function InstallmentManagementPage() {
     </div>
   );
 
-  const renderPaymentHistory = (rows) => (
+  const renderDueTable = (rows) => (
     <div className="table-wrap">
+      <table>
+        <thead><tr><th>Invoice Number</th><th>Customer</th><th>Installment</th><th>Due Date</th><th>Scheduled (₹)</th><th>Paid (₹)</th><th>Remaining (₹)</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          {rows.map((schedule) => (
+            <tr key={schedule.id}>
+              <td><b>{schedule.invoiceNo || schedule.bookingNo || "—"}</b></td>
+              <td>{schedule.customerName || "—"}</td>
+              <td>{schedule.installmentNo}/{schedule.totalInstallments}</td>
+              <td>{fmtDate(schedule.dueDate)}</td>
+              <td>{money(schedule.amountDue)}</td>
+              <td>{money(schedule.amountPaid)}</td>
+              <td className="nkj-outstanding">{money(schedule.remainingAmount)}</td>
+              <td><span className={`nkj-installment-status ${statusClass(schedule.paymentStatus)}`}>{statusLabel(schedule.paymentStatus)}</span></td>
+              <td className="nkj-installment-row-actions">
+                <button type="button" className="small-action" onClick={() => startReceipt(schedule)}><Plus size={13}/> Receive</button>
+                <button type="button" className="small-action" onClick={() => updateDueDate(schedule)} disabled={saving}><Pencil size={13}/> Reschedule</button>
+              </td>
+            </tr>
+          ))}
+          {!rows.length && <tr><td colSpan="9" className="empty">No installments in this category.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderPaymentHistory = (rows) => (
       <table>
         <thead><tr><th>Transaction ID</th><th>Customer</th><th>Invoice Number</th><th>Installment</th><th>Payment Date</th><th>Amount (₹)</th><th>Method</th><th>Reference</th><th>Recorded By</th><th>Status / Action</th></tr></thead>
         <tbody>
@@ -545,7 +580,7 @@ export default function InstallmentManagementPage() {
           <div><UserRound/><span>Active Accounts</span><strong>{accounts.filter((account) => account.outstanding > 0).length}</strong></div>
           <div><Wallet/><span>Total Outstanding</span><strong>₹ {money(totalOutstanding)}</strong></div>
           <div><CheckCircle2/><span>Total Collected</span><strong>₹ {money(totalCollected)}</strong></div>
-          <div><Clock3/><span>Pending / Overdue</span><strong>{dueRows.length}</strong></div>
+          <div><Clock3/><span>Due Today / Overdue</span><strong>{dueTodayRows.length} / {overdueRows.length}</strong></div>
         </div>
 
         <div className="nkj-installment-tabs">
@@ -830,32 +865,23 @@ export default function InstallmentManagementPage() {
         )}
 
         {tab === "due" && (
-          <section className="panel nkj-module-table">
-            <div className="nkj-panel-head"><h3><CalendarDays size={18}/> Due &amp; Reminder Register</h3><span>{dueRows.length} outstanding installments</span></div>
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Invoice Number</th><th>Customer</th><th>Installment</th><th>Due Date</th><th>Scheduled (₹)</th><th>Amount Paid (₹)</th><th>Remaining (₹)</th><th>Payment Status</th><th>Action</th></tr></thead>
-                <tbody>
-                  {dueRows.map((schedule) => (
-                    <tr key={schedule.id}>
-                      <td><b>{schedule.invoiceNo}</b></td>
-                      <td>{schedule.customerName}</td>
-                      <td>{schedule.installmentNo}/{schedule.totalInstallments}</td>
-                      <td>{fmtDate(schedule.dueDate)}</td>
-                      <td>{money(schedule.amountDue)}</td>
-                      <td>{money(schedule.amountPaid)}</td>
-                      <td className="nkj-outstanding">{money(schedule.remainingAmount)}</td>
-                      <td><span className={`nkj-installment-status ${statusClass(schedule.paymentStatus)}`}>{statusLabel(schedule.paymentStatus)}</span></td>
-                      <td className="nkj-installment-row-actions">
-                        <button type="button" className="small-action" onClick={() => startReceipt(schedule)}><Plus size={13}/> Receive</button>
-                        <button type="button" className="small-action" onClick={() => updateDueDate(schedule)}><Pencil size={13}/> Reschedule</button>
-                      </td>
-                    </tr>
-                  ))}
-                  {!dueRows.length && <tr><td colSpan="9" className="empty">No outstanding installments.</td></tr>}
-                </tbody>
-              </table>
+          <section className="panel nkj-module-table nkj-due-reminder-panel">
+            <div className="nkj-panel-head">
+              <h3><CalendarDays size={18}/> Due &amp; Reminder Register</h3>
+              <span>{dueRows.length} outstanding installments</span>
             </div>
+            <section className="nkj-due-group">
+              <div className="nkj-due-group-heading"><h4>Due Today</h4><span>{dueTodayRows.length} installments</span></div>
+              {renderDueTable(dueTodayRows)}
+            </section>
+            <section className="nkj-due-group">
+              <div className="nkj-due-group-heading"><h4>Overdue</h4><span>{overdueRows.length} installments</span></div>
+              {renderDueTable(overdueRows)}
+            </section>
+            <section className="nkj-due-group">
+              <div className="nkj-due-group-heading"><h4>Upcoming Due Dates</h4><span>{upcomingRows.length} installments</span></div>
+              {renderDueTable(upcomingRows)}
+            </section>
           </section>
         )}
       </section>
