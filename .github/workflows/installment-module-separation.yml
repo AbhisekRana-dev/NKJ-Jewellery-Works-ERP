@@ -312,9 +312,27 @@ jobs:
           # A payment is written to the EMI ledger only.
           DETAILS_JSON=$(curl -fsS http://localhost:8086/api/admin/installments/plans/$ACCOUNT_ID "${AUTH[@]}")
           SCHEDULE_ID=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["schedule"][0]["id"])' <<< "$DETAILS_JSON")
+          # Invalid admin password must reject the receipt without writing any ledger row.
+          TRANSACTIONS_BEFORE_BAD_PASSWORD=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")
+          BAD_PASSWORD_HTTP=$(curl -sS -o /tmp/nkj-payment-bad-password.json -w '%{http_code}' -X POST http://localhost:8086/api/admin/installments/payments \
+            "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PAYMENT-BAD-PASSWORD-002' \
+            -H 'X-Admin-Password: definitely-wrong-password' \
+            --data "{\\"installmentId\\":$SCHEDULE_ID,\\"paymentDate\\":\\"$TODAY\\",\\"amount\\":50,\\"paymentMethod\\":\\"UPI\\",\\"referenceNo\\":\\"CI-EMI-PAYMENT-BAD-PASSWORD\\"}")
+          if [ "$BAD_PASSWORD_HTTP" -lt 400 ] || [ "$BAD_PASSWORD_HTTP" -ge 500 ]; then
+            echo "Wrong administrator password was not rejected with a client error (HTTP $BAD_PASSWORD_HTTP)."
+            cat /tmp/nkj-payment-bad-password.json
+            exit 1
+          fi
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")" != "$TRANSACTIONS_BEFORE_BAD_PASSWORD" ]; then
+            echo "A receipt was written even though the administrator password was incorrect."
+            exit 1
+          fi
+
+          # Correct password permits the receipt and the EMI ledger update.
           PAYMENT_HTTP=$(curl -sS -o /tmp/nkj-payment.json -w '%{http_code}' -X POST http://localhost:8086/api/admin/installments/payments \
             "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PAYMENT-002' \
-            --data "{\"installmentId\":$SCHEDULE_ID,\"paymentDate\":\"$TODAY\",\"amount\":50,\"paymentMethod\":\"UPI\",\"referenceNo\":\"CI-EMI-PAYMENT\"}")
+            -H 'X-Admin-Password: ci-only-password' \
+            --data "{\\"installmentId\\":$SCHEDULE_ID,\\"paymentDate\\":\\"$TODAY\\",\\"amount\\":50,\\"paymentMethod\\":\\"UPI\\",\\"referenceNo\\":\\"CI-EMI-PAYMENT\\"}")
           if [ "$PAYMENT_HTTP" -lt 200 ] || [ "$PAYMENT_HTTP" -ge 300 ]; then
             echo "Installment payment API returned HTTP $PAYMENT_HTTP:"
             cat /tmp/nkj-payment.json
