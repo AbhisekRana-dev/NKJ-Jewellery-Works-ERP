@@ -105,7 +105,7 @@ export default function InstallmentManagementPage() {
   const [tab, setTab] = useState("new");
   const [eligibleInvoices, setEligibleInvoices] = useState([]);
   const [invoiceSearch, setInvoiceSearch] = useState("");
-  const [bookings, setBookings] = useState([]);
+  const [installmentAccounts, setInstallmentAccounts] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +127,7 @@ export default function InstallmentManagementPage() {
     setError("");
     const endpoints = [
       ["/admin/installments/eligible-invoices", setEligibleInvoices],
-      ["/admin/installments/accounts", setBookings],
+      ["/admin/installments/accounts", setInstallmentAccounts],
       ["/admin/modules/installments", setSchedules],
       ["/admin/modules/installment-payments", setReceipts],
     ];
@@ -179,11 +179,10 @@ export default function InstallmentManagementPage() {
     });
   }, [selectedInvoice, plan]);
 
-  const accounts = useMemo(() => bookings
-    .filter((booking) => booking.isInstallmentPlan)
+  const accounts = useMemo(() => installmentAccounts
     .map((booking) => {
       const rows = schedules
-        .filter((schedule) => Number(schedule.bookingId) === Number(booking.id))
+        .filter((schedule) => Number(schedule.accountId) === Number(booking.id))
         .sort((a, b) => Number(a.installmentNo) - Number(b.installmentNo));
       const total = Number(booking.originalInvoiceAmount ?? (Number(booking.estimatedValue || 0) + Number(booking.makingEstimate || 0)));
       const outstanding = Math.max(0, Number(
@@ -200,11 +199,11 @@ export default function InstallmentManagementPage() {
         count: Number(booking.totalInstallments || rows.length),
       };
     })
-    .sort((a, b) => String(b.bookingDate || "").localeCompare(String(a.bookingDate || ""))),
-  [bookings, schedules]);
+    .sort((a, b) => String(b.planCreatedDate || "").localeCompare(String(a.planCreatedDate || ""))),
+  [installmentAccounts, schedules]);
 
   const filteredAccounts = accounts.filter((account) =>
-    `${account.invoiceNo || account.bookingNo || ""} ${account.customerName || ""} ${account.mobile || ""}`
+    `${account.invoiceNo || account.accountNo || ""} ${account.customerName || ""} ${account.mobile || ""}`
       .toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -302,7 +301,7 @@ export default function InstallmentManagementPage() {
           downPaymentReferenceNo: plan.downPaymentReferenceNo,
         }),
       });
-      if (result?.success !== true || !result?.bookingId) {
+      if (result?.success !== true || !result?.accountId) {
         throw new Error("The server did not confirm that the installment plan was saved. No success message was shown.");
       }
       setMessage(result.message || `Installment account created for invoice ${selectedInvoice.invoiceNo}.`);
@@ -312,7 +311,7 @@ export default function InstallmentManagementPage() {
       setInvoiceSearch("");
       await load();
       setTab("accounts");
-      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${result.bookingNo || result.bookingId}\nInstallments: ${result.scheduleCount || 0}`);
+      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${result.accountNo || result.accountId}\nInstallments: ${result.scheduleCount || 0}`);
     } catch (e) {
       await load();
       setError(e.message || "Could not create the installment plan.");
@@ -503,7 +502,7 @@ export default function InstallmentManagementPage() {
         <tbody>
           {rows.map((schedule) => (
             <tr key={schedule.id}>
-              <td><b>{schedule.invoiceNo || schedule.bookingNo || "—"}</b></td>
+              <td><b>{schedule.invoiceNo || schedule.accountNo || "—"}</b></td>
               <td>{schedule.customerName || "—"}</td>
               <td>{schedule.installmentNo}/{schedule.totalInstallments}</td>
               <td>{fmtDate(schedule.dueDate)}</td>
@@ -747,7 +746,7 @@ export default function InstallmentManagementPage() {
                       const progress = account.total > 0 ? Math.min(100, account.paid / account.total * 100) : 0;
                       return (
                         <tr key={account.id}>
-                          <td><b>{account.invoiceNo || account.bookingNo}</b><small className="nkj-table-sub">{account.invoiceNo ? account.bookingNo : "Legacy installment account"}</small></td>
+                          <td><b>{account.invoiceNo || account.accountNo}</b><small className="nkj-table-sub">{account.accountNo}</small></td>
                           <td>{account.customerName}<small className="nkj-table-sub">{account.mobile || "—"}</small></td>
                           <td>{account.paidCount}/{account.count}<small className="nkj-table-sub">{account.count} selected</small></td>
                           <td>{money(account.total)}</td>
