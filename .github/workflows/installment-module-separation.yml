@@ -225,7 +225,7 @@ jobs:
             IF n <> 1 THEN RAISE EXCEPTION 'The original invoice was not preserved'; END IF;
           END $$;
           SQL
-- name: Verify live Pre-Booking and EMI API independence
+      - name: Verify live Pre-Booking and EMI API independence
         env:
           DB_URL: jdbc:postgresql://localhost:5432/nkj_test
           DB_USERNAME: postgres
