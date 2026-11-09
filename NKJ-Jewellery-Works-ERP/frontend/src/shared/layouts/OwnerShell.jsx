@@ -1,5 +1,6 @@
 import "./OwnerShell.css";
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
@@ -105,63 +106,45 @@ export function Nav({ active = "home" }) {
       target instanceof Element ? target : target?.parentElement
     );
 
-    // Delegated handling survives route changes because it is attached to
-    // document, while the page and its shared sidebar are re-rendered.
-    const handleDoubleClick = (event) => {
+    // Handle the second click itself (detail === 2), rather than waiting for
+    // the later native dblclick event. flushSync commits the React state and
+    // sidebar class changes before this click event finishes.
+    const handleClickCapture = (event) => {
+      if (event.detail !== 2) return;
       const target = elementFromTarget(event.target);
       if (!target) return;
 
       if (sidebarCollapsed) {
-        // Expand only for double-clicks inside actual page content.
-        // Clicks on the sidebar itself, header, or footer do not toggle it.
-        if (target.closest(".app-content main") && !target.closest(".nkj-owner-sidebar")) {
-          setSidebarCollapsed(false);
+        // Any double-click inside the page content expands the sidebar.
+        if (!target.closest(".app-content main")) return;
+
+        flushSync(() => setSidebarCollapsed(false));
+
+        // A double-click on a page action must not activate it twice.
+        const repeatedContentAction = target.closest(
+          ".app-content main a, .app-content main button, .app-content main input[type='button'], .app-content main input[type='submit']"
+        );
+        if (repeatedContentAction) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
         }
         return;
       }
 
-      // When expanded, only menu text (not its icon, arrow, brand, or user
-      // profile) collapses the sidebar. Public Home text is included.
-      if (target.closest(".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span")) {
-        event.preventDefault();
-        setSidebarCollapsed(true);
-      }
-    };
-
-    const handleClickCapture = (event) => {
-      if (event.detail < 2) return;
-      const target = elementFromTarget(event.target);
-      if (!target) return;
-
+      // When expanded, only a menu item's text closes the sidebar.
+      // Icons, arrows, the brand and the owner profile do not match.
       const sidebarText = target.closest(
         ".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span"
       );
+      if (!sidebarText) return;
 
-      // Detect the second click before React Router handles it. This also
-      // works if the first click changed routes and remounted the sidebar.
-      if (!sidebarCollapsed && sidebarText) {
-        event.preventDefault();
-        setSidebarCollapsed(true);
-        return;
-      }
-
-      // Suppress only the second click. The first click remains immediate.
-      const repeatedSidebarClick = target.closest(".nkj-owner-sidebar a");
-      const repeatedContentControl = sidebarCollapsed && target.closest(
-        ".app-content main a, .app-content main button, .app-content main input[type='button'], .app-content main input[type='submit']"
-      );
-      if (repeatedSidebarClick || repeatedContentControl) {
-        event.preventDefault();
-        if (repeatedContentControl && !target.closest(".app-content main a")) {
-          event.stopImmediatePropagation();
-        }
-      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      flushSync(() => setSidebarCollapsed(true));
     };
 
-    document.addEventListener("dblclick", handleDoubleClick);
     document.addEventListener("click", handleClickCapture, true);
     return () => {
-      document.removeEventListener("dblclick", handleDoubleClick);
       document.removeEventListener("click", handleClickCapture, true);
     };
   }, [ownerWorkspace, sidebarCollapsed]);
