@@ -21,7 +21,7 @@ export const moduleConfig = {
   },
   expenses: {
     title: "Expenses", description: "Record the expense total and how much has actually been paid. Only the paid amount enters Outgoing cash flow; pending amounts are excluded.", api: "expenses",
-    fields: [["expenseDate","Expense date","date",true],["category","Category","select",true,["Rent","Electricity","Salary","Transport","Packaging","Repair","Marketing","Other"]],["description","Description","textarea"],["amount","Expense amount (₹)","number",true],["paidAmount","Amount paid now (₹)","number"],["paymentStatus","Payment status","select",false,["PAID","PARTIAL","PENDING"]],["paymentMethod","Payment method","select",false,["Cash","UPI","Bank Transfer","Card","Cheque"]],["referenceNo","Reference number","text"]],
+    fields: [["expenseDate","Expense date","date",true],["category","Category","select",true,["Rent","Electricity","Salary","Transport","Packaging","Repair","Marketing","Other"]],["description","Description","textarea"],["amount","Expense amount (₹)","number",true],["paidAmount","Amount paid now (₹)","number"],["paymentStatus","Payment status","select",true,["PAID","PARTIAL","PENDING"]],["paymentMethod","Payment method","select",false,["Cash","UPI","Bank Transfer","Card","Cheque"]],["referenceNo","Reference number","text"]],
     columns: [["expenseDate","Date"],["category","Category"],["description","Description"],["amount","Expense"],["paidAmount","Paid"],["paymentStatus","Payment status"],["paymentMethod","Method"]]
   },
   inventory: {
