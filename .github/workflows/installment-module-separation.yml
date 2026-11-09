@@ -364,9 +364,10 @@ jobs:
             exit 1
           fi
           PREBOOK_JSON=$(curl -fsS http://localhost:8086/api/admin/modules/bookings "${AUTH[@]}")
+          export PREBOOK_JSON
           python3 - <<'PY'
-          import json
-          rows = json.loads('''$PREBOOK_JSON''')
+          import json, os
+          rows = json.loads(os.environ["PREBOOK_JSON"])
           labels = {row.get("bookingNo") for row in rows}
           assert "NKJ-CI-LEGACY-EMI" not in labels, "Archived EMI booking leaked into Pre-Booking."
           assert "NKJ-CI-GENUINE-BOOKING" in labels, "Genuine Pre-Booking is missing."
