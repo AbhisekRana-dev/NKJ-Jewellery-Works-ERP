@@ -1200,12 +1200,15 @@ public class ErpModuleService {
     private void prepareExpensePayment(Map<String,Object> data) {
         BigDecimal total = nonNegative(data.get("amount"), "Expense amount");
         String status = data.get("paymentStatus") == null
-                ? "PAID" : String.valueOf(data.get("paymentStatus")).trim().toUpperCase(Locale.ROOT);
+                ? "PENDING" : String.valueOf(data.get("paymentStatus")).trim().toUpperCase(Locale.ROOT);
         if (!Set.of("PAID", "PARTIAL", "PENDING").contains(status)) {
             throw new IllegalArgumentException("Expense payment status must be PAID, PARTIAL or PENDING.");
         }
+        if ("PARTIAL".equals(status) && data.get("paidAmount") == null) {
+            throw new IllegalArgumentException("Enter the actual Amount paid for a partially paid expense.");
+        }
         BigDecimal paid = data.get("paidAmount") == null
-                ? ("PENDING".equals(status) ? BigDecimal.ZERO : total)
+                ? ("PAID".equals(status) ? total : BigDecimal.ZERO)
                 : nonNegative(data.get("paidAmount"), "Paid expense amount");
         if (paid.compareTo(total) > 0) {
             throw new IllegalArgumentException("Paid expense amount cannot exceed the expense amount.");
@@ -1260,10 +1263,8 @@ public class ErpModuleService {
         BigDecimal total = nonNegative(data.get("totalAmount"), "Purchase total");
         BigDecimal paid = nonNegative(data.get("paidAmount"), "Paid amount");
         if (paid.compareTo(total) > 0) throw new IllegalArgumentException("Paid amount cannot exceed purchase total.");
-        if (data.get("balance") == null) data.put("balance", total.subtract(paid).max(BigDecimal.ZERO));
-        if (data.get("status") == null) {
-            data.put("status", paid.signum() == 0 ? "PENDING" : paid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
-        }
+        data.put("balance", total.subtract(paid).max(BigDecimal.ZERO));
+        data.put("status", paid.signum() == 0 ? "PENDING" : paid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
     }
 
     private void applySalaryReceipt(Map<String,Object> data) {
@@ -1356,23 +1357,29 @@ public class ErpModuleService {
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
         // A paid amount is a cumulative cash figure. It may only increase here;
         // decreases/refunds must be recorded as separate cash operations.
-        if ("purchases".equals(module) && normalized.containsKey("paidAmount")) {
+        if ("purchases".equals(module)
+                && (normalized.containsKey("paidAmount") || normalized.containsKey("totalAmount")
+                    || normalized.containsKey("status"))) {
             BigDecimal oldPaid = decimal(before.get("paid_amount"));
-            BigDecimal newPaid = nonNegative(normalized.get("paidAmount"), "Paid supplier amount");
-            BigDecimal total = decimal(normalized.get("total_amount"));
+            BigDecimal newPaid = normalized.containsKey("paidAmount")
+                    ? nonNegative(normalized.get("paidAmount"), "Paid supplier amount") : oldPaid;
+            BigDecimal total = normalized.containsKey("totalAmount")
+                    ? nonNegative(normalized.get("totalAmount"), "Purchase total")
+                    : decimal(before.get("total_amount"));
             if (newPaid.compareTo(oldPaid) < 0) {
                 throw new IllegalArgumentException("Paid supplier amount cannot be reduced. Record a refund or correction as a separate transaction.");
             }
             if (newPaid.compareTo(total) > 0) {
                 throw new IllegalArgumentException("Paid supplier amount cannot exceed the supplier purchase total.");
             }
-            if (newPaid.compareTo(oldPaid) > 0) {
-                normalized.put("balance", total.subtract(newPaid).max(BigDecimal.ZERO));
-                normalized.put("status", newPaid.signum() == 0 ? "PENDING"
-                        : newPaid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
-            }
+            normalized.put("paidAmount", newPaid);
+            normalized.put("balance", total.subtract(newPaid).max(BigDecimal.ZERO));
+            normalized.put("status", newPaid.signum() == 0 ? "PENDING"
+                    : newPaid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
         }
-        if ("expenses".equals(module)) {
+        if ("expenses".equals(module)
+                && (normalized.containsKey("paidAmount") || normalized.containsKey("amount")
+                    || normalized.containsKey("paymentStatus"))) {
             BigDecimal oldPaid = decimal(before.get("paid_amount"));
             BigDecimal total = normalized.containsKey("amount")
                     ? nonNegative(normalized.get("amount"), "Expense amount")
@@ -1386,14 +1393,12 @@ public class ErpModuleService {
             if (newPaid.compareTo(total) > 0) {
                 throw new IllegalArgumentException("Paid expense amount cannot exceed the expense amount.");
             }
-            if (normalized.containsKey("amount") && total.compareTo(oldPaid) < 0) {
+            if (total.compareTo(oldPaid) < 0) {
                 throw new IllegalArgumentException("Expense amount cannot be reduced below the amount already paid.");
             }
-            if (normalized.containsKey("paidAmount") || normalized.containsKey("amount")) {
-                normalized.put("paidAmount", newPaid);
-                normalized.put("paymentStatus", newPaid.signum() == 0 ? "PENDING"
-                        : newPaid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
-            }
+            normalized.put("paidAmount", newPaid);
+            normalized.put("paymentStatus", newPaid.signum() == 0 ? "PENDING"
+                    : newPaid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
         }
         if ("pre-bookings".equals(module) && normalized.containsKey("advanceAmount")) {
             BigDecimal oldAdvance = decimal(before.get("advance_amount"));
