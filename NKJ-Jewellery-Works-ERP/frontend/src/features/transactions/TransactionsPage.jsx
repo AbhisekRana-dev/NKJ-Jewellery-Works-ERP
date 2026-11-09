@@ -174,7 +174,7 @@ export default function TransactionsPage() {
 
   return (
     <Page active="transactions">
-      <main className="nkj-transactions">
+      <div className="nkj-transactions">
         <header className="nkj-transactions-heading">
           <div>
             <span className="eyebrow">FINANCE &amp; CASH FLOW</span>
@@ -318,7 +318,7 @@ export default function TransactionsPage() {
             <small>Voided entries stay in history but are excluded from cash flow totals.</small>
           </footer>
         </section>
-      </main>
+      </div>
 
       {showRefund && (
         <div className="nkj-refund-overlay" role="presentation" onMouseDown={(event) => {
