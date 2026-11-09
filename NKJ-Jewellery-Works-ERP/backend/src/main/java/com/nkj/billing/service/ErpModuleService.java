@@ -246,13 +246,28 @@ public class ErpModuleService {
         Definition d = writableDefinition(module);
         String requestKey = idempotencyKey == null || idempotencyKey.isBlank()
                 ? null : requiredIdempotencyKey(idempotencyKey, "cash entry");
+        if (CASH_CREATE_MODULES.contains(module) && requestKey == null) {
+            throw new IllegalArgumentException("An Idempotency-Key is required to save this financial record safely.");
+        }
         if (requestKey != null && CASH_CREATE_MODULES.contains(module)) {
             lockIdempotencyKey("cash-create:" + requestKey);
             List<Map<String,Object>> prior = jdbc.queryForList(
-                    "SELECT id, source_record_id FROM cash_transactions WHERE idempotency_key=?",
+                    "SELECT id, source_record_id, source_module FROM cash_transactions WHERE idempotency_key=?",
                     requestKey);
             if (!prior.isEmpty()) {
                 Map<String,Object> saved = prior.get(0);
+                String expectedSource = switch (module) {
+                    case "payments" -> "PAYMENTS";
+                    case "pre-bookings" -> "PRE_BOOKINGS";
+                    case "expenses" -> "EXPENSES";
+                    case "purchases" -> "PURCHASES";
+                    case "salary" -> "SALARY";
+                    case "salary-payments" -> "SALARY_PAYMENTS";
+                    default -> "";
+                };
+                if (!expectedSource.equals(String.valueOf(saved.get("source_module")))) {
+                    throw new IllegalArgumentException("This Idempotency-Key was already used by another financial module.");
+                }
                 return Map.of("success", true, "duplicate", true,
                         "id", saved.get("source_record_id"),
                         "transactionId", saved.get("id"),
