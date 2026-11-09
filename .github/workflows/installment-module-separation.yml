@@ -70,6 +70,9 @@ jobs:
           assert "const repeatedContentAction = target.closest(" in handlers, (
               "Double-clicking a page action can trigger that action twice."
           )
+          assert 'target.closest(".nkj-owner-sidebar a")' in handlers, (
+              "Double-clicking a menu icon must not navigate twice."
+          )
           assert 'document.addEventListener("click", handleClickCapture, true)' in shell
           assert "document.addEventListener(\"dblclick\"" not in shell, (
               "Sidebar should not wait for the later native dblclick event."
