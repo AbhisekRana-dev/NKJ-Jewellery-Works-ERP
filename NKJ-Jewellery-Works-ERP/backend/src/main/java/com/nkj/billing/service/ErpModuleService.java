@@ -489,7 +489,8 @@ public class ErpModuleService {
             bookingNoSeed, invoiceId, invoiceNo, count, frequency, key, mapper.writeValueAsString(request),
             downPaymentDate, auth.getUsername(), invoice.get("customer_name"), invoice.get("mobile"),
             today, "Installment plan linked to invoice " + invoiceNo,
-            invoiceTotal, downPayment, remainingBalance, firstDueDate, "OPEN");
+            invoiceTotal, downPayment, remainingBalance, firstDueDate,
+            remainingBalance.signum() == 0 ? "COMPLETED" : "OPEN");
         String bookingNo = "NKJ-BKG-" + today.format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy"))
                 + "-" + String.format(Locale.ROOT, "%04d", bookingId);
         jdbc.update("UPDATE bookings SET booking_no=? WHERE id=?", bookingNo, bookingId);
