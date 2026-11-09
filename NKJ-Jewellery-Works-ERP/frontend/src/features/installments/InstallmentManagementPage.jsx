@@ -530,7 +530,7 @@ export default function InstallmentManagementPage() {
         <tbody>
           {rows.map((payment) => (
             <tr key={payment.id}>
-              <td>{payment.id}</td>
+              <td><b>{payment.transactionId || payment.id}</b></td>
               <td>{payment.customerName || "—"}</td>
               <td>{payment.invoiceNo || "—"}</td>
               <td>{payment.installmentNo ? `${payment.installmentNo}` : payment.entryType === "DOWN_PAYMENT" ? "Down payment" : "—"}</td>
