@@ -1,6 +1,6 @@
 import "./OwnerShell.css";
 import React, { useLayoutEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
@@ -71,6 +71,8 @@ export function Nav({ active = "home" }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
   const sidebarNavRef = useRef(null);
+  const location = useLocation();
+  const lastSidebarItemClickRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
 
   useLayoutEffect(() => {
@@ -148,6 +150,25 @@ export function Nav({ active = "home" }) {
                       title={sidebarCollapsed ? label : undefined}
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
+                      onClick={(event) => {
+                        // Let the first click navigate immediately. A second
+                        // click in the same double-click sequence must not
+                        // push the same route into browser history again.
+                        if (selected || event.detail > 1) {
+                          event.preventDefault();
+                        }
+                        lastSidebarItemClickRef.current = to;
+                      }}
+                      onDoubleClick={(event) => {
+                        // One anchor wraps both icon and label, so this works
+                        // identically whether the user double-clicks either.
+                        const openedItem = selected || location.pathname === to
+                          || lastSidebarItemClickRef.current === to;
+                        if (openedItem) {
+                          event.preventDefault();
+                          setSidebarCollapsed(true);
+                        }
+                      }}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span>{label}</span>
