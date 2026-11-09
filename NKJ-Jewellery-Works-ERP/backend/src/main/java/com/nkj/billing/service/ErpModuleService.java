@@ -717,8 +717,11 @@ public class ErpModuleService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String,Object> collectInstallmentPayment(
-            Map<String,Object> body, String idempotencyKey, String ip) throws JsonProcessingException {
+            Map<String,Object> body, String idempotencyKey, String adminPassword, String ip) throws JsonProcessingException {
         if (body == null) throw new IllegalArgumentException("Payment details are required.");
+        // Re-authenticate before any idempotency lock, ledger insert, or balance
+        // mutation. A rejected password therefore cannot post a receipt.
+        auth.verifyAdminPassword(adminPassword);
         String key = requiredIdempotencyKey(idempotencyKey, "payment");
         lockIdempotencyKey("installment-payment:" + key);
 
