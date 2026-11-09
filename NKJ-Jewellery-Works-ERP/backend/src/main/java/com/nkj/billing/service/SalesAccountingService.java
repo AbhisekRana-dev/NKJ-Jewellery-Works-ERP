@@ -35,6 +35,19 @@ public class SalesAccountingService {
               JOIN installment_accounts a ON a.id=p.account_id
              WHERE p.entry_type = 'DOWN_PAYMENT'
             UNION ALL
+            -- Some legacy down payments were intentionally migrated as
+            -- LEGACY_RECONCILIATION because their original receipt metadata
+            -- was not retained. Preserve their historic sales value once,
+            -- using the stored account-level down-payment date.
+            SELECT a.down_payment_date, a.down_payment
+              FROM installment_accounts a
+             WHERE a.down_payment > 0
+               AND NOT EXISTS (
+                   SELECT 1 FROM installment_transactions p
+                    WHERE p.account_id=a.id
+                      AND p.entry_type='DOWN_PAYMENT'
+               )
+            UNION ALL
             SELECT p.payment_date, p.amount
               FROM installment_transactions p
               JOIN installment_accounts a ON a.id=p.account_id
