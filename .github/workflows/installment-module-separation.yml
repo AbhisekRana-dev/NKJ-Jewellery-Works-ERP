@@ -278,7 +278,7 @@ jobs:
           FIRST_DUE=$(date -u -d "$TODAY + 7 days" +%F)
           DUE_DAY=$(date -u -d "$FIRST_DUE" +%d)
           INVOICE_ID=$(psql "$DB" -tAc "SELECT id FROM invoices WHERE invoice_no='NKJ-CI-NEW-EMI-002'")
-          BOOKINGS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM bookings")
+          PREBOOKINGS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM pre_booking_bills")
           ACCOUNTS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")
           SCHEDULES_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_schedules")
           TRANSACTIONS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")
@@ -289,9 +289,9 @@ jobs:
           ACCOUNT_ID=$(python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["success"] is True; print(x["accountId"])' <<< "$PLAN_JSON")
 
           # Invoice conversion creates only EMI rows. It must not create or mutate a Pre-Booking.
-          BOOKINGS_AFTER_PLAN=$(psql "$DB" -tAc "SELECT COUNT(*) FROM bookings")
+          PREBOOKINGS_AFTER_PLAN=$(psql "$DB" -tAc "SELECT COUNT(*) FROM pre_booking_bills")
           ACCOUNTS_AFTER_PLAN=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")
-          if [ "$BOOKINGS_AFTER_PLAN" != "$BOOKINGS_BEFORE" ]; then
+          if [ "$PREBOOKINGS_AFTER_PLAN" != "$PREBOOKINGS_BEFORE" ]; then
             echo "EMI plan creation unexpectedly changed Pre-Booking rows."
             exit 1
           fi
@@ -338,8 +338,8 @@ jobs:
             cat /tmp/nkj-v20.log
             exit 1
           fi
-          BOOKINGS_AFTER_PAYMENT=$(psql "$DB" -tAc "SELECT COUNT(*) FROM bookings")
-          if [ "$BOOKINGS_AFTER_PAYMENT" != "$BOOKINGS_BEFORE" ]; then
+          PREBOOKINGS_AFTER_PAYMENT=$(psql "$DB" -tAc "SELECT COUNT(*) FROM pre_booking_bills")
+          if [ "$PREBOOKINGS_AFTER_PAYMENT" != "$PREBOOKINGS_BEFORE" ]; then
             echo "EMI payment unexpectedly changed Pre-Booking rows."
             exit 1
           fi
@@ -350,7 +350,7 @@ jobs:
 
           # Editing a genuine Pre-Booking with legacy booking-owned history must not
           # be blocked by an EMI-module guard and must not mutate that history.
-          PREBOOK_ID=$(psql "$DB" -tAc "SELECT id FROM bookings WHERE booking_no='NKJ-CI-GENUINE-BOOKING'")
+          PREBOOK_ID=$(psql "$DB" -tAc "SELECT id FROM pre_booking_bills WHERE booking_no='NKJ-CI-GENUINE-BOOKING'")
           curl -fsS -X PUT http://localhost:8086/api/admin/modules/bookings/$PREBOOK_ID \
             "${AUTH[@]}" -H 'Content-Type: application/json' \
             --data '{"description":"Edited genuine Pre-Booking fixture"}' > /tmp/nkj-prebooking-update.json
@@ -358,7 +358,7 @@ jobs:
           DO \$\$
           DECLARE n BIGINT;
           BEGIN
-            SELECT COUNT(*) INTO n FROM bookings
+            SELECT COUNT(*) INTO n FROM pre_booking_bills
              WHERE id=$PREBOOK_ID AND description='Edited genuine Pre-Booking fixture';
             IF n <> 1 THEN RAISE EXCEPTION 'Genuine Pre-Booking update was not saved'; END IF;
             SELECT COUNT(*) INTO n FROM installments
