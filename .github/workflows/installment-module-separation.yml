@@ -317,7 +317,7 @@ jobs:
           BAD_PASSWORD_HTTP=$(curl -sS -o /tmp/nkj-payment-bad-password.json -w '%{http_code}' -X POST http://localhost:8086/api/admin/installments/payments \
             "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PAYMENT-BAD-PASSWORD-002' \
             -H 'X-Admin-Password: definitely-wrong-password' \
-            --data "{\\"installmentId\\":$SCHEDULE_ID,\\"paymentDate\\":\\"$TODAY\\",\\"amount\\":50,\\"paymentMethod\\":\\"UPI\\",\\"referenceNo\\":\\"CI-EMI-PAYMENT-BAD-PASSWORD\\"}")
+            --data "{\"installmentId\":$SCHEDULE_ID,\"paymentDate\":\"$TODAY\",\"amount\":50,\"paymentMethod\":\"UPI\",\"referenceNo\":\"CI-EMI-PAYMENT-BAD-PASSWORD\"}")
           if [ "$BAD_PASSWORD_HTTP" -lt 400 ] || [ "$BAD_PASSWORD_HTTP" -ge 500 ]; then
             echo "Wrong administrator password was not rejected with a client error (HTTP $BAD_PASSWORD_HTTP)."
             cat /tmp/nkj-payment-bad-password.json
@@ -332,7 +332,7 @@ jobs:
           PAYMENT_HTTP=$(curl -sS -o /tmp/nkj-payment.json -w '%{http_code}' -X POST http://localhost:8086/api/admin/installments/payments \
             "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PAYMENT-002' \
             -H 'X-Admin-Password: ci-only-password' \
-            --data "{\\"installmentId\\":$SCHEDULE_ID,\\"paymentDate\\":\\"$TODAY\\",\\"amount\\":50,\\"paymentMethod\\":\\"UPI\\",\\"referenceNo\\":\\"CI-EMI-PAYMENT\\"}")
+            --data "{\"installmentId\":$SCHEDULE_ID,\"paymentDate\":\"$TODAY\",\"amount\":50,\"paymentMethod\":\"UPI\",\"referenceNo\":\"CI-EMI-PAYMENT\"}")
           if [ "$PAYMENT_HTTP" -lt 200 ] || [ "$PAYMENT_HTTP" -ge 300 ]; then
             echo "Installment payment API returned HTTP $PAYMENT_HTTP:"
             cat /tmp/nkj-payment.json
