@@ -420,7 +420,7 @@ public class ErpModuleService {
      * Convert a saved invoice into an installment plan. The server owns all
      * financial arithmetic and creates the schedule inside one transaction.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Map<String,Object> createInstallmentPlan(
             Map<String,Object> request, String idempotencyKey, String ip) throws JsonProcessingException {
         if (request == null) throw new IllegalArgumentException("Installment plan details are required.");
@@ -719,7 +719,7 @@ public class ErpModuleService {
         return response;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Map<String,Object> collectInstallmentPayment(
             Map<String,Object> body, String idempotencyKey, String ip) throws JsonProcessingException {
         if (body == null) throw new IllegalArgumentException("Payment details are required.");
@@ -776,6 +776,9 @@ public class ErpModuleService {
                 && !Boolean.TRUE.equals(installment.get("has_schedule"))) {
             throw new IllegalArgumentException("This schedule row is not linked to an installment account.");
         }
+        long bookingIdForPayment = ((Number) installment.get("booking_id")).longValue();
+        // Serialize all receipts for one account, even when they target different schedules.
+        jdbc.query("SELECT id FROM bookings WHERE id=? FOR UPDATE", rs -> rs.next() ? rs.getLong(1) : null, bookingIdForPayment);
         BigDecimal due = decimal(installment.get("amount_due")).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal paid = netPaidForInstallment(installmentId);
         BigDecimal remaining = due.subtract(paid).setScale(2, java.math.RoundingMode.HALF_UP);
@@ -852,7 +855,7 @@ public class ErpModuleService {
         return Map.of("success", true, "message", "Installment due date updated.");
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Map<String,Object> reverseInstallmentPayment(
             long paymentId, Map<String,Object> body, String idempotencyKey, String ip) throws JsonProcessingException {
         if (body == null) throw new IllegalArgumentException("A reversal reason is required.");
@@ -871,11 +874,11 @@ public class ErpModuleService {
 
         Map<String,Object> payment = jdbc.queryForMap("""
             SELECT p.id, p.installment_id, p.amount, p.payment_date, p.entry_type,
-                   i.booking_id, b.invoice_no
+                   COALESCE(p.booking_id, i.booking_id) AS booking_id, b.invoice_no
               FROM installment_payments p
               LEFT JOIN installments i ON i.id=p.installment_id
               JOIN bookings b ON b.id=COALESCE(p.booking_id, i.booking_id)
-             WHERE p.id=? FOR UPDATE
+             WHERE p.id=? FOR UPDATE OF p
             """, paymentId);
         if (!"INSTALLMENT".equals(String.valueOf(payment.get("entry_type")))) {
             throw new IllegalArgumentException("Down payments are preserved in the account ledger and cannot be reversed from the installment schedule action.");
@@ -904,6 +907,8 @@ public class ErpModuleService {
             decimal(payment.get("amount")), reason, key, auth.getUsername());
         long installmentId = ((Number) payment.get("installment_id")).longValue();
         long bookingId = ((Number) payment.get("booking_id")).longValue();
+        // Serialize reversals and collections against the same account balance.
+        jdbc.query("SELECT id FROM bookings WHERE id=? FOR UPDATE", rs -> rs.next() ? rs.getLong(1) : null, bookingId);
         recalculateInstallment(installmentId, bookingId);
         Map<String,Object> auditValues = new LinkedHashMap<>();
         auditValues.put("paymentId", paymentId);
