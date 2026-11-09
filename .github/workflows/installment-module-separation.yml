@@ -96,6 +96,9 @@ jobs:
           css = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.css").read_text()
           assert ":root {" in css and "--nkj-owner-expanded-width: 250px;" in css
           assert "--nkj-owner-collapsed-width: 65px;" in css
+          assert "min-width: 250px !important;" in css and "max-width: 250px !important;" in css
+          assert "min-width: 65px !important;" in css and "max-width: 65px !important;" in css
+          assert "flex: 0 0 250px !important;" in css and "flex: 0 0 65px !important;" in css
           assert "width: calc(100% - var(--nkj-owner-sidebar-width)) !important;" in css
           assert "margin-left: var(--nkj-owner-sidebar-width) !important;" in css
           assert "white-space: nowrap;" in css and "text-overflow: ellipsis;" in css
