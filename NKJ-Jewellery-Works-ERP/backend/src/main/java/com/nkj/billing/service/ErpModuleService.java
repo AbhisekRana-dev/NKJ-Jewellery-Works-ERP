@@ -171,6 +171,16 @@ public class ErpModuleService {
                        )) AS "totalInstallments",
                        b.payment_frequency AS "paymentFrequency", b.created_at AS "createdAt"
                   FROM bookings b
+                 -- Pre-Booking Bills must contain only genuine pre-booking records.
+                 -- Invoice conversions stay in the dedicated Installment Accounts API.
+                 -- The EXISTS check also catches legacy conversions whose flag was
+                 -- not set but which already have installment schedule rows.
+                 WHERE b.is_installment_plan IS NOT TRUE
+                   AND NOT EXISTS (
+                       SELECT 1
+                         FROM installments emi
+                        WHERE emi.booking_id = b.id
+                   )
                  ORDER BY b.booking_date DESC,b.id DESC
                  LIMIT 1000
                 """);
