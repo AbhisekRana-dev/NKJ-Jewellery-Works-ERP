@@ -151,10 +151,10 @@ export function Nav({ active = "home" }) {
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
                       onClick={(event) => {
-                        // Let the first click navigate immediately. A second
-                        // click in the same double-click sequence must not
-                        // push the same route into browser history again.
-                        if (selected || event.detail > 1) {
+                        // Always allow the first click, including active
+                        // actions such as starting a fresh invoice. Only the
+                        // second click in a double-click sequence is blocked.
+                        if (event.detail > 1) {
                           event.preventDefault();
                         }
                         lastSidebarItemClickRef.current = to;
