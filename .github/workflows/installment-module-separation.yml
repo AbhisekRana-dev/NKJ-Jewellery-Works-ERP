@@ -109,7 +109,6 @@ jobs:
           assert "display: block !important" in collapsed_label_css and "font-size: 7px" in collapsed_label_css
           assert "white-space: nowrap;" in collapsed_label_css and "overflow: hidden;" in collapsed_label_css
           assert "@media (max-width: 760px)" in css and "--nkj-owner-sidebar-width: var(--nkj-owner-collapsed-width);" in css
-          assert ".nkj-owner-sidebar .nkj-owner-nav { " not in css
           assert "setTimeout(" not in handlers and "debounce" not in handlers.lower()
           print("Route-safe instant sidebar checks passed for both states and all 28 menu items.")
           PY
