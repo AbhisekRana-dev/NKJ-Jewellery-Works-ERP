@@ -59,7 +59,7 @@ const previewDueDate = (plan, index) => {
 
 const statusLabel = (status) => ({
   PENDING: "Pending",
-  DUE: "Pending",
+  DUE: "Due Today",
   PARTIAL: "Partially Paid",
   PARTIALLY_PAID: "Partially Paid",
   PAID: "Paid",
@@ -288,13 +288,13 @@ export default function InstallmentManagementPage() {
         }),
       });
       setMessage(result.message || `Installment account created for invoice ${selectedInvoice.invoiceNo}.`);
-      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${result.bookingNo || result.bookingId}\nInstallments: ${result.scheduleCount || 0}`);
       setInvoiceId("");
       setPlan(emptyPlan());
       setPlanIdempotencyKey(newIdempotencyKey());
       setInvoiceSearch("");
       await load();
       setTab("accounts");
+      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${result.bookingNo || result.bookingId}\nInstallments: ${result.scheduleCount || 0}`);
     } catch (e) {
       setError(e.message || "Could not create the installment plan.");
       await load();
@@ -334,14 +334,14 @@ export default function InstallmentManagementPage() {
         }),
       });
       setMessage(`₹ ${money(result.amount || amountCents / 100)} receipt saved against invoice ${schedule.invoiceNo}.`);
-      window.alert(
-        `Installment Payment Received Successfully!\nTransaction ID: ${result.transactionId || result.paymentId}\nInvoice: ${result.invoiceNo || schedule.invoiceNo}\nAmount: ₹ ${money(result.amount || amountCents / 100)}\nPayment Date: ${fmtDate(result.paymentDate || receiptForm.paymentDate)}\nRemaining Account Balance: ₹ ${money(result.accountRemainingBalance ?? result.remainingAmount ?? 0)}`
-      );
       setReceiptForm(emptyReceipt());
       setPaymentIdempotencyKey(newIdempotencyKey());
       await load();
       setTab("receipts");
       if (selectedAccount) await openAccountDetails(selectedAccount);
+      window.alert(
+        `Installment Payment Received Successfully!\nTransaction ID: ${result.transactionId || result.paymentId}\nInvoice: ${result.invoiceNo || schedule.invoiceNo}\nAmount: ₹ ${money(result.amount || amountCents / 100)}\nPayment Date: ${fmtDate(result.paymentDate || receiptForm.paymentDate)}\nRemaining Account Balance: ₹ ${money(result.accountRemainingBalance ?? result.remainingAmount ?? 0)}`
+      );
     } catch (e) {
       setError(e.message || "Could not post receipt.");
     } finally {
@@ -729,10 +729,20 @@ export default function InstallmentManagementPage() {
                 {accountDetails && (
                   <>
                     <div className="nkj-installment-detail-summary">
-                      <div><span>Original invoice</span><b>₹ {money(accountDetails.plan.originalInvoiceAmount)}</b></div>
-                      <div><span>Down payment</span><b>₹ {money(accountDetails.plan.downPayment)}</b><small>{fmtDate(accountDetails.plan.downPaymentDate)}</small></div>
+                      <div><span>Original invoice</span><b>₹ {money(accountDetails.plan.originalInvoiceAmount)}</b><small>{fmtDate(accountDetails.plan.invoiceDate)}</small></div>
+                      <div><span>Down payment</span><b>₹ {money(accountDetails.plan.downPayment)}</b><small>{fmtDate(accountDetails.plan.downPaymentDate)} · {accountDetails.plan.downPaymentMethod || "Method not recorded"}</small></div>
                       <div><span>Remaining balance</span><b>₹ {money(accountDetails.plan.remainingBalance)}</b></div>
                       <div><span>Total installments</span><b>{accountDetails.plan.totalInstallments}</b><small>{accountDetails.plan.paymentFrequency}</small></div>
+                    </div>
+                    <div className="nkj-installment-customer-invoice">
+                      <div><span>Customer</span><b>{accountDetails.plan.customerName}</b></div>
+                      <div><span>Mobile</span><b>{accountDetails.plan.mobile || "—"}</b></div>
+                      <div><span>Address</span><b>{accountDetails.plan.customerAddress || "—"}</b></div>
+                      <div><span>Invoice Number</span><b>{accountDetails.plan.invoiceNo}</b></div>
+                      <div><span>Invoice Date</span><b>{fmtDate(accountDetails.plan.invoiceDate)}</b></div>
+                      <div><span>Payment Frequency</span><b>{accountDetails.plan.paymentFrequency}</b></div>
+                      <div><span>Next Due Date</span><b>{fmtDate((accountDetails.schedule || []).find((row) => Number(row.remainingAmount) > 0)?.dueDate)}</b></div>
+                      <div><span>Plan Status</span><b>{accountDetails.plan.status || "OPEN"}</b></div>
                     </div>
                     <h4>Installment Schedule</h4>
                     {renderScheduleTable(accountDetails.schedule || [], accountDetails.plan.totalInstallments)}
