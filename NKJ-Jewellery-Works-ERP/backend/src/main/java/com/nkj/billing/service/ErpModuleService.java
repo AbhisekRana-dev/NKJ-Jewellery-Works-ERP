@@ -74,7 +74,7 @@ public class ErpModuleService {
             f("quantity","quantity","number","Quantity"), f("weight","weight","number","Weight"),
             f("referenceType","reference_type","text","Reference type"), f("referenceId","reference_id","number","Reference ID"), f("remarks","remarks","text","Remarks")
         ), "productId", "transactionType", "quantity");
-        register("bookings", "bookings", true, List.of(
+        register("pre-bookings", "pre_booking_bills", true, List.of(
             f("bookingNo","booking_no","text","Booking number"), f("customerName","customer_name","text","Customer name"),
             f("mobile","mobile","text","Mobile"), f("bookingDate","booking_date","date","Booking date"), f("description","description","text","Ornament description"),
             f("metalType","metal_type","text","Metal type"), f("purity","purity","text","Purity"), f("estimatedWeight","estimated_weight","number","Estimated weight"),
@@ -153,7 +153,7 @@ public class ErpModuleService {
         if (module.equals("staff-notes")) {
             return jdbc.queryForList("SELECT n.id, n.staff_id AS \"staffId\", s.full_name AS \"staffName\", n.note_date AS \"noteDate\", n.note_type AS \"noteType\", n.description, n.created_by AS \"createdBy\", n.created_at AS \"createdAt\" FROM staff_notes n JOIN staff s ON s.id=n.staff_id ORDER BY n.note_date DESC,n.created_at DESC LIMIT 1000");
         }
-        if (module.equals("bookings")) {
+        if (module.equals("pre-bookings")) {
             return jdbc.queryForList("""
                 SELECT b.id, b.booking_no AS "bookingNo",
                        b.customer_name AS "customerName", b.mobile,
@@ -163,8 +163,7 @@ public class ErpModuleService {
                        b.estimated_value AS "estimatedValue", b.making_estimate AS "makingEstimate",
                        b.advance_amount AS "advanceAmount", b.remaining_amount AS "remainingAmount",
                        b.delivery_date AS "deliveryDate", b.status, b.created_at AS "createdAt"
-                  FROM bookings b
-                 WHERE b.is_installment_plan IS NOT TRUE
+                  FROM pre_booking_bills b
                  ORDER BY b.booking_date DESC,b.id DESC
                  LIMIT 1000
                 """);
@@ -231,7 +230,7 @@ public class ErpModuleService {
         // so empty date/time values do not reach PostgreSQL CAST operations.
         data.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
         if (module.equals("staff-notes")) data.putIfAbsent("createdBy", auth.getUsername());
-        if (module.equals("bookings") && data.get("bookingNo") == null) data.put("bookingNo", "PENDING-" + UUID.randomUUID());
+        if (module.equals("pre-bookings") && data.get("bookingNo") == null) data.put("bookingNo", "PENDING-" + UUID.randomUUID());
         if (module.equals("repairs") && data.get("orderNo") == null) data.put("orderNo", "PENDING-" + UUID.randomUUID());
         validate(d, data);
         if (module.equals("salary")) {
@@ -240,7 +239,7 @@ public class ErpModuleService {
             }
             calculateSalary(data);
         }
-        if (module.equals("bookings")) calculateBooking(data);
+        if (module.equals("pre-bookings")) calculateBooking(data);
         if (module.equals("purchases")) calculatePurchase(data);
         List<Field> included = d.fields().stream().filter(x -> data.containsKey(x.key()) && data.get(x.key()) != null).toList();
         if (included.isEmpty()) throw new IllegalArgumentException("Enter at least one field.");
@@ -283,10 +282,10 @@ public class ErpModuleService {
             jdbc.update("UPDATE products SET item_code=? WHERE id=?", itemCode, id);
             data.put("itemCode", itemCode);
         }
-        if (module.equals("bookings")) {
+        if (module.equals("pre-bookings")) {
             String bookingNo = "NKJ-BKG-" + java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy")) + "-" + String.format("%04d", id);
             if (String.valueOf(data.get("bookingNo")).startsWith("PENDING-")) {
-                jdbc.update("UPDATE bookings SET booking_no=? WHERE id=?", bookingNo, id);
+                jdbc.update("UPDATE pre_booking_bills SET booking_no=? WHERE id=?", bookingNo, id);
                 data.put("bookingNo", bookingNo);
             }
             BigDecimal advance = nonNegative(data.get("advanceAmount"), "Advance amount");
@@ -1178,12 +1177,7 @@ public class ErpModuleService {
         Definition d = writableDefinition(module);
         if (body == null || body.isEmpty()) throw new IllegalArgumentException("Update data is required.");
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
-        // Only archived legacy EMI conversion rows are protected here. A genuine
-        // Pre-Booking may have legacy booking-specific schedule history; editing
-        // its own booking fields must not be coupled to the independent EMI module.
-        if ("bookings".equals(module) && Boolean.TRUE.equals(before.get("is_installment_plan"))) {
-            throw new IllegalArgumentException("This is an archived legacy EMI conversion record, not a Pre-Booking. Manage its account in Installment Management.");
-        }
+        // Pre-Bookings are loaded and updated only from pre_booking_bills.
         Map<String,Object> normalized = new LinkedHashMap<>(body);
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
         // Business identifiers are generated once and must not be accidentally
@@ -1213,7 +1207,7 @@ public class ErpModuleService {
             applied.put(x.key(), value);
         });
         values.add(id);
-        boolean hasUpdatedAt = Set.of("staff", "expenses", "products", "bookings", "suppliers", "customers", "shop_details").contains(d.table());
+        boolean hasUpdatedAt = Set.of("staff", "expenses", "products", "pre_booking_bills", "suppliers", "customers", "shop_details").contains(d.table());
         String sql = "UPDATE " + d.table() + " SET " + assignments + (hasUpdatedAt ? ", updated_at=NOW()" : "") + " WHERE id=?";
         int changed = jdbc.update(sql, values.toArray());
         if (changed == 0) throw new IllegalArgumentException("Record not found.");
@@ -1236,20 +1230,11 @@ public class ErpModuleService {
         }
         Definition d = writableDefinition(module);
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
-        if ("bookings".equals(module) && Boolean.TRUE.equals(before.get("is_installment_plan"))) {
-            throw new IllegalArgumentException("This is an archived legacy EMI conversion record. Manage its account in Installment Management.");
-        }
-        // Preserve booking-owned legacy schedule/receipt history. This guard is
-        // a delete-safety check only; it does not make Pre-Booking edits depend
-        // on, or write to, any active EMI account or transaction table.
-        if ("bookings".equals(module) && Boolean.TRUE.equals(jdbc.queryForObject("""
-                SELECT EXISTS (
-                    SELECT 1 FROM installments WHERE booking_id=?
-                    UNION ALL
-                    SELECT 1 FROM installment_payments WHERE booking_id=?
-                )
-                """, Boolean.class, id, id))) {
-            throw new IllegalArgumentException("This Pre-Booking has historical scheduled-payment records and cannot be deleted. Change its status to CANCELLED to preserve the financial history.");
+        // Preserve the Pre-Booking's own received advance. This check does not
+        // read or depend on any Installment/EMI table.
+        if ("pre-bookings".equals(module)
+                && decimal(before.get("advance_amount")).signum() > 0) {
+            throw new IllegalArgumentException("This Pre-Booking has a recorded advance and cannot be deleted. Change its status to CANCELLED to preserve the financial history.");
         }
         jdbc.update("DELETE FROM " + d.table() + " WHERE id=?", id);
         audit("DELETE", module, id, before, null, ip);
