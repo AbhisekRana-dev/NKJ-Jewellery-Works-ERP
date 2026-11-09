@@ -971,11 +971,11 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > svg:first-child {
   display: block !important;
-  width: 30px !important;
-  height: 30px !important;
-  min-width: 30px !important;
-  min-height: 30px !important;
-  flex: 0 0 30px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  flex: 0 0 28px !important;
   margin: 0 !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {
@@ -1028,9 +1028,9 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a > svg,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button > svg {
   display: block !important;
-  width: 30px !important;
-  height: 30px !important;
-  flex: 0 0 30px !important;
+  width: 28px !important;
+  height: 28px !important;
+  flex: 0 0 28px !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a span,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button span {
