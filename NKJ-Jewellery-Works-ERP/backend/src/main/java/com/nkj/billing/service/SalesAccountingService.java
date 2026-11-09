@@ -26,41 +26,27 @@ public class SalesAccountingService {
               FROM invoices i
              WHERE NOT EXISTS (
                  SELECT 1
-                   FROM bookings b
-                  WHERE (b.invoice_id = i.id OR b.invoice_no = i.invoice_no)
-                    AND (
-                        b.is_installment_plan = TRUE
-                        OR EXISTS (
-                            SELECT 1 FROM installments legacy_schedule
-                             WHERE legacy_schedule.booking_id = b.id
-                        )
-                    )
+                   FROM installment_accounts a
+                  WHERE a.invoice_id=i.id OR a.invoice_no=i.invoice_no
              )
             UNION ALL
-            SELECT COALESCE(b.down_payment_date, b.booking_date), b.advance_amount
-              FROM bookings b
-             WHERE (b.is_installment_plan = TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
-               AND b.advance_amount > 0
+            SELECT p.payment_date, p.amount
+              FROM installment_transactions p
+              JOIN installment_accounts a ON a.id=p.account_id
+             WHERE p.entry_type = 'DOWN_PAYMENT'
             UNION ALL
             SELECT p.payment_date, p.amount
-              FROM installment_payments p
-              JOIN installments i ON i.id = p.installment_id
-              JOIN bookings b ON b.id = i.booking_id
+              FROM installment_transactions p
+              JOIN installment_accounts a ON a.id=p.account_id
              WHERE p.entry_type = 'INSTALLMENT'
-               AND (b.is_installment_plan = TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
             UNION ALL
             SELECT r.reversal_date, -r.amount
-              FROM installment_payment_reversals r
-              JOIN installment_payments p ON p.id = r.payment_id
-              JOIN installments i ON i.id = p.installment_id
-              JOIN bookings b ON b.id = i.booking_id
+              FROM installment_transaction_reversals r
+              JOIN installment_transactions p ON p.id=r.transaction_id
+              JOIN installment_accounts a ON a.id=p.account_id
              WHERE p.entry_type = 'INSTALLMENT'
-               AND (b.is_installment_plan = TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
         )
-        """;
+
 
     private final JdbcTemplate jdbc;
 
