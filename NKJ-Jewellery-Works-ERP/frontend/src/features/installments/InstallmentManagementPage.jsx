@@ -736,6 +736,7 @@ export default function InstallmentManagementPage() {
                     <div className="nkj-installment-detail-summary">
                       <div><span>Original invoice</span><b>₹ {money(accountDetails.plan.originalInvoiceAmount)}</b><small>{fmtDate(accountDetails.plan.invoiceDate)}</small></div>
                       <div><span>Down payment</span><b>₹ {money(accountDetails.plan.downPayment)}</b><small>{fmtDate(accountDetails.plan.downPaymentDate)} · {accountDetails.plan.downPaymentMethod || "Method not recorded"}</small></div>
+                      <div><span>Paid amount</span><b>₹ {money(accountDetails.plan.paidAmount)}</b></div>
                       <div><span>Remaining balance</span><b>₹ {money(accountDetails.plan.remainingBalance)}</b></div>
                       <div><span>Total installments</span><b>{accountDetails.plan.totalInstallments}</b><small>{accountDetails.plan.paymentFrequency}</small></div>
                     </div>
@@ -749,6 +750,29 @@ export default function InstallmentManagementPage() {
                       <div><span>Next Due Date</span><b>{fmtDate((accountDetails.schedule || []).find((row) => Number(row.remainingAmount) > 0)?.dueDate)}</b></div>
                       <div><span>Plan Status</span><b>{accountDetails.plan.status || "OPEN"}</b></div>
                     </div>
+                    {Array.isArray(accountDetails.invoiceItems) && accountDetails.invoiceItems.length > 0 && (
+                      <>
+                        <h4>Original Invoice Items</h4>
+                        <div className="table-wrap">
+                          <table>
+                            <thead><tr><th>Type</th><th>Description</th><th>Purity</th><th>Gross (g)</th><th>Net (g)</th><th>Rate / g</th><th>Amount (₹)</th></tr></thead>
+                            <tbody>
+                              {accountDetails.invoiceItems.map((item, index) => (
+                                <tr key={`${item.itemType}-${index}`}>
+                                  <td>{item.itemType || "—"}</td>
+                                  <td>{item.description || "—"}</td>
+                                  <td>{item.purity || "—"}</td>
+                                  <td>{item.grossWeight ?? "—"}</td>
+                                  <td>{item.netWeight ?? "—"}</td>
+                                  <td>{money(item.rate)}</td>
+                                  <td>{money(item.amount)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
                     <h4>Installment Schedule</h4>
                     {renderScheduleTable(accountDetails.schedule || [], accountDetails.plan.totalInstallments)}
                     <h4>Payment History</h4>
