@@ -130,6 +130,23 @@ public class AuthService {
     }
     public void logout(String token) { if (token != null && !token.isBlank()) sessions.remove(token); }
     public String getUsername() { return username; }
+
+    /**
+     * Re-authenticate the administrator before posting a sensitive financial
+     * receipt. The password is compared in constant time and is never stored.
+     */
+    public void verifyAdminPassword(String suppliedPassword) {
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException("Administrator password is not configured. Set ADMIN_PASSWORD in backend/.env.");
+        }
+        if (suppliedPassword == null || suppliedPassword.isBlank()) {
+            throw new IllegalArgumentException("Enter the administrator password to confirm this receipt.");
+        }
+        if (!constantTimeEquals(password, suppliedPassword)) {
+            throw new IllegalArgumentException("Incorrect administrator password. The receipt was not saved.");
+        }
+    }
+
     public boolean credentials(String suppliedUsername, String suppliedPassword) {
         try { validateCredentials(suppliedUsername, suppliedPassword); return true; }
         catch (RuntimeException ex) { return false; }
