@@ -33,6 +33,7 @@ import com.nkj.billing.model.Invoice;
 import com.nkj.billing.repo.InvoiceRepository;
 import com.nkj.billing.service.AuthService;
 import com.nkj.billing.service.CustomerService;
+import com.nkj.billing.service.CashFlowService;
 import com.nkj.billing.model.Customer;
 
 @RestController
@@ -44,14 +45,16 @@ public class InvoiceController {
     private final AuthService auth;
     private final JdbcTemplate jdbc;
     private final CustomerService customerService;
+    private final CashFlowService cashFlow;
 
     public InvoiceController(InvoiceRepository repo, ObjectMapper mapper, AuthService auth,
-                             JdbcTemplate jdbc, CustomerService customerService) {
+                             JdbcTemplate jdbc, CustomerService customerService, CashFlowService cashFlow) {
         this.repo = repo;
         this.mapper = mapper;
         this.auth = auth;
         this.jdbc = jdbc;
         this.customerService = customerService;
+        this.cashFlow = cashFlow;
     }
 
     /**
@@ -185,8 +188,24 @@ public class InvoiceController {
         persistInvoiceItems(invoice.getId(), body.get("oldItems"), "OLD_EXCHANGE");
         Object paymentAmount = body.get("paymentAmount");
         if (paymentAmount != null && decimalValue(paymentAmount).compareTo(BigDecimal.ZERO) > 0) {
-            jdbc.update("INSERT INTO payments(invoice_id, invoice_no, customer_name, payment_date, amount, payment_method, reference_no, notes) VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?)",
-                    invoice.getId(), invoice.getInvoiceNo(), invoice.getCustomerName(), decimalValue(paymentAmount), invoice.getPaymentMode(), invoice.getReferenceNo(), "Initial invoice payment");
+            BigDecimal received = decimalValue(paymentAmount).setScale(2, java.math.RoundingMode.HALF_UP);
+            LocalDate receivedDate = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+            Long paymentId = jdbc.queryForObject("""
+                INSERT INTO payments(
+                    invoice_id, invoice_no, customer_name, payment_date, amount,
+                    payment_method, reference_no, notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING id
+                """, Long.class,
+                    invoice.getId(), invoice.getInvoiceNo(), invoice.getCustomerName(),
+                    Date.valueOf(receivedDate), received, invoice.getPaymentMode(),
+                    invoice.getReferenceNo(), "Initial invoice payment");
+            cashFlow.recordMovement("INVOICE", "INITIAL_COLLECTION", paymentId,
+                    "PAYMENT:" + paymentId, receivedDate, received,
+                    invoice.getCustomerName(), "Initial invoice collection",
+                    invoice.getPaymentMode(), invoice.getReferenceNo(),
+                    invoice.getInvoiceNo(), "INVOICE-INITIAL:" + invoice.getId(), null);
         }
         // Customer registration is part of this invoice transaction. A failure
         // rolls back the invoice, its items and its initial payment as well.
