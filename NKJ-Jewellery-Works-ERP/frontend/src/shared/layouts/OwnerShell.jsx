@@ -12,6 +12,32 @@ import { useAuth } from "../../core/auth/AuthProvider";
 
 const SIDEBAR_STORAGE_KEY = "nkj-owner-sidebar-collapsed";
 const SIDEBAR_SCROLL_KEY = "nkj-owner-sidebar-scroll";
+const SIDEBAR_DOUBLE_CLICK_MS = 500;
+const SIDEBAR_DOUBLE_CLICK_DISTANCE = 18;
+
+// Retains the first click across React Router replacing the current Page/Nav
+// DOM after navigation. This is a timestamp comparison, not a timer/debounce.
+let previousSidebarClick = null;
+
+function isSecondSidebarClick(event, zone) {
+  const previous = previousSidebarClick;
+  const elapsed = previous ? event.timeStamp - previous.timeStamp : Infinity;
+  const distance = previous
+    ? Math.hypot(event.clientX - previous.x, event.clientY - previous.y)
+    : Infinity;
+  const secondClick = Boolean(
+    previous
+      && previous.zone === zone
+      && elapsed >= 0
+      && elapsed <= SIDEBAR_DOUBLE_CLICK_MS
+      && distance <= SIDEBAR_DOUBLE_CLICK_DISTANCE
+  );
+
+  previousSidebarClick = secondClick
+    ? null
+    : { zone, timeStamp: event.timeStamp, x: event.clientX, y: event.clientY };
+  return secondClick;
+}
 
 function initialSidebarState() {
   try {
@@ -82,6 +108,8 @@ const ownerNavigation = [
 export function Nav({ active = "home" }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
+  const sidebarCollapsedRef = useRef(sidebarCollapsed);
+  sidebarCollapsedRef.current = sidebarCollapsed;
   const sidebarNavRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
 
@@ -111,27 +139,40 @@ export function Nav({ active = "home" }) {
   }, [ownerWorkspace]);
 
   useLayoutEffect(() => {
-    if (!ownerWorkspace) return undefined;
+    if (!ownerWorkspace) {
+      previousSidebarClick = null;
+      return undefined;
+    }
 
     const elementFromTarget = (target) => (
       target instanceof Element ? target : target?.parentElement
     );
 
-    // Handle the second click itself (detail === 2), rather than waiting for
-    // the later native dblclick event. flushSync commits the React state and
-    // sidebar class changes before this click event finishes.
+    const commitSidebarState = (nextCollapsed) => {
+      sidebarCollapsedRef.current = nextCollapsed;
+      flushSync(() => setSidebarCollapsed(nextCollapsed));
+    };
+
     const handleClickCapture = (event) => {
-      if (event.detail !== 2) return;
       const target = elementFromTarget(event.target);
       if (!target) return;
 
-      if (sidebarCollapsed) {
-        // Any double-click inside the page content expands the sidebar.
-        if (!target.closest(".app-content main")) return;
+      const collapsed = sidebarCollapsedRef.current;
 
-        flushSync(() => setSidebarCollapsed(false));
+      if (collapsed) {
+        const pageContent = target.closest(".app-content main");
+        if (!pageContent) {
+          previousSidebarClick = null;
+          return;
+        }
 
-        // A double-click on a page action must not activate it twice.
+        // Works for a stable element (click.detail) and after React Router
+        // remounts the page/sidebar between the first and second clicks.
+        const isSecondClick = event.detail === 2
+          || isSecondSidebarClick(event, "page-content");
+        if (!isSecondClick) return;
+        previousSidebarClick = null;
+
         const repeatedContentAction = target.closest(
           ".app-content main a, .app-content main button, .app-content main input[type='button'], .app-content main input[type='submit']"
         );
@@ -139,34 +180,52 @@ export function Nav({ active = "home" }) {
           event.preventDefault();
           event.stopImmediatePropagation();
         }
+
+        commitSidebarState(false);
         return;
       }
 
-      // When expanded, only a menu item's text closes the sidebar.
-      // Icons, arrows, the brand and the owner profile do not match.
+      // Only menu text closes the expanded sidebar; icons/arrows do not.
       const sidebarText = target.closest(
         ".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span"
       );
       if (sidebarText) {
+        const label = (sidebarText.textContent || "").trim().replace(/\s+/g, " ");
+        const isSecondClick = event.detail === 2
+          || isSecondSidebarClick(event, `sidebar-text:${label}`);
+        if (!isSecondClick) return;
+        previousSidebarClick = null;
+
         event.preventDefault();
         event.stopImmediatePropagation();
-        flushSync(() => setSidebarCollapsed(true));
+        commitSidebarState(true);
         return;
       }
 
-      // A double-click on an icon must not toggle the sidebar, but its
-      // second click must not repeat the same route navigation either.
-      if (target.closest(".nkj-owner-sidebar a")) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
+      // Icon double-clicks do not toggle, but the second click must not
+      // activate the same navigation link twice.
+      const sidebarLink = target.closest(".nkj-owner-sidebar a");
+      if (sidebarLink) {
+        const label = sidebarLink.getAttribute("aria-label") || sidebarLink.textContent.trim();
+        const isSecondClick = event.detail === 2
+          || isSecondSidebarClick(event, `sidebar-icon:${label}`);
+        if (isSecondClick) {
+          previousSidebarClick = null;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+        return;
       }
+
+      previousSidebarClick = null;
     };
 
     document.addEventListener("click", handleClickCapture, true);
     return () => {
       document.removeEventListener("click", handleClickCapture, true);
+      previousSidebarClick = null;
     };
-  }, [ownerWorkspace, sidebarCollapsed]);
+  }, [ownerWorkspace]);
 
   if (ownerWorkspace) {
     return (
