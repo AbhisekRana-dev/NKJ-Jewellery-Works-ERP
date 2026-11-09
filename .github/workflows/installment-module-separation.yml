@@ -75,7 +75,7 @@ jobs:
           assert 'target.closest(".nkj-owner-sidebar a")' in handlers
           label_start = shell.index("const compactNavigationLabels = {")
           label_end = shell.index("};", label_start)
-          compact_labels = re.findall(r'^\\s*(?:"[^"]+"|[a-z-]+):\\s*"[^"]+"', shell[label_start:label_end], re.MULTILINE)
+          compact_labels = re.findall(r'^\s*(?:"[^"]+"|[a-z-]+):\s*"[^"]+"', shell[label_start:label_end], re.MULTILINE)
           assert len(compact_labels) == 28, f"Expected 28 compact menu labels, found {len(compact_labels)}."
           assert "sidebarCollapsed ? (compactNavigationLabels[key] || label) : label" in shell, "Compact labels should only appear when the sidebar is collapsed."
           assert "flushSync(() => setSidebarCollapsed(nextCollapsed))" in shell
