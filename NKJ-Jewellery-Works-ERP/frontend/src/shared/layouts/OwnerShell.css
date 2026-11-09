@@ -821,8 +821,9 @@ body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
   font-size: 7px !important;
   line-height: 1.05;
   text-align: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom {
   padding: 6px 4px max(8px, env(safe-area-inset-bottom)) !important;
