@@ -181,7 +181,25 @@ export function Nav({ active = "home" }) {
           </nav>
 
           <div className="nkj-owner-sidebar-bottom">
-            <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined}>
+            <Link
+              to="/"
+              className="nkj-owner-public-link"
+              title={sidebarCollapsed ? "Public Home" : undefined}
+              onClick={(event) => {
+                if (active === "home" || location.pathname === "/" || event.detail > 1) {
+                  event.preventDefault();
+                }
+                lastSidebarItemClickRef.current = "/";
+              }}
+              onDoubleClick={(event) => {
+                const openedHome = active === "home" || location.pathname === "/"
+                  || lastSidebarItemClickRef.current === "/";
+                if (openedHome) {
+                  event.preventDefault();
+                  setSidebarCollapsed(true);
+                }
+              }}
+            >
               <HomeIcon size={18} /><span>Public Home</span>
             </Link>
             <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
