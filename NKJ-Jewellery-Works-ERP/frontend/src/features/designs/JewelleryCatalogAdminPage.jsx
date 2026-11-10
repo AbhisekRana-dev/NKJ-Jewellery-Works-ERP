@@ -91,6 +91,7 @@ export default function JewelleryCatalogAdminPage() {
   const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [currentDesignId, setCurrentDesignId] = useState("");
   const [form, setForm] = useState(blankForm());
   const [imageFiles, setImageFiles] = useState([]);
   const [currentImages, setCurrentImages] = useState([]);
@@ -153,6 +154,7 @@ export default function JewelleryCatalogAdminPage() {
   const openNewForm = () => {
     const categoryId = metalCategories[0]?.id || categories[0]?.id || "";
     setEditingId(null);
+    setCurrentDesignId("");
     setForm(blankForm(categoryId));
     setImageFiles([]);
     setCurrentImages([]);
@@ -165,6 +167,7 @@ export default function JewelleryCatalogAdminPage() {
     try {
       const detail = await request(`/admin/designs/${design.id}`);
       setEditingId(design.id);
+      setCurrentDesignId(detail.designId || "");
       setForm({
         categoryId: String(detail.categoryId),
         designName: detail.designName || "",
@@ -338,13 +341,25 @@ export default function JewelleryCatalogAdminPage() {
     }
   };
 
+  const setPrimaryImage = async (image) => {
+    if (!editingId || Number(image.displayOrder) === 0) return;
+    try {
+      const detail = await request(`/admin/designs/${editingId}/images/${image.id}/primary`, { method: "PUT" });
+      setCurrentImages(Array.isArray(detail.images) ? detail.images : []);
+      setMessage("Primary photograph updated.");
+      await loadDesigns(page);
+    } catch (err) {
+      setError(err.message || "Could not set this photograph as primary.");
+    }
+  };
+
   const runBulkUpload = async () => {
     if (!bulkCategoryId) {
       setError("Choose the metal and subcategory for the bulk upload.");
       return;
     }
     if (!bulkFiles.length) {
-      setError("Choose one or more JPG/PNG design photographs.");
+      setError("Choose one or more JPG, PNG or WebP design photographs.");
       return;
     }
     setBulkRunning(true);
@@ -430,8 +445,8 @@ export default function JewelleryCatalogAdminPage() {
                 {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
               </select>
             </label>
-            <label className="nkj-catalog-file-picker"><ImagePlus size={17} /> Choose multiple JPG/PNG images
-              <input type="file" accept="image/jpeg,image/png" multiple onChange={(event) => setBulkFiles(Array.from(event.target.files || []))} />
+            <label className="nkj-catalog-file-picker"><ImagePlus size={17} /> Choose multiple JPG/PNG/WebP images
+              <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setBulkFiles(Array.from(event.target.files || []))} />
             </label>
             <button type="button" onClick={runBulkUpload} disabled={bulkRunning || !bulkFiles.length}>
               {bulkRunning ? <LoaderCircle className="spin" size={16} /> : <Upload size={16} />}
@@ -467,7 +482,7 @@ export default function JewelleryCatalogAdminPage() {
                       {design.thumbnailUrl ? <img src={assetUrl(design.thumbnailUrl)} alt="" loading="lazy" /> : <span className="nkj-catalog-placeholder"><ImagePlus size={17} /></span>}
                       <span><b>{design.designName}</b><small>{design.styleLabel}</small></span>
                     </div></td>
-                    <td><code>{design.designCode}</code></td>
+                    <td><code title={design.designId || design.designCode}>{design.designId || design.designCode}</code><small className="nkj-catalog-subcategory">Legacy: {design.designCode}</small></td>
                     <td>{design.metalType}<small className="nkj-catalog-subcategory">{design.subcategoryName}</small>
                       <small className="nkj-catalog-subcategory">{[design.purity, design.weightGrams != null ? Number(design.weightGrams).toLocaleString("en-IN") + " g" : "", design.priceInr != null ? "₹" + Number(design.priceInr).toLocaleString("en-IN") : ""].filter(Boolean).join(" · ") || "Specs not set"}</small>
                     </td>
@@ -500,11 +515,15 @@ export default function JewelleryCatalogAdminPage() {
             <form className="nkj-catalog-modal" onSubmit={saveDesign}>
               <header><div><span>OWNER CATALOGUE</span><h2>{editingId ? "Edit Jewellery Design" : "Add New Design"}</h2></div><button type="button" onClick={() => setShowForm(false)} aria-label="Close"><X size={19} /></button></header>
               <div className="nkj-catalog-form-grid">
+                <label className="wide">Design ID (generated automatically · read-only)
+                  <input value={editingId ? currentDesignId : "Generated after saving"} readOnly aria-readonly="true" />
+                </label>
                 <label className="wide">Approved metal / subcategory
-                  <select required value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
+                  <select required disabled={Boolean(editingId)} value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
                     <option value="">Choose subcategory</option>
                     {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
                   </select>
+                  {editingId && <small>A Design ID contains its original category. To use another subcategory, create a new design instead.</small>}
                 </label>
                 <label className="wide">Design name<input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" /></label>
                 <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
@@ -514,8 +533,8 @@ export default function JewelleryCatalogAdminPage() {
                 <label>Price (₹)<input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" /></label>
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
                 <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload multiple design photographs
-                  <input type="file" accept="image/jpeg,image/png" multiple onChange={(event) => setImageFiles(Array.from(event.target.files || []))} />
-                  <small>JPG/PNG · Maximum 10 MB per image. Originals and 800px thumbnails are stored separately.</small>
+                  <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setImageFiles(Array.from(event.target.files || []))} />
+                  <small>JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Originals and optimized JPEG thumbnails are stored separately.</small>
                 </label>
               </div>
               {imageFiles.length > 0 && (
@@ -527,8 +546,16 @@ export default function JewelleryCatalogAdminPage() {
                 </>
               )}
               {editingId && currentImages.length > 0 && <div className="nkj-catalog-current-images">
-                <b>Current images</b>
-                <div>{currentImages.map((image) => <span key={image.id}><img src={assetUrl(image.thumbnailUrl)} alt={image.altText || form.designName} /><button type="button" onClick={() => removeImage(image)} aria-label="Remove image"><X size={13} /></button></span>)}</div>
+                <b>Current images · choose the primary photograph</b>
+                <div>{currentImages.map((image) => (
+                  <span key={image.id} className={Number(image.displayOrder) === 0 ? "is-primary" : ""}>
+                    <img src={assetUrl(image.thumbnailUrl)} alt={image.altText || form.designName} />
+                    {Number(image.displayOrder) === 0
+                      ? <small className="nkj-catalog-primary-label">Primary</small>
+                      : <button type="button" className="nkj-catalog-set-primary" onClick={() => setPrimaryImage(image)}>Set primary</button>}
+                    <button type="button" onClick={() => removeImage(image)} aria-label="Remove image"><X size={13} /></button>
+                  </span>
+                ))}</div>
               </div>}
               <div className="nkj-catalog-checkboxes">
                 <label><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Publish / active</label>
