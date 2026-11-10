@@ -971,3 +971,152 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
     min-height: 58px !important;
   }
 }
+
+/* Colourful circular navigation icons and a single Logout footer action. */
+.nkj-owner-nav a {
+  --nav-accent: #f8d36d;
+}
+.nkj-owner-nav a[data-nav-key="dashboard"] {--nav-accent:#f7d66d;}
+.nkj-owner-nav a[data-nav-key="invoice"] {--nav-accent:#ffcf5c;}
+.nkj-owner-nav a[data-nav-key="saved"] {--nav-accent:#a5d8ff;}
+.nkj-owner-nav a[data-nav-key="bookings"] {--nav-accent:#f7a8d0;}
+.nkj-owner-nav a[data-nav-key="installments"] {--nav-accent:#7ddcf2;}
+.nkj-owner-nav a[data-nav-key="old-gold"] {--nav-accent:#f7b267;}
+.nkj-owner-nav a[data-nav-key="inventory"] {--nav-accent:#f4d36b;}
+.nkj-owner-nav a[data-nav-key="purchases"] {--nav-accent:#f6b85d;}
+.nkj-owner-nav a[data-nav-key="stock-movements"] {--nav-accent:#79e0c0;}
+.nkj-owner-nav a[data-nav-key="rates"] {--nav-accent:#68d7e8;}
+.nkj-owner-nav a[data-nav-key="customers"] {--nav-accent:#c4a7ff;}
+.nkj-owner-nav a[data-nav-key="suppliers"] {--nav-accent:#91c9ff;}
+.nkj-owner-nav a[data-nav-key="expenses"] {--nav-accent:#ff9e9e;}
+.nkj-owner-nav a[data-nav-key="payments"] {--nav-accent:#83e0a5;}
+.nkj-owner-nav a[data-nav-key="reports"] {--nav-accent:#f5d26c;}
+.nkj-owner-nav a[data-nav-key="reports-sales"] {--nav-accent:#85dfec;}
+.nkj-owner-nav a[data-nav-key="reports-profit"] {--nav-accent:#91e2a5;}
+.nkj-owner-nav a[data-nav-key="reports-expenses"] {--nav-accent:#ffb17b;}
+.nkj-owner-nav a[data-nav-key="staff"] {--nav-accent:#f5a5c7;}
+.nkj-owner-nav a[data-nav-key="attendance"] {--nav-accent:#91c7ff;}
+.nkj-owner-nav a[data-nav-key="leaves"] {--nav-accent:#c4b5fd;}
+.nkj-owner-nav a[data-nav-key="salary"] {--nav-accent:#f5d26c;}
+.nkj-owner-nav a[data-nav-key="salary-payments"] {--nav-accent:#7ddcf2;}
+.nkj-owner-nav a[data-nav-key="karigars"] {--nav-accent:#ffae91;}
+.nkj-owner-nav a[data-nav-key="repairs"] {--nav-accent:#d3a5ff;}
+.nkj-owner-nav a[data-nav-key="database"] {--nav-accent:#91c7ff;}
+.nkj-owner-nav a[data-nav-key="audit-logs"] {--nav-accent:#8fe0c0;}
+.nkj-owner-nav a[data-nav-key="profile"] {--nav-accent:#f7a8d0;}
+
+/* Each menu pictogram sits inside its own coloured circle. */
+.nkj-owner-nav a > svg:first-child {
+  display: grid !important;
+  place-items: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  flex: 0 0 38px !important;
+  padding: 8px !important;
+  border: 1px solid color-mix(in srgb, var(--nav-accent) 72%, transparent) !important;
+  border-radius: 50% !important;
+  background: color-mix(in srgb, var(--nav-accent) 19%, #4b0719) !important;
+  color: var(--nav-accent) !important;
+  stroke-width: 2.15 !important;
+}
+
+.nkj-owner-nav a .nkj-owner-nav-full-label {
+  color: var(--nav-accent) !important;
+}
+
+.nkj-owner-nav a .nkj-owner-nav-short-label {
+  color: var(--nav-accent) !important;
+}
+
+.nkj-owner-nav a.active .nkj-owner-nav-full-label,
+.nkj-owner-nav a.active .nkj-owner-nav-short-label {
+  color: #650b25 !important;
+}
+
+.nkj-owner-nav a.active > svg:first-child {
+  border-color: var(--nav-accent) !important;
+  background: color-mix(in srgb, var(--nav-accent) 22%, #fff8e8) !important;
+  color: #650b25 !important;
+}
+
+/* The footer contains only the Logout action. */
+.nkj-owner-sidebar-bottom {
+  display: block !important;
+  padding: 12px 11px max(12px, env(safe-area-inset-bottom)) !important;
+  border-top: 2px solid #c99a37 !important;
+  background: linear-gradient(180deg, #211a1d 0%, #171416 100%) !important;
+}
+
+.nkj-owner-logout {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-height: 52px !important;
+  padding: 7px 10px !important;
+  border: 1px solid rgba(255, 130, 130, .3) !important;
+  border-radius: 10px !important;
+  background: linear-gradient(110deg, rgba(185, 53, 77, .23), rgba(255, 255, 255, .045)) !important;
+  color: #ffb0b0 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-align: left !important;
+  cursor: pointer;
+}
+
+.nkj-owner-logout:hover {
+  border-color: rgba(255, 160, 160, .7) !important;
+  background: linear-gradient(110deg, rgba(205, 58, 83, .42), rgba(255, 255, 255, .08)) !important;
+}
+
+.nkj-owner-logout-icon {
+  display: grid !important;
+  place-items: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  flex: 0 0 38px !important;
+  border: 1px solid #fb8585 !important;
+  border-radius: 50% !important;
+  background: rgba(247, 91, 106, .2) !important;
+  color: #ff9c9c !important;
+}
+
+.nkj-owner-logout-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.nkj-owner-logout-label {
+  color: #ffb2b2 !important;
+  letter-spacing: .2px;
+}
+
+/* Compact mode keeps Logout visible at the bottom of the icon rail. */
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom {
+  padding: 10px 5px max(12px, env(safe-area-inset-bottom)) !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-logout {
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  min-height: 64px !important;
+  padding: 5px 2px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-logout-icon {
+  width: 38px !important;
+  height: 38px !important;
+  flex-basis: 38px !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-logout-label {
+  display: block !important;
+  color: #ffb2b2 !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  text-align: center;
+}
