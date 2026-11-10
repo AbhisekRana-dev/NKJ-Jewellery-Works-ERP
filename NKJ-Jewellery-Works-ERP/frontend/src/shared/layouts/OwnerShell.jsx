@@ -208,27 +208,16 @@ export function Nav({ active = "home" }) {
           </nav>
 
           <div className="nkj-owner-sidebar-bottom">
-            <Link
-              to="/profile"
-              className="nkj-owner-profile-card"
-              title={sidebarCollapsed ? (user || "Owner profile") : undefined}
-              aria-label="Open owner profile"
+            <button
+              type="button"
+              className="nkj-owner-logout"
+              onClick={logout}
+              title="Logout"
+              aria-label="Logout"
             >
-              <span className="nkj-owner-avatar">{String(user || "A").slice(0, 1).toUpperCase()}</span>
-              <span className="nkj-owner-profile-copy">
-                <b>{user || "Admin"}</b>
-                <small>Owner</small>
-              </span>
-              <ChevronRight className="nkj-owner-profile-arrow" size={18} aria-hidden="true" />
-            </Link>
-            <div className="nkj-owner-footer-actions">
-              <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined}>
-                <HomeIcon size={18} /><span>Public Home</span>
-              </Link>
-              <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
-                <LogOut size={18} /><span>Logout</span>
-              </button>
-            </div>
+              <span className="nkj-owner-logout-icon"><LogOut size={19} aria-hidden="true" /></span>
+              <span className="nkj-owner-logout-label">Logout</span>
+            </button>
           </div>
         </aside>
 
