@@ -87,6 +87,45 @@ public class JewelleryDesignController {
         return designDetails(id, true);
     }
 
+    @PostMapping("/api/admin/designs/categories")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
+    @Transactional
+    public Map<String, Object> createCategory(@RequestBody Map<String, Object> body) {
+        String metal = requiredText(body.get("metalType"), "Choose Gold, Silver or Diamond.", 16).toUpperCase(Locale.ROOT);
+        if (!List.of("GOLD", "SILVER", "DIAMOND").contains(metal)) {
+            throw new IllegalArgumentException("Only Gold, Silver and Diamond main categories are allowed.");
+        }
+        String name = requiredText(body.get("subcategoryName"), "Subcategory name is required.", 80);
+        String slug = slugify(name);
+        int order = nonNegativeInt(body.get("displayOrder"), 0, "Display order");
+        Long id = jdbc.queryForObject("""
+                INSERT INTO public.jewellery_design_categories
+                    (metal_type, subcategory_name, slug, display_order, is_active, created_at)
+                VALUES (?, ?, ?, ?, TRUE, NOW())
+                RETURNING id
+                """, Long.class, metal, name, slug, order);
+        return categoryDetails(id);
+    }
+
+    @PutMapping("/api/admin/designs/categories/{id}")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
+    @Transactional
+    public Map<String, Object> updateCategory(@PathVariable long id, @RequestBody Map<String, Object> body) {
+        Map<String, Object> existing = categoryDetails(id);
+        String name = body.get("subcategoryName") == null
+                ? String.valueOf(existing.get("subcategoryName"))
+                : requiredText(body.get("subcategoryName"), "Subcategory name is required.", 80);
+        String slug = slugify(name);
+        boolean active = bool(body.get("isActive"), Boolean.TRUE.equals(existing.get("isActive")));
+        int order = nonNegativeInt(body.get("displayOrder"), ((Number) existing.get("displayOrder")).intValue(), "Display order");
+        jdbc.update("""
+                UPDATE public.jewellery_design_categories
+                   SET subcategory_name = ?, slug = ?, is_active = ?, display_order = ?
+                 WHERE id = ?
+                """, name, slug, active, order, id);
+        return categoryDetails(id);
+    }
+
     @PostMapping("/api/admin/designs")
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
@@ -361,6 +400,21 @@ public class JewelleryDesignController {
         return result;
     }
 
+    private Map<String, Object> categoryDetails(long id) {
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT c.id, c.metal_type AS "metalType", c.subcategory_name AS "subcategoryName",
+                       c.slug, c.display_order AS "displayOrder", c.is_active AS "isActive",
+                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE) AS "activeDesignCount",
+                       COUNT(d.id) AS "totalDesignCount"
+                  FROM public.jewellery_design_categories c
+                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id
+                 WHERE c.id = ?
+                 GROUP BY c.id
+                """, id);
+        if (rows.isEmpty()) throw new IllegalArgumentException("Jewellery subcategory not found.");
+        return rows.get(0);
+    }
+
     private Map<String, Object> designDetails(long id, boolean includeInactive) {
         List<Map<String, Object>> results = jdbc.queryForList("""
                 SELECT d.id, d.design_code AS "designCode", d.design_name AS "designName",
@@ -430,6 +484,23 @@ public class JewelleryDesignController {
 
     private static boolean bool(Object value, boolean fallback) {
         return value == null ? fallback : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private static int nonNegativeInt(Object value, int fallback, String label) {
+        if (value == null || String.valueOf(value).isBlank()) return fallback;
+        try {
+            int parsed = Integer.parseInt(String.valueOf(value).trim());
+            if (parsed < 0) throw new NumberFormatException();
+            return parsed;
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException(label + " must be zero or a positive whole number.");
+        }
+    }
+
+    private static String slugify(String value) {
+        String slug = value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+        if (slug.isBlank()) throw new IllegalArgumentException("Subcategory name must contain letters or numbers.");
+        return slug;
     }
 
     private static BigDecimal decimal(Object value, String label) {
