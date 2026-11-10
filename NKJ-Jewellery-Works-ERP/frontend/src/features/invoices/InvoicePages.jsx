@@ -662,7 +662,8 @@ async function printInvoiceAsPdf() {
           page-break-inside: auto !important;
         }
 
-        #invoice-print .nkj-pdf-repeat-header th {
+        #invoice-print .items-table .nkj-pdf-repeat-header th {
+          display: table-cell !important;
           padding: 0.7mm 1mm !important;
           background: #fff7e8 !important;
           color: #7a1029 !important;
@@ -694,10 +695,18 @@ async function printInvoiceAsPdf() {
 
         #invoice-print .total-paid-row,
         #invoice-print .due-amount-row,
-        #invoice-print .inv-panel,
-        #invoice-print .inv-head {
+        #invoice-print .inv-head,
+        #invoice-print .inv-two,
+        #invoice-print .description-panel,
+        #invoice-print .words-panel {
           break-inside: avoid !important;
           page-break-inside: avoid !important;
+        }
+
+        /* Let ornament sections flow across pages while each table row stays intact. */
+        #invoice-print .ornament-panel {
+          break-inside: auto !important;
+          page-break-inside: auto !important;
         }
 
         * {
