@@ -4,7 +4,7 @@ import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
 import "./JewelleryCatalogAdminPage.css";
 
-const API = import.meta.env.VITE_API_BASE_URL || "/api";
+const API = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 const PAGE_SIZE = 30;
 const assetUrl = (path) => path && path.startsWith("/api/") ? `${API}${path.slice(4)}` : path;
 const blankForm = (categoryId = "") => ({
