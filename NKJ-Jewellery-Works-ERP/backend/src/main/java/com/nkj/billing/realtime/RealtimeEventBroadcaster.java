@@ -22,6 +22,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class RealtimeEventBroadcaster {
 
     private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<SseEmitter> publicRateEmitters = new CopyOnWriteArrayList<>();
 
     public SseEmitter subscribe() {
         SseEmitter emitter = new SseEmitter(0L);
@@ -38,6 +39,29 @@ public class RealtimeEventBroadcaster {
                     .data(Map.of("connected", true, "connectedAt", Instant.now().toString())));
         } catch (IOException | IllegalStateException error) {
             emitters.remove(emitter);
+            emitter.completeWithError(error);
+        }
+        return emitter;
+    }
+
+    /**
+     * Public clients receive only the publicly displayed metal-rate topic.
+     * No owner, invoice, customer, payroll or transaction event is exposed.
+     */
+    public SseEmitter subscribePublicRates() {
+        SseEmitter emitter = new SseEmitter(0L);
+        emitter.onCompletion(() -> publicRateEmitters.remove(emitter));
+        emitter.onTimeout(() -> {
+            publicRateEmitters.remove(emitter);
+            emitter.complete();
+        });
+        emitter.onError(error -> publicRateEmitters.remove(emitter));
+        publicRateEmitters.add(emitter);
+        try {
+            emitter.send(SseEmitter.event().name("connected")
+                    .data(Map.of("connected", true, "connectedAt", Instant.now().toString())));
+        } catch (IOException | IllegalStateException error) {
+            publicRateEmitters.remove(emitter);
             emitter.completeWithError(error);
         }
         return emitter;
@@ -63,11 +87,24 @@ public class RealtimeEventBroadcaster {
                 .name("data-changed")
                 .data(payload);
 
-        for (SseEmitter emitter : emitters) {
+        sendTo(emitters, event);
+
+        if (topics.contains("rates")) {
+            Map<String, Object> publicPayload = new LinkedHashMap<>(payload);
+            publicPayload.put("topics", List.of("rates"));
+            sendTo(publicRateEmitters, SseEmitter.event()
+                    .id(eventId)
+                    .name("data-changed")
+                    .data(publicPayload));
+        }
+    }
+
+    private void sendTo(CopyOnWriteArrayList<SseEmitter> targets, SseEmitter.SseEventBuilder event) {
+        for (SseEmitter emitter : targets) {
             try {
                 emitter.send(event);
             } catch (IOException | IllegalStateException error) {
-                emitters.remove(emitter);
+                targets.remove(emitter);
                 emitter.completeWithError(error);
             }
         }
@@ -78,14 +115,9 @@ public class RealtimeEventBroadcaster {
      */
     @Scheduled(fixedRate = 25000)
     public void heartbeat() {
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name("heartbeat").data("keep-alive"));
-            } catch (IOException | IllegalStateException error) {
-                emitters.remove(emitter);
-                emitter.completeWithError(error);
-            }
-        }
+        SseEmitter.SseEventBuilder heartbeat = SseEmitter.event().name("heartbeat").data("keep-alive");
+        sendTo(emitters, heartbeat);
+        sendTo(publicRateEmitters, heartbeat);
     }
 
     private List<String> topicsFor(String path) {
