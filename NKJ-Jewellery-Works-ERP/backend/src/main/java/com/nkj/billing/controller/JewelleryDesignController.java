@@ -5,6 +5,8 @@ import com.nkj.billing.service.JewelleryDesignImageStorageService.StoredImage;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,6 +28,7 @@ public class JewelleryDesignController {
     }
 
     @GetMapping("/api/designs/categories")
+    @Cacheable("jewelleryPublicCategories")
     public List<Map<String, Object>> publicCategories() {
         return categoryList(false);
     }
@@ -48,6 +51,7 @@ public class JewelleryDesignController {
     }
 
     @GetMapping("/api/admin/designs/categories")
+    @Cacheable("jewelleryAdminCategories")
     public List<Map<String, Object>> adminCategories() {
         return categoryList(true);
     }
@@ -69,6 +73,7 @@ public class JewelleryDesignController {
     }
 
     @PostMapping("/api/admin/designs")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> createDesign(@RequestBody Map<String, Object> body) {
         long categoryId = number(body.get("categoryId"), "Choose a subcategory.");
@@ -104,6 +109,7 @@ public class JewelleryDesignController {
     }
 
     @PutMapping("/api/admin/designs/{id}")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> updateDesign(@PathVariable long id, @RequestBody Map<String, Object> body) {
         String existingMetal = jdbc.queryForObject(
@@ -143,6 +149,7 @@ public class JewelleryDesignController {
     }
 
     @DeleteMapping("/api/admin/designs/{id}")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> deleteDesign(@PathVariable long id) {
         List<String> storedUrls = jdbc.query(
@@ -157,6 +164,7 @@ public class JewelleryDesignController {
     }
 
     @PostMapping(value = "/api/admin/designs/{id}/images", consumes = "multipart/form-data")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> uploadImages(
             @PathVariable long id,
@@ -197,6 +205,7 @@ public class JewelleryDesignController {
     }
 
     @DeleteMapping("/api/admin/designs/{id}/images/{imageId}")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> deleteImage(@PathVariable long id, @PathVariable long imageId) {
         List<String> urls = jdbc.query(
@@ -250,12 +259,10 @@ public class JewelleryDesignController {
             parameters.add(subcategory.trim().toLowerCase(Locale.ROOT));
         }
         if (search != null && !search.isBlank()) {
-            filter.append(" AND (d.design_name ILIKE ? OR d.design_code ILIKE ? OR d.keywords ILIKE ? OR d.style_label ILIKE ?)");
+            filter.append(" AND (d.design_code ILIKE ? OR to_tsvector('simple', d.design_name || ' ' || d.keywords || ' ' || d.style_label) @@ plainto_tsquery('simple', ?))");
             String q = "%" + search.trim() + "%";
             parameters.add(q);
-            parameters.add(q);
-            parameters.add(q);
-            parameters.add(q);
+            parameters.add(search.trim());
         }
 
         String categoryJoin = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id = d.category_id";
