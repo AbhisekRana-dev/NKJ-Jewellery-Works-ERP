@@ -63,6 +63,7 @@ const ownerNavigation = [
     ["repairs", "Repair Orders", "/repairs", Wrench, "Repair"],
   ]},
   { title: "SYSTEM", items: [
+    ["design-catalog", "Jewellery Catalog Management", "/design-catalog", Gem, "Designs"],
     ["database", "Database Management", "/database", Database, "DB"],
     ["audit-logs", "Audit Logs", "/audit-logs", ScrollText, "Audit"],
     ["profile", "Owner Profile", "/profile", User, "Profile"],
