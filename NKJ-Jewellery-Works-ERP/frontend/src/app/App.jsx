@@ -19,6 +19,7 @@ import InventoryPage from "../features/inventory/InventoryPage";
 import KarigarsPage from "../features/karigars/KarigarsPage";
 import CalculatorPage from "../features/calculator/CalculatorPage";
 import JewelleryDesignsPage from "../features/designs/JewelleryDesignsPage";
+import JewelleryCatalogAdminPage from "../features/designs/JewelleryCatalogAdminPage";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/reports/sales" element={<OwnerOnly><ReportsDashboard type="sales" /></OwnerOnly>} />
           <Route path="/reports/profit" element={<OwnerOnly><ReportsDashboard type="profit" /></OwnerOnly>} />
           <Route path="/reports/expenses" element={<OwnerOnly><ReportsDashboard type="expenses" /></OwnerOnly>} />
+          <Route path="/design-catalog" element={<OwnerOnly><JewelleryCatalogAdminPage /></OwnerOnly>} />
           <Route path="/database" element={<OwnerOnly><DatabaseStatus /></OwnerOnly>} />
           <Route path="/audit-logs" element={<OwnerOnly><AuditLogsPage /></OwnerOnly>} />
 
