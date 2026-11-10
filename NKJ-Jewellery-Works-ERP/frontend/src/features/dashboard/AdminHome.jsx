@@ -2,10 +2,11 @@ import "./AdminHome.css";
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  CalendarCheck, ChartNoAxesColumn, Eye, Gem, Package, RefreshCw,
+  CalendarCheck, ChartNoAxesColumn, Eye, Gem, Package,
   Receipt, ShieldCheck, Users, Wallet, UserMinus, Banknote, TrendingUp, Truck
 } from "lucide-react";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { Page, Stat } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
@@ -35,11 +36,12 @@ export function AdminHome() {
     finally { setLoading(false); }
   }, [isAdmin]);
   useEffect(() => { load(); }, [load]);
+  useRealtimeRefresh(load, ["dashboard", "invoices", "transactions", "cashbook", "inventory", "purchases", "expenses", "attendance", "salary", "customers", "bookings", "installments", "staff"]);
   if (!isAdmin) return null;
   const recent = (stats.recent || []).slice(0, 8);
   return <Page active="dashboard">
     <section className="nkj-dashboard nkj-owner-dashboard">
-      <div className="nkj-dashboard-heading"><div><span className="eyebrow">OWNER WORKSPACE</span><h2>Business Dashboard</h2><p>Live operational overview for Nandikishor Jewellery Works.</p></div><button className="nkj-dashboard-refresh" onClick={load} disabled={loading}><RefreshCw size={16} className={loading?"nkj-spin":""}/>{loading?"Refreshing":"Refresh data"}</button></div>
+      <div className="nkj-dashboard-heading"><div><span className="eyebrow">OWNER WORKSPACE</span><h2>Business Dashboard</h2><p>Live operational overview for Nandikishor Jewellery Works.</p></div></div>
       {error&&<p className="error">{error}</p>}
       <div className="nkj-stat-grid nkj-owner-kpis">
         <StatLink to="/reports/sales" icon={<Receipt/>} label="Today's Sales" value={loading?"…":"₹ " + money(stats.todaySales)} sub="Invoices and receipts received today"/>
