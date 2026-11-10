@@ -98,6 +98,13 @@ export function Nav({ active = "home" }) {
     });
   };
 
+  // A deliberate double-click on a page link collapses the sidebar.
+  // Single-click navigation remains unchanged.
+  const handleSidebarNavigationDoubleClick = () => {
+    persistSidebarState(true);
+    setSidebarCollapsed(true);
+  };
+
   useLayoutEffect(() => {
     const body = document.body;
     body.classList.toggle("nkj-owner-layout", ownerWorkspace);
@@ -174,6 +181,7 @@ export function Nav({ active = "home" }) {
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
                       onClick={handleSidebarNavigation}
+                      onDoubleClick={handleSidebarNavigationDoubleClick}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span>{label}</span>
