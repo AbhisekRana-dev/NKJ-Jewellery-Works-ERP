@@ -54,8 +54,8 @@ public class JewelleryDesignImageStorageService {
         if (source == null || source.getWidth() < 1 || source.getHeight() < 1) {
             throw new IllegalArgumentException("The selected file is not a valid JPG or PNG image.");
         }
-        if (source.getWidth() > 12000 || source.getHeight() > 12000) {
-            throw new IllegalArgumentException("Image dimensions must not exceed 12000 × 12000 pixels.");
+        if (source.getWidth() > 8000 || source.getHeight() > 8000 || (long) source.getWidth() * source.getHeight() > 24000000L) {
+            throw new IllegalArgumentException("Image dimensions must not exceed 8000 × 8000 pixels or 24 megapixels.");
         }
 
         String fileId = UUID.randomUUID().toString();
