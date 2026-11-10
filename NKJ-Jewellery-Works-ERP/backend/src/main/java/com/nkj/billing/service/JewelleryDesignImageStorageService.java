@@ -32,6 +32,14 @@ public class JewelleryDesignImageStorageService {
     public JewelleryDesignImageStorageService(
             @Value("${nkj.designs.upload-dir:uploads/designs}") String uploadDirectory) {
         this.uploadRoot = Path.of(uploadDirectory).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(this.uploadRoot);
+            if (!Files.isDirectory(this.uploadRoot) || !Files.isWritable(this.uploadRoot)) {
+                throw new IllegalStateException("The jewellery image storage directory is not writable: " + this.uploadRoot);
+            }
+        } catch (IOException error) {
+            throw new IllegalStateException("Could not initialize the persistent jewellery image storage directory: " + this.uploadRoot, error);
+        }
     }
 
     public StoredImage store(long designId, MultipartFile file) throws IOException {
@@ -43,36 +51,43 @@ public class JewelleryDesignImageStorageService {
         }
 
         String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
-        String extension;
-        if ("image/jpeg".equals(contentType) || "image/jpg".equals(contentType)) {
-            extension = ".jpg";
-        } else if ("image/png".equals(contentType)) {
-            extension = ".png";
-        } else {
-            throw new IllegalArgumentException("Only JPG, JPEG and PNG image files are supported.");
-        }
-
         byte[] bytes = file.getBytes();
         BufferedImage source;
+        String extension;
         try (ByteArrayInputStream input = new ByteArrayInputStream(bytes);
              ImageInputStream imageInput = ImageIO.createImageInputStream(input)) {
             if (imageInput == null) {
-                throw new IllegalArgumentException("The selected file is not a valid JPG or PNG image.");
+                throw new IllegalArgumentException("The selected file is not a supported image.");
             }
             Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInput);
             if (!readers.hasNext()) {
-                throw new IllegalArgumentException("The selected file is not a valid JPG or PNG image.");
+                throw new IllegalArgumentException("The selected file is not a valid JPG, PNG or WebP image.");
             }
             ImageReader reader = readers.next();
             try {
                 reader.setInput(imageInput, true, true);
                 String imageFormat = reader.getFormatName().toLowerCase(Locale.ROOT);
-                if (("jpg".equals(extension.substring(1)) || "jpeg".equals(extension.substring(1)))
-                        && !("jpeg".equals(imageFormat) || "jpg".equals(imageFormat))) {
-                    throw new IllegalArgumentException("The file content does not match its JPG extension.");
+                String expectedMime;
+                extension = switch (imageFormat) {
+                    case "jpg", "jpeg" -> { expectedMime = "image/jpeg"; yield ".jpg"; }
+                    case "png" -> { expectedMime = "image/png"; yield ".png"; }
+                    case "webp" -> { expectedMime = "image/webp"; yield ".webp"; }
+                    default -> throw new IllegalArgumentException("Only JPG, JPEG, PNG and WebP image files are supported.");
+                };
+                if (!contentType.isBlank()
+                        && !"application/octet-stream".equals(contentType)
+                        && !expectedMime.equals(contentType)
+                        && !("image/jpg".equals(contentType) && "image/jpeg".equals(expectedMime))) {
+                    throw new IllegalArgumentException("The uploaded image content does not match its reported file type.");
                 }
-                if ("png".equals(extension.substring(1)) && !"png".equals(imageFormat)) {
-                    throw new IllegalArgumentException("The file content does not match its PNG extension.");
+                String originalName = file.getOriginalFilename();
+                if (originalName != null && originalName.lastIndexOf('.') >= 0) {
+                    String suppliedExtension = originalName.substring(originalName.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
+                    String normalizedExtension = "jpeg".equals(suppliedExtension) ? "jpg" : suppliedExtension;
+                    if (List.of("jpg", "png", "webp").contains(normalizedExtension)
+                            && !extension.substring(1).equals(normalizedExtension)) {
+                        throw new IllegalArgumentException("The selected file extension does not match its image content.");
+                    }
                 }
                 int width = reader.getWidth(0);
                 int height = reader.getHeight(0);
@@ -85,7 +100,7 @@ public class JewelleryDesignImageStorageService {
             }
         }
         if (source == null) {
-            throw new IllegalArgumentException("The selected file is not a valid JPG or PNG image.");
+            throw new IllegalArgumentException("The selected file is not a valid JPG, PNG or WebP image.");
         }
 
         String fileId = UUID.randomUUID().toString();
