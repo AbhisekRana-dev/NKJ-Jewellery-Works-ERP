@@ -12,12 +12,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor auth;
+    private final RealtimeMutationInterceptor realtimeMutationInterceptor;
     private final String[] allowedOrigins;
 
     public WebConfig(
             AuthInterceptor auth,
+            RealtimeMutationInterceptor realtimeMutationInterceptor,
             @Value("${nkj.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}") String allowedOrigins) {
         this.auth = auth;
+        this.realtimeMutationInterceptor = realtimeMutationInterceptor;
         this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
@@ -36,6 +39,8 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(auth)
-                .addPathPatterns("/api/admin/**", "/api/invoices", "/api/invoices/**");
+                .addPathPatterns("/api/admin/**", "/api/invoices", "/api/invoices/**", "/api/events");
+        registry.addInterceptor(realtimeMutationInterceptor)
+                .addPathPatterns("/api/**");
     }
 }
