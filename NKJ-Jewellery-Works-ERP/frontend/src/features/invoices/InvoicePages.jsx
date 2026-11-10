@@ -772,6 +772,9 @@ export function InvoicePage() {
       gstAmount: tax,
       otherCharge: 0,
       grandTotal: grand,
+      // This invoice screen records a full-payment invoice (payment mode is selected above).
+      // The backend uses this amount to create the matching Incoming cash transaction.
+      paymentAmount: grand,
     };
   }
 
