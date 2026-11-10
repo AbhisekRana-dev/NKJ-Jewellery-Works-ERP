@@ -213,7 +213,7 @@ public class JewelleryDesignController {
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> deleteImage(@PathVariable long id, @PathVariable long imageId) {
-        List<String> urls = jdbc.query(
+        List<List<String>> urls = jdbc.query(
                 "SELECT original_url, thumbnail_url FROM public.jewellery_design_images WHERE id=? AND design_id=?",
                 (rs, rowNum) -> List.of(rs.getString(1), rs.getString(2)), imageId, id);
         if (urls.isEmpty()) {
