@@ -742,6 +742,11 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
   box-shadow: 0 4px 13px rgba(17, 0, 6, .22) !important;
 }
 
+.nkj-owner-nav a.active .nkj-owner-nav-full-label,
+.nkj-owner-nav a.active .nkj-owner-nav-short-label {
+  color: #650b25 !important;
+}
+
 .nkj-owner-nav a.active > svg:first-child,
 .nkj-owner-nav a.active .nkj-owner-nav-arrow {
   color: #650b25 !important;
