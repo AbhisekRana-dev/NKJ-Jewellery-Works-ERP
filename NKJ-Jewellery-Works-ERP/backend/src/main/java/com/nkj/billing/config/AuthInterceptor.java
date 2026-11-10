@@ -54,6 +54,14 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (contextPath != null && !contextPath.isEmpty() && requestPath.startsWith(contextPath)) {
             requestPath = requestPath.substring(contextPath.length());
         }
+        if ("GET".equalsIgnoreCase(req.getMethod())
+                && ("/api/designs".equals(requestPath) || "/api/designs/categories".equals(requestPath)
+                    || requestPath.startsWith("/api/designs/"))) {
+            // The public jewellery gallery exposes active designs only.
+            // Management APIs remain under /api/admin/designs and require owner auth.
+            return true;
+        }
+
         if (("GET".equalsIgnoreCase(req.getMethod()) && "/api/invoices/date-support".equals(requestPath))
                 || ("POST".equalsIgnoreCase(req.getMethod()) &&
                 ("/api/invoices".equals(requestPath) || "/api/invoices/verify-pin".equals(requestPath) || "/api/invoices/consume-print-ticket".equals(requestPath)))) {
