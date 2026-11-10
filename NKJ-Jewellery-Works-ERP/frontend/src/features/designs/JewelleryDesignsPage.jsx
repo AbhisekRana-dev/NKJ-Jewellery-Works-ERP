@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 import "./JewelleryDesignsPage.css";
 
 const PAGE_SIZE = 24;
@@ -83,6 +84,14 @@ export default function JewelleryDesignsPage() {
   const [subcategory, setSubcategory] = useState("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("latest");
+  const [purity, setPurity] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [minWeight, setMinWeight] = useState("");
+  const [maxWeight, setMaxWeight] = useState("");
+  const [featuredItems, setFeaturedItems] = useState([]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [zoomed, setZoomed] = useState(false);
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -129,6 +138,11 @@ export default function JewelleryDesignsPage() {
       });
       if (subcategory) params.set("subcategory", subcategory);
       if (search.trim()) params.set("q", search.trim());
+      if (purity) params.set("purity", purity);
+      if (minPrice !== "") params.set("minPrice", minPrice);
+      if (maxPrice !== "") params.set("maxPrice", maxPrice);
+      if (minWeight !== "") params.set("minWeight", minWeight);
+      if (maxWeight !== "") params.set("maxWeight", maxWeight);
       const result = await request(`/designs?${params.toString()}`, { publicRequest: true });
       const nextItems = Array.isArray(result.items) ? result.items : [];
       setItems((current) => append ? [...current, ...nextItems] : nextItems);
@@ -143,12 +157,35 @@ export default function JewelleryDesignsPage() {
     } finally {
       setLoading(false);
     }
-  }, [metal, subcategory, search, sort]);
+  }, [metal, subcategory, search, sort, purity, minPrice, maxPrice, minWeight, maxWeight]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => loadDesigns(0, false), search.trim() ? 280 : 0);
     return () => window.clearTimeout(timer);
   }, [loadDesigns]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams({ metal, sort: "latest", page: "0", size: "6", featured: "true" });
+    request("/designs?" + params.toString(), { publicRequest: true })
+      .then((result) => { if (!cancelled) setFeaturedItems(Array.isArray(result.items) ? result.items : []); })
+      .catch(() => { if (!cancelled) setFeaturedItems([]); });
+    return () => { cancelled = true; };
+  }, [metal]);
+
+  const refreshCatalogue = useCallback(async () => {
+    const [categoryResult] = await Promise.all([
+      request("/designs/categories", { publicRequest: true }),
+      loadDesigns(0, false),
+    ]);
+    setCategories(Array.isArray(categoryResult) ? categoryResult : []);
+  }, [loadDesigns]);
+  useRealtimeRefresh(refreshCatalogue, ["designs"]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => { refreshCatalogue().catch(() => {}); }, 60000);
+    return () => window.clearInterval(timer);
+  }, [refreshCatalogue]);
 
   const selectMetal = (nextMetal) => {
     setMetal(nextMetal);
@@ -171,6 +208,8 @@ export default function JewelleryDesignsPage() {
 
   const openDesign = async (design) => {
     setSelected(design);
+    setActiveImageIndex(0);
+    setZoomed(false);
     setDetailLoading(true);
     try {
       const detail = await request(`/designs/${design.id}`, { publicRequest: true });
@@ -243,6 +282,24 @@ export default function JewelleryDesignsPage() {
           )}
         </section>
 
+        {featuredItems.length > 0 && (
+          <section className="nkj-designs-featured-section">
+            <div className="nkj-designs-section-heading">
+              <div><span>OWNER SELECTED</span><h2>Featured {currentMetal.label} Designs</h2></div>
+              <small>{featuredItems.length} featured</small>
+            </div>
+            <div className="nkj-designs-featured-grid">
+              {featuredItems.map((design) => (
+                <button type="button" className="nkj-designs-featured-card" key={design.id} onClick={() => openDesign(design)}>
+                  <DesignImage design={design} />
+                  <span><b>{design.designName}</b><small>{design.subcategoryName}</small></span>
+                  <Star size={14} fill="currentColor" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="nkj-designs-gallery-section">
           <div className="nkj-designs-gallery-heading">
             <div>
@@ -261,11 +318,24 @@ export default function JewelleryDesignsPage() {
                 <span>Sort by</span>
                 <select value={sort} onChange={(event) => setSort(event.target.value)}>
                   <option value="latest">Latest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="name">Name</option>
                   <option value="popular">Popularity</option>
                 </select>
                 <ChevronDown size={14} />
               </label>
             </div>
+          </div>
+
+          <div className="nkj-design-filter-row" aria-label="Filter jewellery designs">
+            <label>Purity<select value={purity} onChange={(event) => setPurity(event.target.value)}>
+              <option value="">All purities</option><option value="24K">24K</option><option value="22K">22K</option><option value="18K">18K</option><option value="14K">14K</option><option value="925">925 Silver</option><option value="999">999 Silver</option>
+            </select></label>
+            <label>Minimum price (₹)<input type="number" min="0" value={minPrice} onChange={(event) => setMinPrice(event.target.value)} placeholder="No minimum" /></label>
+            <label>Maximum price (₹)<input type="number" min="0" value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} placeholder="No maximum" /></label>
+            <label>Minimum weight (g)<input type="number" min="0" step="0.001" value={minWeight} onChange={(event) => setMinWeight(event.target.value)} placeholder="No minimum" /></label>
+            <label>Maximum weight (g)<input type="number" min="0" step="0.001" value={maxWeight} onChange={(event) => setMaxWeight(event.target.value)} placeholder="No maximum" /></label>
+            <button type="button" onClick={() => { setPurity(""); setMinPrice(""); setMaxPrice(""); setMinWeight(""); setMaxWeight(""); }}>Clear filters</button>
           </div>
 
           {error && <div className="nkj-designs-error" role="alert">{error}</div>}
@@ -295,6 +365,13 @@ export default function JewelleryDesignsPage() {
                       </div>
                       <h3>{design.designName}</h3>
                       <p>{design.metalType} <span>•</span> {design.styleLabel}</p>
+                      {(design.purity || design.weightGrams != null || design.priceInr != null) && (
+                        <p className="nkj-design-card-specs">
+                          {design.purity && <span>{design.purity}</span>}
+                          {design.weightGrams != null && <span>{Number(design.weightGrams).toLocaleString("en-IN")} g</span>}
+                          {design.priceInr != null && <span>₹{Number(design.priceInr).toLocaleString("en-IN")}</span>}
+                        </p>
+                      )}
                       <button type="button" onClick={() => openDesign(design)}>
                         View Design <ArrowUpRight size={15} />
                       </button>
@@ -330,21 +407,31 @@ export default function JewelleryDesignsPage() {
               <button type="button" className="nkj-design-modal-close" onClick={() => setSelected(null)} aria-label="Close design details">
                 <X size={19} />
               </button>
-              {selected.thumbnailUrl
-                ? <div className="nkj-design-modal-photo"><img src={assetUrl(selected.originalUrl || selected.thumbnailUrl)} alt={selected.designName} /></div>
+              {(selected.images?.[activeImageIndex]?.originalUrl || selected.images?.[activeImageIndex]?.thumbnailUrl || selected.thumbnailUrl || selected.originalUrl)
+                ? <div className={"nkj-design-modal-photo" + (zoomed ? " zoomed" : "")} onClick={() => setZoomed((value) => !value)} title="Click to zoom">
+                    <img src={assetUrl(selected.images?.[activeImageIndex]?.originalUrl || selected.images?.[activeImageIndex]?.thumbnailUrl || selected.originalUrl || selected.thumbnailUrl)} alt={selected.images?.[activeImageIndex]?.altText || selected.designName} />
+                    <small>{zoomed ? "Click image to zoom out" : "Click image to zoom"}</small>
+                  </div>
                 : <SampleArtwork design={selected} />}
               <div className="nkj-design-modal-content">
                 <span>{selected.designCode} • {selected.metalType} • {selected.subcategoryName}</span>
                 <h2 id="nkj-design-modal-title">{selected.designName}</h2>
                 <p>{selected.description}</p>
                 <dl>
-                  <div><dt>Style</dt><dd>{selected.styleLabel}</dd></div>
+                  <div><dt>Style</dt><dd>{selected.styleLabel || "—"}</dd></div>
+                  <div><dt>Purity</dt><dd>{selected.purity || "Not specified"}</dd></div>
+                  <div><dt>Weight</dt><dd>{selected.weightGrams != null ? Number(selected.weightGrams).toLocaleString("en-IN") + " g" : "Not specified"}</dd></div>
+                  <div><dt>Price</dt><dd>{selected.priceInr != null ? "₹" + Number(selected.priceInr).toLocaleString("en-IN") : "Contact shop"}</dd></div>
                   <div><dt>Images</dt><dd>{selected.images?.length || selected.imageCount || 0}</dd></div>
                   <div><dt>Catalogue status</dt><dd>{selected.isSample ? "Sample inspiration" : "Owner-uploaded shop design"}</dd></div>
                 </dl>
                 {selected.images?.length > 1 && (
                   <div className="nkj-design-modal-gallery">
-                    {selected.images.map((image) => <img key={image.id} src={assetUrl(image.thumbnailUrl)} alt={image.altText || selected.designName} loading="lazy" />)}
+                    {selected.images.map((image, index) => (
+                      <button type="button" key={image.id} className={activeImageIndex === index ? "active" : ""} onClick={() => { setActiveImageIndex(index); setZoomed(false); }} aria-label={"View image " + (index + 1)}>
+                        <img src={assetUrl(image.thumbnailUrl)} alt={image.altText || selected.designName} loading="lazy" />
+                      </button>
+                    ))}
                   </div>
                 )}
                 <small>{detailLoading ? "Loading complete design details…" : selected.isSample ? "Inspiration entry only. This is not confirmed stock or a product available for sale." : "Shop photograph uploaded by the owner. Confirm current availability and final price with the shop."}</small>

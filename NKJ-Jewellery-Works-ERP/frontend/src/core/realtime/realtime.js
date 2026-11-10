@@ -172,7 +172,7 @@ export function connectRealtimeStream(publicOnly = false) {
 
       retryDelay = 1000;
       if (connectedOnce) {
-        emitRealtime({ topics: publicOnly ? ["rates"] : ["*"], reason: "reconnected", originClientId: "" });
+        emitRealtime({ topics: publicOnly ? ["rates", "designs"] : ["*"], reason: "reconnected", originClientId: "" });
       }
       connectedOnce = true;
 
@@ -216,7 +216,7 @@ export function connectRealtimeStream(publicOnly = false) {
 
   const onVisibilityChange = () => {
     if (document.visibilityState === "visible") {
-      emitRealtime({ topics: publicOnly ? ["rates"] : ["*"], reason: "tab-visible", originClientId: "" });
+      emitRealtime({ topics: publicOnly ? ["rates", "designs"] : ["*"], reason: "tab-visible", originClientId: "" });
     }
   };
 

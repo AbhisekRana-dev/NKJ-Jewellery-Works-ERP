@@ -654,3 +654,34 @@
     font-size: 11px !important;
   }
 }
+
+/* Live catalogue filters, owner picks and image inspection */
+.nkj-designs-featured-section { margin: 0 0 22px; }
+.nkj-designs-featured-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.nkj-designs-featured-card { display: grid; grid-template-columns: 82px minmax(0,1fr) auto; align-items: center; gap: 11px; min-width: 0; padding: 8px; border: 1px solid #eadccf; border-radius: 11px; background: #fff; color: #8a6627; text-align: left; cursor: pointer; transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
+.nkj-designs-featured-card:hover { transform: translateY(-2px); border-color: #c79a45; box-shadow: 0 8px 18px rgba(62, 20, 33, .08); }
+.nkj-designs-featured-card > .nkj-design-art, .nkj-designs-featured-card .nkj-design-photo { width: 82px; height: 74px; min-height: 74px; overflow: hidden; border-radius: 7px; }
+.nkj-designs-featured-card .nkj-design-art-center { width: 48px; height: 48px; }
+.nkj-designs-featured-card .nkj-design-art-center svg { width: 32px; height: 32px; }
+.nkj-designs-featured-card .nkj-design-photo img { width: 100%; height: 100%; object-fit: cover; }
+.nkj-designs-featured-card > span { display: grid; gap: 5px; min-width: 0; }
+.nkj-designs-featured-card b { overflow: hidden; color: #67102b; font: 700 12px Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+.nkj-designs-featured-card small { color: #8b7d7d; font-size: 9px; }
+.nkj-designs-featured-card > svg { color: #c2953e; }
+.nkj-design-filter-row { display: grid; grid-template-columns: repeat(5, minmax(100px, 1fr)) auto; align-items: end; gap: 9px; margin: 0 0 16px; padding: 12px; border: 1px solid #eadedb; border-radius: 11px; background: #fffdf9; }
+.nkj-design-filter-row label { display: grid; gap: 5px; min-width: 0; color: #7c3349; font-size: 9px; font-weight: 800; }
+.nkj-design-filter-row input, .nkj-design-filter-row select { width: 100%; min-width: 0; height: 35px; padding: 6px 8px; border: 1px solid #e4d4d2; border-radius: 7px; background: #fff; color: #503240; font-size: 10px; outline: 0; }
+.nkj-design-filter-row input:focus, .nkj-design-filter-row select:focus { border-color: #c99a37; box-shadow: 0 0 0 3px rgba(201,154,55,.11); }
+.nkj-design-filter-row > button { min-height: 35px; padding: 6px 10px; border: 1px solid #e6d5bd; border-radius: 7px; background: #fff8e9; color: #78102e; font-size: 9px; font-weight: 800; cursor: pointer; }
+.nkj-design-card-specs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px!important; color: #7c5b26!important; font-weight: 750; }
+.nkj-design-card-specs span { padding: 3px 5px; border-radius: 5px; background: #fff7e5; color: #775521!important; font-size: 9px; }
+.nkj-design-modal-photo { position: relative; overflow: hidden; min-height: 220px; border-radius: 11px; background: #f8f1e6; cursor: zoom-in; }
+.nkj-design-modal-photo img { display: block; width: 100%; height: 100%; min-height: 220px; max-height: 420px; object-fit: contain; transition: transform .2s ease; }
+.nkj-design-modal-photo.zoomed { cursor: zoom-out; }
+.nkj-design-modal-photo.zoomed img { transform: scale(1.8); }
+.nkj-design-modal-photo > small { position: absolute; right: 8px; bottom: 8px; padding: 5px 7px; border-radius: 5px; background: rgba(49,23,31,.72); color: #fff; font-size: 8px; }
+.nkj-design-modal-gallery button { flex: 0 0 54px; width: 54px; height: 54px; padding: 2px; border: 1px solid #e5d6cf; border-radius: 7px; background: #fff; cursor: pointer; }
+.nkj-design-modal-gallery button.active { border: 2px solid #b88b35; box-shadow: 0 0 0 2px rgba(184,139,53,.13); }
+.nkj-design-modal-gallery button img { width: 100%; height: 100%; object-fit: cover; border: 0; }
+@media (max-width: 1000px) { .nkj-design-filter-row { grid-template-columns: repeat(3, minmax(100px, 1fr)); } .nkj-designs-featured-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 650px) { .nkj-design-filter-row { grid-template-columns: repeat(2, minmax(0,1fr)); } .nkj-design-filter-row > button { grid-column: 1 / -1; } .nkj-designs-featured-grid { grid-template-columns: 1fr; } .nkj-designs-featured-card { grid-template-columns: 70px minmax(0,1fr) auto; } .nkj-designs-featured-card > .nkj-design-art, .nkj-designs-featured-card .nkj-design-photo { width: 70px; } }
