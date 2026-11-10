@@ -112,6 +112,7 @@ public class JewelleryDesignController {
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> updateDesign(@PathVariable long id, @RequestBody Map<String, Object> body) {
+        ensureDesignExists(id);
         String existingMetal = jdbc.queryForObject(
                 "SELECT c.metal_type FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id=d.category_id WHERE d.id=?",
                 String.class, id);
@@ -153,8 +154,12 @@ public class JewelleryDesignController {
     @Transactional
     public Map<String, Object> deleteDesign(@PathVariable long id) {
         List<String> storedUrls = jdbc.query(
-                "SELECT original_url FROM public.jewellery_design_images WHERE design_id=?",
-                (rs, rowNum) -> rs.getString(1), id);
+                """
+                SELECT original_url FROM public.jewellery_design_images WHERE design_id=?
+                UNION ALL
+                SELECT thumbnail_url FROM public.jewellery_design_images WHERE design_id=?
+                """,
+                (rs, rowNum) -> rs.getString(1), id, id);
         int deleted = jdbc.update("DELETE FROM public.jewellery_designs WHERE id=?", id);
         if (deleted == 0) {
             throw new IllegalArgumentException("Design not found.");
