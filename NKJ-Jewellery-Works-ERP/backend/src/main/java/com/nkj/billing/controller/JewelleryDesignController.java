@@ -193,9 +193,9 @@ public class JewelleryDesignController {
                 createdFiles.add(stored.thumbnailUrl());
                 jdbc.update("""
                         INSERT INTO public.jewellery_design_images
-                            (design_id, original_url, thumbnail_url, alt_text, display_order, created_at)
-                        VALUES (?, ?, ?, ?, ?, NOW())
-                        """, id, stored.originalUrl(), stored.thumbnailUrl(), stored.fileName(), nextOrder++);
+                            (design_id, original_url, thumbnail_url, alt_text, content_sha256, display_order, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, NOW())
+                        """, id, stored.originalUrl(), stored.thumbnailUrl(), stored.fileName(), stored.sha256(), nextOrder++);
             }
             jdbc.update("""
                     UPDATE public.jewellery_designs
