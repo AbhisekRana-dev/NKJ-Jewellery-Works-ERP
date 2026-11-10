@@ -189,15 +189,7 @@ export default function JewelleryDesignsPage() {
           <div className="nkj-designs-hero-copy">
             <span className="nkj-designs-eyebrow"><Sparkles size={14} /> NKJ DESIGN COLLECTION</span>
             <h1>Jewellery Designs</h1>
-            <p>Explore traditional, bridal and everyday jewellery design inspirations from Nandikishor Jewellery Works.</p>
-            <div className="nkj-designs-hero-note">
-              <Gem size={16} />
-              <span>77 approved subcategories · 25 distinct sample inspirations per subcategory. Owner-uploaded shop photographs are clearly identified.</span>
-            </div>
-          </div>
-          <div className="nkj-designs-hero-mark" aria-hidden="true">
-            <div className="nkj-designs-hero-ring"><Gem size={62} strokeWidth={1.1} /></div>
-            <span>NKJ</span>
+            <p>Discover elegant gold, silver and diamond designs for weddings, celebrations and everyday wear.</p>
           </div>
         </section>
 
