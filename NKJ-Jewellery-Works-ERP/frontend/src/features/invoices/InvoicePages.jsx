@@ -484,9 +484,11 @@ async function printInvoiceAsPdf() {
     throw new Error("The browser could not prepare the invoice print document.");
   }
 
+  let cleanupTimer = null;
   const cleanup = () => {
     window.removeEventListener("afterprint", cleanup);
     printWindow.removeEventListener("afterprint", cleanup);
+    if (cleanupTimer !== null) window.clearTimeout(cleanupTimer);
     frame.remove();
   };
 
@@ -526,6 +528,33 @@ async function printInvoiceAsPdf() {
 
     const invoiceClone = source.cloneNode(true);
     printDocument.body.appendChild(invoiceClone);
+
+    const invoiceNumber = source.querySelector(".inv-meta span strong")?.textContent?.trim() || "Invoice";
+    const itemTables = Array.from(invoiceClone.querySelectorAll(".items-table"));
+    const itemRowCount = itemTables.reduce(
+      (total, table) => total + table.querySelectorAll("tbody tr").length,
+      0,
+    );
+
+    // Repeated table headers identify the invoice on every printed page.
+    itemTables.forEach((table) => {
+      const header = table.tHead;
+      if (!header) return;
+      const columnCount = header.querySelectorAll("tr:last-child th").length || 1;
+      const continuationRow = printDocument.createElement("tr");
+      continuationRow.className = "nkj-pdf-repeat-header";
+      const continuationCell = printDocument.createElement("th");
+      continuationCell.colSpan = columnCount;
+      continuationCell.textContent = `INVOICE ${invoiceNumber}  •  ITEM DETAILS`;
+      continuationRow.appendChild(continuationCell);
+      header.insertBefore(continuationRow, header.firstChild);
+    });
+
+    // Very long item lists use a continuous vertical flow so the table can
+    // paginate naturally instead of forcing a tall CSS grid onto one sheet.
+    if (itemRowCount > 8) {
+      invoiceClone.classList.add("nkj-pdf-long-invoice");
+    }
 
     // cloneNode does not copy current DOM properties for form controls.
     const originalControls = source.querySelectorAll("input, textarea, select");
@@ -618,9 +647,44 @@ async function printInvoiceAsPdf() {
           display: table-header-group !important;
         }
 
+        #invoice-print .items-table tbody {
+          break-inside: auto !important;
+          page-break-inside: auto !important;
+        }
+
         #invoice-print .items-table tr {
           break-inside: avoid !important;
           page-break-inside: avoid !important;
+        }
+
+        #invoice-print .ornament-panel {
+          break-inside: auto !important;
+          page-break-inside: auto !important;
+        }
+
+        #invoice-print .nkj-pdf-repeat-header th {
+          padding: 0.7mm 1mm !important;
+          background: #fff7e8 !important;
+          color: #7a1029 !important;
+          font: 700 7pt/1.1 Georgia, "Times New Roman", serif !important;
+          text-align: left !important;
+          letter-spacing: 0.2px !important;
+        }
+
+        #invoice-print.nkj-pdf-long-invoice .inv-main {
+          display: block !important;
+        }
+
+        #invoice-print.nkj-pdf-long-invoice .inv-left {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+
+        #invoice-print.nkj-pdf-long-invoice .totals {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          margin-top: 2mm !important;
         }
 
         #invoice-print img {
@@ -662,7 +726,7 @@ async function printInvoiceAsPdf() {
 
     window.addEventListener("afterprint", cleanup, { once: true });
     printWindow.addEventListener("afterprint", cleanup, { once: true });
-    window.setTimeout(cleanup, 5 * 60 * 1000);
+    cleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
     printWindow.focus();
     printWindow.print();
   } catch (error) {
