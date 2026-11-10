@@ -8,6 +8,8 @@ import { request } from "../../core/api/client";
 import "./JewelleryDesignsPage.css";
 
 const PAGE_SIZE = 24;
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\\/$/, "");
+const assetUrl = (path) => path && path.startsWith("/api/") ? `${API_BASE}${path.slice(4)}` : path;
 const METALS = [
   { id: "GOLD", label: "Gold", description: "Traditional and contemporary gold designs", tone: "gold", mark: "Au" },
   { id: "SILVER", label: "Silver", description: "Classic silver and handcrafted collections", tone: "silver", mark: "Ag" },
@@ -67,7 +69,7 @@ function DesignImage({ design }) {
   if (design.thumbnailUrl) {
     return (
       <div className="nkj-design-photo">
-        <img src={design.thumbnailUrl} alt={design.designName} loading="lazy" />
+        <img src={assetUrl(design.thumbnailUrl)} alt={design.designName} loading="lazy" />
         {!design.isSample && <span className="nkj-design-photo-label">SHOP PHOTO</span>}
       </div>
     );
@@ -346,7 +348,7 @@ export default function JewelleryDesignsPage() {
                 <X size={19} />
               </button>
               {selected.thumbnailUrl
-                ? <div className="nkj-design-modal-photo"><img src={selected.originalUrl || selected.thumbnailUrl} alt={selected.designName} /></div>
+                ? <div className="nkj-design-modal-photo"><img src={assetUrl(selected.originalUrl || selected.thumbnailUrl)} alt={selected.designName} /></div>
                 : <SampleArtwork design={selected} />}
               <div className="nkj-design-modal-content">
                 <span>{selected.designCode} • {selected.metalType} • {selected.subcategoryName}</span>
@@ -359,7 +361,7 @@ export default function JewelleryDesignsPage() {
                 </dl>
                 {selected.images?.length > 1 && (
                   <div className="nkj-design-modal-gallery">
-                    {selected.images.map((image) => <img key={image.id} src={image.thumbnailUrl} alt={image.altText || selected.designName} loading="lazy" />)}
+                    {selected.images.map((image) => <img key={image.id} src={assetUrl(image.thumbnailUrl)} alt={image.altText || selected.designName} loading="lazy" />)}
                   </div>
                 )}
                 <small>{detailLoading ? "Loading complete design details…" : selected.isSample ? "Inspiration entry only. This is not confirmed stock or a product available for sale." : "Shop photograph uploaded by the owner. Confirm current availability and final price with the shop."}</small>
