@@ -55,7 +55,29 @@ export function useRealtimeRefresh(load, topics = ["*"]) {
 
   useEffect(() => {
     let timer = null;
+    let refreshInFlight = false;
+    let refreshPending = false;
     const acceptedTopics = topicKey.split("|").filter(Boolean);
+
+    const runRefresh = async () => {
+      if (refreshInFlight) {
+        refreshPending = true;
+        return;
+      }
+
+      refreshInFlight = true;
+      try {
+        do {
+          refreshPending = false;
+          await loadRef.current();
+        } while (refreshPending);
+      } catch (error) {
+        console.error("ERP real-time data refresh failed:", error);
+      } finally {
+        refreshInFlight = false;
+      }
+    };
+
     const unsubscribe = subscribeRealtime((event) => {
       if (event?.originClientId && event.originClientId === CLIENT_ID) return;
 
@@ -70,9 +92,7 @@ export function useRealtimeRefresh(load, topics = ["*"]) {
 
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        Promise.resolve(loadRef.current()).catch((error) => {
-          console.error("ERP real-time data refresh failed:", error);
-        });
+        runRefresh();
       }, 160);
     });
 
