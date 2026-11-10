@@ -106,7 +106,7 @@ export default function InstallmentManagementPage() {
   const [tab, setTab] = useState("new");
   const [eligibleInvoices, setEligibleInvoices] = useState([]);
   const [invoiceSearch, setInvoiceSearch] = useState("");
-  const [bookings, setBookings] = useState([]);
+  const [installmentAccounts, setInstallmentAccounts] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +119,9 @@ export default function InstallmentManagementPage() {
   const [planIdempotencyKey, setPlanIdempotencyKey] = useState(newIdempotencyKey);
   const [receiptForm, setReceiptForm] = useState(emptyReceipt);
   const [paymentIdempotencyKey, setPaymentIdempotencyKey] = useState(newIdempotencyKey);
+  const [receiptConfirmationOpen, setReceiptConfirmationOpen] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [receiptConfirmationError, setReceiptConfirmationError] = useState("");
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [accountDetails, setAccountDetails] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -128,7 +131,7 @@ export default function InstallmentManagementPage() {
     setError("");
     const endpoints = [
       ["/admin/installments/eligible-invoices", setEligibleInvoices],
-      ["/admin/installments/accounts", setBookings],
+      ["/admin/installments/accounts", setInstallmentAccounts],
       ["/admin/modules/installments", setSchedules],
       ["/admin/modules/installment-payments", setReceipts],
     ];
@@ -181,11 +184,10 @@ export default function InstallmentManagementPage() {
     });
   }, [selectedInvoice, plan]);
 
-  const accounts = useMemo(() => bookings
-    .filter((booking) => booking.isInstallmentPlan)
+  const accounts = useMemo(() => installmentAccounts
     .map((booking) => {
       const rows = schedules
-        .filter((schedule) => Number(schedule.bookingId) === Number(booking.id))
+        .filter((schedule) => Number(schedule.accountId) === Number(booking.id))
         .sort((a, b) => Number(a.installmentNo) - Number(b.installmentNo));
       const total = Number(booking.originalInvoiceAmount ?? (Number(booking.estimatedValue || 0) + Number(booking.makingEstimate || 0)));
       const outstanding = Math.max(0, Number(
@@ -202,11 +204,11 @@ export default function InstallmentManagementPage() {
         count: Number(booking.totalInstallments || rows.length),
       };
     })
-    .sort((a, b) => String(b.bookingDate || "").localeCompare(String(a.bookingDate || ""))),
-  [bookings, schedules]);
+    .sort((a, b) => String(b.planCreatedDate || "").localeCompare(String(a.planCreatedDate || ""))),
+  [installmentAccounts, schedules]);
 
   const filteredAccounts = accounts.filter((account) =>
-    `${account.invoiceNo || account.bookingNo || ""} ${account.customerName || ""} ${account.mobile || ""}`
+    `${account.invoiceNo || account.accountNo || ""} ${account.customerName || ""} ${account.mobile || ""}`
       .toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -304,17 +306,34 @@ export default function InstallmentManagementPage() {
           downPaymentReferenceNo: plan.downPaymentReferenceNo,
         }),
       });
-      if (result?.success !== true || !result?.bookingId) {
-        throw new Error("The server did not confirm that the installment plan was saved. No success message was shown.");
+      // A wrapped API response is accepted only when it still carries the
+      // independent EMI account contract. Never treat a legacy bookingId as success.
+      const payload = result?.data?.accountId
+        ? result.data
+        : result?.result?.accountId
+          ? result.result
+          : result;
+      if (payload?.bookingId || payload?.bookingNo) {
+        throw new Error(
+          "The connected backend is outdated: it returned a bookingId/bookingNo instead of an independent EMI accountId. Do not retry this invoice. Restart the backend from branch fix/installment-emi-workflow and ensure Flyway migration V20 has completed. Check Pre-Booking and Installment Management before trying again, because the old backend may have saved this plan as a booking."
+        );
       }
-      setMessage(result.message || `Installment account created for invoice ${selectedInvoice.invoiceNo}.`);
+      if (payload?.success !== true || !payload?.accountId) {
+        const fields = payload && typeof payload === "object"
+          ? Object.keys(payload).join(", ") || "no response fields"
+          : "an empty response";
+        throw new Error(
+          `The backend response is missing the required independent EMI accountId (received: ${fields}). Verify that the matching backend build is running and database migration V20 is applied. Do not submit this invoice again until its current status is checked.`
+        );
+      }
+      setMessage(payload.message || `Installment account created for invoice ${selectedInvoice.invoiceNo}.`);
       setInvoiceId("");
       setPlan(emptyPlan());
       setPlanIdempotencyKey(newIdempotencyKey());
       setInvoiceSearch("");
       await load();
       setTab("accounts");
-      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${result.bookingNo || result.bookingId}\nInstallments: ${result.scheduleCount || 0}`);
+      window.alert(`Installment Plan Saved Successfully!\nInvoice: ${selectedInvoice.invoiceNo}\nAccount: ${payload.accountNo || payload.accountId}\nInstallments: ${payload.scheduleCount || 0}`);
     } catch (e) {
       await load();
       setError(e.message || "Could not create the installment plan.");
@@ -326,25 +345,49 @@ export default function InstallmentManagementPage() {
   const postReceipt = async (event) => {
     event.preventDefault();
     if (saving) return;
-    setSaving(true);
     setError("");
     setMessage("");
     const schedule = schedules.find((row) => String(row.id) === String(receiptForm.installmentId));
     const amountCents = asCents(receiptForm.amount);
     if (!schedule || amountCents <= 0 || amountCents > asCents(schedule.remainingAmount)) {
       setError("Choose an installment and enter an amount no greater than its remaining balance.");
-      setSaving(false);
       return;
     }
     if (!receiptForm.paymentDate || receiptForm.paymentDate > today()) {
       setError("Enter a valid payment date that is not in the future.");
-      setSaving(false);
       return;
     }
+
+    // Do not post anything yet. Ask the administrator to re-enter the password.
+    setAdminPassword("");
+    setReceiptConfirmationError("");
+    setReceiptConfirmationOpen(true);
+  };
+
+  const confirmReceipt = async (event) => {
+    event.preventDefault();
+    if (saving) return;
+    if (!adminPassword) {
+      setReceiptConfirmationError("Enter the administrator password to confirm this receipt.");
+      return;
+    }
+
+    const schedule = schedules.find((row) => String(row.id) === String(receiptForm.installmentId));
+    const amountCents = asCents(receiptForm.amount);
+    if (!schedule || amountCents <= 0) {
+      setReceiptConfirmationError("The selected installment or receipt amount is no longer valid. Close this window and review the receipt details.");
+      return;
+    }
+
+    setSaving(true);
+    setReceiptConfirmationError("");
     try {
       const result = await request("/admin/installments/payments", {
         method: "POST",
-        headers: { "Idempotency-Key": paymentIdempotencyKey },
+        headers: {
+          "Idempotency-Key": paymentIdempotencyKey,
+          "X-Admin-Password": adminPassword,
+        },
         body: JSON.stringify({
           installmentId: Number(receiptForm.installmentId),
           paymentDate: receiptForm.paymentDate,
@@ -356,20 +399,32 @@ export default function InstallmentManagementPage() {
       if (result?.success !== true || !(result?.transactionId || result?.paymentId)) {
         throw new Error("The server did not confirm that the payment transaction was saved. No success message was shown.");
       }
+
+      const transactionId = result.transactionId || result.paymentId;
       setMessage(`₹ ${money(result.amount || amountCents / 100)} receipt saved against invoice ${schedule.invoiceNo}.`);
       setReceiptForm(emptyReceipt());
       setPaymentIdempotencyKey(newIdempotencyKey());
+      setReceiptConfirmationOpen(false);
+      setAdminPassword("");
+      setReceiptConfirmationError("");
       await load();
       setTab("receipts");
       if (selectedAccount) await openAccountDetails(selectedAccount);
       window.alert(
-        `Installment Payment Received Successfully!\nTransaction ID: ${result.transactionId || result.paymentId}\nInvoice: ${result.invoiceNo || schedule.invoiceNo}\nAmount: ₹ ${money(result.amount || amountCents / 100)}\nPayment Date: ${fmtDate(result.paymentDate || receiptForm.paymentDate)}\nRemaining Account Balance: ₹ ${money(result.accountRemainingBalance ?? result.remainingAmount ?? 0)}`
+        `Installment Payment Received Successfully!\\nTransaction ID: ${transactionId}\\nInvoice: ${result.invoiceNo || schedule.invoiceNo}\\nAmount: ₹ ${money(result.amount || amountCents / 100)}\\nPayment Date: ${fmtDate(result.paymentDate || receiptForm.paymentDate)}\\nRemaining Account Balance: ₹ ${money(result.accountRemainingBalance ?? result.remainingAmount ?? 0)}`
       );
     } catch (e) {
-      setError(e.message || "Could not post receipt.");
+      setReceiptConfirmationError(e.message || "Could not confirm and save the receipt.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const cancelReceiptConfirmation = () => {
+    if (saving) return;
+    setReceiptConfirmationOpen(false);
+    setAdminPassword("");
+    setReceiptConfirmationError("");
   };
 
   const startReceipt = (schedule) => {
@@ -505,7 +560,7 @@ export default function InstallmentManagementPage() {
         <tbody>
           {rows.map((schedule) => (
             <tr key={schedule.id}>
-              <td><b>{schedule.invoiceNo || schedule.bookingNo || "—"}</b></td>
+              <td><b>{schedule.invoiceNo || schedule.accountNo || "—"}</b></td>
               <td>{schedule.customerName || "—"}</td>
               <td>{schedule.installmentNo}/{schedule.totalInstallments}</td>
               <td>{fmtDate(schedule.dueDate)}</td>
@@ -532,7 +587,7 @@ export default function InstallmentManagementPage() {
         <tbody>
           {rows.map((payment) => (
             <tr key={payment.id}>
-              <td>{payment.id}</td>
+              <td><b>{payment.transactionId || payment.id}</b></td>
               <td>{payment.customerName || "—"}</td>
               <td>{payment.invoiceNo || "—"}</td>
               <td>{payment.installmentNo ? `${payment.installmentNo}` : payment.entryType === "DOWN_PAYMENT" ? "Down payment" : "—"}</td>
@@ -572,7 +627,6 @@ export default function InstallmentManagementPage() {
             <p>Convert saved invoices into server-calculated installment plans and track every actual receipt.</p>
           </div>
           <div className="nkj-module-actions">
-            
             <button className="primary" onClick={() => setTab("new")}><Plus size={16}/> New Installment</button>
           </div>
         </div>
@@ -749,7 +803,7 @@ export default function InstallmentManagementPage() {
                       const progress = account.total > 0 ? Math.min(100, account.paid / account.total * 100) : 0;
                       return (
                         <tr key={account.id}>
-                          <td><b>{account.invoiceNo || account.bookingNo}</b><small className="nkj-table-sub">{account.invoiceNo ? account.bookingNo : "Legacy installment account"}</small></td>
+                          <td><b>{account.invoiceNo || account.accountNo}</b><small className="nkj-table-sub">{account.accountNo}</small></td>
                           <td>{account.customerName}<small className="nkj-table-sub">{account.mobile || "—"}</small></td>
                           <td>{account.paidCount}/{account.count}<small className="nkj-table-sub">{account.count} selected</small></td>
                           <td>{money(account.total)}</td>
@@ -895,6 +949,55 @@ export default function InstallmentManagementPage() {
           </section>
         )}
       </section>
+
+      {receiptConfirmationOpen && (
+        <div className="nkj-receipt-confirm-overlay">
+          <form
+            className="nkj-receipt-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nkj-receipt-confirm-title"
+            onSubmit={confirmReceipt}
+          >
+            <div className="nkj-receipt-confirm-heading">
+              <span className="nkj-receipt-confirm-icon"><Wallet size={20}/></span>
+              <div>
+                <h3 id="nkj-receipt-confirm-title">Administrator Confirmation</h3>
+                <p>Verify the administrator password before recording this payment.</p>
+              </div>
+            </div>
+            <div className="nkj-receipt-confirm-summary">
+              <div><span>Invoice</span><strong>{schedules.find((row) => String(row.id) === String(receiptForm.installmentId))?.invoiceNo || "—"}</strong></div>
+              <div><span>Amount received</span><strong>₹ {money(receiptForm.amount)}</strong></div>
+              <div><span>Payment date</span><strong>{fmtDate(receiptForm.paymentDate)}</strong></div>
+              <div><span>Method</span><strong>{receiptForm.paymentMethod}</strong></div>
+            </div>
+            <label className="nkj-receipt-confirm-password">
+              <span>Admin password *</span>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(event) => {
+                  setAdminPassword(event.target.value);
+                  if (receiptConfirmationError) setReceiptConfirmationError("");
+                }}
+                placeholder="Enter administrator password"
+                autoComplete="current-password"
+                autoFocus
+                required
+              />
+            </label>
+            {receiptConfirmationError && <p className="nkj-receipt-confirm-error" role="alert">{receiptConfirmationError}</p>}
+            <p className="nkj-receipt-confirm-note">The receipt will be saved and the installment balance updated only after the server verifies this password.</p>
+            <div className="nkj-receipt-confirm-actions">
+              <button type="button" className="secondary" onClick={cancelReceiptConfirmation} disabled={saving}>Cancel</button>
+              <button type="submit" className="primary" disabled={saving || !adminPassword}>
+                {saving ? "Verifying & Saving…" : "Confirm & Save Receipt"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </Page>
   );
 }
