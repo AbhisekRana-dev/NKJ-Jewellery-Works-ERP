@@ -103,3 +103,6 @@
 .nkj-catalog-image-previews figure {width:92px;margin:0;overflow:hidden;border:1px solid #e5d5cc;border-radius:8px;background:#fff;}
 .nkj-catalog-image-previews img {display:block;width:90px;height:74px;object-fit:cover;background:#fbf2e2;}
 .nkj-catalog-image-previews figcaption {padding:5px 6px;color:#826e73;font-size:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.nkj-catalog-form-grid label input[type="number"] { font-variant-numeric: tabular-nums; }
+.nkj-catalog-subcategory + .nkj-catalog-subcategory { color: #8b682d; }
