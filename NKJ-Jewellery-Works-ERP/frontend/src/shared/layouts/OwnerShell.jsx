@@ -24,46 +24,46 @@ function initialSidebarState() {
 
 const ownerNavigation = [
   { title: "OVERVIEW", items: [
-    ["dashboard", "Dashboard", "/dashboard", LayoutDashboard],
+    ["dashboard", "Dashboard", "/dashboard", LayoutDashboard, "Dash"],
   ]},
   { title: "BILLING & BOOKINGS", items: [
-    ["invoice", "New Invoice", "/invoice", FileText],
-    ["saved", "All Invoices", "/saved-invoices", Files],
-    ["bookings", "Pre-Booking Bills", "/bookings", Receipt],
-    ["installments", "Installment / EMI Management", "/installments", CalendarCheck],
-    ["old-gold", "Old Gold Exchange", "/old-gold", Coins],
+    ["invoice", "New Invoice", "/invoice", FileText, "Inv"],
+    ["saved", "All Invoices", "/saved-invoices", Files, "All Inv"],
+    ["bookings", "Pre-Booking Bills", "/bookings", Receipt, "Pre-Book"],
+    ["installments", "Installment / EMI Management", "/installments", CalendarCheck, "EMI"],
+    ["old-gold", "Old Gold Exchange", "/old-gold", Coins, "Old Gold"],
   ]},
   { title: "INVENTORY", items: [
-    ["inventory", "Jewellery Inventory", "/inventory", Boxes],
-    ["purchases", "Purchase Management", "/purchases", Banknote],
-    ["stock-movements", "Stock Movements", "/stock-movements", ArrowLeftRight],
-    ["rates", "Gold & Silver Rates", "/rates", Coins],
+    ["inventory", "Jewellery Inventory", "/inventory", Boxes, "Stock"],
+    ["purchases", "Purchase Management", "/purchases", Banknote, "Buy"],
+    ["stock-movements", "Stock Movements", "/stock-movements", ArrowLeftRight, "Move"],
+    ["rates", "Gold & Silver Rates", "/rates", Coins, "Rates"],
   ]},
   { title: "MASTERS", items: [
-    ["customers", "Customers", "/customers", Users],
-    ["suppliers", "Suppliers", "/suppliers", Contact],
+    ["customers", "Customers", "/customers", Users, "Cust"],
+    ["suppliers", "Suppliers", "/suppliers", Contact, "Supp"],
   ]},
   { title: "FINANCE & REPORTS", items: [
-    ["expenses", "Expenses", "/expenses", Wallet],
-    ["payments", "Payments", "/payments", Receipt],
-    ["reports", "Reports Overview", "/reports", ChartNoAxesColumn],
-    ["reports-sales", "Sales Report", "/reports/sales", ChartNoAxesColumn],
-    ["reports-profit", "Profit & Loss", "/reports/profit", ChartNoAxesColumn],
-    ["reports-expenses", "Expense Report", "/reports/expenses", Receipt],
+    ["expenses", "Expenses", "/expenses", Wallet, "Exp"],
+    ["payments", "Payments", "/payments", Receipt, "Pay"],
+    ["reports", "Reports Overview", "/reports", ChartNoAxesColumn, "Rpt"],
+    ["reports-sales", "Sales Report", "/reports/sales", ChartNoAxesColumn, "Sales"],
+    ["reports-profit", "Profit & Loss", "/reports/profit", ChartNoAxesColumn, "P&L"],
+    ["reports-expenses", "Expense Report", "/reports/expenses", Receipt, "Exp Rpt"],
   ]},
   { title: "PEOPLE", items: [
-    ["staff", "Staff Details", "/staff", Contact],
-    ["attendance", "Attendance", "/attendance", CalendarCheck],
-    ["leaves", "Staff Leave", "/leaves", ClipboardList],
-    ["salary", "Salary Management", "/salary", Banknote],
-    ["salary-payments", "Salary Payments", "/salary-payments", Wallet],
-    ["karigars", "Karigars", "/karigars", Users],
-    ["repairs", "Repair Orders", "/repairs", Wrench],
+    ["staff", "Staff Details", "/staff", Contact, "Staff"],
+    ["attendance", "Attendance", "/attendance", CalendarCheck, "Attnd"],
+    ["leaves", "Staff Leave", "/leaves", ClipboardList, "Leave"],
+    ["salary", "Salary Management", "/salary", Banknote, "Salary"],
+    ["salary-payments", "Salary Payments", "/salary-payments", Wallet, "Pay"],
+    ["karigars", "Karigars", "/karigars", Users, "Kari"],
+    ["repairs", "Repair Orders", "/repairs", Wrench, "Repair"],
   ]},
   { title: "SYSTEM", items: [
-    ["database", "Database Management", "/database", Database],
-    ["audit-logs", "Audit Logs", "/audit-logs", ScrollText],
-    ["profile", "Owner Profile", "/profile", User],
+    ["database", "Database Management", "/database", Database, "DB"],
+    ["audit-logs", "Audit Logs", "/audit-logs", ScrollText, "Audit"],
+    ["profile", "Owner Profile", "/profile", User, "Profile"],
   ]},
 ];
 
@@ -169,7 +169,7 @@ export function Nav({ active = "home" }) {
             {ownerNavigation.map((group) => (
               <section className="nkj-owner-nav-group" key={group.title}>
                 <small className="nkj-owner-nav-title">{group.title}</small>
-                {group.items.map(([key, label, to, Icon]) => {
+                {group.items.map(([key, label, to, Icon, shortLabel]) => {
                   const selected = active === key || (key === "saved" && active === "saved");
                   return (
                     <Link
@@ -184,7 +184,8 @@ export function Nav({ active = "home" }) {
                       onDoubleClick={handleSidebarNavigationDoubleClick}
                     >
                       <Icon size={18} aria-hidden="true" />
-                      <span>{label}</span>
+                      <span className="nkj-owner-nav-full-label">{label}</span>
+                      <small className="nkj-owner-nav-short-label" aria-hidden="true">{shortLabel}</small>
                       <ChevronRight className="nkj-owner-nav-arrow" size={14} aria-hidden="true" />
                     </Link>
                   );
