@@ -163,7 +163,7 @@ export function Nav({ active = "home" }) {
           <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home">
             <span className="nkj-owner-logo">NKJ</span>
             <span className="nkj-owner-brand-copy">
-              <b><strong>NKJ</strong> ERP</b>
+              <b>Nandikishor</b>
               <small>Jewellery Works</small>
             </span>
           </Link>
