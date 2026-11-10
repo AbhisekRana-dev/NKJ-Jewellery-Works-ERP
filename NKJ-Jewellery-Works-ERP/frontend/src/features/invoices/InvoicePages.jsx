@@ -446,6 +446,231 @@ function createInvoiceDraftKey() {
   return `nkj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/**
+ * Print only the invoice sheet in an isolated same-origin document.
+ *
+ * The previous implementation called window.print() on the full ERP page.
+ * Its print CSS used visibility:hidden for unrelated application elements;
+ * visibility preserves layout space, so the owner shell/sidebar could create
+ * blank pages before the invoice. An iframe removes the shell from the print
+ * document entirely while reusing the existing invoice markup and CSS.
+ */
+async function printInvoiceAsPdf() {
+  const source = document.getElementById("invoice-print");
+  if (!source) {
+    throw new Error("The invoice is not available for printing. Open the invoice and try again.");
+  }
+
+  const frame = document.createElement("iframe");
+  frame.title = "Invoice PDF print";
+  frame.setAttribute("aria-hidden", "true");
+  frame.setAttribute("tabindex", "-1");
+  Object.assign(frame.style, {
+    position: "fixed",
+    right: "0",
+    bottom: "0",
+    width: "1px",
+    height: "1px",
+    border: "0",
+    opacity: "0",
+    pointerEvents: "none",
+  });
+  document.body.appendChild(frame);
+
+  const printWindow = frame.contentWindow;
+  const printDocument = frame.contentDocument;
+  if (!printWindow || !printDocument) {
+    frame.remove();
+    throw new Error("The browser could not prepare the invoice print document.");
+  }
+
+  const cleanup = () => {
+    window.removeEventListener("afterprint", cleanup);
+    printWindow.removeEventListener("afterprint", cleanup);
+    frame.remove();
+  };
+
+  try {
+    printDocument.open();
+    printDocument.write("<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Invoice</title></head><body></body></html>");
+    printDocument.close();
+
+    const base = printDocument.createElement("base");
+    base.href = document.baseURI;
+    printDocument.head.prepend(base);
+
+    // Copy the app's existing stylesheets; no PDF library or duplicate invoice
+    // template is required.
+    const stylesheetLoads = [];
+    document.querySelectorAll('link[rel="stylesheet"]').forEach((originalLink) => {
+      const link = originalLink.cloneNode(true);
+      link.href = new URL(originalLink.getAttribute("href") || originalLink.href, document.baseURI).href;
+      stylesheetLoads.push(new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        };
+        link.addEventListener("load", finish, { once: true });
+        link.addEventListener("error", finish, { once: true });
+        printDocument.head.appendChild(link);
+        if (link.sheet) finish();
+        window.setTimeout(finish, 4000);
+      }));
+    });
+
+    document.querySelectorAll("style").forEach((style) => {
+      printDocument.head.appendChild(style.cloneNode(true));
+    });
+
+    const invoiceClone = source.cloneNode(true);
+    printDocument.body.appendChild(invoiceClone);
+
+    // cloneNode does not copy current DOM properties for form controls.
+    const originalControls = source.querySelectorAll("input, textarea, select");
+    const clonedControls = invoiceClone.querySelectorAll("input, textarea, select");
+    originalControls.forEach((control, index) => {
+      const clone = clonedControls[index];
+      if (!clone) return;
+      if (control instanceof HTMLInputElement) {
+        clone.value = control.value;
+        clone.checked = control.checked;
+      } else if (control instanceof HTMLTextAreaElement) {
+        clone.value = control.value;
+      } else if (control instanceof HTMLSelectElement) {
+        clone.value = control.value;
+      }
+    });
+
+    const printStyle = printDocument.createElement("style");
+    printStyle.textContent = `
+      @page {
+        size: A4 portrait;
+        margin: 8mm;
+      }
+
+      @media print {
+        html,
+        body {
+          width: 194mm !important;
+          min-width: 0 !important;
+          max-width: 194mm !important;
+          height: auto !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          background: #fff !important;
+        }
+
+        body:has(#invoice-print) #invoice-print {
+          display: block !important;
+          position: relative !important;
+          inset: auto !important;
+          width: 291mm !important;
+          min-width: 291mm !important;
+          max-width: 291mm !important;
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          margin: 0 !important;
+          padding: 2mm !important;
+          box-sizing: border-box !important;
+          zoom: 0.6666667 !important;
+          transform: none !important;
+          rotate: none !important;
+          translate: none !important;
+          overflow: visible !important;
+          background: #fff !important;
+          border: 0.35mm solid #c98a2a !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          break-inside: auto !important;
+          page-break-inside: auto !important;
+        }
+
+        #invoice-print .invoice-actions,
+        #invoice-print .nkj-invoice-detail-actions,
+        #invoice-print .no-print,
+        #invoice-print button,
+        #invoice-print .icon-btn {
+          display: none !important;
+        }
+
+        #invoice-print .table-wrap {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow: visible !important;
+        }
+
+        #invoice-print table,
+        #invoice-print .items-table,
+        #invoice-print .new-items-table,
+        #invoice-print .old-items-table {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          table-layout: fixed !important;
+        }
+
+        #invoice-print .items-table thead {
+          display: table-header-group !important;
+        }
+
+        #invoice-print .items-table tr {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+
+        #invoice-print img {
+          max-width: 100% !important;
+          object-fit: contain !important;
+        }
+
+        #invoice-print .total-paid-row,
+        #invoice-print .due-amount-row,
+        #invoice-print .inv-panel,
+        #invoice-print .inv-head {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    `;
+    printDocument.head.appendChild(printStyle);
+
+    await Promise.all(stylesheetLoads);
+    if (printDocument.fonts?.ready) {
+      await Promise.race([
+        printDocument.fonts.ready.catch(() => {}),
+        new Promise((resolve) => window.setTimeout(resolve, 1500)),
+      ]);
+    }
+    await Promise.all(Array.from(invoiceClone.querySelectorAll("img")).map((image) => {
+      if (image.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", resolve, { once: true });
+        window.setTimeout(resolve, 2500);
+      });
+    }));
+
+    window.addEventListener("afterprint", cleanup, { once: true });
+    printWindow.addEventListener("afterprint", cleanup, { once: true });
+    window.setTimeout(cleanup, 5 * 60 * 1000);
+    printWindow.focus();
+    printWindow.print();
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+}
+
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -975,7 +1200,11 @@ export function InvoicePage() {
       body: JSON.stringify({ ticket, invoiceId }),
     });
     setShowInvoicePin(false);
-    window.setTimeout(() => window.print(), 120);
+    window.setTimeout(() => {
+      printInvoiceAsPdf().catch((error) => {
+        setError(error.message || "Could not prepare the invoice PDF.");
+      });
+    }, 120);
   }
 
   const now = new Date();
@@ -2168,7 +2397,11 @@ export function SavedInvoices() {
       body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
     });
     setShowPrintPin(false);
-    window.setTimeout(() => window.print(), 120);
+    window.setTimeout(() => {
+      printInvoiceAsPdf().catch((error) => {
+        setErr(error.message || "Could not prepare the invoice PDF.");
+      });
+    }, 120);
   };
 
   const shareInvoiceOnWhatsApp = () => {
