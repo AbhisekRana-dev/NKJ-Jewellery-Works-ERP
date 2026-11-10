@@ -17,6 +17,7 @@ import InstallmentManagementPage from "../features/installments/InstallmentManag
 import StaffDetailsPage from "../features/staff/StaffDetailsPage";
 import InventoryPage from "../features/inventory/InventoryPage";
 import KarigarsPage from "../features/karigars/KarigarsPage";
+import CalculatorPage from "../features/calculator/CalculatorPage";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/saved-invoices" element={<OwnerOnly><SavedInvoices /></OwnerOnly>} />
           <Route path="/customers" element={<OwnerOnly><Customers /></OwnerOnly>} />
           <Route path="/profile" element={<OwnerOnly><Profile /></OwnerOnly>} />
+          <Route path="/calculator" element={<OwnerOnly><CalculatorPage /></OwnerOnly>} />
           <Route path="/rates" element={<OwnerOnly><MetalRatesPage /></OwnerOnly>} />
 
           <Route path="/inventory" element={<OwnerOnly><InventoryPage /></OwnerOnly>} />
