@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 import { useAuth } from "../../core/auth/AuthProvider";
 
 const defaultMetalRates = {
@@ -84,6 +85,27 @@ export function Home() {
       active = false;
     };
   }, []);
+
+  const refreshRates = async () => {
+    try {
+      const data = await request("/rates");
+      if (!data) return;
+      const nextRates = { ...defaultMetalRates, ...data };
+      setRates(nextRates);
+      if (!showRateEditor) {
+        const configured = Boolean(nextRates.ownerVerified || nextRates.newspaperVerified);
+        setRateForm({
+          gold24kRate: configured ? String(Number(nextRates.gold24kRate || 0) * 10 || "") : "",
+          gold22kRate: configured ? String(Number(nextRates.gold22kRate || 0) * 10 || "") : "",
+          silverRate: configured ? String(Number(nextRates.silverRate || 0) * 10 || "") : "",
+        });
+      }
+    } catch (error) {
+      setRateError(error.message || "Unable to refresh current rates.");
+    }
+  };
+
+  useRealtimeRefresh(refreshRates, ["rates"]);
 
   const ratesConfigured = Boolean(rates.ownerVerified || rates.newspaperVerified) && Number(rates.gold24kRate) > 0 && Number(rates.gold22kRate) > 0 && Number(rates.silverRate) > 0;
 
