@@ -1,9 +1,10 @@
 import "./ErpModulePage.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw, Search, Pencil, Trash2, X, Save, Printer, Package, Gem, Users, ShieldCheck, Clock3, Hammer } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Save, Printer, Package, Gem, Users, ShieldCheck, Clock3, Hammer } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 import { moduleConfig } from "./moduleConfig";
 
 const emptyForm = (fields) => Object.fromEntries(fields.map((field) => [field[0], ""]));
@@ -57,6 +58,7 @@ export default function ErpModulePage({ module }) {
   }, [config.api, module]);
 
   useEffect(() => { load(); }, [load]);
+  useRealtimeRefresh(load, [config.api, "dashboard", "reports", "transactions", "cashbook"]);
   useEffect(() => {
     setRows([]);
     setStaffOptions([]);
@@ -172,7 +174,7 @@ export default function ErpModulePage({ module }) {
             <p>{config.description}</p>
           </div>
           <div className="nkj-module-actions">
-            <button className="secondary" onClick={load} disabled={loading}><RefreshCw size={16} /> Refresh</button>
+            
             {!config.readOnly && !config.singleRecord && <button className="primary" onClick={startCreate}><Plus size={17} /> Add Record</button>}
           </div>
         </div>
