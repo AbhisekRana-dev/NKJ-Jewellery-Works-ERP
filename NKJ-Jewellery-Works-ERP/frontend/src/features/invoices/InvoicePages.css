@@ -1730,3 +1730,88 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 @media print {
   .inv-meta .invoice-date-input { display: none !important; }
 }
+
+/* Invoice payment summary: received amount and outstanding balance. */
+.totals .total-row.total-paid-row,
+.totals .total-row.due-amount-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 8px;
+  min-height: 43px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font: 700 15px Georgia, "Times New Roman", serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.totals .total-row.total-paid-row {
+  color: #176b2d;
+  background: #effaf0;
+  border-color: #c6e9ca;
+}
+
+.totals .total-row.due-amount-row {
+  color: #b20d2d;
+  background: #fff0f0;
+  border-color: #f1c5c5;
+}
+
+.totals .total-paid-row span,
+.totals .due-amount-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.totals .total-paid-row b,
+.totals .due-amount-row b {
+  color: inherit;
+}
+
+.totals .total-paid-row b input {
+  width: 112px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid #b9cbe0;
+  border-radius: 6px;
+  background: #fff;
+  color: #176b2d;
+  font: 700 16px Arial, sans-serif;
+  text-align: right;
+}
+
+.totals .total-paid-row b input:focus {
+  outline: 2px solid #96d4a0;
+  border-color: #5aa86a;
+}
+
+.totals .total-paid-row b input[readonly] {
+  background: #f7fff8;
+  cursor: default;
+}
+
+@media print {
+  .totals .total-row.total-paid-row,
+  .totals .total-row.due-amount-row {
+    margin: 1mm 0 !important;
+    min-height: 8mm !important;
+    padding: 1.5mm 2mm !important;
+    font-size: 8pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .totals .total-paid-row b input {
+    width: 20mm !important;
+    padding: 1mm !important;
+    font-size: 8pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
