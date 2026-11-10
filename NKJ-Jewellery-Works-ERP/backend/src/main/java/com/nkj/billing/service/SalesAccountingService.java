@@ -22,43 +22,33 @@ public class SalesAccountingService {
 
     private static final String SALES_ENTRIES_CTE = """
         WITH sales_entries(entry_date, amount) AS (
+            -- A normal invoice is recognized once at its business invoice date.
+            -- An invoice converted to EMI is excluded here and recognized only
+            -- through its actual down-payment and installment receipt dates.
             SELECT i.invoice_date, i.grand_total
-              FROM invoices i
+              FROM public.invoices i
              WHERE NOT EXISTS (
                  SELECT 1
-                   FROM bookings b
-                  WHERE (b.invoice_id = i.id OR b.invoice_no = i.invoice_no)
-                    AND (
-                        b.is_installment_plan = TRUE
-                        OR EXISTS (
-                            SELECT 1 FROM installments legacy_schedule
-                             WHERE legacy_schedule.booking_id = b.id
-                        )
-                    )
+                   FROM public.installment_accounts a
+                  WHERE a.invoice_id = i.id
+                     OR a.invoice_no = i.invoice_no
              )
             UNION ALL
-            SELECT COALESCE(b.down_payment_date, b.booking_date), b.advance_amount
-              FROM bookings b
-             WHERE (b.is_installment_plan = TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
-               AND b.advance_amount > 0
-            UNION ALL
+            -- Count actual cash received for EMI plans. Do not use account
+            -- balances or migrated reconciliation entries as new sales.
             SELECT p.payment_date, p.amount
-              FROM installment_payments p
-              JOIN installments i ON i.id = p.installment_id
-              JOIN bookings b ON b.id = i.booking_id
-             WHERE p.entry_type = 'INSTALLMENT'
-               AND (b.is_installment_plan = TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
+              FROM public.installment_transactions p
+             WHERE p.entry_type IN ('DOWN_PAYMENT', 'INSTALLMENT')
+               AND p.amount > 0
             UNION ALL
+            -- A posted installment receipt reversed later reduces sales on
+            -- the reversal date, preserving the historical report timeline.
             SELECT r.reversal_date, -r.amount
-              FROM installment_payment_reversals r
-              JOIN installment_payments p ON p.id = r.payment_id
-              JOIN installments i ON i.id = p.installment_id
-              JOIN bookings b ON b.id = i.booking_id
+              FROM public.installment_transaction_reversals r
+              JOIN public.installment_transactions p
+                ON p.id = r.transaction_id
              WHERE p.entry_type = 'INSTALLMENT'
-               AND (b.is_installment_plan = TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id))
+               AND r.amount > 0
         )
         """;
 
