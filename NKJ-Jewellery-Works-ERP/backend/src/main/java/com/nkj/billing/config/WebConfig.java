@@ -46,7 +46,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String location = Path.of(designsUploadDir).toAbsolutePath().normalize().toUri().toString();
         if (!location.endsWith("/")) location += "/";
-        registry.addResourceHandler("/uploads/designs/**")
+        registry.addResourceHandler("/api/uploads/designs/**")
                 .addResourceLocations(location)
                 .setCachePeriod(3600);
     }
