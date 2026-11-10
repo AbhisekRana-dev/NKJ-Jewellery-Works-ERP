@@ -32,6 +32,6 @@ public class RealtimeEventController {
      */
     @GetMapping(value = "/public", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribePublicRates() {
-        return broadcaster.subscribePublicRates();
+        return broadcaster.subscribePublicUpdates();
     }
 }

@@ -22,7 +22,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class RealtimeEventBroadcaster {
 
     private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
-    private final CopyOnWriteArrayList<SseEmitter> publicRateEmitters = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<SseEmitter> publicEmitters = new CopyOnWriteArrayList<>();
 
     public SseEmitter subscribe() {
         SseEmitter emitter = new SseEmitter(0L);
@@ -45,23 +45,23 @@ public class RealtimeEventBroadcaster {
     }
 
     /**
-     * Public clients receive only the publicly displayed metal-rate topic.
+     * Public clients receive only public-safe metal-rate and catalogue invalidation topics.
      * No owner, invoice, customer, payroll or transaction event is exposed.
      */
-    public SseEmitter subscribePublicRates() {
+    public SseEmitter subscribePublicUpdates() {
         SseEmitter emitter = new SseEmitter(0L);
-        emitter.onCompletion(() -> publicRateEmitters.remove(emitter));
+        emitter.onCompletion(() -> publicEmitters.remove(emitter));
         emitter.onTimeout(() -> {
-            publicRateEmitters.remove(emitter);
+            publicEmitters.remove(emitter);
             emitter.complete();
         });
-        emitter.onError(error -> publicRateEmitters.remove(emitter));
-        publicRateEmitters.add(emitter);
+        emitter.onError(error -> publicEmitters.remove(emitter));
+        publicEmitters.add(emitter);
         try {
             emitter.send(SseEmitter.event().name("connected")
                     .data(Map.of("connected", true, "connectedAt", Instant.now().toString())));
         } catch (IOException | IllegalStateException error) {
-            publicRateEmitters.remove(emitter);
+            publicEmitters.remove(emitter);
             emitter.completeWithError(error);
         }
         return emitter;
@@ -84,12 +84,15 @@ public class RealtimeEventBroadcaster {
 
         sendTo(emitters, "data-changed", payload, eventId);
 
-        if (topics.contains("rates")) {
+        List<String> publicTopics = topics.stream()
+                .filter(topic -> "rates".equals(topic) || "designs".equals(topic))
+                .toList();
+        if (!publicTopics.isEmpty()) {
             Map<String, Object> publicPayload = new LinkedHashMap<>();
             publicPayload.put("eventId", eventId);
             publicPayload.put("occurredAt", payload.get("occurredAt"));
-            publicPayload.put("topics", List.of("rates"));
-            sendTo(publicRateEmitters, "data-changed", publicPayload, eventId);
+            publicPayload.put("topics", publicTopics);
+            sendTo(publicEmitters, "data-changed", publicPayload, eventId);
         }
     }
 
@@ -120,7 +123,7 @@ public class RealtimeEventBroadcaster {
     @Scheduled(fixedRate = 25000)
     public void heartbeat() {
         sendTo(emitters, "heartbeat", "keep-alive", null);
-        sendTo(publicRateEmitters, "heartbeat", "keep-alive", null);
+        sendTo(publicEmitters, "heartbeat", "keep-alive", null);
     }
 
     private List<String> topicsFor(String path) {
@@ -138,6 +141,9 @@ public class RealtimeEventBroadcaster {
         }
         if (path.startsWith("/api/admin/rates")) {
             return List.of("rates", "invoices");
+        }
+        if (path.startsWith("/api/admin/designs")) {
+            return List.of("designs");
         }
         if (path.startsWith("/api/admin/profile")) {
             return List.of("profile");
