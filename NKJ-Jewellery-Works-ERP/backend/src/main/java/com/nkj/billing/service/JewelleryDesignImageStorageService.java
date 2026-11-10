@@ -63,6 +63,14 @@ public class JewelleryDesignImageStorageService {
             ImageReader reader = readers.next();
             try {
                 reader.setInput(imageInput, true, true);
+                String imageFormat = reader.getFormatName().toLowerCase(Locale.ROOT);
+                if (("jpg".equals(extension.substring(1)) || "jpeg".equals(extension.substring(1)))
+                        && !("jpeg".equals(imageFormat) || "jpg".equals(imageFormat))) {
+                    throw new IllegalArgumentException("The file content does not match its JPG extension.");
+                }
+                if ("png".equals(extension.substring(1)) && !"png".equals(imageFormat)) {
+                    throw new IllegalArgumentException("The file content does not match its PNG extension.");
+                }
                 int width = reader.getWidth(0);
                 int height = reader.getHeight(0);
                 if (width < 1 || height < 1 || width > 8000 || height > 8000 || (long) width * height > 24000000L) {
