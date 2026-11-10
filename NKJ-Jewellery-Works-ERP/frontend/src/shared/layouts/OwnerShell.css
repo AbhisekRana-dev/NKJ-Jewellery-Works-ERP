@@ -465,8 +465,8 @@ body.nkj-owner-layout .app-content {width: 100%;
   left: auto !important;
   width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
   min-width: 0;
-  min-height: 82px !important;
-  height: 82px;
+  min-height: 78px !important;
+  height: 78px;
   margin: 0 0 0 var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
   padding: 8px clamp(14px, 2vw, 28px) !important;
   display: flex !important;
@@ -499,7 +499,7 @@ body.nkj-owner-layout .app-content {width: 100%;
   min-width: 0 !important;
   margin: 0 0 0 var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
   padding: 24px clamp(14px, 2vw, 30px) 34px !important;
-  min-height: calc(100vh - 82px);
+  min-height: calc(100vh - 78px);
   overflow: visible;}
 @media (max-width: 1250px) {
 .nkj-owner-topbar {padding-inline: 14px !important;}
@@ -523,8 +523,8 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
   top: 0 !important;
   z-index: 4300 !important;
   width: 100% !important;
-  min-height: 82px !important;
-  height: 82px !important;
+  min-height: 78px !important;
+  height: 78px !important;
   padding: 8px clamp(12px, 2.3vw, 32px) !important;
   display: flex !important;
   flex-direction: row !important;
