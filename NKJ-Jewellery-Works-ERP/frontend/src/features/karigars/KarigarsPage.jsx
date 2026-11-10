@@ -1,8 +1,9 @@
 import "./KarigarsPage.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Hammer, Pencil, Plus, RefreshCw, Search, ShieldCheck, Trash2, Users, X, Save, Clock3, Camera } from "lucide-react";
+import { Hammer, Pencil, Plus, Search, ShieldCheck, Trash2, Users, X, Save, Clock3, Camera } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 
 const blank={name:"",mobile:"",aadhaarNumber:"",speciality:"",address:"",photoUrl:"",rateType:"Per Gram",rateValue:"",status:"ACTIVE",notes:""};
 const money=v=>Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -11,6 +12,7 @@ export default function KarigarsPage(){
   const [search,setSearch]=useState("");const [status,setStatus]=useState("ALL");const [speciality,setSpeciality]=useState("ALL");const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [error,setError]=useState("");const [message,setMessage]=useState("");
   const load=useCallback(async()=>{setLoading(true);setError("");try{const data=await request("/admin/modules/karigars");setRows(Array.isArray(data)?data:[]);}catch(e){setError(e.message||"Could not load karigar records.");}finally{setLoading(false);}},[]);
   useEffect(()=>{load();},[load]);
+  useRealtimeRefresh(load, ["karigars", "repairs", "dashboard"]);
   const filtered=useMemo(()=>rows.filter(r=>`${r.karigarCode||""} ${r.name||""} ${r.mobile||""} ${r.aadhaarNumber||""} ${r.speciality||""}`.toLowerCase().includes(search.toLowerCase())&&(status==="ALL"||r.status===status)&&(speciality==="ALL"||r.speciality===speciality)),[rows,search,status,speciality]);
   const specialities=[...new Set(rows.map(r=>r.speciality).filter(Boolean))];
   const stats={total:rows.length,active:rows.filter(r=>r.status==="ACTIVE").length,hold:rows.filter(r=>r.status==="ON_HOLD").length,skills:specialities.length};
@@ -20,7 +22,7 @@ export default function KarigarsPage(){
   const save=async e=>{e.preventDefault();setSaving(true);setError("");setMessage("");try{const payload={...form,rateValue:form.rateValue===""?0:Number(form.rateValue)};await request(editingId?`/admin/modules/karigars/${editingId}`:"/admin/modules/karigars",{method:editingId?"PUT":"POST",body:JSON.stringify(payload)});setMessage(editingId?"Karigar details updated.":"Karigar profile created.");setShowForm(false);setEditingId(null);setForm(blank);await load();}catch(e2){setError(e2.message||"Could not save karigar details.");}finally{setSaving(false);}};
   const remove=async row=>{if(!window.confirm(`Delete karigar ${row.name}?`))return;setError("");setMessage("");try{await request(`/admin/modules/karigars/${row.id}`,{method:"DELETE"});setMessage("Karigar record deleted.");await load();}catch(e){setError(e.message||"Could not delete karigar.");}};
   return <Page active="karigars"><section className="nkj-module-page nkj-karigar-page">
-    <div className="nkj-module-heading"><div><span className="eyebrow">ARTISAN &amp; WORKFORCE</span><h2>Karigars (Artisans) Management</h2><p>Manage artisan profiles, work specialities, identity details, rates and notes.</p></div><div className="nkj-module-actions"><button className="secondary" onClick={load} disabled={loading}><RefreshCw size={16}/> Refresh</button><button className="primary" onClick={create}><Plus size={16}/> Add Karigar</button></div></div>
+    <div className="nkj-module-heading"><div><span className="eyebrow">ARTISAN &amp; WORKFORCE</span><h2>Karigars (Artisans) Management</h2><p>Manage artisan profiles, work specialities, identity details, rates and notes.</p></div><div className="nkj-module-actions"><button className="primary" onClick={create}><Plus size={16}/> Add Karigar</button></div></div>
     {error&&<p className="error">{error}</p>}{message&&<p className="success">{message}</p>}
     <div className="nkj-karigar-kpis"><div><Users/><span>Total Karigars</span><strong>{stats.total}</strong></div><div><ShieldCheck/><span>Active</span><strong>{stats.active}</strong></div><div><Clock3/><span>On Hold</span><strong>{stats.hold}</strong></div><div><Hammer/><span>Specialities</span><strong>{stats.skills}</strong></div></div>
     {showForm&&<form className="nkj-karigar-editor" onSubmit={save}><div className="nkj-karigar-editor-head"><div><span className="eyebrow">ARTISAN PROFILE</span><h3>{editingId?"Edit Karigar":"Add New Karigar"}</h3></div><button type="button" className="icon-btn" onClick={()=>setShowForm(false)}><X/></button></div><div className="nkj-karigar-form-grid">
