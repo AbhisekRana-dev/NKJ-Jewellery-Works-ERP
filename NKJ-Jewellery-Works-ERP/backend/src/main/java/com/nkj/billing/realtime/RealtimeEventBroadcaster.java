@@ -82,26 +82,28 @@ public class RealtimeEventBroadcaster {
         payload.put("topics", topics);
         payload.put("originClientId", originClientId == null ? "" : originClientId);
 
-        SseEmitter.SseEventBuilder event = SseEmitter.event()
-                .id(eventId)
-                .name("data-changed")
-                .data(payload);
-
-        sendTo(emitters, event);
+        sendTo(emitters, "data-changed", payload, eventId);
 
         if (topics.contains("rates")) {
             Map<String, Object> publicPayload = new LinkedHashMap<>(payload);
             publicPayload.put("topics", List.of("rates"));
-            sendTo(publicRateEmitters, SseEmitter.event()
-                    .id(eventId)
-                    .name("data-changed")
-                    .data(publicPayload));
+            sendTo(publicRateEmitters, "data-changed", publicPayload, eventId);
         }
     }
 
-    private void sendTo(CopyOnWriteArrayList<SseEmitter> targets, SseEmitter.SseEventBuilder event) {
+    private void sendTo(
+            CopyOnWriteArrayList<SseEmitter> targets,
+            String eventName,
+            Object data,
+            String eventId) {
         for (SseEmitter emitter : targets) {
             try {
+                SseEmitter.SseEventBuilder event = SseEmitter.event()
+                        .name(eventName)
+                        .data(data);
+                if (eventId != null && !eventId.isBlank()) {
+                    event.id(eventId);
+                }
                 emitter.send(event);
             } catch (IOException | IllegalStateException error) {
                 targets.remove(emitter);
@@ -115,9 +117,8 @@ public class RealtimeEventBroadcaster {
      */
     @Scheduled(fixedRate = 25000)
     public void heartbeat() {
-        SseEmitter.SseEventBuilder heartbeat = SseEmitter.event().name("heartbeat").data("keep-alive");
-        sendTo(emitters, heartbeat);
-        sendTo(publicRateEmitters, heartbeat);
+        sendTo(emitters, "heartbeat", "keep-alive", null);
+        sendTo(publicRateEmitters, "heartbeat", "keep-alive", null);
     }
 
     private List<String> topicsFor(String path) {
