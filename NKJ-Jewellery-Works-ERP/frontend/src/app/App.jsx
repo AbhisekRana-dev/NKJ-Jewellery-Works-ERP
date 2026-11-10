@@ -18,6 +18,7 @@ import StaffDetailsPage from "../features/staff/StaffDetailsPage";
 import InventoryPage from "../features/inventory/InventoryPage";
 import KarigarsPage from "../features/karigars/KarigarsPage";
 import CalculatorPage from "../features/calculator/CalculatorPage";
+import JewelleryDesignsPage from "../features/designs/JewelleryDesignsPage";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
@@ -36,9 +37,10 @@ export default function App() {
     <div className="app-layout">
       <div className="app-content">
         <Routes>
-          {/* Public staff can access only Home and New Invoice. */}
+          {/* Public access: Home, Jewellery Designs, Calculator and New Invoice. */}
           <Route path="/" element={<Home />} />
           <Route path="/invoice" element={<InvoicePage />} />
+          <Route path="/designs" element={<JewelleryDesignsPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/setup-totp" element={<TotpSetup />} />
 
@@ -47,7 +49,7 @@ export default function App() {
           <Route path="/saved-invoices" element={<OwnerOnly><SavedInvoices /></OwnerOnly>} />
           <Route path="/customers" element={<OwnerOnly><Customers /></OwnerOnly>} />
           <Route path="/profile" element={<OwnerOnly><Profile /></OwnerOnly>} />
-          <Route path="/calculator" element={<OwnerOnly><CalculatorPage /></OwnerOnly>} />
+          <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/rates" element={<OwnerOnly><MetalRatesPage /></OwnerOnly>} />
 
           <Route path="/inventory" element={<OwnerOnly><InventoryPage /></OwnerOnly>} />
