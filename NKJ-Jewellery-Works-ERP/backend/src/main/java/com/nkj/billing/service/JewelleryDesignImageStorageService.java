@@ -17,6 +17,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Iterator;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
@@ -109,7 +112,8 @@ public class JewelleryDesignImageStorageService {
         return new StoredImage(
                 "/api/uploads/designs/" + designId + "/" + fileId + extension,
                 "/api/uploads/designs/" + designId + "/" + fileId + "-thumb.jpg",
-                file.getOriginalFilename() == null ? "Jewellery design" : file.getOriginalFilename()
+                file.getOriginalFilename() == null ? "Jewellery design" : file.getOriginalFilename(),
+                sha256(bytes)
         );
     }
 
@@ -149,5 +153,13 @@ public class JewelleryDesignImageStorageService {
         return output;
     }
 
-    public record StoredImage(String originalUrl, String thumbnailUrl, String fileName) {}
+    private String sha256(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException error) {
+            throw new IllegalStateException("SHA-256 is not available in this Java runtime.", error);
+        }
+    }
+
+    public record StoredImage(String originalUrl, String thumbnailUrl, String fileName, String sha256) {}
 }
