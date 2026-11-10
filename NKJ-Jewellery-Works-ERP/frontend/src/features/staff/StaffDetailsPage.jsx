@@ -1,9 +1,10 @@
 import "./StaffDetailsPage.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { UserRound, Plus, RefreshCw, Save, NotebookPen, Camera, X, Search, ShieldCheck } from "lucide-react";
+import { UserRound, Plus, Save, NotebookPen, Camera, X, Search, ShieldCheck } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 
 const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const blank = { fullName:"", photoUrl:"", aadhaarNumber:"", panNumber:"", mobile:"", email:"", address:"", dob:"", joiningDate:localToday(), designation:"", department:"", monthlySalary:"", salaryMethod:"Cash", emergencyContact:"", status:"ACTIVE", notes:"" };
@@ -15,6 +16,7 @@ export default function StaffDetailsPage() {
   const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState(""); const [message,setMessage]=useState("");
   const load=useCallback(async()=>{setLoading(true);setError("");try{const [s,n]=await Promise.all([request("/admin/modules/staff"),request("/admin/modules/staff-notes")]);setStaff(Array.isArray(s)?s:[]);setNotes(Array.isArray(n)?n:[]);setSelectedId(current=>current||String(s?.[0]?.id||""));}catch(e){setError(e.message||"Could not load staff details.");}finally{setLoading(false);}},[]);
   useEffect(()=>{load();},[load]);
+  useRealtimeRefresh(load, ["staff", "attendance", "salary", "leaves", "dashboard", "reports"]);
   const filtered=staff.filter(x=>`${x.fullName} ${x.staffCode} ${x.mobile} ${x.designation}`.toLowerCase().includes(search.toLowerCase()));
   const selected=staff.find(x=>String(x.id)===String(selectedId));
   const selectedNotes=useMemo(()=>notes.filter(n=>String(n.staffId)===String(selectedId)),[notes,selectedId]);
@@ -27,7 +29,7 @@ export default function StaffDetailsPage() {
   const changeStatus=async(s,status)=>{try{await request(`/admin/modules/staff/${s.id}`,{method:"PUT",body:JSON.stringify({...s,status})});setMessage(`${s.fullName} marked ${status.toLowerCase()}.`);await load();}catch(e){setError(e.message);}};
 
   return <Page active="staff"><section className="nkj-module-page nkj-staff-details-page">
-    <div className="nkj-module-heading"><div><span className="eyebrow">PEOPLE &amp; TEAM</span><h2>Staff Details</h2><p>Maintain each team member’s profile and a dated private staff notebook.</p></div><div className="nkj-module-actions"><button className="secondary" onClick={load} disabled={loading}><RefreshCw size={16}/> Refresh</button><button className="primary" onClick={beginCreate}><Plus size={16}/> Add Staff</button></div></div>
+    <div className="nkj-module-heading"><div><span className="eyebrow">PEOPLE &amp; TEAM</span><h2>Staff Details</h2><p>Maintain each team member’s profile and a dated private staff notebook.</p></div><div className="nkj-module-actions"><button className="primary" onClick={beginCreate}><Plus size={16}/> Add Staff</button></div></div>
     {error&&<p className="error">{error}</p>}{message&&<p className="success">{message}</p>}
     <div className="nkj-staff-summary"><div><UserRound/><span>Total staff</span><strong>{staff.length}</strong></div><div><ShieldCheck/><span>Active staff</span><strong>{staff.filter(x=>x.status==="ACTIVE").length}</strong></div><div><NotebookPen/><span>Notebook entries</span><strong>{notes.length}</strong></div><div><span>Monthly salary commitment</span><strong>₹ {money(staff.filter(x=>x.status==="ACTIVE").reduce((a,x)=>a+Number(x.monthlySalary||0),0))}</strong></div></div>
     <div className="nkj-staff-layout"><section className="panel nkj-staff-directory"><div className="nkj-staff-directory-head"><h3>Staff Directory</h3><div className="nkj-module-toolbar"><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Staff ID, name, mobile or role"/></div></div><div className="nkj-staff-list">{filtered.map(s=><button key={s.id} className={`nkj-staff-person ${String(s.id)===String(selectedId)?"active":""}`} onClick={()=>setSelectedId(String(s.id))}><span className="nkj-staff-avatar">{s.photoUrl?<img src={s.photoUrl} alt=""/>:String(s.fullName||"S").slice(0,1).toUpperCase()}</span><span className="nkj-staff-person-copy"><b>{s.fullName}</b><small>{s.staffCode||`NKJ-STF-${String(s.id).padStart(5,"0")}`} · {s.designation||"Team member"}</small></span><i className={s.status==="ACTIVE"?"active":"inactive"}/></button>)}{!loading&&!filtered.length&&<p className="empty">No staff found.</p>}</div></section>
