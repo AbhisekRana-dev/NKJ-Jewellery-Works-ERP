@@ -127,3 +127,8 @@
 .nkj-catalog-subcategory-list button { padding: 4px 6px; border: 1px solid #e8dad4; border-radius: 5px; background: #fff; color: #78102e; font-size: 8px; font-weight: 750; cursor: pointer; }
 .nkj-catalog-subcategory-list button:disabled { opacity: .5; }
 @media (max-width: 650px) { .nkj-catalog-subcategory-form { grid-template-columns: 1fr; } .nkj-catalog-subcategory-list { grid-template-columns: 1fr; } }
+
+.nkj-catalog-current-images > div > span.is-primary { border: 2px solid #be9137; border-radius: 9px; padding: 2px; background: #fff8e7; }
+.nkj-catalog-primary-label { display: block; margin: 2px 0 4px; color: #8a621e; font-size: 8px; font-weight: 900; text-align: center; }
+.nkj-catalog-set-primary { display: block; width: 100%; margin: 2px 0 4px; padding: 4px 2px; border: 1px solid #ddc591; border-radius: 5px; background: #fff8e7; color: #74102d; font-size: 8px; font-weight: 800; cursor: pointer; }
+.nkj-catalog-current-images > div > span > button[aria-label="Remove image"] { z-index: 2; }

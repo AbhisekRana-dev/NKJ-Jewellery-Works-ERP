@@ -359,7 +359,7 @@ export default function JewelleryCatalogAdminPage() {
       return;
     }
     if (!bulkFiles.length) {
-      setError("Choose one or more JPG/PNG design photographs.");
+      setError("Choose one or more JPG, PNG or WebP design photographs.");
       return;
     }
     setBulkRunning(true);
@@ -445,8 +445,8 @@ export default function JewelleryCatalogAdminPage() {
                 {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
               </select>
             </label>
-            <label className="nkj-catalog-file-picker"><ImagePlus size={17} /> Choose multiple JPG/PNG images
-              <input type="file" accept="image/jpeg,image/png" multiple onChange={(event) => setBulkFiles(Array.from(event.target.files || []))} />
+            <label className="nkj-catalog-file-picker"><ImagePlus size={17} /> Choose multiple JPG/PNG/WebP images
+              <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setBulkFiles(Array.from(event.target.files || []))} />
             </label>
             <button type="button" onClick={runBulkUpload} disabled={bulkRunning || !bulkFiles.length}>
               {bulkRunning ? <LoaderCircle className="spin" size={16} /> : <Upload size={16} />}
