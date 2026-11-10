@@ -8,6 +8,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nkj.billing.model.Customer;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
@@ -22,12 +23,19 @@ public class ErpModuleService {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final AuthService auth;
+    private final CustomerService customerService;
+    private final CashFlowService cashFlow;
     private final Map<String, Definition> definitions = new LinkedHashMap<>();
     private static final Set<String> APPEND_ONLY_MODULES = Set.of(
-            "stock-movements", "installment-payments", "salary-payments");
+            "stock-movements", "installment-payments", "salary-payments", "payments");
+    private static final Set<String> CASH_CREATE_MODULES = Set.of(
+            "payments", "pre-bookings", "expenses", "purchases", "salary", "salary-payments");
 
-    public ErpModuleService(JdbcTemplate jdbc, ObjectMapper mapper, AuthService auth) {
+    public ErpModuleService(JdbcTemplate jdbc, ObjectMapper mapper, AuthService auth,
+                            CustomerService customerService, CashFlowService cashFlow) {
         this.jdbc = jdbc; this.mapper = mapper; this.auth = auth;
+        this.customerService = customerService;
+        this.cashFlow = cashFlow;
         register("staff", "staff", true, List.of(
             f("fullName","full_name","text","Full name"), f("photoUrl","photo_url","text","Photo URL"),
             f("mobile","mobile","text","Mobile"), f("email","email","text","Email"), f("aadhaarNumber","aadhaar_number","text","Aadhaar number"), f("panNumber","pan_number","text","PAN number"), f("address","address","text","Address"),
@@ -57,6 +65,8 @@ public class ErpModuleService {
         register("expenses", "expenses", true, List.of(
             f("expenseDate","expense_date","date","Expense date"), f("category","category","text","Category"),
             f("description","description","text","Description"), f("amount","amount","number","Amount"),
+            f("paidAmount","paid_amount","number","Paid amount"),
+            f("paymentStatus","payment_status","text","Payment status"),
             f("paymentMethod","payment_method","text","Payment method"), f("referenceNo","reference_no","text","Reference no.")
         ), "category", "amount");
         register("inventory", "products", true, List.of(
@@ -74,24 +84,24 @@ public class ErpModuleService {
             f("quantity","quantity","number","Quantity"), f("weight","weight","number","Weight"),
             f("referenceType","reference_type","text","Reference type"), f("referenceId","reference_id","number","Reference ID"), f("remarks","remarks","text","Remarks")
         ), "productId", "transactionType", "quantity");
-        register("bookings", "bookings", true, List.of(
-            f("bookingNo","booking_no","text","Booking number"), f("invoiceNo","invoice_no","text","Invoice number"), f("customerName","customer_name","text","Customer name"),
+        register("pre-bookings", "pre_booking_bills", true, List.of(
+            f("bookingNo","booking_no","text","Booking number"), f("customerName","customer_name","text","Customer name"),
             f("mobile","mobile","text","Mobile"), f("bookingDate","booking_date","date","Booking date"), f("description","description","text","Ornament description"),
             f("metalType","metal_type","text","Metal type"), f("purity","purity","text","Purity"), f("estimatedWeight","estimated_weight","number","Estimated weight"),
             f("estimatedRate","estimated_rate","number","Estimated rate"), f("estimatedValue","estimated_value","number","Estimated value"),
             f("makingEstimate","making_estimate","number","Making estimate"), f("advanceAmount","advance_amount","number","Advance amount"),
             f("remainingAmount","remaining_amount","number","Remaining amount"), f("deliveryDate","delivery_date","date","Expected delivery"), f("status","status","text","Status")
         ), "bookingNo", "customerName");
-        register("installments", "installments", false, List.of(
-            f("bookingId","booking_id","number","Booking ID"), f("installmentNo","installment_no","number","Installment no."),
+        register("installments", "installment_schedules", false, List.of(
+            f("accountId","account_id","number","Installment Account ID"), f("installmentNo","installment_no","number","Installment no."),
             f("dueDate","due_date","date","Due date"), f("amountDue","amount_due","number","Amount due"),
             f("amountPaid","amount_paid","number","Amount paid"), f("remainingAmount","remaining_amount","number","Remaining amount"),
             f("paymentStatus","payment_status","text","Payment status")
-        ), "bookingId", "installmentNo", "amountDue");
-        register("installment-payments", "installment_payments", false, List.of(
-            f("installmentId","installment_id","number","Installment ID"), f("paymentDate","payment_date","date","Payment date"),
+        ), "accountId", "installmentNo", "amountDue");
+        register("installment-payments", "installment_transactions", false, List.of(
+            f("scheduleId","schedule_id","number","Installment Schedule ID"), f("paymentDate","payment_date","date","Payment date"),
             f("amount","amount","number","Amount"), f("paymentMethod","payment_method","text","Payment method"), f("referenceNo","reference_no","text","Reference no.")
-        ), "installmentId", "amount", "paymentMethod");
+        ), "scheduleId", "amount", "paymentMethod");
         register("suppliers", "suppliers", true, List.of(
             f("supplierCode","supplier_code","text","Supplier ID"), f("name","name","text","Supplier name"), f("phone","phone","text","Phone"), f("email","email","text","Email"),
             f("address","address","text","Address"), f("gstNumber","gst_number","text","GST number"),
@@ -115,7 +125,7 @@ public class ErpModuleService {
         ), "customerName", "weight", "rate", "amount");
         register("customers", "customers", true, List.of(
             f("customerCode","customer_code","text","Customer ID"), f("name","name","text","Customer name"), f("phone","phone","text","Phone"),
-            f("email","email","text","Email"), f("address","address","text","Address"), f("notes","notes","text","Notes")
+            f("address","address","text","Address"), f("notes","notes","text","Notes")
         ), "name");
         register("karigars", "karigars", true, List.of(
             f("karigarCode","karigar_code","text","Karigar ID"), f("name","name","text","Karigar name"), f("mobile","mobile","text","Mobile"), f("aadhaarNumber","aadhaar_number","text","Aadhaar number"), f("speciality","speciality","text","Speciality"),
@@ -147,79 +157,74 @@ public class ErpModuleService {
     public List<Map<String,Object>> list(String module) {
         Definition d = definition(module);
         String select = "id" + d.fields().stream().map(x -> ", " + x.column() + " AS \"" + x.key() + "\"").reduce("", String::concat);
+        if (module.equals("customers")) {
+            // Customer Management must show the complete customer master.
+            return jdbc.queryForList("""
+                SELECT id, customer_code AS "customerCode", name, phone,
+                       address, notes, created_at AS "createdAt", updated_at AS "updatedAt"
+                  FROM customers
+                 ORDER BY id DESC
+                """);
+        }
         if (module.equals("staff")) {
             return jdbc.queryForList("SELECT id, staff_code AS \"staffCode\", full_name AS \"fullName\", photo_url AS \"photoUrl\", mobile, email, aadhaar_number AS \"aadhaarNumber\", pan_number AS \"panNumber\", address, dob, joining_date AS \"joiningDate\", designation, department, monthly_salary AS \"monthlySalary\", salary_method AS \"salaryMethod\", emergency_contact AS \"emergencyContact\", status, notes FROM staff ORDER BY id DESC LIMIT 500");
         }
         if (module.equals("staff-notes")) {
             return jdbc.queryForList("SELECT n.id, n.staff_id AS \"staffId\", s.full_name AS \"staffName\", n.note_date AS \"noteDate\", n.note_type AS \"noteType\", n.description, n.created_by AS \"createdBy\", n.created_at AS \"createdAt\" FROM staff_notes n JOIN staff s ON s.id=n.staff_id ORDER BY n.note_date DESC,n.created_at DESC LIMIT 1000");
         }
-        if (module.equals("bookings")) {
+        if (module.equals("pre-bookings")) {
             return jdbc.queryForList("""
-                SELECT b.id, b.booking_no AS "bookingNo", b.invoice_id AS "invoiceId",
-                       b.invoice_no AS "invoiceNo", b.customer_name AS "customerName",
-                       b.mobile, b.booking_date AS "bookingDate", b.description,
+                SELECT b.id, b.booking_no AS "bookingNo",
+                       b.customer_name AS "customerName", b.mobile,
+                       b.booking_date AS "bookingDate", b.description,
+                       b.metal_type AS "metalType", b.purity,
+                       b.estimated_weight AS "estimatedWeight", b.estimated_rate AS "estimatedRate",
                        b.estimated_value AS "estimatedValue", b.making_estimate AS "makingEstimate",
-                       b.advance_amount AS "advanceAmount", b.down_payment_date AS "downPaymentDate",
-                       b.down_payment_recorded_by AS "downPaymentRecordedBy",
-                       b.remaining_amount AS "remainingAmount", b.delivery_date AS "deliveryDate",
-                       b.status,
-                       (b.is_installment_plan OR EXISTS (
-                           SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id
-                       )) AS "isInstallmentPlan",
-                       COALESCE(b.total_installments, (
-                           SELECT COUNT(*)::INTEGER FROM installments count_i WHERE count_i.booking_id=b.id
-                       )) AS "totalInstallments",
-                       b.payment_frequency AS "paymentFrequency", b.created_at AS "createdAt"
-                  FROM bookings b
+                       b.advance_amount AS "advanceAmount", b.remaining_amount AS "remainingAmount",
+                       b.delivery_date AS "deliveryDate", b.status, b.created_at AS "createdAt"
+                  FROM pre_booking_bills b
                  ORDER BY b.booking_date DESC,b.id DESC
                  LIMIT 1000
                 """);
         }
         if (module.equals("installments")) {
             return jdbc.queryForList("""
-                SELECT i.id, i.booking_id AS "bookingId", b.invoice_id AS "invoiceId",
-                       COALESCE(b.invoice_no,b.booking_no) AS "invoiceNo",
-                       b.customer_name AS "customerName", b.mobile,
-                       i.installment_no AS "installmentNo", b.total_installments AS "totalInstallments",
-                       i.due_date AS "dueDate", i.amount_due AS "amountDue",
-                       i.amount_paid AS "amountPaid", i.remaining_amount AS "remainingAmount",
+                SELECT s.id, s.account_id AS "accountId", a.invoice_id AS "invoiceId",
+                       a.invoice_no AS "invoiceNo", a.account_no AS "accountNo",
+                       a.customer_name AS "customerName", a.mobile,
+                       s.installment_no AS "installmentNo", a.total_installments AS "totalInstallments",
+                       s.due_date AS "dueDate", s.amount_due AS "amountDue",
+                       s.amount_paid AS "amountPaid", s.remaining_amount AS "remainingAmount",
                        CASE
-                         WHEN i.remaining_amount <= 0 THEN 'PAID'
-                         WHEN i.amount_paid > 0 AND i.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
-                         WHEN i.amount_paid > 0 THEN 'PARTIAL'
-                         WHEN i.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
-                         WHEN i.due_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'DUE'
+                         WHEN s.remaining_amount <= 0 THEN 'PAID'
+                         WHEN s.amount_paid > 0 AND s.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
+                         WHEN s.amount_paid > 0 THEN 'PARTIAL'
+                         WHEN s.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'OVERDUE'
+                         WHEN s.due_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE THEN 'DUE'
                          ELSE 'PENDING'
                        END AS "paymentStatus",
-                       i.created_at AS "createdAt", i.updated_at AS "updatedAt"
-                  FROM installments i
-                  JOIN bookings b ON b.id=i.booking_id
-                 WHERE b.is_installment_plan = TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_plan WHERE legacy_plan.booking_id=b.id)
-                 ORDER BY i.due_date ASC,i.installment_no ASC
+                       s.created_at AS "createdAt", s.updated_at AS "updatedAt"
+                  FROM installment_schedules s
+                  JOIN installment_accounts a ON a.id=s.account_id
+                 ORDER BY s.due_date ASC,s.installment_no ASC
                 """);
         }
         if (module.equals("installment-payments")) {
             return jdbc.queryForList("""
-                SELECT p.id, p.installment_id AS "installmentId", b.id AS "bookingId",
-                       COALESCE(b.invoice_no,b.booking_no) AS "invoiceNo",
-                       b.customer_name AS "customerName", i.installment_no AS "installmentNo",
-                       p.entry_type AS "entryType", p.payment_date AS "paymentDate",
-                       p.created_at AS "paidAt", p.amount,
+                SELECT p.id, ('NKJ-EMI-TXN-' || LPAD(p.id::TEXT, 8, '0')) AS "transactionId",
+                       p.schedule_id AS "installmentId", a.id AS "accountId",
+                       a.invoice_no AS "invoiceNo", a.customer_name AS "customerName",
+                       s.installment_no AS "installmentNo", p.entry_type AS "entryType",
+                       p.payment_date AS "paymentDate", p.created_at AS "paidAt", p.amount,
                        p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
                        p.recorded_by AS "recordedBy", r.amount AS "reversedAmount",
                        r.reversal_date AS "reversalDate", r.reason AS "reversalReason",
                        r.recorded_by AS "reversedBy"
-                  FROM installment_payments p
-                  JOIN bookings b ON b.id=COALESCE(p.booking_id, (
-                      SELECT schedule.booking_id FROM installments schedule
-                       WHERE schedule.id=p.installment_id
-                  ))
-                  LEFT JOIN installments i ON i.id=p.installment_id
-                  LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-                 WHERE (b.is_installment_plan=TRUE
-                    OR EXISTS (SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id))
-                   AND p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
+                  FROM installment_transactions p
+                  JOIN installment_accounts a ON a.id=p.account_id
+                  LEFT JOIN installment_schedules s ON s.id=p.schedule_id
+                  LEFT JOIN installment_transaction_reversals r ON r.transaction_id=p.id
+                 WHERE p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
                  ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
                 """);
         }
@@ -237,25 +242,75 @@ public class ErpModuleService {
     }
 
     @Transactional
-    public Map<String,Object> create(String module, Map<String,Object> body, String ip) {
+    public Map<String,Object> create(String module, Map<String,Object> body, String ip, String idempotencyKey) {
         Definition d = writableDefinition(module);
+        String requestKey = idempotencyKey == null || idempotencyKey.isBlank()
+                ? null : requiredIdempotencyKey(idempotencyKey, "cash entry");
+        if (CASH_CREATE_MODULES.contains(module) && requestKey == null) {
+            throw new IllegalArgumentException("An Idempotency-Key is required to save this financial record safely.");
+        }
+        if (requestKey != null && CASH_CREATE_MODULES.contains(module)) {
+            lockIdempotencyKey("cash-create:" + requestKey);
+            List<Map<String,Object>> prior = jdbc.queryForList(
+                    "SELECT id, source_record_id, source_module FROM cash_transactions WHERE idempotency_key=?",
+                    requestKey);
+            if (!prior.isEmpty()) {
+                Map<String,Object> saved = prior.get(0);
+                String expectedSource = switch (module) {
+                    case "payments" -> "PAYMENTS";
+                    case "pre-bookings" -> "PRE_BOOKINGS";
+                    case "expenses" -> "EXPENSES";
+                    case "purchases" -> "PURCHASES";
+                    case "salary" -> "SALARY";
+                    case "salary-payments" -> "SALARY_PAYMENTS";
+                    default -> "";
+                };
+                if (!expectedSource.equals(String.valueOf(saved.get("source_module")))) {
+                    throw new IllegalArgumentException("This Idempotency-Key was already used by another financial module.");
+                }
+                return Map.of("success", true, "duplicate", true,
+                        "id", saved.get("source_record_id"),
+                        "transactionId", saved.get("id"),
+                        "message", "This cash transaction was already recorded.");
+            }
+        }
         Map<String,Object> data = new LinkedHashMap<>(body);
         // Browser forms submit empty strings for optional inputs. Convert them to null
         // so empty date/time values do not reach PostgreSQL CAST operations.
         data.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
         if (module.equals("staff-notes")) data.putIfAbsent("createdBy", auth.getUsername());
-        if (module.equals("bookings") && data.get("bookingNo") == null) data.put("bookingNo", "PENDING-" + UUID.randomUUID());
+        if (module.equals("pre-bookings") && data.get("bookingNo") == null) data.put("bookingNo", "PENDING-" + UUID.randomUUID());
         if (module.equals("repairs") && data.get("orderNo") == null) data.put("orderNo", "PENDING-" + UUID.randomUUID());
         validate(d, data);
+        if (module.equals("payments")
+                && nonNegative(data.get("amount"), "Amount received").signum() <= 0) {
+            throw new IllegalArgumentException("A customer receipt must contain an amount greater than zero.");
+        }
+        if (module.equals("customers") && data.get("phone") != null
+                && !String.valueOf(data.get("phone")).isBlank()) {
+            Customer customer = customerService.registerOrReuseFromInvoice(
+                    String.valueOf(data.get("name")),
+                    String.valueOf(data.get("phone")),
+                    null,
+                    data.get("address") == null ? null : String.valueOf(data.get("address")));
+            Map<String,Object> auditData = new LinkedHashMap<>(data);
+            auditData.put("customerCode", customer.getCustomerCode());
+            auditData.put("phoneMatchedExistingCustomer", true);
+            audit("CUSTOMER_PHONE_UPSERT", "customers", customer.getId(), null, auditData, ip);
+            return Map.of("success", true, "id", customer.getId(),
+                    "customerCode", customer.getCustomerCode(),
+                    "message", "Customer saved. Existing customers with this phone number are reused.");
+        }
         if (module.equals("salary")) {
             if (data.get("basicSalary") == null && data.get("staffId") != null) {
                 data.put("basicSalary", jdbc.queryForObject("SELECT monthly_salary FROM staff WHERE id=?", BigDecimal.class, requiredId(data.get("staffId"), "Staff ID")));
             }
+            data.putIfAbsent("amountPaid", BigDecimal.ZERO);
             calculateSalary(data);
         }
-        if (module.equals("bookings")) calculateBooking(data);
-        if (module.equals("installments")) calculateInstallment(data);
+        if (module.equals("pre-bookings")) calculateBooking(data);
         if (module.equals("purchases")) calculatePurchase(data);
+        if (module.equals("expenses")) prepareExpensePayment(data);
         List<Field> included = d.fields().stream().filter(x -> data.containsKey(x.key()) && data.get(x.key()) != null).toList();
         if (included.isEmpty()) throw new IllegalArgumentException("Enter at least one field.");
         String columns = included.stream().map(Field::column).reduce((a,b)->a+", "+b).orElseThrow();
@@ -297,22 +352,95 @@ public class ErpModuleService {
             jdbc.update("UPDATE products SET item_code=? WHERE id=?", itemCode, id);
             data.put("itemCode", itemCode);
         }
-        if (module.equals("bookings")) {
+        if (module.equals("pre-bookings")) {
             String bookingNo = "NKJ-BKG-" + java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy")) + "-" + String.format("%04d", id);
             if (String.valueOf(data.get("bookingNo")).startsWith("PENDING-")) {
-                jdbc.update("UPDATE bookings SET booking_no=? WHERE id=?", bookingNo, id);
+                jdbc.update("UPDATE pre_booking_bills SET booking_no=? WHERE id=?", bookingNo, id);
                 data.put("bookingNo", bookingNo);
             }
             BigDecimal advance = nonNegative(data.get("advanceAmount"), "Advance amount");
             if (advance.signum() > 0) {
                 jdbc.update("INSERT INTO customer_ledger(entry_type,reference_type,reference_id,credit,notes) VALUES ('BOOKING_ADVANCE','BOOKING',?,?,?)",
                     id, advance, "Advance received for " + data.get("bookingNo") + " / " + data.get("customerName"));
+                cashFlow.recordMovement("PRE_BOOKINGS", "ADVANCE_RECEIPT", id,
+                        "PREBOOK-ADVANCE:" + id,
+                        shopToday(), advance, String.valueOf(data.get("customerName")),
+                        "Pre-Booking advance received", null, null,
+                        String.valueOf(data.get("bookingNo")), requestKey, null);
+            }
+        }
+        if (module.equals("payments")) {
+            BigDecimal received = nonNegative(data.get("amount"), "Payment amount");
+            if (received.signum() > 0) {
+                cashFlow.recordMovement("PAYMENTS", "CUSTOMER_RECEIPT", id,
+                        "PAYMENT:" + id,
+                        data.get("paymentDate") == null ? shopToday() : parseDate(data.get("paymentDate"), "Payment date"),
+                        received,
+                        data.get("customerName") == null ? "Customer" : String.valueOf(data.get("customerName")),
+                        data.get("invoiceId") == null ? "Customer advance / receipt" : "Invoice collection",
+                        data.get("paymentMethod") == null ? "Cash" : String.valueOf(data.get("paymentMethod")),
+                        data.get("referenceNo") == null ? null : String.valueOf(data.get("referenceNo")),
+                        data.get("invoiceNo") == null ? "PAY-" + id : String.valueOf(data.get("invoiceNo")),
+                        requestKey, null);
+            }
+        }
+        if (module.equals("expenses")) {
+            BigDecimal paid = nonNegative(data.get("paidAmount"), "Paid expense amount");
+            if (paid.signum() > 0) {
+                cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT", id,
+                        expenseEventKey(id, paid),
+                        shopToday(), paid, null,
+                        data.get("description") == null ? String.valueOf(data.get("category")) : String.valueOf(data.get("description")),
+                        data.get("paymentMethod") == null ? null : String.valueOf(data.get("paymentMethod")),
+                        data.get("referenceNo") == null ? null : String.valueOf(data.get("referenceNo")),
+                        String.valueOf(data.get("category")), requestKey, null);
+            }
+        }
+        if (module.equals("purchases")) {
+            BigDecimal paid = nonNegative(data.get("paidAmount"), "Paid supplier amount");
+            if (paid.signum() > 0) {
+                cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT", id,
+                        "PURCHASE-INITIAL:" + id,
+                        shopToday(), paid, String.valueOf(data.get("supplierName")), "Supplier purchase payment",
+                        null, null,
+                        data.get("invoiceNo") == null ? "PURCHASE-" + id : String.valueOf(data.get("invoiceNo")),
+                        requestKey, null);
+            }
+        }
+        if (module.equals("salary")) {
+            BigDecimal paid = nonNegative(data.get("amountPaid"), "Amount paid");
+            if (paid.signum() > 0) {
+                String staffName = jdbc.queryForObject("SELECT full_name FROM staff WHERE id=?",
+                        String.class, requiredId(data.get("staffId"), "Staff ID"));
+                cashFlow.recordMovement("SALARY", "INITIAL_SALARY_PAYMENT", id,
+                        "SALARY-INITIAL:" + id,
+                        data.get("paymentDate") == null ? shopToday() : parseDate(data.get("paymentDate"), "Payment date"),
+                        paid, staffName, "Initial salary payment",
+                        data.get("paymentMethod") == null ? null : String.valueOf(data.get("paymentMethod")),
+                        null, "SALARY-" + id, requestKey, null);
             }
         }
         if (module.equals("installment-payments")) {
             throw new IllegalArgumentException("Installment receipts must be posted through the protected idempotent payment endpoint.");
         }
-        if (module.equals("salary-payments")) applySalaryReceipt(data);
+        if (module.equals("salary-payments")) {
+            applySalaryReceipt(data);
+            BigDecimal paid = nonNegative(data.get("amount"), "Salary payment amount");
+            if (paid.signum() > 0) {
+                long salaryId = requiredId(data.get("salaryId"), "Salary record ID");
+                String staffName = jdbc.queryForObject("""
+                    SELECT s.full_name FROM staff_salary ss
+                    JOIN staff s ON s.id=ss.staff_id WHERE ss.id=?
+                    """, String.class, salaryId);
+                cashFlow.recordMovement("SALARY_PAYMENTS", "SALARY_PAYMENT", id,
+                        "SALARY-PAYMENT:" + id,
+                        data.get("paymentDate") == null ? shopToday() : parseDate(data.get("paymentDate"), "Payment date"),
+                        paid, staffName, "Staff salary payment",
+                        data.get("paymentMethod") == null ? null : String.valueOf(data.get("paymentMethod")),
+                        data.get("referenceNo") == null ? null : String.valueOf(data.get("referenceNo")),
+                        "SALARY-" + salaryId, requestKey, null);
+            }
+        }
         if (module.equals("stock-movements")) applyStockMovement(data);
         audit("CREATE", module, id, null, data, ip);
         return Map.of("success", true, "id", id, "message", "Record created successfully.");
@@ -321,47 +449,34 @@ public class ErpModuleService {
     @Transactional(readOnly = true)
     public List<Map<String,Object>> installmentAccounts() {
         return jdbc.queryForList("""
-            SELECT b.id, b.booking_no AS "bookingNo",
-                   COALESCE(b.invoice_id, inv.id) AS "invoiceId",
-                   b.invoice_no AS "invoiceNo",
-                   COALESCE(inv.customer_name,b.customer_name) AS "customerName",
-                   COALESCE(inv.mobile,b.mobile) AS mobile,
-                   inv.address AS address,
+            SELECT a.id, a.account_no AS "accountNo", a.invoice_id AS "invoiceId",
+                   a.invoice_no AS "invoiceNo",
+                   COALESCE(inv.customer_name,a.customer_name) AS "customerName",
+                   COALESCE(inv.mobile,a.mobile) AS mobile,
+                   COALESCE(inv.address,a.customer_address) AS address,
                    inv.invoice_date AS "invoiceDate",
-                   COALESCE(inv.grand_total,b.estimated_value + b.making_estimate) AS "originalInvoiceAmount",
-                   b.estimated_value AS "estimatedValue",
-                   b.making_estimate AS "makingEstimate",
-                   b.advance_amount AS "advanceAmount",
-                   b.down_payment_date AS "downPaymentDate",
-                   b.down_payment_method AS "downPaymentMethod",
-                   b.down_payment_recorded_by AS "downPaymentRecordedBy",
-                   b.remaining_amount AS "remainingAmount",
-                   (b.is_installment_plan OR EXISTS (
-                       SELECT 1 FROM installments legacy_i WHERE legacy_i.booking_id=b.id
-                   )) AS "isInstallmentPlan",
-                   COALESCE(b.total_installments, (
-                       SELECT COUNT(*)::INTEGER FROM installments count_i WHERE count_i.booking_id=b.id
-                   )) AS "totalInstallments",
-                   b.payment_frequency AS "paymentFrequency",
-                   b.booking_date AS "bookingDate",
-                   b.status, b.created_at AS "createdAt"
-              FROM bookings b
-              LEFT JOIN invoices inv ON inv.id=COALESCE(
-                  b.invoice_id,
-                  (SELECT legacy_invoice.id FROM invoices legacy_invoice
-                    WHERE legacy_invoice.invoice_no=b.invoice_no LIMIT 1)
-              )
-             WHERE b.is_installment_plan=TRUE
-                OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
-             ORDER BY b.booking_date DESC,b.id DESC
+                   a.original_invoice_amount AS "originalInvoiceAmount",
+                                      a.down_payment AS "advanceAmount",
+                   a.down_payment_date AS "downPaymentDate",
+                   a.down_payment_method AS "downPaymentMethod",
+                   a.down_payment_reference_no AS "downPaymentReferenceNo",
+                   a.down_payment_recorded_by AS "downPaymentRecordedBy",
+                   a.remaining_balance AS "remainingAmount",
+                   a.total_installments AS "totalInstallments",
+                   a.payment_frequency AS "paymentFrequency",
+                   a.plan_created_date AS "planCreatedDate",
+                   a.status, a.created_at AS "createdAt"
+              FROM installment_accounts a
+              LEFT JOIN invoices inv ON inv.id=a.invoice_id
+             ORDER BY a.plan_created_date DESC,a.id DESC
             """);
     }
 
     /**
      * Invoice selector: default to the last three Kolkata calendar dates.
      * A non-empty search explicitly includes older saved invoices.
-     * Drafts never enter invoices; cancelled/void payloads and already
-     * converted invoices are excluded at the database boundary.
+     * Converted invoices are excluded only by their dedicated EMI account row;
+     * Pre-Booking records are not consulted or modified by this workflow.
      */
     @Transactional(readOnly = true)
     public List<Map<String,Object>> eligibleInstallmentInvoices(String search) {
@@ -391,12 +506,9 @@ public class ErpModuleService {
                )) <> 'true'
                AND NOT EXISTS (
                    SELECT 1
-                     FROM bookings b
-                    WHERE (b.invoice_id=i.id OR b.invoice_no=i.invoice_no)
-                      AND (
-                          b.is_installment_plan=TRUE
-                          OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
-                      )
+                     FROM installment_accounts a
+                    WHERE a.invoice_id=i.id
+                       OR a.invoice_no=i.invoice_no
                )
                AND (
                     ( ? = '' AND i.invoice_date >=
@@ -418,8 +530,9 @@ public class ErpModuleService {
     }
 
     /**
-     * Convert a saved invoice into an installment plan. The server owns all
-     * financial arithmetic and creates the schedule inside one transaction.
+     * Convert a saved invoice into an EMI account. This workflow writes only to
+     * installment_accounts, installment_schedules and installment_transactions.
+     * It never creates or updates a Pre-Booking (bookings) record.
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String,Object> createInstallmentPlan(
@@ -428,9 +541,13 @@ public class ErpModuleService {
         String key = requiredIdempotencyKey(idempotencyKey, "plan");
         lockIdempotencyKey("installment-plan:" + key);
 
-        List<Map<String,Object>> existingByKey = jdbc.queryForList(
-                "SELECT id, booking_no AS \"bookingNo\", invoice_no AS \"invoiceNo\", total_installments AS \"totalInstallments\", plan_request_json AS \"planRequestJson\" FROM bookings WHERE plan_idempotency_key=? LIMIT 1",
-                key);
+        List<Map<String,Object>> existingByKey = jdbc.queryForList("""
+            SELECT id, account_no AS "accountNo", invoice_no AS "invoiceNo",
+                   total_installments AS "totalInstallments", plan_request_json AS "planRequestJson"
+              FROM installment_accounts
+             WHERE plan_idempotency_key=?
+             LIMIT 1
+            """, key);
         if (!existingByKey.isEmpty()) {
             Map<String,Object> existing = existingByKey.get(0);
             JsonNode priorRequest = mapper.readTree(String.valueOf(existing.get("planRequestJson")));
@@ -440,8 +557,10 @@ public class ErpModuleService {
             }
             long existingId = ((Number) existing.get("id")).longValue();
             long scheduleCount = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM installments WHERE booking_id=?", Long.class, existingId);
-            return Map.of("success", true, "bookingId", existingId,
+                    "SELECT COUNT(*) FROM installment_schedules WHERE account_id=?",
+                    Long.class, existingId);
+            return Map.of("success", true, "accountId", existingId,
+                    "accountNo", String.valueOf(existing.get("accountNo")),
                     "invoiceNo", String.valueOf(existing.get("invoiceNo")),
                     "totalInstallments", existing.get("totalInstallments") == null ? 0 : existing.get("totalInstallments"),
                     "scheduleCount", scheduleCount, "duplicate", true,
@@ -449,21 +568,23 @@ public class ErpModuleService {
         }
 
         long invoiceId = requiredId(request.get("invoiceId"), "Invoice ID");
-        Map<String,Object> invoice = jdbc.queryForMap(
-                "SELECT id, invoice_no, customer_name, mobile, grand_total FROM invoices WHERE id=? FOR UPDATE",
-                invoiceId);
+        Map<String,Object> invoice = jdbc.queryForMap("""
+            SELECT id, invoice_no, customer_name, mobile, address, grand_total
+              FROM invoices
+             WHERE id=?
+             FOR UPDATE
+            """, invoiceId);
         String invoiceNo = String.valueOf(invoice.get("invoice_no"));
-        BigDecimal invoiceTotal = decimal(invoice.get("grand_total")).setScale(2, java.math.RoundingMode.HALF_UP);
-        if (invoiceTotal.signum() <= 0) throw new IllegalArgumentException("The selected invoice has no payable amount.");
+        BigDecimal invoiceTotal = decimal(invoice.get("grand_total"))
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        if (invoiceTotal.signum() <= 0) {
+            throw new IllegalArgumentException("The selected invoice has no payable amount.");
+        }
 
         Long duplicate = jdbc.queryForObject("""
             SELECT COUNT(*)
-              FROM bookings b
-             WHERE (b.invoice_id=? OR b.invoice_no=?)
-               AND (
-                    b.is_installment_plan=TRUE
-                    OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
-               )
+              FROM installment_accounts
+             WHERE invoice_id=? OR invoice_no=?
             """, Long.class, invoiceId, invoiceNo);
         if (duplicate != null && duplicate > 0) {
             throw new IllegalArgumentException("Invoice " + invoiceNo + " has already been converted into an installment plan.");
@@ -484,7 +605,8 @@ public class ErpModuleService {
         if (downPayment.compareTo(invoiceTotal) > 0) {
             throw new IllegalArgumentException("Down payment cannot exceed the original invoice amount.");
         }
-        BigDecimal remainingBalance = invoiceTotal.subtract(downPayment).setScale(2, java.math.RoundingMode.UNNECESSARY);
+        BigDecimal remainingBalance = invoiceTotal.subtract(downPayment)
+                .setScale(2, java.math.RoundingMode.UNNECESSARY);
         String frequency = request.get("paymentFrequency") == null
                 ? "MONTHLY" : String.valueOf(request.get("paymentFrequency")).trim().toUpperCase(Locale.ROOT);
         if (!"MONTHLY".equals(frequency) && !"WEEKLY".equals(frequency)) {
@@ -498,10 +620,27 @@ public class ErpModuleService {
         if (downPaymentDate.isAfter(today)) {
             throw new IllegalArgumentException("Down payment date cannot be in the future.");
         }
-        int dueDay = request.get("dueDay") == null
-                ? firstDueDate.getDayOfMonth()
-                : decimal(request.get("dueDay")).intValueExact();
-        if (dueDay < 1 || dueDay > 31) throw new IllegalArgumentException("Monthly due day must be between 1 and 31.");
+        int dueDay;
+        try {
+            dueDay = request.get("dueDay") == null
+                    ? firstDueDate.getDayOfMonth()
+                    : decimal(request.get("dueDay")).intValueExact();
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException("Monthly due day must be a whole number from 1 to 31.");
+        }
+        if (dueDay < 1 || dueDay > 31) {
+            throw new IllegalArgumentException("Monthly due day must be between 1 and 31.");
+        }
+
+        String downPaymentMethod = String.valueOf(request.getOrDefault("downPaymentMethod", "Cash")).trim();
+        if (!Set.of("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "NEFT", "RTGS").contains(downPaymentMethod)) {
+            throw new IllegalArgumentException("Select a valid down payment method.");
+        }
+        String downPaymentReference = request.get("downPaymentReferenceNo") == null
+                ? "" : String.valueOf(request.get("downPaymentReferenceNo")).trim();
+        if (downPaymentReference.length() > 100) {
+            throw new IllegalArgumentException("Down payment reference cannot exceed 100 characters.");
+        }
 
         List<BigDecimal> amounts = new ArrayList<>();
         if (remainingBalance.signum() > 0) {
@@ -524,59 +663,58 @@ public class ErpModuleService {
             }
         }
 
-        String bookingNoSeed = "PENDING-" + UUID.randomUUID();
-        Long bookingId = jdbc.queryForObject("""
-            INSERT INTO bookings(
-                booking_no, invoice_id, invoice_no, is_installment_plan,
+        String accountNoSeed = "PENDING-EMI-" + UUID.randomUUID();
+        Long accountId = jdbc.queryForObject("""
+            INSERT INTO installment_accounts(
+                account_no, invoice_id, invoice_no, customer_name, mobile, customer_address,
+                original_invoice_amount, down_payment, down_payment_date, down_payment_method,
+                down_payment_reference_no, down_payment_recorded_by, remaining_balance,
                 total_installments, payment_frequency, plan_idempotency_key, plan_request_json,
-                down_payment_date, down_payment_recorded_by, customer_name, mobile, booking_date,
-                description, metal_type, purity, estimated_weight, estimated_rate,
-                estimated_value, making_estimate, advance_amount, remaining_amount,
-                delivery_date, status, converted_at, created_at, updated_at
+                status, plan_created_date, converted_at, created_at, updated_at
             )
-            VALUES (?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, 'GOLD', '', 0, 0, ?, 0, ?, ?, ?, ?, NOW(), NOW(), NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
             RETURNING id
-            """,
-            Long.class,
-            bookingNoSeed, invoiceId, invoiceNo, count, frequency, key, mapper.writeValueAsString(request),
-            downPaymentDate, auth.getUsername(), invoice.get("customer_name"), invoice.get("mobile"),
-            today, "Installment plan linked to invoice " + invoiceNo,
-            invoiceTotal, downPayment, remainingBalance, firstDueDate,
-            remainingBalance.signum() == 0 ? "COMPLETED" : "OPEN");
-        String bookingNo = "NKJ-BKG-" + today.format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy"))
-                + "-" + String.format(Locale.ROOT, "%04d", bookingId);
-        jdbc.update("UPDATE bookings SET booking_no=? WHERE id=?", bookingNo, bookingId);
+            """, Long.class,
+            accountNoSeed, invoiceId, invoiceNo, invoice.get("customer_name"), invoice.get("mobile"),
+            invoice.get("address"), invoiceTotal, downPayment, downPaymentDate,
+            downPayment.signum() > 0 ? downPaymentMethod : null,
+            downPaymentReference.isBlank() ? null : downPaymentReference,
+            downPayment.signum() > 0 ? auth.getUsername() : null,
+            remainingBalance, count, frequency, key, mapper.writeValueAsString(request),
+            remainingBalance.signum() == 0 ? "COMPLETED" : "OPEN", today);
+
+        String accountNo = "NKJ-EMI-" + today.format(java.time.format.DateTimeFormatter.ofPattern("ddMMyy"))
+                + "-" + String.format(Locale.ROOT, "%04d", accountId);
+        jdbc.update("UPDATE installment_accounts SET account_no=? WHERE id=?", accountNo, accountId);
+
+        // Reclassify any receipt posted when this invoice was originally saved.
+        // The installment plan's actual down payment is recorded below; keeping
+        // the original full invoice receipt would double-count cash received.
+        String conversionReason = "Original invoice collection reclassified when invoice was converted to an installment plan.";
+        cashFlow.voidMovement("INVOICE-SAVED:" + invoiceId, conversionReason);
+        List<Long> originalPaymentIds = jdbc.queryForList(
+                "SELECT id FROM payments WHERE invoice_id=? AND amount>0 ORDER BY id",
+                Long.class, invoiceId);
+        for (Long originalPaymentId : originalPaymentIds) {
+            cashFlow.voidMovement("PAYMENT:" + originalPaymentId, conversionReason);
+        }
 
         if (downPayment.signum() > 0) {
-            String downPaymentMethod = String.valueOf(request.getOrDefault("downPaymentMethod", "Cash")).trim();
-            if (!Set.of("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "NEFT", "RTGS").contains(downPaymentMethod)) {
-                throw new IllegalArgumentException("Select a valid down payment method.");
-            }
-            String downPaymentReference = request.get("downPaymentReferenceNo") == null
-                    ? "" : String.valueOf(request.get("downPaymentReferenceNo")).trim();
-            if (downPaymentReference.length() > 100) {
-                throw new IllegalArgumentException("Down payment reference cannot exceed 100 characters.");
-            }
-            jdbc.update("""
-                UPDATE bookings
-                   SET down_payment_method=?, down_payment_reference_no=?
-                 WHERE id=?
-                """, downPaymentMethod, downPaymentReference.isBlank() ? null : downPaymentReference, bookingId);
-            jdbc.update("""
-                INSERT INTO installment_payments(
-                    installment_id, booking_id, entry_type, payment_date, amount,
+            Long downPaymentId = jdbc.queryForObject("""
+                INSERT INTO installment_transactions(
+                    account_id, schedule_id, entry_type, payment_date, amount,
                     payment_method, reference_no, idempotency_key, recorded_by, created_at
                 )
-                VALUES (NULL, ?, 'DOWN_PAYMENT', ?, ?, ?, ?, ?, ?, NOW())
-                """, bookingId, java.sql.Date.valueOf(downPaymentDate), downPayment,
+                VALUES (?, NULL, 'DOWN_PAYMENT', ?, ?, ?, ?, ?, ?, NOW())
+                RETURNING id
+                """, Long.class, accountId, java.sql.Date.valueOf(downPaymentDate), downPayment,
                     downPaymentMethod, downPaymentReference.isBlank() ? "DOWN PAYMENT" : downPaymentReference,
-                    "PLAN-DOWNPAY-" + bookingId, auth.getUsername());
-            jdbc.update("""
-                INSERT INTO customer_ledger(entry_date, entry_type, reference_type, reference_id, credit, notes)
-                VALUES (?, 'INSTALLMENT_DOWN_PAYMENT', 'BOOKING', ?, ?, ?)
-                """, downPaymentDate, bookingId, downPayment,
-                    "Down payment received for invoice " + invoiceNo + " / " + bookingNo);
+                    "PLAN-DOWNPAY-" + accountId, auth.getUsername());
+            cashFlow.recordMovement("INSTALLMENTS", "DOWN_PAYMENT", downPaymentId,
+                    "INSTALLMENT:" + downPaymentId, downPaymentDate, downPayment,
+                    String.valueOf(invoice.get("customer_name")), "Installment plan down payment",
+                    downPaymentMethod, downPaymentReference,
+                    invoiceNo, null, null);
         }
 
         List<Map<String,Object>> createdSchedule = new ArrayList<>();
@@ -595,28 +733,32 @@ public class ErpModuleService {
             String initialStatus = dueDate.isBefore(today) ? "OVERDUE"
                     : dueDate.isEqual(today) ? "DUE" : "PENDING";
             Long scheduleId = jdbc.queryForObject("""
-                INSERT INTO installments(
-                    booking_id, installment_no, due_date, amount_due, amount_paid,
+                INSERT INTO installment_schedules(
+                    account_id, installment_no, due_date, amount_due, amount_paid,
                     remaining_amount, payment_status, created_at, updated_at
                 )
                 VALUES (?, ?, ?, ?, 0, ?, ?, NOW(), NOW())
                 RETURNING id
-                """, Long.class, bookingId, number, java.sql.Date.valueOf(dueDate), amount, amount, initialStatus);
+                """, Long.class, accountId, number, java.sql.Date.valueOf(dueDate),
+                    amount, amount, initialStatus);
             Map<String,Object> scheduleRow = new LinkedHashMap<>();
             scheduleRow.put("id", scheduleId);
+            scheduleRow.put("accountId", accountId);
             scheduleRow.put("installmentNo", number);
             scheduleRow.put("totalInstallments", count);
             scheduleRow.put("dueDate", dueDate.toString());
             scheduleRow.put("amountDue", amount);
             scheduleRow.put("amountPaid", BigDecimal.ZERO.setScale(2));
             scheduleRow.put("remainingAmount", amount);
-            scheduleRow.put("paymentStatus", "PENDING");
+            scheduleRow.put("paymentStatus", initialStatus);
             createdSchedule.add(scheduleRow);
         }
 
         Map<String,Object> auditValues = new LinkedHashMap<>();
         auditValues.put("invoiceId", invoiceId);
         auditValues.put("invoiceNo", invoiceNo);
+        auditValues.put("accountId", accountId);
+        auditValues.put("accountNo", accountNo);
         auditValues.put("originalInvoiceAmount", invoiceTotal);
         auditValues.put("downPayment", downPayment);
         auditValues.put("downPaymentDate", downPaymentDate);
@@ -624,16 +766,16 @@ public class ErpModuleService {
         auditValues.put("totalInstallments", count);
         auditValues.put("paymentFrequency", frequency);
         auditValues.put("scheduledCount", amounts.size());
-        audit("INSTALLMENT_PLAN_CREATED", "installments", bookingId, null, auditValues, ip);
+        audit("INSTALLMENT_PLAN_CREATED", "installment-accounts", accountId, null, auditValues, ip);
         audit("INVOICE_SALES_REVERSED_FOR_INSTALLMENT", "invoices", invoiceId,
                 Map.of("invoiceNo", invoiceNo, "salesAmount", invoiceTotal),
-                Map.of("installmentBookingId", bookingId, "downPayment", downPayment,
+                Map.of("installmentAccountId", accountId, "downPayment", downPayment,
                         "downPaymentDate", downPaymentDate, "futureReceiptsCountAsSalesOnReceiptDate", true), ip);
 
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("bookingId", bookingId);
-        response.put("bookingNo", bookingNo);
+        response.put("accountId", accountId);
+        response.put("accountNo", accountNo);
         response.put("invoiceId", invoiceId);
         response.put("invoiceNo", invoiceNo);
         response.put("originalInvoiceAmount", invoiceTotal);
@@ -649,44 +791,45 @@ public class ErpModuleService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String,Object> getInstallmentPlanDetails(long bookingId) {
-        Map<String,Object> booking = jdbc.queryForMap("""
-            SELECT b.id AS "bookingId", b.booking_no AS "bookingNo",
-                   COALESCE(b.invoice_id, inv.id) AS "invoiceId",
-                   b.invoice_no AS "invoiceNo",
-                   COALESCE(inv.customer_name,b.customer_name) AS "customerName",
-                   COALESCE(inv.mobile,b.mobile) AS mobile,
-                   inv.address AS "customerAddress",
+    public Map<String,Object> getInstallmentPlanDetails(long accountId) {
+        Map<String,Object> account = jdbc.queryForMap("""
+            SELECT a.id AS "accountId", a.account_no AS "accountNo",
+                   a.invoice_id AS "invoiceId", a.invoice_no AS "invoiceNo",
+                   COALESCE(inv.customer_name,a.customer_name) AS "customerName",
+                   COALESCE(inv.mobile,a.mobile) AS mobile,
+                   COALESCE(inv.address,a.customer_address) AS "customerAddress",
                    inv.invoice_date AS "invoiceDate",
                    inv.payment_mode AS "originalPaymentMode",
-                   COALESCE(inv.grand_total,b.estimated_value + b.making_estimate) AS "originalInvoiceAmount",
-                   GREATEST(
-                       COALESCE(inv.grand_total,b.estimated_value + b.making_estimate)
-                       - b.remaining_amount, 0
-                   ) AS "paidAmount",
-                   b.advance_amount AS "downPayment", b.down_payment_date AS "downPaymentDate",
-                   b.down_payment_method AS "downPaymentMethod",
-                   b.down_payment_reference_no AS "downPaymentReferenceNo",
-                   b.down_payment_recorded_by AS "downPaymentRecordedBy",
-                   b.remaining_amount AS "remainingBalance",
-                   b.total_installments AS "totalInstallments",
-                   b.payment_frequency AS "paymentFrequency",
-                   b.booking_date AS "planCreatedDate", b.status
-              FROM bookings b
-              LEFT JOIN invoices inv ON inv.id=COALESCE(
-                  b.invoice_id,
-                  (SELECT legacy_invoice.id FROM invoices legacy_invoice
-                    WHERE legacy_invoice.invoice_no=b.invoice_no LIMIT 1)
-              )
-             WHERE b.id=? AND (
-                 b.is_installment_plan=TRUE
-                 OR EXISTS (SELECT 1 FROM installments s WHERE s.booking_id=b.id)
-             )
-            """, bookingId);
-        List<Map<String,Object>> schedule = list("installments").stream()
-                .filter(row -> Objects.equals(((Number) row.get("bookingId")).longValue(), bookingId))
-                .toList();
-        Object linkedInvoiceId = booking.get("invoiceId");
+                   a.original_invoice_amount AS "originalInvoiceAmount",
+                   GREATEST(a.original_invoice_amount-a.remaining_balance,0) AS "paidAmount",
+                   a.down_payment AS "downPayment", a.down_payment_date AS "downPaymentDate",
+                   a.down_payment_method AS "downPaymentMethod",
+                   a.down_payment_reference_no AS "downPaymentReferenceNo",
+                   a.down_payment_recorded_by AS "downPaymentRecordedBy",
+                   a.remaining_balance AS "remainingBalance",
+                   a.total_installments AS "totalInstallments",
+                   a.payment_frequency AS "paymentFrequency",
+                   a.plan_created_date AS "planCreatedDate", a.status
+              FROM installment_accounts a
+              LEFT JOIN invoices inv ON inv.id=a.invoice_id
+             WHERE a.id=?
+            """, accountId);
+
+        List<Map<String,Object>> schedule = jdbc.queryForList("""
+            SELECT s.id, s.account_id AS "accountId", a.account_no AS "accountNo", a.invoice_no AS "invoiceNo",
+                   a.customer_name AS "customerName", a.mobile,
+                   s.installment_no AS "installmentNo",
+                   a.total_installments AS "totalInstallments",
+                   s.due_date AS "dueDate", s.amount_due AS "amountDue",
+                   s.amount_paid AS "amountPaid", s.remaining_amount AS "remainingAmount",
+                   s.payment_status AS "paymentStatus"
+              FROM installment_schedules s
+              JOIN installment_accounts a ON a.id=s.account_id
+             WHERE s.account_id=?
+             ORDER BY s.installment_no
+            """, accountId);
+
+        Object linkedInvoiceId = account.get("invoiceId");
         List<Map<String,Object>> invoiceItems = linkedInvoiceId == null ? List.of() : jdbc.queryForList("""
             SELECT item_type AS "itemType", description, purity,
                    gross_weight AS "grossWeight", stone_weight AS "stoneWeight",
@@ -696,9 +839,11 @@ public class ErpModuleService {
              WHERE invoice_id=?
              ORDER BY id ASC
             """, linkedInvoiceId);
+
         List<Map<String,Object>> payments = jdbc.queryForList("""
-            SELECT p.id, p.installment_id AS "installmentId",
-                   i.installment_no AS "installmentNo",
+            SELECT p.id, ('NKJ-EMI-TXN-' || LPAD(p.id::TEXT, 8, '0')) AS "transactionId",
+                   p.schedule_id AS "installmentId",
+                   s.installment_no AS "installmentNo",
                    p.entry_type AS "entryType",
                    p.payment_date AS "paymentDate", p.amount,
                    p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo",
@@ -706,23 +851,24 @@ public class ErpModuleService {
                    r.id AS "reversalId", r.reversal_date AS "reversalDate",
                    r.amount AS "reversedAmount", r.reason AS "reversalReason",
                    r.recorded_by AS "reversedBy"
-              FROM installment_payments p
-              LEFT JOIN installments i ON i.id=p.installment_id
-              LEFT JOIN installment_payment_reversals r ON r.payment_id=p.id
-             WHERE (p.booking_id=? OR i.booking_id=?)
+              FROM installment_transactions p
+              LEFT JOIN installment_schedules s ON s.id=p.schedule_id
+              LEFT JOIN installment_transaction_reversals r ON r.transaction_id=p.id
+             WHERE p.account_id=?
                AND p.entry_type IN ('INSTALLMENT','DOWN_PAYMENT')
              ORDER BY p.payment_date DESC,p.created_at DESC,p.id DESC
-            """, bookingId, bookingId);
+            """, accountId);
+
         BigDecimal legacyBalanceReconciliation = jdbc.queryForObject("""
-            SELECT COALESCE(SUM(p.amount),0)
-              FROM installment_payments p
-              LEFT JOIN installments i ON i.id=p.installment_id
-             WHERE (p.booking_id=? OR i.booking_id=?)
-               AND p.entry_type='LEGACY_RECONCILIATION'
-            """, BigDecimal.class, bookingId, bookingId);
+            SELECT COALESCE(SUM(amount),0)
+              FROM installment_transactions
+             WHERE account_id=? AND entry_type='LEGACY_RECONCILIATION'
+            """, BigDecimal.class, accountId);
+
         Map<String,Object> response = new LinkedHashMap<>();
-        response.put("plan", booking);
-        response.put("legacyBalanceReconciliation", legacyBalanceReconciliation == null ? BigDecimal.ZERO : legacyBalanceReconciliation);
+        response.put("plan", account);
+        response.put("legacyBalanceReconciliation",
+                legacyBalanceReconciliation == null ? BigDecimal.ZERO : legacyBalanceReconciliation);
         response.put("invoiceItems", invoiceItems);
         response.put("schedule", schedule);
         response.put("payments", payments);
@@ -731,39 +877,45 @@ public class ErpModuleService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String,Object> collectInstallmentPayment(
-            Map<String,Object> body, String idempotencyKey, String ip) throws JsonProcessingException {
+            Map<String,Object> body, String idempotencyKey, String adminPassword, String ip) throws JsonProcessingException {
         if (body == null) throw new IllegalArgumentException("Payment details are required.");
+        // Re-authenticate before any idempotency lock, ledger insert, or balance
+        // mutation. A rejected password therefore cannot post a receipt.
+        auth.verifyAdminPassword(adminPassword);
         String key = requiredIdempotencyKey(idempotencyKey, "payment");
         lockIdempotencyKey("installment-payment:" + key);
 
         List<Map<String,Object>> existing = jdbc.queryForList("""
-            SELECT p.id, p.installment_id, p.booking_id, p.payment_date, p.amount,
-                   p.payment_method, p.reference_no, i.amount_due, b.invoice_no
-              FROM installment_payments p
-              JOIN installments i ON i.id=p.installment_id
-              JOIN bookings b ON b.id=i.booking_id
+            SELECT p.id, p.schedule_id, p.account_id, p.payment_date, p.amount,
+                   p.payment_method, p.reference_no, s.amount_due, a.invoice_no
+              FROM installment_transactions p
+              JOIN installment_schedules s ON s.id=p.schedule_id
+              JOIN installment_accounts a ON a.id=p.account_id
              WHERE p.idempotency_key=?
             """, key);
         if (!existing.isEmpty()) {
             Map<String,Object> saved = existing.get(0);
-            boolean same = Objects.equals(((Number) saved.get("installment_id")).longValue(),
+            boolean same = Objects.equals(((Number) saved.get("schedule_id")).longValue(),
                     requiredId(body.get("installmentId"), "Installment ID"))
                     && Objects.equals(String.valueOf(saved.get("payment_date")), String.valueOf(body.get("paymentDate")))
                     && decimal(saved.get("amount")).compareTo(decimal(body.get("amount"))) == 0
                     && Objects.equals(String.valueOf(saved.get("payment_method")), String.valueOf(body.get("paymentMethod")))
                     && Objects.equals(saved.get("reference_no") == null ? "" : String.valueOf(saved.get("reference_no")),
                             body.get("referenceNo") == null ? "" : String.valueOf(body.get("referenceNo")));
-            if (!same) throw new IllegalArgumentException("This payment idempotency key was already used for different payment details.");
-            long savedInstallmentId = ((Number) saved.get("installment_id")).longValue();
-            long savedBookingId = ((Number) saved.get("booking_id")).longValue();
+            if (!same) {
+                throw new IllegalArgumentException("This payment idempotency key was already used for different payment details.");
+            }
+            long savedScheduleId = ((Number) saved.get("schedule_id")).longValue();
+            long savedAccountId = ((Number) saved.get("account_id")).longValue();
             BigDecimal scheduleRemaining = decimal(saved.get("amount_due"))
-                    .subtract(netPaidForInstallment(savedInstallmentId)).max(BigDecimal.ZERO);
+                    .subtract(netPaidForInstallment(savedScheduleId)).max(BigDecimal.ZERO);
             BigDecimal accountRemaining = jdbc.queryForObject(
-                    "SELECT remaining_amount FROM bookings WHERE id=?", BigDecimal.class, savedBookingId);
+                    "SELECT remaining_balance FROM installment_accounts WHERE id=?",
+                    BigDecimal.class, savedAccountId);
             Map<String,Object> duplicateResponse = new LinkedHashMap<>();
             duplicateResponse.put("success", true);
             duplicateResponse.put("paymentId", saved.get("id"));
-            duplicateResponse.put("transactionId", saved.get("id"));
+            duplicateResponse.put("transactionId", installmentTransactionId(saved.get("id")));
             duplicateResponse.put("duplicate", true);
             duplicateResponse.put("invoiceNo", saved.get("invoice_no"));
             duplicateResponse.put("amount", saved.get("amount"));
@@ -774,34 +926,37 @@ public class ErpModuleService {
             return duplicateResponse;
         }
 
-        long installmentId = requiredId(body.get("installmentId"), "Installment ID");
-        Long bookingIdForPayment = jdbc.queryForObject(
-                "SELECT booking_id FROM installments WHERE id=?", Long.class, installmentId);
-        if (bookingIdForPayment == null) {
+        long scheduleId = requiredId(body.get("installmentId"), "Installment ID");
+        Long accountIdForPayment = jdbc.queryForObject(
+                "SELECT account_id FROM installment_schedules WHERE id=?",
+                Long.class, scheduleId);
+        if (accountIdForPayment == null) {
             throw new IllegalArgumentException("Installment schedule was not found.");
         }
-        // Use a consistent lock order: account first, then schedule. This serializes
-        // receipts on different schedules within the same account without deadlocks.
-        jdbc.queryForObject("SELECT id FROM bookings WHERE id=? FOR UPDATE", Long.class, bookingIdForPayment);
+        // Lock account first, then schedule. This serializes receipts across
+        // schedules belonging to one account without touching Pre-Booking rows.
+        jdbc.queryForObject("SELECT id FROM installment_accounts WHERE id=? FOR UPDATE",
+                Long.class, accountIdForPayment);
         Map<String,Object> installment = jdbc.queryForMap("""
-            SELECT i.id, i.booking_id, i.amount_due, b.invoice_no, b.is_installment_plan,
-                   EXISTS (SELECT 1 FROM installments legacy_schedule WHERE legacy_schedule.booking_id=b.id) AS has_schedule
-              FROM installments i
-              JOIN bookings b ON b.id=i.booking_id
-             WHERE i.id=? FOR UPDATE OF i
-            """, installmentId);
-        if (((Number) installment.get("booking_id")).longValue() != bookingIdForPayment.longValue()
-                || (!Boolean.TRUE.equals(installment.get("is_installment_plan"))
-                    && !Boolean.TRUE.equals(installment.get("has_schedule")))) {
+            SELECT s.id, s.account_id, s.amount_due, a.invoice_no, a.customer_name
+              FROM installment_schedules s
+              JOIN installment_accounts a ON a.id=s.account_id
+             WHERE s.id=?
+             FOR UPDATE OF s
+            """, scheduleId);
+        if (((Number) installment.get("account_id")).longValue() != accountIdForPayment.longValue()) {
             throw new IllegalArgumentException("This schedule row is not linked to the selected installment account.");
         }
+
         BigDecimal due = decimal(installment.get("amount_due")).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal paid = netPaidForInstallment(installmentId);
+        BigDecimal paid = netPaidForInstallment(scheduleId);
         BigDecimal remaining = due.subtract(paid).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal amount = nonNegative(body.get("amount"), "Payment amount").setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal amount = nonNegative(body.get("amount"), "Payment amount")
+                .setScale(2, java.math.RoundingMode.HALF_UP);
         if (amount.signum() <= 0 || amount.compareTo(remaining) > 0) {
             throw new IllegalArgumentException("Payment must be positive and cannot exceed this installment's outstanding balance of ₹ " + remaining + ".");
         }
+
         java.time.LocalDate paymentDate = parseDate(body.get("paymentDate"), "Payment date");
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
         if (paymentDate.isAfter(today)) throw new IllegalArgumentException("Payment date cannot be in the future.");
@@ -810,37 +965,46 @@ public class ErpModuleService {
             throw new IllegalArgumentException("Select a valid payment method.");
         }
         String referenceNo = body.get("referenceNo") == null ? "" : String.valueOf(body.get("referenceNo")).trim();
-        if (referenceNo.length() > 100) throw new IllegalArgumentException("Transaction reference cannot exceed 100 characters.");
+        if (referenceNo.length() > 100) {
+            throw new IllegalArgumentException("Transaction reference cannot exceed 100 characters.");
+        }
 
         Long paymentId = jdbc.queryForObject("""
-            INSERT INTO installment_payments(
-                installment_id, booking_id, entry_type, payment_date, amount,
+            INSERT INTO installment_transactions(
+                account_id, schedule_id, entry_type, payment_date, amount,
                 payment_method, reference_no, idempotency_key, recorded_by, created_at
             )
             VALUES (?, ?, 'INSTALLMENT', ?, ?, ?, ?, ?, ?, NOW())
             RETURNING id
             """, Long.class,
-            installmentId, ((Number) installment.get("booking_id")).longValue(),
-            java.sql.Date.valueOf(paymentDate), amount, paymentMethod,
-            referenceNo.isBlank() ? null : referenceNo, key, auth.getUsername());
-        recalculateInstallment(installmentId, ((Number) installment.get("booking_id")).longValue());
+            accountIdForPayment, scheduleId, java.sql.Date.valueOf(paymentDate),
+            amount, paymentMethod, referenceNo.isBlank() ? null : referenceNo,
+            key, auth.getUsername());
+
+        cashFlow.recordMovement("INSTALLMENTS", "INSTALLMENT_RECEIPT", paymentId,
+                "INSTALLMENT:" + paymentId, paymentDate, amount,
+                String.valueOf(installment.get("customer_name")), "Installment receipt",
+                paymentMethod, referenceNo,
+                String.valueOf(installment.get("invoice_no")), key, null);
+        recalculateInstallment(scheduleId, accountIdForPayment);
         Map<String,Object> auditValues = new LinkedHashMap<>();
         auditValues.put("invoiceNo", installment.get("invoice_no"));
-        auditValues.put("installmentId", installmentId);
+        auditValues.put("accountId", accountIdForPayment);
+        auditValues.put("installmentId", scheduleId);
         auditValues.put("amount", amount);
         auditValues.put("paymentDate", paymentDate);
         auditValues.put("paymentMethod", paymentMethod);
         auditValues.put("referenceNo", referenceNo);
-        audit("INSTALLMENT_PAYMENT_POSTED", "installment-payments", paymentId, null, auditValues, ip);
+        audit("INSTALLMENT_PAYMENT_POSTED", "installment-transactions", paymentId, null, auditValues, ip);
 
         Map<String,Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        BigDecimal scheduleRemaining = due.subtract(netPaidForInstallment(installmentId)).max(BigDecimal.ZERO);
+        BigDecimal scheduleRemaining = due.subtract(netPaidForInstallment(scheduleId)).max(BigDecimal.ZERO);
         BigDecimal accountRemaining = jdbc.queryForObject(
-                "SELECT remaining_amount FROM bookings WHERE id=?",
-                BigDecimal.class, ((Number) installment.get("booking_id")).longValue());
+                "SELECT remaining_balance FROM installment_accounts WHERE id=?",
+                BigDecimal.class, accountIdForPayment);
         response.put("paymentId", paymentId);
-        response.put("transactionId", paymentId);
+        response.put("transactionId", installmentTransactionId(paymentId));
         response.put("invoiceNo", installment.get("invoice_no"));
         response.put("amount", amount);
         response.put("paymentDate", paymentDate);
@@ -854,27 +1018,22 @@ public class ErpModuleService {
     public Map<String,Object> updateInstallmentDueDate(long installmentId, Object dueDateValue, String ip) {
         java.time.LocalDate newDueDate = parseDate(dueDateValue, "Due date");
         Map<String,Object> before = jdbc.queryForMap(
-                "SELECT id, booking_id, installment_no, due_date FROM installments WHERE id=? FOR UPDATE",
+                "SELECT id, account_id, installment_no, due_date FROM installment_schedules WHERE id=? FOR UPDATE",
                 installmentId);
         if (before.get("due_date") != null
                 && before.get("due_date").toString().equals(newDueDate.toString())) {
             return Map.of("success", true, "message", "Due date is unchanged.");
         }
-        jdbc.update("UPDATE installments SET due_date=?, updated_at=NOW() WHERE id=?",
+        jdbc.update("UPDATE installment_schedules SET due_date=?, updated_at=NOW() WHERE id=?",
                 java.sql.Date.valueOf(newDueDate), installmentId);
-        // A due-date edit changes the schedule state immediately. Recompute
-        // PENDING / DUE / OVERDUE from the current Kolkata date while retaining
-        // the already-posted payment ledger and amount_paid.
-        recalculateInstallment(
-                installmentId,
-                ((Number) before.get("booking_id")).longValue()
-        );
+        long accountId = ((Number) before.get("account_id")).longValue();
+        recalculateInstallment(installmentId, accountId);
         Map<String,Object> after = new LinkedHashMap<>();
         after.put("installmentId", installmentId);
-        after.put("bookingId", before.get("booking_id"));
+        after.put("accountId", accountId);
         after.put("installmentNo", before.get("installment_no"));
         after.put("dueDate", newDueDate);
-        audit("INSTALLMENT_DUE_DATE_UPDATED", "installments", installmentId, before, after, ip);
+        audit("INSTALLMENT_DUE_DATE_UPDATED", "installment-schedules", installmentId, before, after, ip);
         return Map.of("success", true, "message", "Installment due date updated.");
     }
 
@@ -884,41 +1043,44 @@ public class ErpModuleService {
         if (body == null) throw new IllegalArgumentException("A reversal reason is required.");
         String key = requiredIdempotencyKey(idempotencyKey, "reversal");
         lockIdempotencyKey("installment-reversal:" + key);
+
         List<Map<String,Object>> existingByKey = jdbc.queryForList(
-                "SELECT id, payment_id FROM installment_payment_reversals WHERE idempotency_key=?", key);
+                "SELECT id, transaction_id FROM installment_transaction_reversals WHERE idempotency_key=?",
+                key);
         if (!existingByKey.isEmpty()) {
             Map<String,Object> existing = existingByKey.get(0);
-            if (((Number) existing.get("payment_id")).longValue() != paymentId) {
+            if (((Number) existing.get("transaction_id")).longValue() != paymentId) {
                 throw new IllegalArgumentException("This reversal idempotency key belongs to another payment.");
             }
             return Map.of("success", true, "reversalId", existing.get("id"), "duplicate", true,
                     "message", "This payment reversal was already recorded.");
         }
 
-        Long bookingIdForReversal = jdbc.queryForObject("""
-            SELECT COALESCE(p.booking_id, i.booking_id)
-              FROM installment_payments p
-              LEFT JOIN installments i ON i.id=p.installment_id
-             WHERE p.id=?
-            """, Long.class, paymentId);
-        if (bookingIdForReversal == null) throw new IllegalArgumentException("Payment account was not found.");
-        // Match the collection lock order: account first, then transaction row.
-        jdbc.queryForObject("SELECT id FROM bookings WHERE id=? FOR UPDATE", Long.class, bookingIdForReversal);
+        Long accountIdForReversal = jdbc.queryForObject(
+                "SELECT account_id FROM installment_transactions WHERE id=?",
+                Long.class, paymentId);
+        if (accountIdForReversal == null) {
+            throw new IllegalArgumentException("Payment account was not found.");
+        }
+        jdbc.queryForObject("SELECT id FROM installment_accounts WHERE id=? FOR UPDATE",
+                Long.class, accountIdForReversal);
         Map<String,Object> payment = jdbc.queryForMap("""
-            SELECT p.id, p.installment_id, p.amount, p.payment_date, p.entry_type,
-                   COALESCE(p.booking_id, i.booking_id) AS booking_id, b.invoice_no
-              FROM installment_payments p
-              LEFT JOIN installments i ON i.id=p.installment_id
-              JOIN bookings b ON b.id=COALESCE(p.booking_id, i.booking_id)
-             WHERE p.id=? FOR UPDATE OF p
+            SELECT p.id, p.schedule_id, p.amount, p.payment_date, p.entry_type,
+                   p.account_id, a.invoice_no
+              FROM installment_transactions p
+              JOIN installment_accounts a ON a.id=p.account_id
+             WHERE p.id=?
+             FOR UPDATE OF p
             """, paymentId);
         if (!"INSTALLMENT".equals(String.valueOf(payment.get("entry_type")))) {
-            throw new IllegalArgumentException("Down payments are preserved in the account ledger and cannot be reversed from the installment schedule action.");
+            throw new IllegalArgumentException("Down payments and reconciliation entries cannot be reversed from the installment schedule action.");
         }
         Long existingReversal = jdbc.query(
-                "SELECT id FROM installment_payment_reversals WHERE payment_id=?",
+                "SELECT id FROM installment_transaction_reversals WHERE transaction_id=?",
                 rs -> rs.next() ? rs.getLong(1) : null, paymentId);
-        if (existingReversal != null) throw new IllegalArgumentException("This payment has already been reversed.");
+        if (existingReversal != null) {
+            throw new IllegalArgumentException("This payment has already been reversed.");
+        }
         String reason = body.get("reason") == null ? "" : String.valueOf(body.get("reason")).trim();
         if (reason.length() < 5 || reason.length() > 500) {
             throw new IllegalArgumentException("Enter a reversal reason between 5 and 500 characters.");
@@ -930,64 +1092,96 @@ public class ErpModuleService {
             throw new IllegalArgumentException("Reversal date cannot be in the future.");
         }
         Long reversalId = jdbc.queryForObject("""
-            INSERT INTO installment_payment_reversals(
-                payment_id, reversal_date, amount, reason, idempotency_key, recorded_by
+            INSERT INTO installment_transaction_reversals(
+                transaction_id, reversal_date, amount, reason, idempotency_key, recorded_by
             )
             VALUES (?, ?, ?, ?, ?, ?)
             RETURNING id
             """, Long.class, paymentId, java.sql.Date.valueOf(reversalDate),
             decimal(payment.get("amount")), reason, key, auth.getUsername());
-        long installmentId = ((Number) payment.get("installment_id")).longValue();
-        long bookingId = ((Number) payment.get("booking_id")).longValue();
-        recalculateInstallment(installmentId, bookingId);
+
+        long scheduleId = ((Number) payment.get("schedule_id")).longValue();
+        long accountId = ((Number) payment.get("account_id")).longValue();
+        recalculateInstallment(scheduleId, accountId);
         Map<String,Object> auditValues = new LinkedHashMap<>();
-        auditValues.put("paymentId", paymentId);
+        auditValues.put("transactionId", paymentId);
         auditValues.put("invoiceNo", payment.get("invoice_no"));
         auditValues.put("amount", payment.get("amount"));
         auditValues.put("reversalDate", reversalDate);
         auditValues.put("reason", reason);
-        audit("INSTALLMENT_PAYMENT_REVERSED", "installment-payment-reversals", reversalId, payment, auditValues, ip);
+        cashFlow.voidMovement("INSTALLMENT:" + paymentId, reason);
+        audit("INSTALLMENT_PAYMENT_REVERSED", "installment-transaction-reversals", reversalId, payment, auditValues, ip);
         return Map.of("success", true, "reversalId", reversalId,
                 "message", "Payment reversed. The original receipt remains in history.");
     }
 
-    private void recalculateInstallment(long installmentId, long bookingId) {
+    private void recalculateInstallment(long installmentId, long accountId) {
         BigDecimal paid = netPaidForInstallment(installmentId);
         Map<String,Object> row = jdbc.queryForMap(
-                "SELECT amount_due, due_date FROM installments WHERE id=?", installmentId);
+                "SELECT amount_due, due_date FROM installment_schedules WHERE id=?", installmentId);
         BigDecimal due = decimal(row.get("amount_due")).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal remaining = due.subtract(paid).max(BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
-        java.time.LocalDate dueDate = row.get("due_date") instanceof java.sql.Date date
-                ? date.toLocalDate() : java.time.LocalDate.parse(String.valueOf(row.get("due_date")));
+        Object rawDueDate = row.get("due_date");
+        java.time.LocalDate dueDate = null;
+        if (rawDueDate instanceof java.sql.Date sqlDate) {
+            dueDate = sqlDate.toLocalDate();
+        } else if (rawDueDate instanceof java.time.LocalDate localDate) {
+            dueDate = localDate;
+        } else if (rawDueDate != null && !String.valueOf(rawDueDate).isBlank()) {
+            dueDate = java.time.LocalDate.parse(String.valueOf(rawDueDate));
+        }
         java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
         String status = remaining.signum() == 0 ? "PAID"
-                : dueDate.isBefore(today) ? "OVERDUE"
+                : dueDate != null && dueDate.isBefore(today) ? "OVERDUE"
                 : paid.signum() > 0 ? "PARTIAL"
-                : dueDate.isEqual(today) ? "DUE" : "PENDING";
-        jdbc.update("UPDATE installments SET amount_paid=?, remaining_amount=?, payment_status=?, updated_at=NOW() WHERE id=?",
-                paid, remaining, status, installmentId);
+                : dueDate != null && dueDate.isEqual(today) ? "DUE" : "PENDING";
         jdbc.update("""
-            UPDATE bookings
-               SET remaining_amount=COALESCE((SELECT SUM(remaining_amount) FROM installments WHERE booking_id=?),0),
-                   status=CASE WHEN COALESCE((SELECT SUM(remaining_amount) FROM installments WHERE booking_id=?),0)<=0
-                               THEN 'COMPLETED' ELSE 'OPEN' END,
+            UPDATE installment_schedules
+               SET amount_paid=?, remaining_amount=?, payment_status=?, updated_at=NOW()
+             WHERE id=?
+            """, paid, remaining, status, installmentId);
+        jdbc.update("""
+            UPDATE installment_accounts
+               SET remaining_balance=COALESCE((
+                       SELECT SUM(remaining_amount)
+                         FROM installment_schedules
+                        WHERE account_id=?
+                   ),0),
+                   status=CASE WHEN COALESCE((
+                       SELECT SUM(remaining_amount)
+                         FROM installment_schedules
+                        WHERE account_id=?
+                   ),0)<=0 THEN 'COMPLETED' ELSE 'OPEN' END,
                    updated_at=NOW()
              WHERE id=?
-            """, bookingId, bookingId, bookingId);
+            """, accountId, accountId, accountId);
+    }
+
+    /**
+     * Public, stable receipt identifier derived from the immutable payment
+     * primary key. The database sequence guarantees uniqueness; this label is
+     * shared by the notebook, account statement and save confirmation.
+     */
+    private String installmentTransactionId(Object id) {
+        return "NKJ-EMI-TXN-" + String.format(Locale.ROOT, "%08d", requiredId(id, "Transaction ID"));
     }
 
     private BigDecimal netPaidForInstallment(long installmentId) {
         BigDecimal paid = jdbc.queryForObject("""
             SELECT COALESCE(SUM(p.amount),0) - COALESCE((
                 SELECT SUM(r.amount)
-                  FROM installment_payment_reversals r
-                  JOIN installment_payments rp ON rp.id=r.payment_id
-                 WHERE rp.installment_id=?
+                  FROM installment_transaction_reversals r
+                 WHERE r.transaction_id IN (
+                       SELECT p2.id
+                         FROM installment_transactions p2
+                        WHERE p2.schedule_id=?
+                 )
             ),0)
-              FROM installment_payments p
-             WHERE p.installment_id=?
+              FROM installment_transactions p
+             WHERE p.schedule_id=?
             """, BigDecimal.class, installmentId, installmentId);
-        return (paid == null ? BigDecimal.ZERO : paid).max(BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
+        return (paid == null ? BigDecimal.ZERO : paid)
+                .max(BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     private void lockIdempotencyKey(String key) {
@@ -1014,6 +1208,44 @@ public class ErpModuleService {
         }
     }
 
+
+    private java.time.LocalDate shopToday() {
+        return java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+    }
+
+    private String moneyKey(BigDecimal amount) {
+        return amount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String expenseEventKey(long id, BigDecimal cumulativePaid) {
+        return "EXPENSE:" + id + ":PAID_TO:" + moneyKey(cumulativePaid);
+    }
+
+    private String purchaseEventKey(long id, BigDecimal cumulativePaid) {
+        return "PURCHASE-PAYMENT:" + id + ":PAID_TO:" + moneyKey(cumulativePaid);
+    }
+
+    private void prepareExpensePayment(Map<String,Object> data) {
+        BigDecimal total = nonNegative(data.get("amount"), "Expense amount");
+        String status = data.get("paymentStatus") == null
+                ? "PENDING" : String.valueOf(data.get("paymentStatus")).trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("PAID", "PARTIAL", "PENDING").contains(status)) {
+            throw new IllegalArgumentException("Expense payment status must be PAID, PARTIAL or PENDING.");
+        }
+        if ("PARTIAL".equals(status) && data.get("paidAmount") == null) {
+            throw new IllegalArgumentException("Enter the actual Amount paid for a partially paid expense.");
+        }
+        BigDecimal paid = data.get("paidAmount") == null
+                ? ("PAID".equals(status) ? total : BigDecimal.ZERO)
+                : nonNegative(data.get("paidAmount"), "Paid expense amount");
+        if (paid.compareTo(total) > 0) {
+            throw new IllegalArgumentException("Paid expense amount cannot exceed the expense amount.");
+        }
+        String calculatedStatus = paid.signum() == 0 ? "PENDING"
+                : paid.compareTo(total) >= 0 ? "PAID" : "PARTIAL";
+        data.put("paidAmount", paid);
+        data.put("paymentStatus", calculatedStatus);
+    }
 
     private void calculateSalary(Map<String,Object> data) {
         BigDecimal basic = nonNegative(data.get("basicSalary"), "Basic salary");
@@ -1055,44 +1287,12 @@ public class ErpModuleService {
         }
     }
 
-    private void calculateInstallment(Map<String,Object> data) {
-        BigDecimal due = nonNegative(data.get("amountDue"), "Installment amount");
-        BigDecimal paid = nonNegative(data.get("amountPaid"), "Paid amount");
-        if (due.signum() <= 0) throw new IllegalArgumentException("Installment amount must be greater than zero.");
-        if (paid.compareTo(due) > 0) throw new IllegalArgumentException("Paid amount cannot exceed installment amount.");
-        if (data.get("remainingAmount") == null) data.put("remainingAmount", due.subtract(paid));
-        if (data.get("paymentStatus") == null) {
-            data.put("paymentStatus", paid.signum() == 0 ? "DUE" : paid.compareTo(due) >= 0 ? "PAID" : "PARTIAL");
-        }
-    }
-
     private void calculatePurchase(Map<String,Object> data) {
         BigDecimal total = nonNegative(data.get("totalAmount"), "Purchase total");
         BigDecimal paid = nonNegative(data.get("paidAmount"), "Paid amount");
         if (paid.compareTo(total) > 0) throw new IllegalArgumentException("Paid amount cannot exceed purchase total.");
-        if (data.get("balance") == null) data.put("balance", total.subtract(paid).max(BigDecimal.ZERO));
-        if (data.get("status") == null) {
-            data.put("status", paid.signum() == 0 ? "PENDING" : paid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
-        }
-    }
-
-    private void applyInstallmentReceipt(Map<String,Object> data) {
-        long installmentId = requiredId(data.get("installmentId"), "Installment ID");
-        BigDecimal receipt = nonNegative(data.get("amount"), "Payment amount");
-        Map<String,Object> installment = jdbc.queryForMap(
-                "SELECT id, booking_id, amount_due, amount_paid FROM installments WHERE id=? FOR UPDATE",
-                installmentId);
-        BigDecimal due = decimal(installment.get("amount_due"));
-        BigDecimal oldPaid = decimal(installment.get("amount_paid"));
-        BigDecimal paid = oldPaid.add(receipt);
-        if (receipt.signum() <= 0 || paid.compareTo(due) > 0) {
-            throw new IllegalArgumentException("Installment payment must be positive and cannot exceed the remaining due amount.");
-        }
-        BigDecimal remaining = due.subtract(paid).max(BigDecimal.ZERO);
-        jdbc.update("UPDATE installments SET amount_paid=?, remaining_amount=?, payment_status=? WHERE id=?",
-                paid, remaining, remaining.signum() == 0 ? "PAID" : "PARTIAL", installmentId);
-        jdbc.update("UPDATE bookings SET remaining_amount=GREATEST(0, remaining_amount-?), status=CASE WHEN GREATEST(0, remaining_amount-?)<=0 THEN 'COMPLETED' ELSE status END, updated_at=NOW() WHERE id=?",
-                receipt, receipt, installment.get("booking_id"));
+        data.put("balance", total.subtract(paid).max(BigDecimal.ZERO));
+        data.put("status", paid.signum() == 0 ? "PENDING" : paid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
     }
 
     private void applySalaryReceipt(Map<String,Object> data) {
@@ -1179,16 +1379,76 @@ public class ErpModuleService {
         }
         Definition d = writableDefinition(module);
         if (body == null || body.isEmpty()) throw new IllegalArgumentException("Update data is required.");
-        Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
-        if ("bookings".equals(module) && (
-                Boolean.TRUE.equals(before.get("is_installment_plan"))
-                || Boolean.TRUE.equals(jdbc.queryForObject(
-                    "SELECT EXISTS (SELECT 1 FROM installments WHERE booking_id=?)",
-                    Boolean.class, id)))) {
-            throw new IllegalArgumentException("Installment accounts cannot be edited through generic booking fields. Use the installment account actions so schedule and accounting records stay consistent.");
-        }
+        Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=? FOR UPDATE", id);
+        // Pre-Bookings are loaded and updated only from pre_booking_bills.
         Map<String,Object> normalized = new LinkedHashMap<>(body);
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
+        // A paid amount is a cumulative cash figure. It may only increase here;
+        // decreases/refunds must be recorded as separate cash operations.
+        if ("purchases".equals(module)
+                && (normalized.containsKey("paidAmount") || normalized.containsKey("totalAmount")
+                    || normalized.containsKey("status"))) {
+            BigDecimal oldPaid = decimal(before.get("paid_amount"));
+            BigDecimal newPaid = normalized.containsKey("paidAmount")
+                    ? nonNegative(normalized.get("paidAmount"), "Paid supplier amount") : oldPaid;
+            BigDecimal total = normalized.containsKey("totalAmount")
+                    ? nonNegative(normalized.get("totalAmount"), "Purchase total")
+                    : decimal(before.get("total_amount"));
+            if (newPaid.compareTo(oldPaid) < 0) {
+                throw new IllegalArgumentException("Paid supplier amount cannot be reduced. Record a refund or correction as a separate transaction.");
+            }
+            if (newPaid.compareTo(total) > 0) {
+                throw new IllegalArgumentException("Paid supplier amount cannot exceed the supplier purchase total.");
+            }
+            normalized.put("paidAmount", newPaid);
+            normalized.put("balance", total.subtract(newPaid).max(BigDecimal.ZERO));
+            normalized.put("status", newPaid.signum() == 0 ? "PENDING"
+                    : newPaid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
+        }
+        if ("expenses".equals(module)
+                && (normalized.containsKey("paidAmount") || normalized.containsKey("amount")
+                    || normalized.containsKey("paymentStatus"))) {
+            BigDecimal oldPaid = decimal(before.get("paid_amount"));
+            BigDecimal total = normalized.containsKey("amount")
+                    ? nonNegative(normalized.get("amount"), "Expense amount")
+                    : decimal(before.get("amount"));
+            BigDecimal newPaid = normalized.containsKey("paidAmount")
+                    ? nonNegative(normalized.get("paidAmount"), "Paid expense amount")
+                    : oldPaid;
+            if (newPaid.compareTo(oldPaid) < 0) {
+                throw new IllegalArgumentException("Paid expense amount cannot be reduced. Record an actual refund separately.");
+            }
+            if (newPaid.compareTo(total) > 0) {
+                throw new IllegalArgumentException("Paid expense amount cannot exceed the expense amount.");
+            }
+            if (total.compareTo(oldPaid) < 0) {
+                throw new IllegalArgumentException("Expense amount cannot be reduced below the amount already paid.");
+            }
+            normalized.put("paidAmount", newPaid);
+            normalized.put("paymentStatus", newPaid.signum() == 0 ? "PENDING"
+                    : newPaid.compareTo(total) >= 0 ? "PAID" : "PARTIAL");
+        }
+        if ("pre-bookings".equals(module) && normalized.containsKey("advanceAmount")) {
+            BigDecimal oldAdvance = decimal(before.get("advance_amount"));
+            BigDecimal newAdvance = nonNegative(normalized.get("advanceAmount"), "Booking advance");
+            if (newAdvance.compareTo(oldAdvance) < 0) {
+                throw new IllegalArgumentException("A recorded Pre-Booking advance cannot be reduced. Record a refund separately.");
+            }
+        }
+        if ("salary".equals(module) && normalized.containsKey("amountPaid")
+                && nonNegative(normalized.get("amountPaid"), "Amount paid")
+                        .compareTo(decimal(before.get("amount_paid"))) != 0) {
+            throw new IllegalArgumentException("Do not edit paid salary directly. Use Salary Payments to record each actual payment.");
+        }
+
+        if ("customers".equals(module) && normalized.containsKey("phone")
+                && normalized.get("phone") != null) {
+            String normalizedPhone = customerService.normalizePhone(String.valueOf(normalized.get("phone")));
+            if (customerService.phoneBelongsToAnotherCustomer(normalizedPhone, id)) {
+                throw new IllegalArgumentException("This phone number already belongs to another customer. Use that existing Customer ID instead of creating a duplicate.");
+            }
+            normalized.put("phone", normalizedPhone);
+        }
         // Business identifiers are generated once and must not be accidentally
         // erased when an edit form is submitted with an empty optional code field.
         for (String codeField : List.of("bookingNo", "orderNo", "customerCode", "itemCode", "supplierCode", "karigarCode")) {
@@ -1216,10 +1476,52 @@ public class ErpModuleService {
             applied.put(x.key(), value);
         });
         values.add(id);
-        boolean hasUpdatedAt = Set.of("staff", "expenses", "products", "bookings", "suppliers", "customers", "shop_details").contains(d.table());
+        boolean hasUpdatedAt = Set.of("staff", "expenses", "products", "pre_booking_bills", "suppliers", "customers", "shop_details").contains(d.table());
         String sql = "UPDATE " + d.table() + " SET " + assignments + (hasUpdatedAt ? ", updated_at=NOW()" : "") + " WHERE id=?";
         int changed = jdbc.update(sql, values.toArray());
         if (changed == 0) throw new IllegalArgumentException("Record not found.");
+
+        if ("pre-bookings".equals(module) && normalized.containsKey("advanceAmount")) {
+            BigDecimal oldAdvance = decimal(before.get("advance_amount"));
+            BigDecimal newAdvance = nonNegative(normalized.get("advanceAmount"), "Booking advance");
+            BigDecimal delta = newAdvance.subtract(oldAdvance).max(BigDecimal.ZERO);
+            if (delta.signum() > 0) {
+                jdbc.update("INSERT INTO customer_ledger(entry_type,reference_type,reference_id,credit,notes) VALUES ('BOOKING_ADVANCE','BOOKING',?,?,?)",
+                        id, delta, "Additional Pre-Booking advance received");
+                cashFlow.recordMovement("PRE_BOOKINGS", "ADVANCE_RECEIPT", id,
+                        "PREBOOK-ADVANCE:" + id + ":ADVANCE_TO:" + moneyKey(newAdvance),
+                        shopToday(), delta, String.valueOf(before.get("customer_name")),
+                        "Additional Pre-Booking advance received", null, null,
+                        String.valueOf(before.get("booking_no")), null, null);
+            }
+        }
+        if ("purchases".equals(module) && normalized.containsKey("paidAmount")) {
+            BigDecimal oldPaid = decimal(before.get("paid_amount"));
+            BigDecimal newPaid = nonNegative(normalized.get("paidAmount"), "Paid supplier amount");
+            BigDecimal delta = newPaid.subtract(oldPaid).max(BigDecimal.ZERO);
+            if (delta.signum() > 0) {
+                cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT", id,
+                        purchaseEventKey(id, newPaid), shopToday(), delta,
+                        String.valueOf(before.get("supplier_name")), "Additional supplier payment",
+                        null, null, before.get("invoice_no") == null ? "PURCHASE-" + id : String.valueOf(before.get("invoice_no")),
+                        null, null);
+            }
+        }
+        if ("expenses".equals(module)
+                && (normalized.containsKey("paidAmount") || normalized.containsKey("amount"))) {
+            BigDecimal oldPaid = decimal(before.get("paid_amount"));
+            BigDecimal newPaid = nonNegative(normalized.get("paidAmount"), "Paid expense amount");
+            BigDecimal delta = newPaid.subtract(oldPaid).max(BigDecimal.ZERO);
+            if (delta.signum() > 0) {
+                cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT", id,
+                        expenseEventKey(id, newPaid), shopToday(), delta, null,
+                        before.get("description") == null ? String.valueOf(before.get("category")) : String.valueOf(before.get("description")),
+                        before.get("payment_method") == null ? null : String.valueOf(before.get("payment_method")),
+                        before.get("reference_no") == null ? null : String.valueOf(before.get("reference_no")),
+                        String.valueOf(before.get("category")), null, null);
+            }
+        }
+
         if (module.equals("staff") && normalized.containsKey("notes") && normalized.get("notes") != null) {
             String latestNote = String.valueOf(normalized.get("notes")).trim();
             Object previousNote = before.get("notes");
@@ -1238,13 +1540,25 @@ public class ErpModuleService {
             throw new IllegalArgumentException("Posted stock and payment transactions cannot be deleted. Record a correcting transaction instead.");
         }
         Definition d = writableDefinition(module);
-        Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=?", id);
-        if ("bookings".equals(module) && (
-                Boolean.TRUE.equals(before.get("is_installment_plan"))
-                || Boolean.TRUE.equals(jdbc.queryForObject(
-                    "SELECT EXISTS (SELECT 1 FROM installments WHERE booking_id=?)",
-                    Boolean.class, id)))) {
-            throw new IllegalArgumentException("An installment account cannot be deleted because it has financial history. Reverse or correct posted transactions instead.");
+        Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=? FOR UPDATE", id);
+        String cashSourceModule = switch (module) {
+            case "payments" -> "PAYMENTS";
+            case "pre-bookings" -> "PRE_BOOKINGS";
+            case "expenses" -> "EXPENSES";
+            case "purchases" -> "PURCHASES";
+            case "salary" -> "SALARY";
+            default -> null;
+        };
+        if (cashSourceModule != null && Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS(SELECT 1 FROM cash_transactions WHERE source_module=? AND source_record_id=? AND status='POSTED')",
+                Boolean.class, cashSourceModule, id))) {
+            throw new IllegalArgumentException("This record has posted cash history and cannot be deleted. Keep the source reference and record a separate refund/correction if money was returned.");
+        }
+        // Preserve the Pre-Booking's own received advance. This check does not
+        // read or depend on any Installment/EMI table.
+        if ("pre-bookings".equals(module)
+                && decimal(before.get("advance_amount")).signum() > 0) {
+            throw new IllegalArgumentException("This Pre-Booking has a recorded advance and cannot be deleted. Change its status to CANCELLED to preserve the financial history.");
         }
         jdbc.update("DELETE FROM " + d.table() + " WHERE id=?", id);
         audit("DELETE", module, id, before, null, ip);
