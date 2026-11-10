@@ -330,15 +330,6 @@ export default function JewelleryDesignsPage() {
           ) : null}
         </section>
 
-        <section className="nkj-designs-enquiry">
-          <div className="nkj-designs-enquiry-icon"><Heart size={21} /></div>
-          <div>
-            <b>Found a design you like?</b>
-            <p>Share its unique NKJ design code with our shop team for an enquiry or customisation.</p>
-          </div>
-          <span>Thank you for choosing NKJ</span>
-        </section>
-
         {selected && (
           <div className="nkj-design-modal-backdrop" role="presentation" onMouseDown={(event) => {
             if (event.target === event.currentTarget) setSelected(null);
