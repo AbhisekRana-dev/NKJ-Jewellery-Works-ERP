@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Nav } from "../../shared/layouts/OwnerShell";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 import {
   UserRound,
   Mail,
@@ -74,6 +75,23 @@ export default function Profile() {
       active = false;
     };
   }, [username]);
+
+  const refreshProfile = async () => {
+    if (editing) return;
+    try {
+      const data = await request("/admin/profile");
+      if (!data) return;
+      const updated = { ...data, username };
+      setForm((current) => ({ ...current, ...updated }));
+      setSavedForm((current) => ({ ...(current || {}), ...updated }));
+      setPhoto(data.photoDataUrl || "");
+      setSavedPhoto(data.photoDataUrl || "");
+    } catch (error) {
+      setMessage(error.message || "Could not synchronize profile information.");
+    }
+  };
+
+  useRealtimeRefresh(refreshProfile, ["profile"]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
