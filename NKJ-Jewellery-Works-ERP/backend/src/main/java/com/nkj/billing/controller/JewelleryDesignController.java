@@ -173,14 +173,16 @@ public class JewelleryDesignController {
     @Transactional
     public Map<String, Object> updateDesign(@PathVariable long id, @RequestBody Map<String, Object> body) {
         ensureDesignExists(id);
-        String existingMetal = jdbc.queryForObject(
-                "SELECT c.metal_type FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id=d.category_id WHERE d.id=?",
-                String.class, id);
-        if (existingMetal == null) {
-            throw new IllegalArgumentException("Design not found.");
-        }
+        Map<String, Object> existingDesign = jdbc.queryForMap(
+                "SELECT d.category_id AS \"categoryId\", c.metal_type AS \"metalType\" FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id=d.category_id WHERE d.id=?",
+                id);
+        String existingMetal = String.valueOf(existingDesign.get("metalType"));
+        long existingCategoryId = ((Number) existingDesign.get("categoryId")).longValue();
 
         long categoryId = number(body.get("categoryId"), "Choose a subcategory.");
+        if (categoryId != existingCategoryId) {
+            throw new IllegalArgumentException("A design's subcategory cannot be changed after its Design ID is generated. Create a new design in the new subcategory instead.");
+        }
         String newMetal = categoryMetal(categoryId);
         if (!existingMetal.equals(newMetal)) {
             throw new IllegalArgumentException("A design can be moved between subcategories of the same metal only. Create a new design code to change its metal.");
@@ -306,9 +308,14 @@ public class JewelleryDesignController {
         }
         jdbc.update("DELETE FROM public.jewellery_design_images WHERE id=? AND design_id=?", imageId, id);
         urls.get(0).forEach(imageStorage::deleteStoredPath);
-        Integer remaining = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM public.jewellery_design_images WHERE design_id=?", Integer.class, id);
-        if (remaining != null && remaining == 0) {
+        List<Long> remainingImageIds = jdbc.query(
+                "SELECT id FROM public.jewellery_design_images WHERE design_id=? ORDER BY display_order, id",
+                (rs, rowNum) -> rs.getLong(1), id);
+        for (int index = 0; index < remainingImageIds.size(); index++) {
+            jdbc.update("UPDATE public.jewellery_design_images SET display_order=? WHERE id=? AND design_id=?",
+                    index, remainingImageIds.get(index), id);
+        }
+        if (remainingImageIds.isEmpty()) {
             jdbc.update("UPDATE public.jewellery_designs SET is_sample=TRUE, updated_at=NOW() WHERE id=?", id);
         }
         return designDetails(id, true);
