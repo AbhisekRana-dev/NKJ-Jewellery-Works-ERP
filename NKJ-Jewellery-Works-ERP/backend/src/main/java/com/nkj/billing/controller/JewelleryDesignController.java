@@ -139,6 +139,7 @@ public class JewelleryDesignController {
         BigDecimal weightGrams = decimal(body.get("weightGrams"), "Weight");
         BigDecimal priceInr = decimal(body.get("priceInr"), "Price");
         String metal = categoryMetal(categoryId);
+        String designId = nextDesignId(categoryId, metal);
 
         Long next = jdbc.queryForObject(
                 "UPDATE public.jewellery_design_code_counters SET last_value = last_value + 1 WHERE metal_type = ? RETURNING last_value",
@@ -155,13 +156,13 @@ public class JewelleryDesignController {
 
         Long id = jdbc.queryForObject("""
                 INSERT INTO public.jewellery_designs
-                    (design_code, category_id, design_name, description, style_label, keywords,
+                    (design_code, design_id, category_id, design_name, description, style_label, keywords,
                      purity, weight_grams, price_inr,
                      is_sample, is_featured, is_active, popularity_count, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, 0, NOW(), NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, 0, NOW(), NOW())
                 RETURNING id
                 """, Long.class,
-                designCode, categoryId, name, description, style, keywords,
+                designCode, designId, categoryId, name, description, style, keywords,
                 purity, weightGrams, priceInr,
                 bool(body.get("isFeatured"), false), bool(body.get("isActive"), true));
         return designDetails(id, true);
@@ -279,6 +280,20 @@ public class JewelleryDesignController {
         return designDetails(id, true);
     }
 
+    @PutMapping("/api/admin/designs/{id}/images/{imageId}/primary")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
+    @Transactional
+    public Map<String, Object> setPrimaryImage(@PathVariable long id, @PathVariable long imageId) {
+        ensureDesignExists(id);
+        Integer found = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM public.jewellery_design_images WHERE id=? AND design_id=?",
+                Integer.class, imageId, id);
+        if (found == null || found == 0) throw new IllegalArgumentException("Design image not found.");
+        jdbc.update("UPDATE public.jewellery_design_images SET display_order = display_order + 1 WHERE design_id=? AND id<>?", id, imageId);
+        jdbc.update("UPDATE public.jewellery_design_images SET display_order=0 WHERE id=? AND design_id=?", imageId, id);
+        return designDetails(id, true);
+    }
+
     @DeleteMapping("/api/admin/designs/{id}/images/{imageId}")
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
@@ -304,7 +319,7 @@ public class JewelleryDesignController {
                 SELECT c.id, c.metal_type AS "metalType",
                        c.subcategory_name AS "subcategoryName", c.slug,
                        c.display_order AS "displayOrder", c.is_active AS "isActive",
-                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE) AS "activeDesignCount",
+                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE AND (? = TRUE OR EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id = d.id))) AS "activeDesignCount",
                        COUNT(d.id) AS "totalDesignCount"
                   FROM public.jewellery_design_categories c
                   LEFT JOIN public.jewellery_designs d ON d.category_id = c.id
@@ -313,7 +328,7 @@ public class JewelleryDesignController {
                  ORDER BY CASE c.metal_type WHEN 'GOLD' THEN 1 WHEN 'SILVER' THEN 2 ELSE 3 END,
                           c.display_order, c.subcategory_name
                 """;
-        return jdbc.queryForList(sql, includeInactive);
+        return jdbc.queryForList(sql, includeInactive, includeInactive);
     }
 
     private Map<String, Object> listDesigns(
@@ -342,8 +357,9 @@ public class JewelleryDesignController {
             parameters.add(subcategory.trim().toLowerCase(Locale.ROOT));
         }
         if (search != null && !search.isBlank()) {
-            filter.append(" AND (d.design_code ILIKE ? OR to_tsvector('simple', d.design_name || ' ' || d.keywords || ' ' || d.style_label) @@ plainto_tsquery('simple', ?))");
+            filter.append(" AND (d.design_id ILIKE ? OR d.design_code ILIKE ? OR to_tsvector('simple', d.design_name || ' ' || d.keywords || ' ' || d.style_label) @@ plainto_tsquery('simple', ?))");
             String q = "%" + search.trim() + "%";
+            parameters.add(q);
             parameters.add(q);
             parameters.add(search.trim());
         }
@@ -356,6 +372,9 @@ public class JewelleryDesignController {
         if (minWeight != null) { filter.append(" AND d.weight_grams >= ?"); parameters.add(minWeight); }
         if (maxWeight != null) { filter.append(" AND d.weight_grams <= ?"); parameters.add(maxWeight); }
         if (featuredOnly) filter.append(" AND d.is_featured = TRUE");
+        if (!includeInactive) {
+            filter.append(" AND EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id = d.id)");
+        }
 
         String categoryJoin = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id = d.category_id\n";
         Long total = jdbc.queryForObject("SELECT COUNT(*) " + categoryJoin + filter, Long.class, parameters.toArray());
@@ -366,7 +385,7 @@ public class JewelleryDesignController {
             default -> "d.created_at DESC, d.id DESC";
         };
         String sql = """
-                SELECT d.id, d.design_code AS "designCode", d.design_name AS "designName",
+                SELECT d.id, d.design_id AS "designId", d.design_code AS "designCode", d.design_name AS "designName",
                        d.description, d.style_label AS "styleLabel", d.keywords,
                        d.is_sample AS "isSample", d.is_featured AS "isFeatured",
                        d.is_active AS "isActive", d.popularity_count AS "popularityCount",
@@ -417,7 +436,7 @@ public class JewelleryDesignController {
 
     private Map<String, Object> designDetails(long id, boolean includeInactive) {
         List<Map<String, Object>> results = jdbc.queryForList("""
-                SELECT d.id, d.design_code AS "designCode", d.design_name AS "designName",
+                SELECT d.id, d.design_id AS "designId", d.design_code AS "designCode", d.design_name AS "designName",
                        d.description, d.style_label AS "styleLabel", d.keywords,
                        d.is_sample AS "isSample", d.is_featured AS "isFeatured",
                        d.is_active AS "isActive", d.popularity_count AS "popularityCount",
@@ -427,7 +446,7 @@ public class JewelleryDesignController {
                        c.subcategory_name AS "subcategoryName", c.slug AS "subcategorySlug"
                   FROM public.jewellery_designs d
                   JOIN public.jewellery_design_categories c ON c.id=d.category_id
-                 WHERE d.id=? AND (? = TRUE OR d.is_active=TRUE)
+                 WHERE d.id=? AND (? = TRUE OR (d.is_active=TRUE AND EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id=d.id)))
                 """, id, includeInactive);
         if (results.isEmpty()) {
             throw new IllegalArgumentException("Jewellery design not found.");
@@ -441,6 +460,31 @@ public class JewelleryDesignController {
                  ORDER BY display_order, id
                 """, id));
         return result;
+    }
+
+    private String nextDesignId(long categoryId, String metal) {
+        String categoryName = jdbc.queryForObject(
+                "SELECT subcategory_name FROM public.jewellery_design_categories WHERE id=? AND is_active=TRUE",
+                String.class, categoryId);
+        if (categoryName == null) throw new IllegalArgumentException("The selected jewellery subcategory is unavailable.");
+        String categoryKey = categoryIdentifier(categoryName);
+        Long sequence = jdbc.queryForObject("""
+                INSERT INTO public.jewellery_design_id_counters(metal_type, category_key, last_value)
+                VALUES (?, ?, 1)
+                ON CONFLICT (metal_type, category_key)
+                DO UPDATE SET last_value = public.jewellery_design_id_counters.last_value + 1
+                RETURNING last_value
+                """, Long.class, metal, categoryKey);
+        if (sequence == null) throw new IllegalStateException("Could not allocate a unique jewellery Design ID.");
+        return "NKJ_" + metal + "_" + categoryKey + "_" + String.format(Locale.ROOT, "%04d", sequence);
+    }
+
+    private static String categoryIdentifier(String categoryName) {
+        String key = categoryName.toUpperCase(Locale.ROOT)
+                .replace("'", "")
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
+        return key.isBlank() ? "DESIGN" : key;
     }
 
     private void ensureDesignExists(long id) {
