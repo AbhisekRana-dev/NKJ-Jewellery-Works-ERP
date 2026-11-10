@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
+import { getRealtimeClientId } from "../../core/realtime/realtime";
 import "./JewelleryCatalogAdminPage.css";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -18,26 +19,51 @@ const blankForm = (categoryId = "") => ({
 });
 
 async function uploadDesignImages(designId, files) {
-  const formData = new FormData();
-  Array.from(files).forEach((file) => formData.append("files", file));
+  const selectedFiles = Array.from(files || []);
+  if (!selectedFiles.length) return null;
+
   const token = window.localStorage.getItem("nkj_token");
-  let response;
-  try {
-    response = await fetch(`${API}/admin/designs/${designId}/images`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-  } catch {
-    throw new Error("Cannot connect to the server while uploading images.");
+  let latestResult = null;
+
+  // The backend accepts 20 files per request (10 MB per image). Split larger
+  // owner selections into sequential batches so a design can have more than
+  // 20 photographs without asking the owner to repeat the selection.
+  for (let offset = 0; offset < selectedFiles.length; offset += 20) {
+    const formData = new FormData();
+    selectedFiles.slice(offset, offset + 20).forEach((file) => formData.append("files", file));
+
+    let response;
+    try {
+      response = await fetch(`${API}/admin/designs/${designId}/images`, {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "X-NKJ-Client-Id": getRealtimeClientId(),
+        },
+        body: formData,
+      });
+    } catch {
+      throw new Error("Cannot connect to the server while uploading images.");
+    }
+
+    const raw = await response.text();
+    let data = {};
+    if (raw) {
+      try { data = JSON.parse(raw); } catch { data = { message: raw }; }
+    }
+
+    if (response.status === 401) {
+      window.localStorage.removeItem("nkj_token");
+      window.localStorage.removeItem("nkj_user");
+      window.dispatchEvent(new Event("nkj:session-expired"));
+    }
+    if (!response.ok) {
+      throw new Error(data.message || `Image upload failed at photo ${offset + 1} (${response.status}).`);
+    }
+    latestResult = data;
   }
-  const raw = await response.text();
-  let data = {};
-  if (raw) {
-    try { data = JSON.parse(raw); } catch { data = { message: raw }; }
-  }
-  if (!response.ok) throw new Error(data.message || `Image upload failed (${response.status}).`);
-  return data;
+
+  return latestResult;
 }
 
 const cleanFileName = (name) => String(name || "Jewellery Design")
@@ -290,7 +316,7 @@ export default function JewelleryCatalogAdminPage() {
           <div>
             <span>OWNER WORKSPACE · CATALOGUE CONTROL</span>
             <h1><Layers3 size={25} /> Jewellery Catalog Management</h1>
-            <p>Add, organise and publish jewellery design inspirations and shop photographs.</p>
+            <p>Manage all 77 approved subcategories, add unlimited designs, and upload original shop photographs. Each subcategory starts with at least 25 clearly marked sample inspirations.</p>
           </div>
           <button type="button" className="nkj-catalog-primary" onClick={openNewForm}><Plus size={17} /> Add New Design</button>
         </header>
