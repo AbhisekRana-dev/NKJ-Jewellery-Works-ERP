@@ -42,7 +42,7 @@ numbered AS (
 )
 UPDATE public.jewellery_designs d
    SET design_id = 'NKJ_' || n.metal_type || '_' || n.category_key || '_' ||
-                   LPAD(n.sequence_no::TEXT, 4, '0')
+                   LPAD(n.sequence_no::TEXT, GREATEST(4, LENGTH(n.sequence_no::TEXT)), '0')
   FROM numbered n
  WHERE d.id = n.design_pk
    AND d.design_id IS NULL;
