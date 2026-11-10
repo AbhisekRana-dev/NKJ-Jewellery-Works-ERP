@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   CalendarDays, Diamond, ShieldCheck, Users, LockKeyhole, User,
-  EyeOff, Eye, RefreshCw,
+  EyeOff, Eye,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "../../core/auth/AuthProvider";
@@ -288,7 +288,7 @@ export function Login() {
               <span></span>
 
               <button type="button" onClick={reset}>
-                <RefreshCw /> Reset
+                Reset
               </button>
 
               <span></span>
