@@ -43,6 +43,7 @@ public class JewelleryDesignController {
 
     @GetMapping("/api/designs/{id}")
     public Map<String, Object> publicDesignDetails(@PathVariable long id) {
+        jdbc.update("UPDATE public.jewellery_designs SET popularity_count = popularity_count + 1 WHERE id = ? AND is_active = TRUE", id);
         return designDetails(id, false);
     }
 
@@ -236,11 +237,7 @@ public class JewelleryDesignController {
             int requestedPage, int requestedSize, boolean includeInactive) {
         int page = Math.max(0, requestedPage);
         int size = Math.max(1, Math.min(requestedSize, 60));
-        StringBuilder filter = new StringBuilder("""
-                 FROM public.jewellery_designs d
-                 JOIN public.jewellery_design_categories c ON c.id = d.category_id
-                 WHERE (? = TRUE OR d.is_active = TRUE)
-                """);
+        StringBuilder filter = new StringBuilder(" WHERE (? = TRUE OR d.is_active = TRUE)");
         List<Object> parameters = new ArrayList<>();
         parameters.add(includeInactive);
 
@@ -254,14 +251,15 @@ public class JewelleryDesignController {
         }
         if (search != null && !search.isBlank()) {
             filter.append(" AND (d.design_name ILIKE ? OR d.design_code ILIKE ? OR d.keywords ILIKE ? OR d.style_label ILIKE ?)");
-            String q = "%" + search.trim().replace("%", "\\%").replace("_", "\\_") + "%";
+            String q = "%" + search.trim() + "%";
             parameters.add(q);
             parameters.add(q);
             parameters.add(q);
             parameters.add(q);
         }
 
-        Long total = jdbc.queryForObject("SELECT COUNT(*) " + filter, Long.class, parameters.toArray());
+        String categoryJoin = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id = d.category_id";
+        Long total = jdbc.queryForObject("SELECT COUNT(*) " + categoryJoin + filter, Long.class, parameters.toArray());
         String orderBy = "popular".equalsIgnoreCase(sort)
                 ? "d.popularity_count DESC, d.created_at DESC, d.id DESC"
                 : "d.created_at DESC, d.id DESC";
@@ -275,7 +273,7 @@ public class JewelleryDesignController {
                        c.slug AS "subcategorySlug",
                        img.thumbnail_url AS "thumbnailUrl", img.original_url AS "originalUrl",
                        COALESCE(img.image_count, 0) AS "imageCount"
-                """ + filter + """
+                """ + categoryJoin + """
                 LEFT JOIN LATERAL (
                     SELECT di.thumbnail_url, di.original_url,
                            (SELECT COUNT(*) FROM public.jewellery_design_images all_images WHERE all_images.design_id=d.id) AS image_count
@@ -284,7 +282,7 @@ public class JewelleryDesignController {
                      ORDER BY di.display_order, di.id
                      LIMIT 1
                 ) img ON TRUE
-                ORDER BY """ + orderBy + " LIMIT ? OFFSET ?";
+                """ + filter + " ORDER BY " + orderBy + " LIMIT ? OFFSET ?";
         List<Object> dataParameters = new ArrayList<>(parameters);
         dataParameters.add(size);
         dataParameters.add((long) page * size);
