@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -14,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Iterator;
 import java.util.UUID;
 
 @Service
@@ -48,14 +51,30 @@ public class JewelleryDesignImageStorageService {
 
         byte[] bytes = file.getBytes();
         BufferedImage source;
-        try (ByteArrayInputStream input = new ByteArrayInputStream(bytes)) {
-            source = ImageIO.read(input);
+        try (ByteArrayInputStream input = new ByteArrayInputStream(bytes);
+             ImageInputStream imageInput = ImageIO.createImageInputStream(input)) {
+            if (imageInput == null) {
+                throw new IllegalArgumentException("The selected file is not a valid JPG or PNG image.");
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInput);
+            if (!readers.hasNext()) {
+                throw new IllegalArgumentException("The selected file is not a valid JPG or PNG image.");
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(imageInput, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if (width < 1 || height < 1 || width > 8000 || height > 8000 || (long) width * height > 24000000L) {
+                    throw new IllegalArgumentException("Image dimensions must not exceed 8000 × 8000 pixels or 24 megapixels.");
+                }
+                source = reader.read(0);
+            } finally {
+                reader.dispose();
+            }
         }
-        if (source == null || source.getWidth() < 1 || source.getHeight() < 1) {
+        if (source == null) {
             throw new IllegalArgumentException("The selected file is not a valid JPG or PNG image.");
-        }
-        if (source.getWidth() > 8000 || source.getHeight() > 8000 || (long) source.getWidth() * source.getHeight() > 24000000L) {
-            throw new IllegalArgumentException("Image dimensions must not exceed 8000 × 8000 pixels or 24 megapixels.");
         }
 
         String fileId = UUID.randomUUID().toString();
