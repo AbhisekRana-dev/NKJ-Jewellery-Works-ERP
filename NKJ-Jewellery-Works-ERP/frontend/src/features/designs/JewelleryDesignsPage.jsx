@@ -21,6 +21,10 @@ const iconFor = (design) => {
   if (/chain|necklace|layer/.test(text)) return Layers3;
   return Gem;
 };
+const isNewDesign = (createdAt) => {
+  const timestamp = createdAt ? new Date(createdAt).getTime() : 0;
+  return Number.isFinite(timestamp) && timestamp > 0 && Date.now() - timestamp <= 14 * 24 * 60 * 60 * 1000;
+};
 const hueFor = (design) => {
   const source = String(design?.designCode || design?.id || "NKJ");
   let hash = 0;
@@ -280,6 +284,7 @@ export default function JewelleryDesignsPage() {
                         aria-label={favorites.has(design.designCode) ? "Remove favorite" : "Add favorite"}>
                         <Heart size={17} fill={favorites.has(design.designCode) ? "currentColor" : "none"} />
                       </button>
+                      {isNewDesign(design.createdAt) && <span className="nkj-design-new-label">NEW</span>}
                       {design.isFeatured && <span className="nkj-design-featured"><Star size={11} fill="currentColor" /> Featured</span>}
                       {design.isSample && <span className="nkj-design-sample-label">Sample inspiration</span>}
                       {!design.isSample && <span className="nkj-design-real-label">Shop design</span>}
