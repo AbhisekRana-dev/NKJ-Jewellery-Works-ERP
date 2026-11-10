@@ -2,7 +2,7 @@ import "./OwnerShell.css";
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
+  FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
   Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem,
@@ -227,10 +227,13 @@ export function Nav({ active = "home" }) {
             <b>Nandikishor Jewellery Works</b>
           </div>
           <div className="nkj-owner-top-actions">
-            <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
+            <Link to="/designs" className="nkj-calculator-link nkj-designs-link" aria-label="Open jewellery designs">
+              <Gem size={17} /> <span>Jewellery Designs</span>
+            </Link>
             <Link to="/calculator" className="nkj-calculator-link" aria-label="Open calculator">
               <CalculatorIcon size={17} /> <span>Calculator</span>
             </Link>
+            <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
             <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
           </div>
         </header>
@@ -245,7 +248,6 @@ export function Nav({ active = "home" }) {
         <div><b>Nandikishor Jewellery Works</b><small>Sasra, Gopiballavpur, Jhargram</small></div>
       </Link>
       <nav aria-label="Main navigation">
-        <Link className={active === "home" ? "active" : ""} to="/"><HomeIcon />Home</Link>
         <Link className={active === "designs" ? "active" : ""} to="/designs"><Gem />Jewellery Designs</Link>
         <Link className={active === "calculator" ? "active" : ""} to="/calculator"><CalculatorIcon />Calculator</Link>
         <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
