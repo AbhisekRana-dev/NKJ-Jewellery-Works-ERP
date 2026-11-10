@@ -421,11 +421,24 @@ body.nkj-owner-layout .app-content {width: 100%;
 .nkj-owner-sidebar.is-collapsed .nkj-owner-brand > span:last-child,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-user > span:last-child,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-title,
-.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span,
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-full-label,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-arrow,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a span,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button span {
   display: none !important;
+}
+.nkj-owner-sidebar .nkj-owner-nav-short-label {display: none;}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-short-label {
+  display: block !important;
+  width: 100%;
+  overflow: hidden;
+  color: #f8e9e7;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-user {justify-content: center;
   margin: 8px 8px 6px;
@@ -437,14 +450,19 @@ body.nkj-owner-layout .app-content {width: 100%;
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav {padding: 7px 8px 12px !important;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-group {margin: 7px 0 9px !important;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {
+  flex-direction: column !important;
   justify-content: center !important;
-  min-height: 42px !important;
-  padding: 9px 5px !important;
+  align-items: center !important;
+  gap: 3px !important;
+  min-height: 54px !important;
+  padding: 6px 3px !important;
+  text-align: center !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a svg {
-  width: 19px !important;
-  height: 19px !important;
-  flex: 0 0 19px !important;
+  width: 22px !important;
+  height: 22px !important;
+  flex: 0 0 22px !important;
+  stroke-width: 2.25 !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom {
   padding: 8px 7px max(12px, env(safe-area-inset-bottom)) !important;
