@@ -8,7 +8,7 @@ import { request } from "../../core/api/client";
 import "./JewelleryDesignsPage.css";
 
 const PAGE_SIZE = 24;
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 const assetUrl = (path) => path && path.startsWith("/api/") ? `${API_BASE}${path.slice(4)}` : path;
 const METALS = [
   { id: "GOLD", label: "Gold", description: "Traditional and contemporary gold designs", tone: "gold", mark: "Au" },
