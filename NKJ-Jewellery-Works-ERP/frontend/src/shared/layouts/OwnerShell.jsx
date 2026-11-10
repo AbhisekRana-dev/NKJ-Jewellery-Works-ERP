@@ -81,15 +81,11 @@ export function Nav({ active = "home" }) {
     }
   };
 
-  // Navigation may remount Nav for the destination route. Persist the expanded
-  // state synchronously before the Link navigates so the next page keeps it.
-  const handleSidebarNavigation = () => {
-    if (!sidebarCollapsed) return;
-    persistSidebarState(false);
-    setSidebarCollapsed(false);
-  };
+  // A normal navigation click only follows the link. It never changes
+  // whether the sidebar is expanded or collapsed.
+  const handleSidebarNavigation = () => {};
 
-  // Only the dedicated toggle button changes the sidebar to collapsed.
+  // The dedicated hamburger toggles the sidebar independently of navigation.
   const handleSidebarToggle = () => {
     setSidebarCollapsed((current) => {
       const next = !current;
@@ -98,11 +94,14 @@ export function Nav({ active = "home" }) {
     });
   };
 
-  // A deliberate double-click on a page link collapses the sidebar.
-  // Single-click navigation remains unchanged.
+  // Double-clicking a navigation item toggles the sidebar in either state:
+  // collapsed -> expanded, expanded -> collapsed.
   const handleSidebarNavigationDoubleClick = () => {
-    persistSidebarState(true);
-    setSidebarCollapsed(true);
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      persistSidebarState(next);
+      return next;
+    });
   };
 
   useLayoutEffect(() => {
