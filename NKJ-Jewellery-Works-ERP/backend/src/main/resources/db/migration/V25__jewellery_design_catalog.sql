@@ -218,13 +218,13 @@ ON CONFLICT (metal_type) DO UPDATE SET last_value = GREATEST(
     public.jewellery_design_code_counters.last_value, EXCLUDED.last_value
 );
 INSERT INTO public.jewellery_design_code_counters(metal_type, last_value)
-SELECT 'SILVER', COALESCE(MAX(SUBSTRING(design_code FROM 11)::BIGINT), 0)
+SELECT 'SILVER', COALESCE(MAX(SUBSTRING(design_code FROM 12)::BIGINT), 0)
   FROM public.jewellery_designs WHERE design_code LIKE 'NKJ-SILVER-%'
 ON CONFLICT (metal_type) DO UPDATE SET last_value = GREATEST(
     public.jewellery_design_code_counters.last_value, EXCLUDED.last_value
 );
 INSERT INTO public.jewellery_design_code_counters(metal_type, last_value)
-SELECT 'DIAMOND', COALESCE(MAX(SUBSTRING(design_code FROM 8)::BIGINT), 0)
+SELECT 'DIAMOND', COALESCE(MAX(SUBSTRING(design_code FROM 9)::BIGINT), 0)
   FROM public.jewellery_designs WHERE design_code LIKE 'NKJ-DIA-%'
 ON CONFLICT (metal_type) DO UPDATE SET last_value = GREATEST(
     public.jewellery_design_code_counters.last_value, EXCLUDED.last_value
