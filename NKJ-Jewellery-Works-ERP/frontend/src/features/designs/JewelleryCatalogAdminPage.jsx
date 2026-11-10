@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
-import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
+import { getRealtimeClientId } from "../../core/realtime/realtime";
 import "./JewelleryCatalogAdminPage.css";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -14,9 +14,6 @@ const blankForm = (categoryId = "") => ({
   description: "",
   styleLabel: "",
   keywords: "",
-  purity: "",
-  weightGrams: "",
-  priceInr: "",
   isActive: true,
   isFeatured: false,
 });
@@ -98,6 +95,9 @@ export default function JewelleryCatalogAdminPage() {
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState("");
+  const [newSubcategoryMetal, setNewSubcategoryMetal] = useState("GOLD");
+  const [newSubcategoryName, setNewSubcategoryName] = useState("");
+  const [categorySaving, setCategorySaving] = useState(false);
   const imagePreviews = useMemo(
     () => imageFiles.map((file) => ({ file, url: URL.createObjectURL(file) })),
     [imageFiles],
@@ -107,7 +107,7 @@ export default function JewelleryCatalogAdminPage() {
     imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
   }, [imagePreviews]);
 
-  const metalCategories = useMemo(() => categories.filter((item) => item.metalType === metal), [categories, metal]);
+  const metalCategories = useMemo(() => categories.filter((item) => item.metalType === metal && item.isActive !== false), [categories, metal]);
   const selectedCategory = categories.find((item) => String(item.id) === String(form.categoryId));
 
   const loadCategories = useCallback(async () => {
@@ -135,8 +135,6 @@ export default function JewelleryCatalogAdminPage() {
       setLoading(false);
     }
   }, [metal, subcategory, search, sort, page]);
-
-  useRealtimeRefresh(() => loadDesigns(page), ["designs"]);
 
   useEffect(() => {
     loadCategories().catch((err) => setError(err.message || "Could not load catalogue categories."));
@@ -168,9 +166,6 @@ export default function JewelleryCatalogAdminPage() {
         description: detail.description || "",
         styleLabel: detail.styleLabel || "",
         keywords: detail.keywords || "",
-        purity: detail.purity || "",
-        weightGrams: detail.weightGrams ?? "",
-        priceInr: detail.priceInr ?? "",
         isActive: Boolean(detail.isActive),
         isFeatured: Boolean(detail.isFeatured),
       });
@@ -180,6 +175,61 @@ export default function JewelleryCatalogAdminPage() {
     } catch (err) {
       setError(err.message || "Could not open this design.");
     }
+  };
+
+  const addSubcategory = async (event) => {
+    event.preventDefault();
+    if (!newSubcategoryName.trim()) return;
+    setCategorySaving(true);
+    setError("");
+    try {
+      await request("/admin/designs/categories", {
+        method: "POST",
+        body: JSON.stringify({ metalType: newSubcategoryMetal, subcategoryName: newSubcategoryName.trim() }),
+      });
+      setNewSubcategoryName("");
+      setMessage("Subcategory added to " + newSubcategoryMetal + ".");
+      await loadCategories();
+    } catch (err) {
+      setError(err.message || "Could not add this subcategory.");
+    } finally {
+      setCategorySaving(false);
+    }
+  };
+
+  const updateSubcategory = async (category, changes) => {
+    setCategorySaving(true);
+    setError("");
+    try {
+      await request("/admin/designs/categories/" + category.id, {
+        method: "PUT",
+        body: JSON.stringify({
+          subcategoryName: changes.subcategoryName || category.subcategoryName,
+          isActive: changes.isActive ?? category.isActive,
+          displayOrder: category.displayOrder,
+        }),
+      });
+      setMessage("Subcategory updated.");
+      await loadCategories();
+    } catch (err) {
+      setError(err.message || "Could not update this subcategory.");
+    } finally {
+      setCategorySaving(false);
+    }
+  };
+
+  const renameSubcategory = (category) => {
+    const name = window.prompt("New subcategory name", category.subcategoryName);
+    if (name && name.trim() && name.trim() !== category.subcategoryName) {
+      updateSubcategory(category, { subcategoryName: name.trim() });
+    }
+  };
+
+  const toggleSubcategory = (category) => {
+    const nextActive = !category.isActive;
+    const action = nextActive ? "activate" : "deactivate";
+    if (!window.confirm("Are you sure you want to " + action + " " + category.subcategoryName + "?")) return;
+    updateSubcategory(category, { isActive: nextActive });
   };
 
   const saveDesign = async (event) => {
@@ -219,9 +269,6 @@ export default function JewelleryCatalogAdminPage() {
           description: design.description,
           styleLabel: design.styleLabel,
           keywords: design.keywords,
-          purity: design.purity || "",
-          weightGrams: design.weightGrams ?? "",
-          priceInr: design.priceInr ?? "",
           isActive: !design.isActive,
           isFeatured: design.isFeatured,
         }),
@@ -244,9 +291,6 @@ export default function JewelleryCatalogAdminPage() {
           description: design.description,
           styleLabel: design.styleLabel,
           keywords: design.keywords,
-          purity: design.purity || "",
-          weightGrams: design.weightGrams ?? "",
-          priceInr: design.priceInr ?? "",
           isActive: design.isActive,
           isFeatured: !design.isFeatured,
         }),
@@ -335,6 +379,28 @@ export default function JewelleryCatalogAdminPage() {
           <button type="button" className="nkj-catalog-primary" onClick={openNewForm}><Plus size={17} /> Add New Design</button>
         </header>
 
+        <details className="nkj-catalog-subcategory-manager">
+          <summary><span><b>Manage jewellery subcategories</b><small>Add, rename or deactivate subcategories under the three fixed main categories.</small></span><Layers3 size={18} /></summary>
+          <form className="nkj-catalog-subcategory-form" onSubmit={addSubcategory}>
+            <select value={newSubcategoryMetal} onChange={(event) => setNewSubcategoryMetal(event.target.value)}>
+              <option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="DIAMOND">Diamond</option>
+            </select>
+            <input value={newSubcategoryName} maxLength={80} onChange={(event) => setNewSubcategoryName(event.target.value)} placeholder="New subcategory name" required />
+            <button type="submit" disabled={categorySaving || !newSubcategoryName.trim()}>{categorySaving ? "Saving…" : "Add subcategory"}</button>
+          </form>
+          <div className="nkj-catalog-subcategory-list">
+            {categories.map((category) => (
+              <div className={category.isActive ? "" : "inactive"} key={category.id}>
+                <span><b>{category.metalType}</b> · {category.subcategoryName}<small>{category.activeDesignCount || 0} active designs</small></span>
+                <div>
+                  <button type="button" disabled={categorySaving} onClick={() => renameSubcategory(category)}>Rename</button>
+                  <button type="button" disabled={categorySaving} onClick={() => toggleSubcategory(category)}>{category.isActive ? "Deactivate" : "Activate"}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+
         {error && <div className="nkj-catalog-alert error">{error}</div>}
         {message && <div className="nkj-catalog-alert success">{message}</div>}
 
@@ -347,7 +413,7 @@ export default function JewelleryCatalogAdminPage() {
             <label>Assign metal and subcategory
               <select value={bulkCategoryId} onChange={(event) => setBulkCategoryId(event.target.value)}>
                 <option value="">Choose subcategory</option>
-                {categories.map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
+                {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
               </select>
             </label>
             <label className="nkj-catalog-file-picker"><ImagePlus size={17} /> Choose multiple JPG/PNG images
@@ -388,9 +454,7 @@ export default function JewelleryCatalogAdminPage() {
                       <span><b>{design.designName}</b><small>{design.styleLabel}</small></span>
                     </div></td>
                     <td><code>{design.designCode}</code></td>
-                    <td>{design.metalType}<small className="nkj-catalog-subcategory">{design.subcategoryName}</small>
-                      <small className="nkj-catalog-subcategory">{[design.purity, design.weightGrams != null ? Number(design.weightGrams).toLocaleString("en-IN") + " g" : ""].filter(Boolean).join(" · ") || "Specs not set"}</small>
-                    </td>
+                    <td>{design.metalType}<small className="nkj-catalog-subcategory">{design.subcategoryName}</small></td>
                     <td>{design.isSample ? <span className="nkj-catalog-badge sample">Sample inspiration</span> : <span className="nkj-catalog-badge real">Shop photo</span>}</td>
                     <td>{design.isActive ? <span className="nkj-catalog-badge active">Active</span> : <span className="nkj-catalog-badge inactive">Inactive</span>}{design.isFeatured && <span className="nkj-catalog-badge featured">Featured</span>}</td>
                     <td><div className="nkj-catalog-actions">
@@ -423,15 +487,12 @@ export default function JewelleryCatalogAdminPage() {
                 <label className="wide">Approved metal / subcategory
                   <select required value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
                     <option value="">Choose subcategory</option>
-                    {categories.map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
+                    {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
                   </select>
                 </label>
                 <label className="wide">Design name<input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" /></label>
                 <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
                 <label>Search keywords<input maxLength={800} value={form.keywords} onChange={(event) => setForm((current) => ({ ...current, keywords: event.target.value }))} placeholder="Motif, finish, occasion…" /></label>
-                <label>Purity<input maxLength={40} value={form.purity} onChange={(event) => setForm((current) => ({ ...current, purity: event.target.value }))} placeholder="e.g. 22K / 18K / 925" /></label>
-                <label>Weight (grams)<input type="number" min="0" step="0.001" value={form.weightGrams} onChange={(event) => setForm((current) => ({ ...current, weightGrams: event.target.value }))} placeholder="Optional" /></label>
-                <label>Price (₹)<input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" /></label>
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
                 <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload multiple design photographs
                   <input type="file" accept="image/jpeg,image/png" multiple onChange={(event) => setImageFiles(Array.from(event.target.files || []))} />
