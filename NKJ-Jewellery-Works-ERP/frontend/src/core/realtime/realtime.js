@@ -1,22 +1,13 @@
 import { useEffect, useRef } from "react";
 
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
-const CLIENT_ID_KEY = "nkj-realtime-client-id";
 const subscribers = new Set();
+const handledEventIds = new Set();
 
 function createClientId() {
-  try {
-    let id = window.sessionStorage.getItem(CLIENT_ID_KEY);
-    if (!id) {
-      id = typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `nkj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      window.sessionStorage.setItem(CLIENT_ID_KEY, id);
-    }
-    return id;
-  } catch {
-    return `nkj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  }
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `nkj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 const CLIENT_ID = createClientId();
@@ -28,6 +19,17 @@ export function getRealtimeClientId() {
 export function subscribeRealtime(listener) {
   subscribers.add(listener);
   return () => subscribers.delete(listener);
+}
+
+function rememberEvent(eventId) {
+  if (!eventId) return true;
+  if (handledEventIds.has(eventId)) return false;
+  handledEventIds.add(eventId);
+  if (handledEventIds.size > 200) {
+    const oldest = handledEventIds.values().next().value;
+    handledEventIds.delete(oldest);
+  }
+  return true;
 }
 
 function emitRealtime(event) {
@@ -114,6 +116,7 @@ export function connectRealtimeStream(publicOnly = false) {
     if (eventName !== "data-changed" || dataLines.length === 0) return;
     try {
       const event = JSON.parse(dataLines.join("\n"));
+      if (!rememberEvent(event.eventId)) return;
       emitRealtime(event);
     } catch (error) {
       console.error("Could not parse ERP real-time event:", error);
