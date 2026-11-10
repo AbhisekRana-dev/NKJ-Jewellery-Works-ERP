@@ -62,7 +62,7 @@ body.nkj-owner-layout {background:#f6f5f2;}
 }
 .nkj-sidebar-toggle {position:absolute;right:8px;top:13px;z-index:3;width:29px;height:29px;display:grid;place-items:center;border:1px solid rgba(245,215,145,.35);border-radius:7px;background:rgba(255,255,255,.09);color:#f6d98c;cursor:pointer}
 .nkj-sidebar-toggle svg {transition:transform .18s ease}
-.nkj-owner-sidebar.is-collapsed {width:var(--nkj-owner-collapsed-width, 190px)}
+.nkj-owner-sidebar.is-collapsed {width:var(--nkj-owner-collapsed-width, 82px)}
 .nkj-owner-sidebar.is-collapsed .nkj-sidebar-toggle {right:24px;transform:rotate(180deg)}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-brand {justify-content:center;padding-left:5px;padding-right:5px}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-brand>span:last-child,
@@ -73,9 +73,9 @@ body.nkj-owner-layout {background:#f6f5f2;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-user {justify-content:center;margin:10px 7px;padding:8px 4px}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav {padding:5px 8px}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {justify-content:center;padding:10px 6px}
-.nkj-owner-sidebar.is-collapsed .nkj-owner-topbar {margin-left:var(--nkj-owner-collapsed-width, 190px);width:calc(100% - var(--nkj-owner-collapsed-width, 190px))}
-body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar {margin-left:var(--nkj-owner-collapsed-width, 190px);width:calc(100% - var(--nkj-owner-collapsed-width, 190px))}
-body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .container.nkj-owner-container {width:calc(100% - var(--nkj-owner-collapsed-width, 190px));margin-left:var(--nkj-owner-collapsed-width, 190px)}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-topbar {margin-left:var(--nkj-owner-collapsed-width, 82px);width:calc(100% - var(--nkj-owner-collapsed-width, 82px))}
+body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar {margin-left:var(--nkj-owner-collapsed-width, 82px);width:calc(100% - var(--nkj-owner-collapsed-width, 82px))}
+body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .container.nkj-owner-container {width:calc(100% - var(--nkj-owner-collapsed-width, 82px));margin-left:var(--nkj-owner-collapsed-width, 82px)}
 /* The dedicated sidebar toggle stays visible on desktop, tablet and mobile. */
 .app-layout {min-height: 100vh;}
 .app-layout {display: flex; flex-direction: column;}
@@ -165,8 +165,8 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .container.nkj-owner-
 .topbar nav {width: 100%; justify-content: flex-start;}
 .topbar nav a,
 .topbar nav button {min-height: 38px; padding: 8px 11px;}
-.nkj-owner-topbar {margin-left: var(--nkj-owner-collapsed-width, 190px); width: calc(100% - var(--nkj-owner-collapsed-width, 190px));}
-.container.nkj-owner-container {width: calc(100% - var(--nkj-owner-collapsed-width, 190px)); margin-left: var(--nkj-owner-collapsed-width, 190px);}
+.nkj-owner-topbar {margin-left: var(--nkj-owner-collapsed-width, 82px); width: calc(100% - var(--nkj-owner-collapsed-width, 82px));}
+.container.nkj-owner-container {width: calc(100% - var(--nkj-owner-collapsed-width, 82px)); margin-left: var(--nkj-owner-collapsed-width, 82px);}
 
 }
 @media (max-width: 650px) {
@@ -420,15 +420,12 @@ body.nkj-owner-layout .app-content {width: 100%;
   padding: 43px 5px 10px !important;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-brand > span:last-child,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-user > span:last-child,
-.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-arrow {display: none !important;}
-
-/* Keep page names visible in the wider compact rail. */
-.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-title {display: block !important;}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-title,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span,
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-arrow,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a span,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button span {
-  display: inline !important;
-  min-width: 0;
+  display: none !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-user {justify-content: center;
   margin: 8px 8px 6px;
@@ -437,43 +434,30 @@ body.nkj-owner-layout .app-content {width: 100%;
   background: rgba(255,255,255,.075);}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav {padding: 7px 8px 12px !important;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-group {margin: 7px 0 9px !important;}
-.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-title {
-  padding: 9px 11px 6px !important;
-  text-align: left;
-}
-.nkj-owner-sidebar.is-collapsed .nkj-owner-nav {padding: 7px 9px 12px !important;}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav {padding: 7px 8px 12px !important;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-group {margin: 7px 0 9px !important;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {
-  justify-content: flex-start !important;
+  justify-content: center !important;
   min-height: 42px !important;
-  padding: 9px 11px !important;
-  gap: 10px !important;
-  text-align: left;
+  padding: 9px 5px !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a svg {
-  width: 22px !important;
-  height: 22px !important;
-  flex: 0 0 22px !important;
-}
-.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span {
-  flex: 1 1 auto;
-  font-size: 11px !important;
-  line-height: 1.25;
-  white-space: normal;
+  width: 19px !important;
+  height: 19px !important;
+  flex: 0 0 19px !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom {
-  padding: 8px 9px max(12px, env(safe-area-inset-bottom)) !important;
+  padding: 8px 7px max(12px, env(safe-area-inset-bottom)) !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button {
-  justify-content: flex-start !important;
-  padding: 9px 11px !important;
-  gap: 10px !important;
+  justify-content: center !important;
+  padding: 9px 5px !important;
 }
 .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom svg {
-  width: 22px !important;
-  height: 22px !important;
-  flex: 0 0 22px !important;
+  width: 19px !important;
+  height: 19px !important;
+  flex: 0 0 19px !important;
 }
 .nkj-owner-topbar {position: sticky !important;
   z-index: 4100 !important;
@@ -481,8 +465,8 @@ body.nkj-owner-layout .app-content {width: 100%;
   left: auto !important;
   width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
   min-width: 0;
-  min-height: 78px !important;
-  height: 78px;
+  min-height: 82px !important;
+  height: 82px;
   margin: 0 0 0 var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
   padding: 8px clamp(14px, 2vw, 28px) !important;
   display: flex !important;
@@ -515,7 +499,7 @@ body.nkj-owner-layout .app-content {width: 100%;
   min-width: 0 !important;
   margin: 0 0 0 var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
   padding: 24px clamp(14px, 2vw, 30px) 34px !important;
-  min-height: calc(100vh - 78px);
+  min-height: calc(100vh - 82px);
   overflow: visible;}
 @media (max-width: 1250px) {
 .nkj-owner-topbar {padding-inline: 14px !important;}
@@ -539,8 +523,8 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
   top: 0 !important;
   z-index: 4300 !important;
   width: 100% !important;
-  min-height: 78px !important;
-  height: 78px !important;
+  min-height: 82px !important;
+  height: 82px !important;
   padding: 8px clamp(12px, 2.3vw, 32px) !important;
   display: flex !important;
   flex-direction: row !important;
