@@ -239,7 +239,7 @@ export default function CalculatorPage() {
             ))}
           </aside>
 
-          <main className="nkj-calculator-workspace">
+          <section className="nkj-calculator-workspace">
             <div className="nkj-calculator-workspace-title">
               <Coins size={20} />
               <h2>{options.find((option) => option.id === mode)?.label}</h2>
@@ -247,7 +247,7 @@ export default function CalculatorPage() {
             {mode === "manual"
               ? <ManualCalculator />
               : <OrnamentCalculator key={mode} mode={mode} />}
-          </main>
+          </section>
         </div>
       </div>
     </Page>
