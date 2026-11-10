@@ -773,6 +773,8 @@ export function InvoicePage() {
       gstAmount: tax,
       otherCharge: 0,
       grandTotal: grand,
+      // This invoice workflow records full payment; persist it to the cash ledger.
+      paymentAmount: grand,
     };
   }
 
