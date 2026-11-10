@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS public.jewellery_design_images (
     original_url VARCHAR(500) NOT NULL,
     thumbnail_url VARCHAR(500) NOT NULL,
     alt_text VARCHAR(240) NOT NULL DEFAULT '',
+    content_sha256 CHAR(64) NOT NULL UNIQUE,
     display_order INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
