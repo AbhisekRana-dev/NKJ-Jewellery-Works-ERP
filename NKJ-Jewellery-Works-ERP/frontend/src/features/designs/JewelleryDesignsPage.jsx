@@ -183,7 +183,7 @@ export default function JewelleryDesignsPage() {
   useRealtimeRefresh(refreshCatalogue, ["designs"]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => refreshCatalogue(), 60000);
+    const timer = window.setInterval(() => { refreshCatalogue().catch(() => {}); }, 60000);
     return () => window.clearInterval(timer);
   }, [refreshCatalogue]);
 
