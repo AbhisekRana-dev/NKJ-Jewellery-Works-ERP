@@ -1,10 +1,11 @@
 import "./InventoryPage.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Barcode, Camera, Gem, ImagePlus, Package, Pencil, Plus, RefreshCw, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { ArrowLeft, Barcode, Camera, Gem, ImagePlus, Package, Pencil, Plus, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 
 const blank = {
   itemCode:"", barcode:"", name:"", designNo:"", category:"", metalType:"GOLD", purity:"22K (916)",
@@ -29,6 +30,7 @@ export default function InventoryPage() {
   const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState(""); const [message,setMessage]=useState("");
   const load=useCallback(async()=>{setLoading(true);setError("");try{const data=await request("/admin/modules/inventory");setRows(Array.isArray(data)?data:[]);}catch(e){setError(e.message||"Could not load jewellery inventory.");}finally{setLoading(false);}},[]);
   useEffect(()=>{load();},[load]);
+  useRealtimeRefresh(load, ["inventory", "stock", "purchases", "invoices", "dashboard"]);
   const filtered=useMemo(()=>rows.filter(x=>`${x.itemCode||""} ${x.barcode||""} ${x.name||""} ${x.designNo||""} ${x.huid||""}`.toLowerCase().includes(search.toLowerCase())&&(metalFilter==="ALL"||String(x.metalType).toUpperCase()===metalFilter)&&(statusFilter==="ALL"||String(x.status).toUpperCase()===statusFilter)),[rows,search,metalFilter,statusFilter]);
   const stats=useMemo(()=>({total:rows.length,gold:rows.filter(x=>String(x.metalType).toUpperCase()==="GOLD").length,silver:rows.filter(x=>String(x.metalType).toUpperCase()==="SILVER").length,inStock:rows.filter(x=>String(x.status).toUpperCase()==="IN_STOCK").length}),[rows]);
   const openNew=()=>{setEditingId(null);setForm({...blank});setShowForm(true);setError("");setMessage("");};
@@ -55,7 +57,7 @@ export default function InventoryPage() {
   const remove=async row=>{if(!window.confirm(`Delete ${row.name||"this item"} (${row.itemCode||row.id}) from inventory?`))return;setError("");setMessage("");try{await request(`/admin/modules/inventory/${row.id}`,{method:"DELETE"});setMessage("Inventory item deleted.");await load();}catch(e){setError(e.message||"Could not delete item.");}};
 
   return <Page active="inventory"><section className="nkj-module-page nkj-inventory-page">
-    <div className="nkj-module-heading"><div><span className="eyebrow">INVENTORY CONTROL</span><h2>Jewellery Inventory</h2><p>Manage jewellery identity, purity, weights, pricing, supplier documents and available stock.</p></div><div className="nkj-module-actions"><Link className="secondary" to="/stock-movements"><ArrowLeft size={16}/> Stock Movements</Link><button className="secondary" onClick={load} disabled={loading}><RefreshCw size={16}/> Refresh</button><button className="primary" onClick={openNew}><Plus size={16}/> Add New Jewellery Item</button></div></div>
+    <div className="nkj-module-heading"><div><span className="eyebrow">INVENTORY CONTROL</span><h2>Jewellery Inventory</h2><p>Manage jewellery identity, purity, weights, pricing, supplier documents and available stock.</p></div><div className="nkj-module-actions"><Link className="secondary" to="/stock-movements"><ArrowLeft size={16}/> Stock Movements</Link><button className="primary" onClick={openNew}><Plus size={16}/> Add New Jewellery Item</button></div></div>
     {error&&<p className="error">{error}</p>}{message&&<p className="success">{message}</p>}
     <div className="nkj-inventory-kpis"><div><Package/><span>Total Items</span><strong>{stats.total}</strong></div><div><Gem/><span>Gold Items</span><strong>{stats.gold}</strong></div><div><Gem/><span>Silver Items</span><strong>{stats.silver}</strong></div><div><ShieldCheck/><span>In Stock</span><strong>{stats.inStock}</strong></div></div>
     {showForm&&<form className="nkj-inventory-editor" onSubmit={save}>
