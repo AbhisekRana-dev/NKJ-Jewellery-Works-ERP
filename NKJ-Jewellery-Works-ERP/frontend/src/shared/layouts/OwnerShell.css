@@ -1120,3 +1120,20 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
   line-height: 1 !important;
   text-align: center;
 }
+
+/* Keep the same circular icon treatment in compact mode. */
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > svg:first-child {
+  width: 36px !important;
+  height: 36px !important;
+  flex: 0 0 36px !important;
+  padding: 8px !important;
+  border-radius: 50% !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a .nkj-owner-nav-short-label {
+  color: var(--nav-accent) !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a.active .nkj-owner-nav-short-label {
+  color: #650b25 !important;
+}
