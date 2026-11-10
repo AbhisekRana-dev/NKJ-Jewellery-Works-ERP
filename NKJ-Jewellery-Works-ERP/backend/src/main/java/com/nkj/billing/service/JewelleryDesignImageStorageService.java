@@ -99,17 +99,17 @@ public class JewelleryDesignImageStorageService {
         }
 
         return new StoredImage(
-                "/uploads/designs/" + designId + "/" + fileId + extension,
-                "/uploads/designs/" + designId + "/" + fileId + "-thumb.jpg",
+                "/api/uploads/designs/" + designId + "/" + fileId + extension,
+                "/api/uploads/designs/" + designId + "/" + fileId + "-thumb.jpg",
                 file.getOriginalFilename() == null ? "Jewellery design" : file.getOriginalFilename()
         );
     }
 
     public void deleteStoredPath(String publicUrl) {
-        if (publicUrl == null || !publicUrl.startsWith("/uploads/designs/")) {
+        if (publicUrl == null || !publicUrl.startsWith("/api/uploads/designs/")) {
             return;
         }
-        String relative = publicUrl.substring("/uploads/designs/".length());
+        String relative = publicUrl.substring("/api/uploads/designs/".length());
         Path target = uploadRoot.resolve(relative).normalize();
         if (!target.startsWith(uploadRoot)) {
             return;
