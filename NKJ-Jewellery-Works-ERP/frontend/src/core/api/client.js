@@ -1,3 +1,5 @@
+import { getRealtimeClientId } from "../realtime/realtime";
+
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function request(path, options = {}) {
@@ -12,6 +14,10 @@ export async function request(path, options = {}) {
     ...(options.body ? { "Content-Type": "application/json" } : {}),
     ...(options.headers || {}),
   };
+  const method = String(fetchOptions.method || "GET").toUpperCase();
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    headers["X-NKJ-Client-Id"] = getRealtimeClientId();
+  }
 
   if (token && !publicRequest) {
     headers.Authorization = `Bearer ${token}`;
