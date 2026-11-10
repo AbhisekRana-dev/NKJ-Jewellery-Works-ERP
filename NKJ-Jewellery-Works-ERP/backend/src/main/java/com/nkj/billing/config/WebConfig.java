@@ -7,6 +7,9 @@ import com.nkj.billing.realtime.RealtimeMutationInterceptor;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -32,6 +35,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .toArray(String[]::new);
+    }
+
+    @Bean
+    public CacheManager cacheManager() {
+        return new ConcurrentMapCacheManager("jewelleryPublicCategories", "jewelleryAdminCategories");
     }
 
     @Override
