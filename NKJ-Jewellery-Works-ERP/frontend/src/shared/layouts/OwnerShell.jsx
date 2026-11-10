@@ -5,7 +5,7 @@ import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
-  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon,
+  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
@@ -246,6 +246,8 @@ export function Nav({ active = "home" }) {
       </Link>
       <nav aria-label="Main navigation">
         <Link className={active === "home" ? "active" : ""} to="/"><HomeIcon />Home</Link>
+        <Link className={active === "designs" ? "active" : ""} to="/designs"><Gem />Jewellery Designs</Link>
+        <Link className={active === "calculator" ? "active" : ""} to="/calculator"><CalculatorIcon />Calculator</Link>
         <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
         {isAdmin ? <>
           <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
