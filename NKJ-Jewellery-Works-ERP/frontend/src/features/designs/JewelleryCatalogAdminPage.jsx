@@ -519,10 +519,11 @@ export default function JewelleryCatalogAdminPage() {
                   <input value={editingId ? currentDesignId : "Generated after saving"} readOnly aria-readonly="true" />
                 </label>
                 <label className="wide">Approved metal / subcategory
-                  <select required value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
+                  <select required disabled={Boolean(editingId)} value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
                     <option value="">Choose subcategory</option>
                     {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
                   </select>
+                  {editingId && <small>A Design ID contains its original category. To use another subcategory, create a new design instead.</small>}
                 </label>
                 <label className="wide">Design name<input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" /></label>
                 <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
