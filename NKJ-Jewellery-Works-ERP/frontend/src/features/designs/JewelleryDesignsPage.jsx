@@ -69,7 +69,7 @@ function DesignImage({ design }) {
   if (design.thumbnailUrl) {
     return (
       <div className="nkj-design-photo">
-        <img src={assetUrl(design.thumbnailUrl)} alt={design.designName} loading="lazy" />
+        <img src={assetUrl(design.thumbnailUrl)} alt={design.designName} loading="lazy" decoding="async" />
         {!design.isSample && <span className="nkj-design-photo-label">SHOP PHOTO</span>}
       </div>
     );
@@ -192,7 +192,7 @@ export default function JewelleryDesignsPage() {
             <p>Explore traditional, bridal and everyday jewellery design inspirations from Nandikishor Jewellery Works.</p>
             <div className="nkj-designs-hero-note">
               <Gem size={16} />
-              <span>Sample inspirations are clearly marked. Shop photographs are uploaded and verified by the owner.</span>
+              <span>77 approved subcategories · 25 distinct sample inspirations per subcategory. Owner-uploaded shop photographs are clearly identified.</span>
             </div>
           </div>
           <div className="nkj-designs-hero-mark" aria-hidden="true">
