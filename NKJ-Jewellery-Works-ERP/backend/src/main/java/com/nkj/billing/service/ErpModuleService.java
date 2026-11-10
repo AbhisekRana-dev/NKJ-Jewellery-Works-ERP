@@ -687,6 +687,18 @@ public class ErpModuleService {
                 + "-" + String.format(Locale.ROOT, "%04d", accountId);
         jdbc.update("UPDATE installment_accounts SET account_no=? WHERE id=?", accountNo, accountId);
 
+        // Reclassify any receipt posted when this invoice was originally saved.
+        // The installment plan's actual down payment is recorded below; keeping
+        // the original full invoice receipt would double-count cash received.
+        String conversionReason = "Original invoice collection reclassified when invoice was converted to an installment plan.";
+        cashFlow.voidMovement("INVOICE-SAVED:" + invoiceId, conversionReason);
+        List<Long> originalPaymentIds = jdbc.queryForList(
+                "SELECT id FROM payments WHERE invoice_id=? AND amount>0 ORDER BY id",
+                Long.class, invoiceId);
+        for (Long originalPaymentId : originalPaymentIds) {
+            cashFlow.voidMovement("PAYMENT:" + originalPaymentId, conversionReason);
+        }
+
         if (downPayment.signum() > 0) {
             Long downPaymentId = jdbc.queryForObject("""
                 INSERT INTO installment_transactions(
