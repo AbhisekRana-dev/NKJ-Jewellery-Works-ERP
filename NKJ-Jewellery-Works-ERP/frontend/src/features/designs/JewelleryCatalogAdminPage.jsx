@@ -6,6 +6,7 @@ import "./JewelleryCatalogAdminPage.css";
 
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
 const PAGE_SIZE = 30;
+const assetUrl = (path) => path && path.startsWith("/api/") ? `${API}${path.slice(4)}` : path;
 const blankForm = (categoryId = "") => ({
   categoryId: String(categoryId),
   designName: "",
@@ -335,7 +336,7 @@ export default function JewelleryCatalogAdminPage() {
                 {items.map((design) => (
                   <tr key={design.id}>
                     <td><div className="nkj-catalog-design-cell">
-                      {design.thumbnailUrl ? <img src={design.thumbnailUrl} alt="" loading="lazy" /> : <span className="nkj-catalog-placeholder"><ImagePlus size={17} /></span>}
+                      {design.thumbnailUrl ? <img src={assetUrl(design.thumbnailUrl)} alt="" loading="lazy" /> : <span className="nkj-catalog-placeholder"><ImagePlus size={17} /></span>}
                       <span><b>{design.designName}</b><small>{design.styleLabel}</small></span>
                     </div></td>
                     <td><code>{design.designCode}</code></td>
@@ -387,7 +388,7 @@ export default function JewelleryCatalogAdminPage() {
               {imageFiles.length > 0 && <p className="nkj-catalog-selected-files">{imageFiles.length} image(s) selected: {imageFiles.map((file) => file.name).join(", ")}</p>}
               {editingId && currentImages.length > 0 && <div className="nkj-catalog-current-images">
                 <b>Current images</b>
-                <div>{currentImages.map((image) => <span key={image.id}><img src={image.thumbnailUrl} alt={image.altText || form.designName} /><button type="button" onClick={() => removeImage(image)} aria-label="Remove image"><X size={13} /></button></span>)}</div>
+                <div>{currentImages.map((image) => <span key={image.id}><img src={assetUrl(image.thumbnailUrl)} alt={image.altText || form.designName} /><button type="button" onClick={() => removeImage(image)} aria-label="Remove image"><X size={13} /></button></span>)}</div>
               </div>}
               <div className="nkj-catalog-checkboxes">
                 <label><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Publish / active</label>
