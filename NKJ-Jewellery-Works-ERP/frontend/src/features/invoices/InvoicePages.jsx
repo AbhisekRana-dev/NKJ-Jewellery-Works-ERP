@@ -495,7 +495,9 @@ export function InvoicePage() {
     if (isEditingSavedInvoice) {
       return String(invoiceSeed?.totalPaid ?? invoiceSeed?.paymentAmount ?? 0);
     }
-    return String(initialDraft?.totalPaid ?? "");
+    return initialDraft?.totalPaid === undefined || initialDraft?.totalPaid === null
+      ? null
+      : String(initialDraft.totalPaid);
   });
   const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
@@ -583,7 +585,7 @@ export function InvoicePage() {
       setCustomer({ name: "", mobile: "", address: "" });
       setPaymentMode("Cash");
       setReferenceNo("");
-      setTotalPaid("");
+      setTotalPaid(null);
       setNewItems([blankNew()]);
       setOldItems([blankOld()]);
       setDiscount("");
@@ -677,7 +679,7 @@ export function InvoicePage() {
   // Discount deducted after GST calculation
 
   const grand = Math.max(0, newTotal + tax - discountValue - oldTotal);
-  const totalPaidValue = totalPaid.trim() === ""
+  const totalPaidValue = totalPaid === null
     ? grand
     : Math.max(0, Number(totalPaid) || 0);
   const dueAmount = Math.max(0, grand - totalPaidValue);
@@ -805,7 +807,7 @@ export function InvoicePage() {
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
     setReferenceNo("");
-    setTotalPaid("");
+    setTotalPaid(null);
     setNewItems([blankNew()]);
     setOldItems([blankOld()]);
     setDiscount("");
@@ -846,7 +848,7 @@ export function InvoicePage() {
     );
     if (invalidOldItem) return "Old ornament weights and rates must be valid non-negative numbers.";
 
-    for (const [label, value] of [["GST", gst], ["Discount", discount], ["Total Paid", totalPaid]]) {
+    for (const [label, value] of [["GST", gst], ["Discount", discount], ["Total Paid", totalPaid === null ? "" : totalPaid]]) {
       const raw = String(value ?? "").trim();
       if (raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0)) {
         return `${label} must be a valid non-negative number.`;
@@ -1636,8 +1638,8 @@ export function InvoicePage() {
                   min="0"
                   max={grand}
                   step="0.01"
-                  value={totalPaid === "" ? money(grand) : totalPaid}
-                  readOnly={isEditingSavedInvoice}
+                  value={totalPaid === null ? grand.toFixed(2) : totalPaid}
+                  readOnly={isEditingSavedInvoice || saved}
                   onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) => setTotalPaid(event.target.value)}
                 />
