@@ -22,10 +22,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: NKJ-Jewellery-Works-ERP/frontend/package-lock.json
       - name: Install frontend dependencies
         run: npm ci
-        working-directory: frontend
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
       - name: Build frontend
         run: npm run build
         working-directory: frontend
@@ -43,4 +43,4 @@ jobs:
           java-version: "21"
           cache: maven
       - name: Compile and run backend tests
-        run: mvn -B -f backend/pom.xml clean verify
+        run: mvn -B -f NKJ-Jewellery-Works-ERP/backend/pom.xml clean verify
