@@ -5,7 +5,7 @@ import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
-  Wrench, ChevronRight, ArrowLeftRight,
+  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
@@ -228,6 +228,9 @@ export function Nav({ active = "home" }) {
           </div>
           <div className="nkj-owner-top-actions">
             <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
+            <Link to="/calculator" className="nkj-calculator-link" aria-label="Open calculator">
+              <CalculatorIcon size={17} /> <span>Calculator</span>
+            </Link>
             <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
           </div>
         </header>
