@@ -37,25 +37,9 @@ body.nkj-owner-layout {background:#f6f5f2;}
 .nkj-owner-top-user {display:flex;align-items:center;gap:6px;color:#655d59;font-size:11px;font-weight:700}
 .container.nkj-owner-container {width:calc(100% - 258px);max-width:none;margin:0 0 0 258px;padding:25px 27px 32px;min-height:calc(100vh - 66px)}
 @media (max-width:1100px) {
-.nkj-owner-sidebar {width:78px}
-.nkj-owner-brand {justify-content:center;padding:14px 5px}
-.nkj-owner-brand>span:last-child,
-.nkj-owner-user>span:last-child,
-.nkj-owner-nav-title,
-.nkj-owner-nav a span,
-.nkj-owner-nav-arrow,
-.nkj-owner-sidebar-bottom a:not(svg) {display:none}
-.nkj-owner-user {justify-content:center;margin:10px 7px;padding:8px 4px}
-.nkj-owner-nav {padding:5px 8px}
-.nkj-owner-nav-group {margin:8px 0}
-.nkj-owner-nav a {justify-content:center;padding:10px 6px;min-height:40px}
-.nkj-owner-nav a svg {width:19px;height:19px}
-.nkj-owner-sidebar-bottom a,
-.nkj-owner-sidebar-bottom button {justify-content:center;font-size:0;padding:10px 6px}
-.nkj-owner-sidebar-bottom button svg {width:19px;height:19px}
-.nkj-owner-topbar {margin-left:78px;width:calc(100% - 78px)}
-.container.nkj-owner-container {width:calc(100% - 78px);margin-left:78px}
-
+  /* Sidebar width and label visibility follow the React state at every size. */
+  .nkj-owner-topbar {padding-inline: 14px}
+  .container.nkj-owner-container {min-width: 0}
 }
 @media (max-width:800px) {
 .container.nkj-owner-container {padding:18px 14px 25px}
@@ -92,10 +76,7 @@ body.nkj-owner-layout {background:#f6f5f2;}
 .nkj-owner-sidebar.is-collapsed .nkj-owner-topbar {margin-left:78px;width:calc(100% - 78px)}
 body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar {margin-left:78px;width:calc(100% - 78px)}
 body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .container.nkj-owner-container {width:calc(100% - 78px);margin-left:78px}
-@media (max-width:1100px) {
-.nkj-sidebar-toggle {display:none}
-
-}
+/* The dedicated sidebar toggle stays visible on desktop, tablet and mobile. */
 .app-layout {min-height: 100vh;}
 .app-layout {display: flex; flex-direction: column;}
 .app-content {flex: 1 0 auto; min-width: 0; display: flex; flex-direction: column;}
