@@ -85,7 +85,9 @@ public class RealtimeEventBroadcaster {
         sendTo(emitters, "data-changed", payload, eventId);
 
         if (topics.contains("rates")) {
-            Map<String, Object> publicPayload = new LinkedHashMap<>(payload);
+            Map<String, Object> publicPayload = new LinkedHashMap<>();
+            publicPayload.put("eventId", eventId);
+            publicPayload.put("occurredAt", payload.get("occurredAt"));
             publicPayload.put("topics", List.of("rates"));
             sendTo(publicRateEmitters, "data-changed", publicPayload, eventId);
         }
