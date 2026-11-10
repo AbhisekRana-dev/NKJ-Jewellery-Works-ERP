@@ -147,13 +147,11 @@ export function Nav({ active = "home" }) {
 
           <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home" onClick={handleSidebarNavigation}>
             <span className="nkj-owner-logo">NKJ</span>
-            <span><b>Nandikishor</b><small>Jewellery Works ERP</small></span>
+            <span className="nkj-owner-brand-copy">
+              <b><strong>NKJ</strong> ERP</b>
+              <small>Jewellery Works</small>
+            </span>
           </Link>
-
-          <div className="nkj-owner-user" title={user || "Owner account"}>
-            <span className="nkj-owner-avatar">{String(user || "O").slice(0, 1).toUpperCase()}</span>
-            <span><b>{user || "Owner"}</b><small>Owner account</small></span>
-          </div>
 
           <nav
             className="nkj-owner-nav"
@@ -180,6 +178,7 @@ export function Nav({ active = "home" }) {
                       title={sidebarCollapsed ? label : undefined}
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
+                      data-nav-key={key}
                       onClick={handleSidebarNavigation}
                       onDoubleClick={handleSidebarNavigationDoubleClick}
                     >
@@ -195,12 +194,28 @@ export function Nav({ active = "home" }) {
           </nav>
 
           <div className="nkj-owner-sidebar-bottom">
-            <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined} onClick={handleSidebarNavigation}>
-              <HomeIcon size={18} /><span>Public Home</span>
+            <Link
+              to="/profile"
+              className="nkj-owner-profile-card"
+              title={sidebarCollapsed ? (user || "Owner profile") : undefined}
+              aria-label="Open owner profile"
+              onClick={handleSidebarNavigation}
+            >
+              <span className="nkj-owner-avatar">{String(user || "A").slice(0, 1).toUpperCase()}</span>
+              <span className="nkj-owner-profile-copy">
+                <b>{user || "Admin"}</b>
+                <small>Owner</small>
+              </span>
+              <ChevronRight className="nkj-owner-profile-arrow" size={18} aria-hidden="true" />
             </Link>
-            <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
-              <LogOut size={18} /><span>Logout</span>
-            </button>
+            <div className="nkj-owner-footer-actions">
+              <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined} onClick={handleSidebarNavigation}>
+                <HomeIcon size={18} /><span>Public Home</span>
+              </Link>
+              <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
+                <LogOut size={18} /><span>Logout</span>
+              </button>
+            </div>
           </div>
         </aside>
 
