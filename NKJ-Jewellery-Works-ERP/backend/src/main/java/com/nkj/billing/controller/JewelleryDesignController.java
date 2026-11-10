@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,8 +41,15 @@ public class JewelleryDesignController {
             @RequestParam(required = false, name = "q") String search,
             @RequestParam(defaultValue = "latest") String sort,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "24") int size) {
-        return listDesigns(metal, subcategory, search, sort, page, size, false);
+            @RequestParam(defaultValue = "24") int size,
+            @RequestParam(required = false) String purity,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) BigDecimal minWeight,
+            @RequestParam(required = false) BigDecimal maxWeight,
+            @RequestParam(defaultValue = "false") boolean featured) {
+        return listDesigns(metal, subcategory, search, sort, page, size, false,
+                purity, minPrice, maxPrice, minWeight, maxWeight, featured);
     }
 
     @GetMapping("/api/designs/{id}")
@@ -63,8 +71,15 @@ public class JewelleryDesignController {
             @RequestParam(required = false, name = "q") String search,
             @RequestParam(defaultValue = "latest") String sort,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "30") int size) {
-        return listDesigns(metal, subcategory, search, sort, page, size, true);
+            @RequestParam(defaultValue = "30") int size,
+            @RequestParam(required = false) String purity,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) BigDecimal minWeight,
+            @RequestParam(required = false) BigDecimal maxWeight,
+            @RequestParam(defaultValue = "false") boolean featured) {
+        return listDesigns(metal, subcategory, search, sort, page, size, true,
+                purity, minPrice, maxPrice, minWeight, maxWeight, featured);
     }
 
     @GetMapping("/api/admin/designs/{id}")
@@ -81,6 +96,9 @@ public class JewelleryDesignController {
         String description = text(body.get("description"), 5000);
         String style = text(body.get("styleLabel"), 80);
         String keywords = text(body.get("keywords"), 800);
+        String purity = text(body.get("purity"), 40);
+        BigDecimal weightGrams = decimal(body.get("weightGrams"), "Weight");
+        BigDecimal priceInr = decimal(body.get("priceInr"), "Price");
         String metal = categoryMetal(categoryId);
 
         Long next = jdbc.queryForObject(
@@ -99,11 +117,13 @@ public class JewelleryDesignController {
         Long id = jdbc.queryForObject("""
                 INSERT INTO public.jewellery_designs
                     (design_code, category_id, design_name, description, style_label, keywords,
+                     purity, weight_grams, price_inr,
                      is_sample, is_featured, is_active, popularity_count, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?, 0, NOW(), NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, 0, NOW(), NOW())
                 RETURNING id
                 """, Long.class,
                 designCode, categoryId, name, description, style, keywords,
+                purity, weightGrams, priceInr,
                 bool(body.get("isFeatured"), false), bool(body.get("isActive"), true));
         return designDetails(id, true);
     }
@@ -133,6 +153,9 @@ public class JewelleryDesignController {
                        description = ?,
                        style_label = ?,
                        keywords = ?,
+                       purity = ?,
+                       weight_grams = ?,
+                       price_inr = ?,
                        is_featured = ?,
                        is_active = ?,
                        updated_at = NOW()
@@ -143,6 +166,9 @@ public class JewelleryDesignController {
                 text(body.get("description"), 5000),
                 text(body.get("styleLabel"), 80),
                 text(body.get("keywords"), 800),
+                text(body.get("purity"), 40),
+                decimal(body.get("weightGrams"), "Weight"),
+                decimal(body.get("priceInr"), "Price"),
                 bool(body.get("isFeatured"), false),
                 bool(body.get("isActive"), true),
                 id);
@@ -253,9 +279,17 @@ public class JewelleryDesignController {
 
     private Map<String, Object> listDesigns(
             String metal, String subcategory, String search, String sort,
-            int requestedPage, int requestedSize, boolean includeInactive) {
+            int requestedPage, int requestedSize, boolean includeInactive,
+            String purity, BigDecimal minPrice, BigDecimal maxPrice,
+            BigDecimal minWeight, BigDecimal maxWeight, boolean featuredOnly) {
         int page = Math.max(0, requestedPage);
         int size = Math.max(1, Math.min(requestedSize, 60));
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException("Minimum price cannot exceed maximum price.");
+        }
+        if (minWeight != null && maxWeight != null && minWeight.compareTo(maxWeight) > 0) {
+            throw new IllegalArgumentException("Minimum weight cannot exceed maximum weight.");
+        }
         StringBuilder filter = new StringBuilder(" WHERE (? = TRUE OR d.is_active = TRUE)");
         List<Object> parameters = new ArrayList<>();
         parameters.add(includeInactive);
@@ -274,17 +308,30 @@ public class JewelleryDesignController {
             parameters.add(q);
             parameters.add(search.trim());
         }
+        if (purity != null && !purity.isBlank()) {
+            filter.append(" AND LOWER(d.purity) = LOWER(?)");
+            parameters.add(purity.trim());
+        }
+        if (minPrice != null) { filter.append(" AND d.price_inr >= ?"); parameters.add(minPrice); }
+        if (maxPrice != null) { filter.append(" AND d.price_inr <= ?"); parameters.add(maxPrice); }
+        if (minWeight != null) { filter.append(" AND d.weight_grams >= ?"); parameters.add(minWeight); }
+        if (maxWeight != null) { filter.append(" AND d.weight_grams <= ?"); parameters.add(maxWeight); }
+        if (featuredOnly) filter.append(" AND d.is_featured = TRUE");
 
         String categoryJoin = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id = d.category_id\n";
         Long total = jdbc.queryForObject("SELECT COUNT(*) " + categoryJoin + filter, Long.class, parameters.toArray());
-        String orderBy = "popular".equalsIgnoreCase(sort)
-                ? "d.popularity_count DESC, d.created_at DESC, d.id DESC"
-                : "d.created_at DESC, d.id DESC";
+        String orderBy = switch (sort == null ? "latest" : sort.toLowerCase(Locale.ROOT)) {
+            case "popular" -> "d.popularity_count DESC, d.created_at DESC, d.id DESC";
+            case "oldest" -> "d.created_at ASC, d.id ASC";
+            case "name" -> "LOWER(d.design_name) ASC, d.id ASC";
+            default -> "d.created_at DESC, d.id DESC";
+        };
         String sql = """
                 SELECT d.id, d.design_code AS "designCode", d.design_name AS "designName",
                        d.description, d.style_label AS "styleLabel", d.keywords,
                        d.is_sample AS "isSample", d.is_featured AS "isFeatured",
                        d.is_active AS "isActive", d.popularity_count AS "popularityCount",
+                       d.purity, d.weight_grams AS "weightGrams", d.price_inr AS "priceInr",
                        d.created_at AS "createdAt", d.updated_at AS "updatedAt",
                        c.metal_type AS "metalType", c.subcategory_name AS "subcategoryName",
                        c.slug AS "subcategorySlug",
@@ -320,6 +367,7 @@ public class JewelleryDesignController {
                        d.description, d.style_label AS "styleLabel", d.keywords,
                        d.is_sample AS "isSample", d.is_featured AS "isFeatured",
                        d.is_active AS "isActive", d.popularity_count AS "popularityCount",
+                       d.purity, d.weight_grams AS "weightGrams", d.price_inr AS "priceInr",
                        d.created_at AS "createdAt", d.updated_at AS "updatedAt",
                        c.id AS "categoryId", c.metal_type AS "metalType",
                        c.subcategory_name AS "subcategoryName", c.slug AS "subcategorySlug"
@@ -382,5 +430,16 @@ public class JewelleryDesignController {
 
     private static boolean bool(Object value, boolean fallback) {
         return value == null ? fallback : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private static BigDecimal decimal(Object value, String label) {
+        if (value == null || String.valueOf(value).isBlank()) return null;
+        try {
+            BigDecimal parsed = new BigDecimal(String.valueOf(value).trim());
+            if (parsed.signum() < 0) throw new IllegalArgumentException(label + " cannot be negative.");
+            return parsed;
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException(label + " must be a valid number.");
+        }
     }
 }
