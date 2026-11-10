@@ -31,6 +31,7 @@ import {
   LayoutDashboard,
   Boxes,
   Coins,
+  Clock3,
   Contact,
   Truck,
   ShoppingCart,
@@ -490,6 +491,12 @@ export function InvoicePage() {
 
   const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || initialDraft?.paymentMode || "Cash");
   const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || initialDraft?.referenceNo || "");
+  const [totalPaid, setTotalPaid] = useState(() => {
+    if (isEditingSavedInvoice) {
+      return String(invoiceSeed?.totalPaid ?? invoiceSeed?.paymentAmount ?? 0);
+    }
+    return String(initialDraft?.totalPaid ?? "");
+  });
   const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
   // and always start with exactly one empty row at the end.
@@ -576,6 +583,7 @@ export function InvoicePage() {
       setCustomer({ name: "", mobile: "", address: "" });
       setPaymentMode("Cash");
       setReferenceNo("");
+      setTotalPaid("");
       setNewItems([blankNew()]);
       setOldItems([blankOld()]);
       setDiscount("");
@@ -621,6 +629,7 @@ export function InvoicePage() {
       customer,
       paymentMode,
       referenceNo,
+      totalPaid,
       newItems,
       oldItems,
       discount,
@@ -634,7 +643,7 @@ export function InvoicePage() {
     } catch {
       // The invoice remains usable when browser storage is unavailable or full.
     }
-  }, [invoiceDate, customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, showGstin, idempotencyKey, saved]);
+  }, [invoiceDate, customer, paymentMode, referenceNo, totalPaid, newItems, oldItems, discount, gst, description, showGstin, idempotencyKey, saved]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -668,6 +677,10 @@ export function InvoicePage() {
   // Discount deducted after GST calculation
 
   const grand = Math.max(0, newTotal + tax - discountValue - oldTotal);
+  const totalPaidValue = totalPaid.trim() === ""
+    ? grand
+    : Math.max(0, Number(totalPaid) || 0);
+  const dueAmount = Math.max(0, grand - totalPaidValue);
 
   // Update only the field being edited. Description and purity never
   // change or auto-fill the Rate / GM field.
@@ -773,8 +786,11 @@ export function InvoicePage() {
       gstAmount: tax,
       otherCharge: 0,
       grandTotal: grand,
-      // This invoice workflow records full payment; persist it to the cash ledger.
-      paymentAmount: grand,
+      totalPaid: totalPaidValue,
+      dueAmount,
+      // Reuse the existing initial-collection payment and Cashbook workflow.
+      // Editing a saved invoice must never create another receipt.
+      paymentAmount: isEditingSavedInvoice ? undefined : totalPaidValue,
     };
   }
 
@@ -789,6 +805,7 @@ export function InvoicePage() {
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
     setReferenceNo("");
+    setTotalPaid("");
     setNewItems([blankNew()]);
     setOldItems([blankOld()]);
     setDiscount("");
@@ -829,11 +846,14 @@ export function InvoicePage() {
     );
     if (invalidOldItem) return "Old ornament weights and rates must be valid non-negative numbers.";
 
-    for (const [label, value] of [["GST", gst], ["Discount", discount]]) {
+    for (const [label, value] of [["GST", gst], ["Discount", discount], ["Total Paid", totalPaid]]) {
       const raw = String(value ?? "").trim();
       if (raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0)) {
         return `${label} must be a valid non-negative number.`;
       }
+    }
+    if (!isEditingSavedInvoice && totalPaidValue > grand + 0.005) {
+      return "Total Paid cannot be greater than the Grand Total.";
     }
     return "";
   }
@@ -1606,6 +1626,28 @@ export function InvoicePage() {
 
               <b>{money(grand)}</b>
             </div>
+
+            <div className="total-row total-paid-row">
+              <span><Coins size={17} aria-hidden="true" /> TOTAL PAID (₹)</span>
+              <b>
+                <input
+                  aria-label="Total Paid"
+                  type="number"
+                  min="0"
+                  max={grand}
+                  step="0.01"
+                  value={totalPaid === "" ? money(grand) : totalPaid}
+                  readOnly={isEditingSavedInvoice}
+                  onWheel={(event) => event.currentTarget.blur()}
+                  onChange={(event) => setTotalPaid(event.target.value)}
+                />
+              </b>
+            </div>
+
+            <div className="total-row due-amount-row">
+              <span><Clock3 size={17} aria-hidden="true" /> DUE AMOUNT (₹)</span>
+              <b>{money(dueAmount)}</b>
+            </div>
           </aside>
         </div>
 
@@ -1733,6 +1775,8 @@ function SavedInvoicePrintSheet({ invoice }) {
     : 0;
   const discount = Number(data.discount) || 0;
   const grandTotal = Number(data.grandTotal ?? (newTotal + gstAmount - discount - oldTotal)) || 0;
+  const totalPaid = Math.max(0, Number(data.totalPaid ?? data.paymentAmount ?? 0) || 0);
+  const dueAmount = Math.max(0, grandTotal - totalPaid);
   const invoiceDate = displaySavedInvoiceDate(data.invoiceDate || data.date);
   const invoiceTime = displaySavedInvoiceTime(data.invoiceTime || data.time);
 
@@ -1894,6 +1938,14 @@ function SavedInvoicePrintSheet({ invoice }) {
           <div className="grand">
             <span>GRAND TOTAL (₹)</span>
             <b>{money(grandTotal)}</b>
+          </div>
+          <div className="total-row total-paid-row">
+            <span><Coins size={15} aria-hidden="true" /> TOTAL PAID (₹)</span>
+            <b>{money(totalPaid)}</b>
+          </div>
+          <div className="total-row due-amount-row">
+            <span><Clock3 size={15} aria-hidden="true" /> DUE AMOUNT (₹)</span>
+            <b>{money(dueAmount)}</b>
           </div>
         </aside>
       </div>
