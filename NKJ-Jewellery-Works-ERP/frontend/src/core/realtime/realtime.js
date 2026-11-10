@@ -3,7 +3,6 @@ import { useEffect, useRef } from "react";
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
 const CLIENT_ID_KEY = "nkj-realtime-client-id";
 const subscribers = new Set();
-const handledEventIds = new Set();
 
 function createClientId() {
   try {
@@ -41,16 +40,6 @@ function emitRealtime(event) {
   }
 }
 
-function rememberEvent(eventId) {
-  if (!eventId) return true;
-  if (handledEventIds.has(eventId)) return false;
-  handledEventIds.add(eventId);
-  if (handledEventIds.size > 200) {
-    const oldest = handledEventIds.values().next().value;
-    handledEventIds.delete(oldest);
-  }
-  return true;
-}
 
 /**
  * Re-fetches only the active page's data when a remote mutation affects one of
@@ -97,7 +86,7 @@ export function useRealtimeRefresh(load, topics = ["*"]) {
  * EventSource so the existing bearer token can be sent in an Authorization
  * header rather than exposed in a URL query parameter.
  */
-export function connectRealtimeStream() {
+export function connectRealtimeStream(publicOnly = false) {
   let stopped = false;
   let activeController = null;
   let retryTimer = null;
@@ -125,7 +114,6 @@ export function connectRealtimeStream() {
     if (eventName !== "data-changed" || dataLines.length === 0) return;
     try {
       const event = JSON.parse(dataLines.join("\n"));
-      if (!rememberEvent(event.eventId)) return;
       emitRealtime(event);
     } catch (error) {
       console.error("Could not parse ERP real-time event:", error);
@@ -135,23 +123,23 @@ export function connectRealtimeStream() {
   const connect = async () => {
     if (stopped) return;
     const token = window.localStorage.getItem("nkj_token");
-    if (!token) return;
+    if (!publicOnly && !token) return;
 
     const controller = new AbortController();
     activeController = controller;
 
     try {
-      const response = await fetch(`${API}/events`, {
+      const headers = { Accept: "text/event-stream" };
+      if (!publicOnly) headers.Authorization = `Bearer ${token}`;
+      const endpoint = publicOnly ? "/events/public" : "/events";
+      const response = await fetch(`${API}${endpoint}`, {
         method: "GET",
-        headers: {
-          Accept: "text/event-stream",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         cache: "no-store",
         signal: controller.signal,
       });
 
-      if (response.status === 401) {
+      if (!publicOnly && response.status === 401) {
         window.dispatchEvent(new Event("nkj:session-expired"));
         return;
       }
@@ -161,7 +149,7 @@ export function connectRealtimeStream() {
 
       retryDelay = 1000;
       if (connectedOnce) {
-        emitRealtime({ topics: ["*"], reason: "reconnected", originClientId: "" });
+        emitRealtime({ topics: publicOnly ? ["rates"] : ["*"], reason: "reconnected", originClientId: "" });
       }
       connectedOnce = true;
 
@@ -205,7 +193,7 @@ export function connectRealtimeStream() {
 
   const onVisibilityChange = () => {
     if (document.visibilityState === "visible") {
-      emitRealtime({ topics: ["*"], reason: "tab-visible", originClientId: "" });
+      emitRealtime({ topics: publicOnly ? ["rates"] : ["*"], reason: "tab-visible", originClientId: "" });
     }
   };
 
