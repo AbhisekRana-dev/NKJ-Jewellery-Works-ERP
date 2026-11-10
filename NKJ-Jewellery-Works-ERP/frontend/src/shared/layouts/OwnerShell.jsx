@@ -11,6 +11,8 @@ import { useAuth } from "../../core/auth/AuthProvider";
 
 const SIDEBAR_STORAGE_KEY = "nkj-owner-sidebar-collapsed";
 const SIDEBAR_SCROLL_KEY = "nkj-owner-sidebar-scroll";
+const SIDEBAR_NAV_CLICK_KEY = "nkj-owner-sidebar-nav-last-click";
+const SIDEBAR_DOUBLE_CLICK_MS = 450;
 
 function initialSidebarState() {
   try {
@@ -88,14 +90,34 @@ export function Nav({ active = "home" }) {
     });
   };
 
-  // Double-clicking a navigation item toggles the sidebar in either state:
-  // collapsed -> expanded, expanded -> collapsed.
-  const handleSidebarNavigationDoubleClick = () => {
-    setSidebarCollapsed((current) => {
-      const next = !current;
-      persistSidebarState(next);
-      return next;
-    });
+  // Track two quick clicks on the same navigation item in sessionStorage.
+  // This survives route navigation, where React may remount the sidebar between
+  // the first and second click. A single click never changes the sidebar state.
+  const handleSidebarNavigationClick = (key) => {
+    const now = Date.now();
+
+    try {
+      const previous = JSON.parse(window.sessionStorage.getItem(SIDEBAR_NAV_CLICK_KEY) || "null");
+      const isDoubleClick = previous?.key === key
+        && Number.isFinite(previous?.at)
+        && now >= previous.at
+        && now - previous.at <= SIDEBAR_DOUBLE_CLICK_MS;
+
+      if (isDoubleClick) {
+        window.sessionStorage.removeItem(SIDEBAR_NAV_CLICK_KEY);
+        setSidebarCollapsed((current) => {
+          const next = !current;
+          persistSidebarState(next);
+          return next;
+        });
+        return;
+      }
+
+      window.sessionStorage.setItem(SIDEBAR_NAV_CLICK_KEY, JSON.stringify({ key, at: now }));
+    } catch {
+      // If session storage is unavailable, navigation remains usable; only
+      // the dedicated sidebar toggle will change expanded/collapsed state.
+    }
   };
 
   useLayoutEffect(() => {
@@ -172,7 +194,7 @@ export function Nav({ active = "home" }) {
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
                       data-nav-key={key}
-                      onDoubleClick={handleSidebarNavigationDoubleClick}
+                      onClick={() => handleSidebarNavigationClick(key)}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span className="nkj-owner-nav-full-label">{label}</span>
