@@ -328,7 +328,26 @@ public class InvoiceController {
 
     @GetMapping
     public java.util.List<Map<String, Object>> all() {
-        return repo.findAllByOrderByInvoiceDateDescCreatedAtDesc().stream().map(this::summary).toList();
+        List<Invoice> invoices = repo.findAllByOrderByInvoiceDateDescCreatedAtDesc();
+        if (invoices.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(invoices.size(), "?"));
+        Object[] invoiceIds = invoices.stream().map(Invoice::getId).toArray();
+        Map<Long, BigDecimal> paidTotals = new LinkedHashMap<>();
+        for (Map<String, Object> row : jdbc.queryForList(
+                "SELECT invoice_id, COALESCE(SUM(amount), 0) AS total_paid "
+                        + "FROM payments WHERE invoice_id IN (" + placeholders + ") GROUP BY invoice_id",
+                invoiceIds)) {
+            long invoiceId = ((Number) row.get("invoice_id")).longValue();
+            paidTotals.put(invoiceId, decimalValue(row.get("total_paid")));
+        }
+
+        return invoices.stream()
+                .map(invoice -> summary(invoice,
+                        paidTotals.getOrDefault(invoice.getId(), BigDecimal.ZERO)))
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -530,6 +549,11 @@ public class InvoiceController {
                 "subTotal", "gstPercent", "gstAmount", "otherCharge", "grandTotal", "paymentAmount")) {
             validateNonNegativeDecimal(body.get(field), field);
         }
+        BigDecimal grandTotal = decimalValue(body.get("grandTotal"));
+        BigDecimal initialPayment = decimalValue(body.get("paymentAmount"));
+        if (initialPayment.compareTo(grandTotal) > 0) {
+            throw new IllegalArgumentException("Total Paid cannot be greater than the Grand Total.");
+        }
     }
 
     private boolean validateInvoiceItemRows(Object rawItems, String itemType) {
@@ -638,7 +662,7 @@ public class InvoiceController {
      * The line-item fields are also copied to the top level so the saved
      * invoice list and detail UI can read newItems/oldItems directly.
      */
-    private Map<String, Object> summary(Invoice invoice) {
+    private Map<String, Object> summary(Invoice invoice, BigDecimal totalPaid) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", invoice.getId());
         response.put("invoiceNo", invoice.getInvoiceNo());
@@ -667,7 +691,17 @@ public class InvoiceController {
         response.put("gstAmount", invoice.getGstAmount());
         response.put("otherCharge", invoice.getOtherCharge());
         response.put("grandTotal", invoice.getGrandTotal());
+        BigDecimal paid = totalPaid == null ? BigDecimal.ZERO : totalPaid;
+        response.put("totalPaid", paid);
+        response.put("dueAmount", invoice.getGrandTotal().subtract(paid).max(BigDecimal.ZERO));
         return response;
+    }
+
+    private BigDecimal totalPaidForInvoice(Long invoiceId) {
+        BigDecimal paid = jdbc.queryForObject(
+                "SELECT COALESCE(SUM(amount), 0) FROM payments WHERE invoice_id = ?",
+                BigDecimal.class, invoiceId);
+        return paid == null ? BigDecimal.ZERO : paid;
     }
 
     /**
@@ -694,7 +728,7 @@ public class InvoiceController {
         details.remove("customerEmail");
         details.remove("email");
         Map<String, Object> response = new LinkedHashMap<>(details);
-        response.putAll(summary(invoice));
+        response.putAll(summary(invoice, totalPaidForInvoice(invoice.getId())));
         response.put("details", details);
         return response;
     }
