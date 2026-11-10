@@ -79,13 +79,7 @@ export function Nav({ active = "home" }) {
     } catch {
       // Keep the sidebar interactive if browser storage is unavailable.
     }
-  };
-
-  // A normal navigation click only follows the link. It never changes
-  // whether the sidebar is expanded or collapsed.
-  const handleSidebarNavigation = () => {};
-
-  // The dedicated hamburger toggles the sidebar independently of navigation.
+  };// The dedicated hamburger toggles the sidebar independently of navigation.
   const handleSidebarToggle = () => {
     setSidebarCollapsed((current) => {
       const next = !current;
@@ -144,7 +138,7 @@ export function Nav({ active = "home" }) {
             <ChevronRight size={18} />
           </button>
 
-          <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home" onClick={handleSidebarNavigation}>
+          <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home">
             <span className="nkj-owner-logo">NKJ</span>
             <span className="nkj-owner-brand-copy">
               <b><strong>NKJ</strong> ERP</b>
@@ -178,7 +172,6 @@ export function Nav({ active = "home" }) {
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
                       data-nav-key={key}
-                      onClick={handleSidebarNavigation}
                       onDoubleClick={handleSidebarNavigationDoubleClick}
                     >
                       <Icon size={18} aria-hidden="true" />
@@ -198,7 +191,6 @@ export function Nav({ active = "home" }) {
               className="nkj-owner-profile-card"
               title={sidebarCollapsed ? (user || "Owner profile") : undefined}
               aria-label="Open owner profile"
-              onClick={handleSidebarNavigation}
             >
               <span className="nkj-owner-avatar">{String(user || "A").slice(0, 1).toUpperCase()}</span>
               <span className="nkj-owner-profile-copy">
@@ -208,7 +200,7 @@ export function Nav({ active = "home" }) {
               <ChevronRight className="nkj-owner-profile-arrow" size={18} aria-hidden="true" />
             </Link>
             <div className="nkj-owner-footer-actions">
-              <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined} onClick={handleSidebarNavigation}>
+              <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined}>
                 <HomeIcon size={18} /><span>Public Home</span>
               </Link>
               <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
