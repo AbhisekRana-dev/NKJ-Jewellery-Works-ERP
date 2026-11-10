@@ -206,7 +206,7 @@ SELECT 'NKJ-' ||
        (metal_sequence % 20 = 1),
        TRUE,
        0,
-       NOW(),
+       NOW() - INTERVAL '30 days',
        NOW()
   FROM numbered
 ON CONFLICT (design_code) DO NOTHING;
