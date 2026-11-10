@@ -1,58 +1,175 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight,
+  Layers3, Star, ChevronDown, LoaderCircle, Image as ImageIcon,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
+import { request } from "../../core/api/client";
 import "./JewelleryDesignsPage.css";
 
-const designs = [
-  { id: "NKJ-NK-001", name: "Traditional Bridal Haar", category: "Necklaces", metal: "22K Gold", style: "Temple-inspired", icon: Crown, tone: "gold", description: "A statement layered haar with a traditional temple-inspired finish for wedding and festive wear." },
-  { id: "NKJ-NK-002", name: "Kundan Choker Set", category: "Necklaces", metal: "Gold & Kundan", style: "Bridal classic", icon: Gem, tone: "rose", description: "A close-fitting choker look with a rich kundan-inspired centre and matching detailing." },
-  { id: "NKJ-ER-003", name: "Floral Jhumka", category: "Earrings", metal: "22K Gold", style: "Traditional", icon: Flower2, tone: "gold", description: "Floral top detailing paired with a classic bell-shaped jhumka silhouette." },
-  { id: "NKJ-ER-004", name: "Pearl Drop Earrings", category: "Earrings", metal: "Gold & Pearl", style: "Elegant", icon: Sparkles, tone: "pearl", description: "A graceful drop design with a soft pearl-inspired finish for celebrations and occasions." },
-  { id: "NKJ-RG-005", name: "Classic Solitaire Ring", category: "Rings", metal: "Gold", style: "Modern", icon: Gem, tone: "pearl", description: "A clean single-stone ring silhouette with a polished, minimal profile." },
-  { id: "NKJ-RG-006", name: "Floral Gold Ring", category: "Rings", metal: "22K Gold", style: "Floral", icon: Flower2, tone: "rose", description: "A delicate floral motif ring designed for everyday festive styling." },
-  { id: "NKJ-BG-007", name: "Antique Kada Pair", category: "Bangles", metal: "22K Gold", style: "Antique", icon: CircleDot, tone: "gold", description: "Bold kada-inspired bangles with an antique-style ornamental finish." },
-  { id: "NKJ-BG-008", name: "Daily Wear Bangles", category: "Bangles", metal: "Gold", style: "Classic", icon: CircleDot, tone: "pearl", description: "Simple, versatile bangles designed to complement daily and occasion wear." },
-  { id: "NKJ-PD-009", name: "Emerald Look Pendant", category: "Pendants", metal: "Gold & Stone", style: "Stone accent", icon: Gem, tone: "green", description: "A gemstone-inspired pendant with a refined gold setting and delicate detailing." },
-  { id: "NKJ-PD-010", name: "Lakshmi Pendant", category: "Pendants", metal: "22K Gold", style: "Traditional", icon: Crown, tone: "rose", description: "A traditional deity-inspired pendant concept for devotional and festive jewellery." },
-  { id: "NKJ-BR-011", name: "Bridal Necklace Set", category: "Bridal", metal: "22K Gold", style: "Wedding", icon: Crown, tone: "gold", description: "A grand necklace-set concept made for bridal styling and special occasions." },
-  { id: "NKJ-BR-012", name: "Polki Festive Set", category: "Bridal", metal: "Gold & Polki", style: "Festive luxury", icon: Sparkles, tone: "pearl", description: "A statement festive set concept with polki-inspired highlights and a traditional silhouette." },
+const PAGE_SIZE = 24;
+const METALS = [
+  { id: "GOLD", label: "Gold", description: "Traditional and contemporary gold designs", tone: "gold", mark: "Au" },
+  { id: "SILVER", label: "Silver", description: "Classic silver and handcrafted collections", tone: "silver", mark: "Ag" },
+  { id: "DIAMOND", label: "Diamond", description: "Diamond-inspired fine jewellery designs", tone: "diamond", mark: "D" },
 ];
+const iconFor = (design) => {
+  const text = `${design?.designName || ""} ${design?.styleLabel || ""} ${design?.subcategoryName || ""}`.toLowerCase();
+  if (/ring|bichiya|nath|nose/.test(text)) return CircleDot;
+  if (/bridal|haar|haram|temple|lakshmi|mangalsutra/.test(text)) return Crown;
+  if (/earring|jhumka|stud|chandbali|drop/.test(text)) return Flower2;
+  if (/chain|necklace|layer/.test(text)) return Layers3;
+  return Gem;
+};
+const hueFor = (design) => {
+  const source = String(design?.designCode || design?.id || "NKJ");
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) hash = (hash * 31 + source.charCodeAt(index)) >>> 0;
+  return hash % 360;
+};
+const loadFavorites = () => {
+  try {
+    const value = JSON.parse(window.localStorage.getItem("nkj-design-favorites") || "[]");
+    return new Set(Array.isArray(value) ? value.map(String) : []);
+  } catch {
+    return new Set();
+  }
+};
 
-const categories = ["All Designs", "Necklaces", "Earrings", "Rings", "Bangles", "Pendants", "Bridal"];
-
-function DesignArtwork({ design }) {
-  const Icon = design.icon;
+function SampleArtwork({ design }) {
+  const Icon = iconFor(design);
+  const hue = hueFor(design);
   return (
-    <div className={`nkj-design-art tone-${design.tone}`} aria-hidden="true">
+    <div className="nkj-design-art" style={{ "--design-hue": hue }} aria-label="Sample design inspiration illustration">
       <span className="nkj-design-art-orbit orbit-one" />
       <span className="nkj-design-art-orbit orbit-two" />
       <span className="nkj-design-art-spark spark-one">✦</span>
       <span className="nkj-design-art-spark spark-two">✧</span>
       <div className="nkj-design-art-center">
-        <Icon size={76} strokeWidth={1.15} />
+        <Icon size={70} strokeWidth={1.2} />
       </div>
-      <span className="nkj-design-art-caption">NKJ • DESIGN</span>
+      <span className="nkj-design-art-caption">SAMPLE • INSPIRATION</span>
+      <span className="nkj-design-art-code">{design.designCode}</span>
     </div>
   );
 }
 
-export default function JewelleryDesignsPage() {
-  const [category, setCategory] = useState("All Designs");
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
+function DesignImage({ design }) {
+  if (design.thumbnailUrl) {
+    return (
+      <div className="nkj-design-photo">
+        <img src={design.thumbnailUrl} alt={design.designName} loading="lazy" />
+        {!design.isSample && <span className="nkj-design-photo-label">SHOP PHOTO</span>}
+      </div>
+    );
+  }
+  return <SampleArtwork design={design} />;
+}
 
-  const visibleDesigns = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return designs.filter((design) => {
-      const categoryMatch = category === "All Designs" || design.category === category;
-      const searchMatch = !query || [
-        design.name, design.id, design.category, design.metal, design.style,
-      ].some((value) => value.toLowerCase().includes(query));
-      return categoryMatch && searchMatch;
+export default function JewelleryDesignsPage() {
+  const [categories, setCategories] = useState([]);
+  const [metal, setMetal] = useState("GOLD");
+  const [subcategory, setSubcategory] = useState("");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("latest");
+  const [items, setItems] = useState([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [favorites, setFavorites] = useState(loadFavorites);
+
+  const metalCategories = useMemo(
+    () => categories.filter((item) => item.metalType === metal),
+    [categories, metal],
+  );
+  const currentMetal = METALS.find((item) => item.id === metal) || METALS[0];
+  const selectedCategory = metalCategories.find((item) => item.slug === subcategory);
+  const heading = selectedCategory?.subcategoryName || `All ${currentMetal.label} Designs`;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingCategories(true);
+    request("/designs/categories", { publicRequest: true })
+      .then((data) => {
+        if (!cancelled) setCategories(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || "Could not load jewellery categories.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCategories(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const loadDesigns = useCallback(async (nextPage, append = false) => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({
+        metal,
+        sort,
+        page: String(nextPage),
+        size: String(PAGE_SIZE),
+      });
+      if (subcategory) params.set("subcategory", subcategory);
+      if (search.trim()) params.set("q", search.trim());
+      const result = await request(`/designs?${params.toString()}`, { publicRequest: true });
+      const nextItems = Array.isArray(result.items) ? result.items : [];
+      setItems((current) => append ? [...current, ...nextItems] : nextItems);
+      setTotal(Number(result.total) || 0);
+      setPage(Number(result.page) || 0);
+    } catch (err) {
+      setError(err.message || "Could not load jewellery designs.");
+      if (!append) {
+        setItems([]);
+        setTotal(0);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [metal, subcategory, search, sort]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadDesigns(0, false), search.trim() ? 280 : 0);
+    return () => window.clearTimeout(timer);
+  }, [loadDesigns]);
+
+  const selectMetal = (nextMetal) => {
+    setMetal(nextMetal);
+    setSubcategory("");
+  };
+
+  const toggleFavorite = (designCode) => {
+    setFavorites((current) => {
+      const next = new Set(current);
+      if (next.has(designCode)) next.delete(designCode);
+      else next.add(designCode);
+      try {
+        window.localStorage.setItem("nkj-design-favorites", JSON.stringify([...next]));
+      } catch {
+        // Browsing remains available when local storage is disabled.
+      }
+      return next;
     });
-  }, [category, search]);
+  };
+
+  const openDesign = async (design) => {
+    setSelected(design);
+    setDetailLoading(true);
+    try {
+      const detail = await request(`/designs/${design.id}`, { publicRequest: true });
+      setSelected(detail);
+    } catch {
+      // The card remains available in the dialog when details cannot be fetched.
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   return (
     <Page active="designs">
@@ -64,7 +181,7 @@ export default function JewelleryDesignsPage() {
             <p>Explore traditional, bridal and everyday jewellery design inspirations from Nandikishor Jewellery Works.</p>
             <div className="nkj-designs-hero-note">
               <Gem size={16} />
-              <span>Find a style you love and visit us for design and making enquiries.</span>
+              <span>Sample inspirations are clearly marked. Shop photographs are uploaded and verified by the owner.</span>
             </div>
           </div>
           <div className="nkj-designs-hero-mark" aria-hidden="true">
@@ -73,72 +190,139 @@ export default function JewelleryDesignsPage() {
           </div>
         </section>
 
-        <section className="nkj-designs-toolbar" aria-label="Browse jewellery designs">
-          <div className="nkj-designs-categories">
-            {categories.map((item) => (
-              <button
-                type="button"
-                key={item}
-                className={category === item ? "active" : ""}
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ))}
+        <section className="nkj-designs-metal-section" aria-label="Browse by metal">
+          <div className="nkj-designs-metal-heading"><span /> <h2><Gem size={22} /> Browse by Metal</h2> <span /></div>
+          <div className="nkj-designs-metal-grid">
+            {METALS.map((item) => {
+              const count = categories.filter((entry) => entry.metalType === item.id).length;
+              return (
+                <button type="button" key={item.id}
+                  className={`nkj-designs-metal-card tone-${item.tone} ${metal === item.id ? "active" : ""}`}
+                  onClick={() => selectMetal(item.id)}>
+                  <span className="nkj-designs-metal-symbol">{item.mark}</span>
+                  <span className="nkj-designs-metal-copy">
+                    <b>{item.label}</b>
+                    <small>{item.description}</small>
+                    <em>{count} subcategories</em>
+                  </span>
+                  <ArrowUpRight size={20} />
+                </button>
+              );
+            })}
           </div>
-          <label className="nkj-designs-search">
-            <Search size={17} aria-hidden="true" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search designs, metal or style..."
-              aria-label="Search jewellery designs"
-            />
-          </label>
         </section>
 
-        <div className="nkj-designs-section-heading">
-          <div>
-            <span>OUR COLLECTION</span>
-            <h2>{category === "All Designs" ? "Explore Designs" : category}</h2>
+        <section className="nkj-designs-category-section">
+          <div className="nkj-designs-section-heading">
+            <div>
+              <span>EXPLORE BY CATEGORY</span>
+              <h2>{currentMetal.label} Subcategories</h2>
+            </div>
+            <small>{metalCategories.length} subcategories</small>
           </div>
-          <small>{visibleDesigns.length} design{visibleDesigns.length === 1 ? "" : "s"}</small>
-        </div>
+          {loadingCategories ? (
+            <div className="nkj-designs-loading"><LoaderCircle className="spin" size={22} /> Loading catalogue categories…</div>
+          ) : (
+            <div className="nkj-designs-category-box">
+              <button type="button" className={subcategory === "" ? "active" : ""} onClick={() => setSubcategory("")}>
+                <Layers3 size={16} /> All {currentMetal.label} Designs
+                <small>{metalCategories.reduce((sum, item) => sum + Number(item.activeDesignCount || 0), 0)}</small>
+              </button>
+              {metalCategories.map((item) => (
+                <button type="button" key={item.id}
+                  className={subcategory === item.slug ? "active" : ""}
+                  onClick={() => setSubcategory(item.slug)}>
+                  <Gem size={15} /> {item.subcategoryName}
+                  <small>{item.activeDesignCount || 0}</small>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
 
-        {visibleDesigns.length ? (
-          <div className="nkj-designs-grid">
-            {visibleDesigns.map((design) => (
-              <article className="nkj-design-card" key={design.id}>
-                <DesignArtwork design={design} />
-                <div className="nkj-design-card-content">
-                  <div className="nkj-design-card-meta">
-                    <span>{design.category}</span>
-                    <small>{design.id}</small>
-                  </div>
-                  <h3>{design.name}</h3>
-                  <p>{design.metal} <span>•</span> {design.style}</p>
-                  <button type="button" onClick={() => setSelected(design)}>
-                    View Design <ArrowUpRight size={15} />
+        <section className="nkj-designs-gallery-section">
+          <div className="nkj-designs-gallery-heading">
+            <div>
+              <span>CURATED NKJ COLLECTION</span>
+              <h2>{heading}</h2>
+              <small>{total.toLocaleString("en-IN")} designs in this view</small>
+            </div>
+            <div className="nkj-designs-gallery-tools">
+              <label className="nkj-designs-search">
+                <Search size={17} aria-hidden="true" />
+                <input value={search} onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search design, code or style…" aria-label="Search jewellery designs" />
+                {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={14} /></button>}
+              </label>
+              <label className="nkj-designs-sort">
+                <span>Sort by</span>
+                <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                  <option value="latest">Latest</option>
+                  <option value="popular">Popularity</option>
+                </select>
+                <ChevronDown size={14} />
+              </label>
+            </div>
+          </div>
+
+          {error && <div className="nkj-designs-error" role="alert">{error}</div>}
+          {loading && items.length === 0 ? (
+            <div className="nkj-designs-loading"><LoaderCircle className="spin" size={24} /> Loading designs…</div>
+          ) : items.length ? (
+            <>
+              <div className="nkj-designs-grid">
+                {items.map((design) => (
+                  <article className="nkj-design-card" key={design.id}>
+                    <div className="nkj-design-card-image">
+                      <DesignImage design={design} />
+                      <button type="button" className={`nkj-design-favorite ${favorites.has(design.designCode) ? "saved" : ""}`}
+                        onClick={() => toggleFavorite(design.designCode)}
+                        aria-label={favorites.has(design.designCode) ? "Remove favorite" : "Add favorite"}>
+                        <Heart size={17} fill={favorites.has(design.designCode) ? "currentColor" : "none"} />
+                      </button>
+                      {design.isFeatured && <span className="nkj-design-featured"><Star size={11} fill="currentColor" /> Featured</span>}
+                      {design.isSample && <span className="nkj-design-sample-label">Sample inspiration</span>}
+                      {!design.isSample && <span className="nkj-design-real-label">Shop design</span>}
+                    </div>
+                    <div className="nkj-design-card-content">
+                      <div className="nkj-design-card-meta">
+                        <span>{design.subcategoryName}</span>
+                        <small>{design.designCode}</small>
+                      </div>
+                      <h3>{design.designName}</h3>
+                      <p>{design.metalType} <span>•</span> {design.styleLabel}</p>
+                      <button type="button" onClick={() => openDesign(design)}>
+                        View Design <ArrowUpRight size={15} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="nkj-designs-pagination">
+                <span>Showing {items.length.toLocaleString("en-IN")} of {total.toLocaleString("en-IN")} designs</span>
+                {items.length < total && (
+                  <button type="button" disabled={loading} onClick={() => loadDesigns(page + 1, true)}>
+                    {loading ? <LoaderCircle className="spin" size={16} /> : <ChevronDown size={16} />}
+                    Load More Designs
                   </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="nkj-designs-empty">
-            <Gem size={30} />
-            <b>No matching designs found</b>
-            <span>Try another keyword or choose a different category.</span>
-            <button type="button" onClick={() => { setSearch(""); setCategory("All Designs"); }}>Clear search</button>
-          </div>
-        )}
+                )}
+              </div>
+            </>
+          ) : !error ? (
+            <div className="nkj-designs-empty">
+              <Gem size={30} />
+              <b>No designs found</b>
+              <span>Try another subcategory or keyword.</span>
+              <button type="button" onClick={() => { setSearch(""); setSubcategory(""); }}>Clear filters</button>
+            </div>
+          ) : null}
+        </section>
 
         <section className="nkj-designs-enquiry">
           <div className="nkj-designs-enquiry-icon"><Heart size={21} /></div>
           <div>
             <b>Found a design you like?</b>
-            <p>Save the design ID and share it with our shop team when you enquire.</p>
+            <p>Share its unique NKJ design code with our shop team for an enquiry or customisation.</p>
           </div>
           <span>Thank you for choosing NKJ</span>
         </section>
@@ -151,16 +335,24 @@ export default function JewelleryDesignsPage() {
               <button type="button" className="nkj-design-modal-close" onClick={() => setSelected(null)} aria-label="Close design details">
                 <X size={19} />
               </button>
-              <DesignArtwork design={selected} />
+              {selected.thumbnailUrl
+                ? <div className="nkj-design-modal-photo"><img src={selected.originalUrl || selected.thumbnailUrl} alt={selected.designName} /></div>
+                : <SampleArtwork design={selected} />}
               <div className="nkj-design-modal-content">
-                <span>{selected.id} • {selected.category}</span>
-                <h2 id="nkj-design-modal-title">{selected.name}</h2>
+                <span>{selected.designCode} • {selected.metalType} • {selected.subcategoryName}</span>
+                <h2 id="nkj-design-modal-title">{selected.designName}</h2>
                 <p>{selected.description}</p>
                 <dl>
-                  <div><dt>Material style</dt><dd>{selected.metal}</dd></div>
-                  <div><dt>Design type</dt><dd>{selected.style}</dd></div>
+                  <div><dt>Style</dt><dd>{selected.styleLabel}</dd></div>
+                  <div><dt>Images</dt><dd>{selected.images?.length || selected.imageCount || 0}</dd></div>
+                  <div><dt>Catalogue status</dt><dd>{selected.isSample ? "Sample inspiration" : "Owner-uploaded shop design"}</dd></div>
                 </dl>
-                <small>Design preview only. Availability, weight and final price are confirmed by the shop.</small>
+                {selected.images?.length > 1 && (
+                  <div className="nkj-design-modal-gallery">
+                    {selected.images.map((image) => <img key={image.id} src={image.thumbnailUrl} alt={image.altText || selected.designName} loading="lazy" />)}
+                  </div>
+                )}
+                <small>{detailLoading ? "Loading complete design details…" : selected.isSample ? "Inspiration entry only. This is not confirmed stock or a product available for sale." : "Shop photograph uploaded by the owner. Confirm current availability and final price with the shop."}</small>
               </div>
               <button type="button" className="nkj-design-modal-done" onClick={() => setSelected(null)}>Close</button>
             </section>
