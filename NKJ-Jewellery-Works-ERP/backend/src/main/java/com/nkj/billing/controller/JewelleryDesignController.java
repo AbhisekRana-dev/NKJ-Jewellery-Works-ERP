@@ -184,6 +184,11 @@ public class JewelleryDesignController {
 
         List<String> createdFiles = new ArrayList<>();
         try {
+            // Once the owner uploads a real shop photograph, remove any bundled
+            // sample inspiration image so the verified shop photo becomes primary.
+            jdbc.update(
+                    "DELETE FROM public.jewellery_design_images WHERE design_id=? AND original_url LIKE '/nkj-design-samples/%'",
+                    id);
             int nextOrder = jdbc.queryForObject(
                     "SELECT COALESCE(MAX(display_order), -1) + 1 FROM public.jewellery_design_images WHERE design_id=?",
                     Integer.class, id);
