@@ -26,4 +26,12 @@ public class RealtimeEventController {
     public SseEmitter subscribe() {
         return broadcaster.subscribe();
     }
+
+    /**
+     * Public, rate-only stream for the public homepage and invoice screen.
+     */
+    @GetMapping(value = "/public", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter subscribePublicRates() {
+        return broadcaster.subscribePublicRates();
+    }
 }
