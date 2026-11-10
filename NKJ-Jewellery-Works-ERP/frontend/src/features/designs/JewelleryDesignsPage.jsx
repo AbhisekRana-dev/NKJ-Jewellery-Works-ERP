@@ -10,7 +10,13 @@ import "./JewelleryDesignsPage.css";
 
 const PAGE_SIZE = 24;
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
-const assetUrl = (path) => path && path.startsWith("/api/") ? `${API_BASE}${path.slice(4)}` : path;
+const API_ORIGIN = API_BASE.endsWith("/api") ? API_BASE.slice(0, -4) : API_BASE;
+const assetUrl = (path) => {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith("/api/")) return `${API_ORIGIN}${path}`;
+  return path.startsWith("/") ? path : `/${path}`;
+};
 const METALS = [
   { id: "GOLD", label: "Gold", description: "Traditional and contemporary gold designs", tone: "gold", mark: "Au" },
   { id: "SILVER", label: "Silver", description: "Classic silver and handcrafted collections", tone: "silver", mark: "Ag" },
@@ -67,15 +73,50 @@ function SampleArtwork({ design }) {
 }
 
 function DesignImage({ design }) {
-  if (design.thumbnailUrl) {
+  const [loadState, setLoadState] = useState("loading");
+  const [retry, setRetry] = useState(0);
+  const source = assetUrl(design.thumbnailUrl);
+
+  if (!source) {
     return (
-      <div className="nkj-design-photo">
-        <img src={assetUrl(design.thumbnailUrl)} alt={design.designName} loading="lazy" decoding="async" />
-        {!design.isSample && <span className="nkj-design-photo-label">SHOP PHOTO</span>}
+      <div className="nkj-design-photo-missing" role="img" aria-label="No jewellery photograph uploaded">
+        <ImagePlus size={25} />
+        <span>Photograph not uploaded</span>
       </div>
     );
   }
-  return <SampleArtwork design={design} />;
+
+  const imageSource = retry > 0
+    ? `${source}${source.includes("?") ? "&" : "?"}retry=${retry}`
+    : source;
+
+  return (
+    <div className="nkj-design-photo">
+      <img
+        key={imageSource}
+        src={imageSource}
+        alt={design.images?.[0]?.altText || design.designName}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoadState("loaded")}
+        onError={() => {
+          console.error("Jewellery catalogue image failed to load:", imageSource);
+          setLoadState("error");
+        }}
+        style={{ objectFit: "contain" }}
+      />
+      {loadState === "loading" && <span className="nkj-design-photo-status">Loading photograph…</span>}
+      {loadState === "error" && (
+        <div className="nkj-design-photo-error" role="alert">
+          <b>Photograph unavailable</b>
+          <button type="button" onClick={() => { setLoadState("loading"); setRetry((value) => value + 1); }}>
+            Retry image
+          </button>
+        </div>
+      )}
+      {!design.isSample && <span className="nkj-design-photo-label">SHOP PHOTO</span>}
+    </div>
+  );
 }
 
 export default function JewelleryDesignsPage() {
@@ -361,7 +402,7 @@ export default function JewelleryDesignsPage() {
                     <div className="nkj-design-card-content">
                       <div className="nkj-design-card-meta">
                         <span>{design.subcategoryName}</span>
-                        <small>{design.designCode}</small>
+                        <small title={design.designId || design.designCode}>{design.designId || design.designCode}</small>
                       </div>
                       <h3>{design.designName}</h3>
                       <p>{design.metalType} <span>•</span> {design.styleLabel}</p>
@@ -414,7 +455,8 @@ export default function JewelleryDesignsPage() {
                   </div>
                 : <SampleArtwork design={selected} />}
               <div className="nkj-design-modal-content">
-                <span>{selected.designCode} • {selected.metalType} • {selected.subcategoryName}</span>
+                <span>{selected.designId || selected.designCode} • {selected.metalType} • {selected.subcategoryName}</span>
+                {selected.designId && selected.designCode && <small className="nkj-design-legacy-code">Legacy code: {selected.designCode}</small>}
                 <h2 id="nkj-design-modal-title">{selected.designName}</h2>
                 <p>{selected.description}</p>
                 <dl>
