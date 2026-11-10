@@ -581,7 +581,7 @@ to {transform: rotate(360deg);}
  * Final responsive shell rules. Kept separate from the invoice stylesheet so
  * the approved invoice body and A4 print styles stay isolated.
  */
-:root {--nkj-owner-expanded-width: 264px;
+:root {--nkj-owner-expanded-width: 240px;
   --nkj-owner-collapsed-width: 82px;}
 /* One shared, predictable navigation width drives the header, page and footer. */
 /* Professional fixed sidebar: only the menu list scrolls. Brand, owner and
