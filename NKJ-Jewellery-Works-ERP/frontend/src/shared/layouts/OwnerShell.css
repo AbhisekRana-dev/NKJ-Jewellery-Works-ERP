@@ -423,8 +423,7 @@ body.nkj-owner-layout .app-content {width: 100%;
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-title,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-full-label,
 .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-arrow,
-.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a span,
-.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button span {
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a span {
   display: none !important;
 }
 .nkj-owner-sidebar .nkj-owner-nav-short-label {display: none;}
@@ -1180,4 +1179,46 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
 
 .nkj-owner-nav a.active > svg:first-child {
   box-shadow: 0 1px 4px rgba(74, 7, 27, .16);
+}
+
+/* The Logout control is the one intentional labelled action in compact mode.
+   Override the legacy collapsed-footer span rule so both icon and text render. */
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button.nkj-owner-logout {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  min-height: 66px !important;
+  padding: 5px 2px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button.nkj-owner-logout span.nkj-owner-logout-icon {
+  display: grid !important;
+  place-items: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  flex: 0 0 38px !important;
+  border: 1px solid #fb8585 !important;
+  border-radius: 50% !important;
+  background: rgba(247, 91, 106, .22) !important;
+  color: #ff9c9c !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button.nkj-owner-logout span.nkj-owner-logout-label {
+  display: block !important;
+  width: 100% !important;
+  color: #ffb2b2 !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button.nkj-owner-logout:hover {
+  background: rgba(205, 58, 83, .2) !important;
 }
