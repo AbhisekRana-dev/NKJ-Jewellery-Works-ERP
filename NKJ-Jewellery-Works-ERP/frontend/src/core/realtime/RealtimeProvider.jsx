@@ -5,11 +5,9 @@ import { connectRealtimeStream } from "./realtime";
 export default function RealtimeProvider({ children }) {
   const { isAdmin, authReady } = useAuth();
 
-  useEffect(() => connectRealtimeStream(true), []);
-
   useEffect(() => {
-    if (!authReady || !isAdmin) return undefined;
-    return connectRealtimeStream(false);
+    if (!authReady) return undefined;
+    return connectRealtimeStream(!isAdmin);
   }, [authReady, isAdmin]);
 
   return children;
