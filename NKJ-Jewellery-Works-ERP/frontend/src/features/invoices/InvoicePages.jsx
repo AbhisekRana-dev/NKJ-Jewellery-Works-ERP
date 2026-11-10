@@ -19,7 +19,7 @@ import {
   MessageCircle,
   Printer,
   Search,
-  RefreshCw,
+  ArrowLeftRight,
   Trash2,
   ArrowLeft,
   Save,
@@ -49,6 +49,7 @@ import {
 
 
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 
 import { useAuth } from "../../core/auth/AuthProvider";
 import InvoicePinDialog from "../../shared/components/InvoicePinDialog";
@@ -1388,7 +1389,7 @@ export function InvoicePage() {
 
             <section className="inv-panel ornament-panel old-panel">
               <h3>
-                <RefreshCw size={18} /> Old / Exchange Ornaments Details
+                <ArrowLeftRight size={18} /> Old / Exchange Ornaments Details
               </h3>
 
               <div className="table-wrap">
@@ -1836,7 +1837,7 @@ function SavedInvoicePrintSheet({ invoice }) {
           </section>
 
           <section className="inv-panel ornament-panel old-panel">
-            <h3><RefreshCw size={18} /> Old / Exchange Ornaments Details</h3>
+            <h3><ArrowLeftRight size={18} /> Old / Exchange Ornaments Details</h3>
             <div className="table-wrap">
               <table className="items-table old-items-table">
                 <thead>
@@ -1972,6 +1973,8 @@ export function SavedInvoices() {
       setLoading(false);
     }
   };
+
+  useRealtimeRefresh(load, ["invoices", "installments", "payments", "transactions", "cashbook", "dashboard", "reports", "customers"]);
 
   const openInvoiceDetails = async (invoice) => {
     setDetailLoading(true);
@@ -2145,9 +2148,7 @@ export function SavedInvoices() {
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <button className="secondary" onClick={load} disabled={loading}>
-          <RefreshCw size={16} /> {loading ? "Loading" : "Refresh"}
-        </button>
+
       </div>
 
       {err && <p className="error">{err}</p>}
