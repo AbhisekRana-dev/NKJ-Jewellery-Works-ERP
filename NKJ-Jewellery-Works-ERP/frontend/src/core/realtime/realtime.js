@@ -165,12 +165,12 @@ export function connectRealtimeStream(publicOnly = false) {
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        let boundary = buffer.indexOf("\n\n");
-        while (boundary >= 0) {
-          const frame = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
+        let boundaryMatch = /\r?\n\r?\n/.exec(buffer);
+        while (boundaryMatch) {
+          const frame = buffer.slice(0, boundaryMatch.index);
+          buffer = buffer.slice(boundaryMatch.index + boundaryMatch[0].length);
           processFrame(frame);
-          boundary = buffer.indexOf("\n\n");
+          boundaryMatch = /\r?\n\r?\n/.exec(buffer);
         }
       }
 
