@@ -16,7 +16,7 @@ function initialSidebarState() {
   try {
     const saved = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
     if (saved !== null) return saved === "true";
-    return window.matchMedia?.("(max-width: 1050px)").matches ?? false;
+    return window.matchMedia?.("(max-width: 1100px)").matches ?? false;
   } catch {
     return false;
   }
@@ -73,6 +73,31 @@ export function Nav({ active = "home" }) {
   const sidebarNavRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
 
+  const persistSidebarState = (collapsed) => {
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
+    } catch {
+      // Keep the sidebar interactive if browser storage is unavailable.
+    }
+  };
+
+  // Navigation may remount Nav for the destination route. Persist the expanded
+  // state synchronously before the Link navigates so the next page keeps it.
+  const handleSidebarNavigation = () => {
+    if (!sidebarCollapsed) return;
+    persistSidebarState(false);
+    setSidebarCollapsed(false);
+  };
+
+  // Only the dedicated toggle button changes the sidebar to collapsed.
+  const handleSidebarToggle = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      persistSidebarState(next);
+      return next;
+    });
+  };
+
   useLayoutEffect(() => {
     const body = document.body;
     body.classList.toggle("nkj-owner-layout", ownerWorkspace);
@@ -108,12 +133,12 @@ export function Nav({ active = "home" }) {
             aria-label={sidebarCollapsed ? "Expand owner sidebar" : "Collapse owner sidebar"}
             aria-expanded={!sidebarCollapsed}
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setSidebarCollapsed((value) => !value)}
+            onClick={handleSidebarToggle}
           >
             <ChevronRight size={18} />
           </button>
 
-          <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home">
+          <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home" onClick={handleSidebarNavigation}>
             <span className="nkj-owner-logo">NKJ</span>
             <span><b>Nandikishor</b><small>Jewellery Works ERP</small></span>
           </Link>
@@ -148,6 +173,7 @@ export function Nav({ active = "home" }) {
                       title={sidebarCollapsed ? label : undefined}
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
+                      onClick={handleSidebarNavigation}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span>{label}</span>
@@ -160,7 +186,7 @@ export function Nav({ active = "home" }) {
           </nav>
 
           <div className="nkj-owner-sidebar-bottom">
-            <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined}>
+            <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined} onClick={handleSidebarNavigation}>
               <HomeIcon size={18} /><span>Public Home</span>
             </Link>
             <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
