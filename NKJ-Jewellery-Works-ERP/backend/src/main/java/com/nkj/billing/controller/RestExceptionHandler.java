@@ -1,5 +1,7 @@
 package com.nkj.billing.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,20 +10,27 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @RestControllerAdvice
 public class RestExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(RestExceptionHandler.class);
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String,String>> badRequest(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() == null ? "Invalid request" : e.getMessage()));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String,String>> conflict(DataIntegrityViolationException e) {
+    public ResponseEntity<Map<String,String>> conflict(DataIntegrityViolationException e, HttpServletRequest request) {
+        log.warn("Database integrity conflict for {} {}: {}", request.getMethod(), request.getRequestURI(), e.getMostSpecificCause().getMessage(), e);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "This change conflicts with existing records. Check required fields, duplicate IDs and linked records."));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String,String>> internal(Exception e) {
+    public ResponseEntity<Map<String,String>> internal(Exception e, HttpServletRequest request) {
+        log.error("Unhandled API exception for {} {}. Root cause: {}",
+                request.getMethod(), request.getRequestURI(),
+                e.getCause() == null ? e.getMessage() : e.getCause().getMessage(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "The server could not complete the request. Check the backend log for details."));
     }
 }
