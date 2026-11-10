@@ -270,7 +270,7 @@ public class JewelleryDesignController {
             parameters.add(search.trim());
         }
 
-        String categoryJoin = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id = d.category_id";
+        String categoryJoin = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id = d.category_id\n";
         Long total = jdbc.queryForObject("SELECT COUNT(*) " + categoryJoin + filter, Long.class, parameters.toArray());
         String orderBy = "popular".equalsIgnoreCase(sort)
                 ? "d.popularity_count DESC, d.created_at DESC, d.id DESC"
