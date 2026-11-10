@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight,
-  Layers3, Star, ChevronDown, LoaderCircle, Image as ImageIcon,
+  Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
@@ -15,11 +15,16 @@ const METALS = [
 ];
 const iconFor = (design) => {
   const text = `${design?.designName || ""} ${design?.styleLabel || ""} ${design?.subcategoryName || ""}`.toLowerCase();
-  if (/ring|bichiya|nath|nose/.test(text)) return CircleDot;
-  if (/bridal|haar|haram|temple|lakshmi|mangalsutra/.test(text)) return Crown;
-  if (/earring|jhumka|stud|chandbali|drop/.test(text)) return Flower2;
-  if (/chain|necklace|layer/.test(text)) return Layers3;
-  return Gem;
+  const motifs = [Gem, Crown, Flower2, Sparkles, CircleDot, Layers3, Orbit, Hexagon, Aperture, Waves, Bird, Heart];
+  let hash = 0;
+  for (const character of String(design?.designCode || design?.id || text)) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+  if (/ring|bichiya|nath|nose/.test(text)) return [CircleDot, Gem, Flower2, Hexagon][hash % 4];
+  if (/bridal|haar|haram|temple|lakshmi|mangalsutra/.test(text)) return [Crown, Gem, Layers3, Sparkles][hash % 4];
+  if (/earring|jhumka|stud|chandbali|drop/.test(text)) return [Flower2, Sparkles, Bird, Gem][hash % 4];
+  if (/chain|necklace|layer/.test(text)) return [Layers3, Orbit, Gem, Waves][hash % 4];
+  return motifs[hash % motifs.length];
 };
 const isNewDesign = (createdAt) => {
   const timestamp = createdAt ? new Date(createdAt).getTime() : 0;
