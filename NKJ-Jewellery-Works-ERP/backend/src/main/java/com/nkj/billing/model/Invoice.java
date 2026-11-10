@@ -45,6 +45,9 @@ public class Invoice {
     @Column(name = "customer_name")
     private String customerName;
 
+    @Column(name = "customer_id")
+    private Long customerId;
+
     @Column(name = "mobile", length = 30)
     private String mobile;
 
@@ -150,6 +153,14 @@ public class Invoice {
 
     public void setCustomerName(String customerName) {
         this.customerName = customerName;
+    }
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(Long customerId) {
+        this.customerId = customerId;
     }
 
     public String getMobile() {
