@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
   Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird, QrCode,
+  LayoutGrid, List,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
@@ -83,7 +84,7 @@ function DesignImage({ design }) {
     return (
       <div className="nkj-design-photo-missing" role="img" aria-label="No jewellery photograph uploaded">
         <ImagePlus size={25} />
-        <span>Photograph not uploaded</span>
+        <span>{design.imageStatus === "PENDING" ? "Photo pending" : "Photograph not uploaded"}</span>
       </div>
     );
   }
@@ -129,6 +130,11 @@ export default function JewelleryDesignsPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("latest");
   const [purity, setPurity] = useState("");
+  const [style, setStyle] = useState("");
+  const [material, setMaterial] = useState("");
+  const [region, setRegion] = useState("");
+  const [facets, setFacets] = useState({ styles: [], materials: [], regions: [], purities: [] });
+  const [view, setView] = useState("grid");
   const [minWeight, setMinWeight] = useState("");
   const [maxWeight, setMaxWeight] = useState("");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -167,6 +173,24 @@ export default function JewelleryDesignsPage() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setFacets({ styles: [], materials: [], regions: [], purities: [] });
+    request(`/designs/filters?metal=${encodeURIComponent(metal)}`, { publicRequest: true })
+      .then((data) => {
+        if (!cancelled) setFacets({
+          styles: Array.isArray(data.styles) ? data.styles : [],
+          materials: Array.isArray(data.materials) ? data.materials : [],
+          regions: Array.isArray(data.regions) ? data.regions : [],
+          purities: Array.isArray(data.purities) ? data.purities : [],
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setFacets({ styles: [], materials: [], regions: [], purities: [] });
+      });
+    return () => { cancelled = true; };
+  }, [metal]);
+
   const loadDesigns = useCallback(async (nextPage, append = false) => {
     setLoading(true);
     setError("");
@@ -180,6 +204,9 @@ export default function JewelleryDesignsPage() {
       if (subcategory) params.set("subcategory", subcategory);
       if (search.trim()) params.set("q", search.trim());
       if (purity) params.set("purity", purity);
+      if (style) params.set("style", style);
+      if (material) params.set("material", material);
+      if (region) params.set("region", region);
       if (minWeight !== "") params.set("minWeight", minWeight);
       if (maxWeight !== "") params.set("maxWeight", maxWeight);
       const result = await request(`/designs?${params.toString()}`, { publicRequest: true });
@@ -196,7 +223,7 @@ export default function JewelleryDesignsPage() {
     } finally {
       setLoading(false);
     }
-  }, [metal, subcategory, search, sort, purity, minWeight, maxWeight]);
+  }, [metal, subcategory, search, sort, purity, style, material, region, minWeight, maxWeight]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => loadDesigns(0, false), search.trim() ? 280 : 0);
@@ -220,6 +247,12 @@ export default function JewelleryDesignsPage() {
   const selectMetal = (nextMetal) => {
     setMetal(nextMetal);
     setSubcategory("");
+    setPurity("");
+    setStyle("");
+    setMaterial("");
+    setRegion("");
+    setMinWeight("");
+    setMaxWeight("");
   };
 
   const toggleFavorite = (designCode) => {
@@ -374,6 +407,10 @@ export default function JewelleryDesignsPage() {
                   placeholder="Search design, code or style…" aria-label="Search jewellery designs" />
                 {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={14} /></button>}
               </label>
+              <div className="nkj-design-view-toggle" role="group" aria-label="Catalogue layout">
+                <button type="button" className={view === "grid" ? "active" : ""} onClick={() => setView("grid")} aria-pressed={view === "grid"} aria-label="Grid view" title="Grid view"><LayoutGrid size={16} /></button>
+                <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-pressed={view === "list"} aria-label="List view" title="List view"><List size={16} /></button>
+              </div>
               <label className="nkj-designs-sort">
                 <span>Sort by</span>
                 <select value={sort} onChange={(event) => setSort(event.target.value)}>
@@ -388,12 +425,33 @@ export default function JewelleryDesignsPage() {
           </div>
 
           <div className="nkj-design-filter-row" aria-label="Filter jewellery designs">
-            <label>Purity<select value={purity} onChange={(event) => setPurity(event.target.value)}>
-              <option value="">All purities</option><option value="24K">24K</option><option value="22K">22K</option><option value="18K">18K</option><option value="14K">14K</option><option value="925">925 Silver</option><option value="999">999 Silver</option>
-            </select></label>
+            <label>Style
+              <select value={style} onChange={(event) => setStyle(event.target.value)}>
+                <option value="">All styles</option>
+                {facets.styles.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>Purity
+              <select value={purity} onChange={(event) => setPurity(event.target.value)}>
+                <option value="">All purities</option>
+                {facets.purities.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>Material
+              <select value={material} onChange={(event) => setMaterial(event.target.value)}>
+                <option value="">All materials</option>
+                {facets.materials.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>Regional inspiration
+              <select value={region} onChange={(event) => setRegion(event.target.value)}>
+                <option value="">All regions</option>
+                {facets.regions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
             <label>Minimum weight (g)<input type="number" min="0" step="0.001" value={minWeight} onChange={(event) => setMinWeight(event.target.value)} placeholder="No minimum" /></label>
             <label>Maximum weight (g)<input type="number" min="0" step="0.001" value={maxWeight} onChange={(event) => setMaxWeight(event.target.value)} placeholder="No maximum" /></label>
-            <button type="button" onClick={() => { setPurity(""); setMinWeight(""); setMaxWeight(""); }}>Clear filters</button>
+            <button type="button" onClick={() => { setPurity(""); setStyle(""); setMaterial(""); setRegion(""); setMinWeight(""); setMaxWeight(""); }}>Clear filters</button>
           </div>
 
           {error && <div className="nkj-designs-error" role="alert">{error}</div>}
@@ -401,7 +459,7 @@ export default function JewelleryDesignsPage() {
             <div className="nkj-designs-loading"><LoaderCircle className="spin" size={24} /> Loading designs…</div>
           ) : items.length ? (
             <>
-              <div className="nkj-designs-grid">
+              <div className={`nkj-designs-grid ${view === "list" ? "is-list" : ""}`}>
                 {items.map((design) => (
                   <article className="nkj-design-card" key={design.id}>
                     <div className="nkj-design-card-image">
@@ -430,14 +488,13 @@ export default function JewelleryDesignsPage() {
                         <small title={design.designId || design.designCode}>{design.designId || design.designCode}</small>
                       </div>
                       <h3>{design.designName}</h3>
-                      <p>{design.metalType} <span>•</span> {design.styleLabel}</p>
-                      {(design.purity || design.weightGrams != null || design.priceInr != null) && (
-                        <p className="nkj-design-card-specs">
-                          {design.purity && <span>{design.purity}</span>}
-                          {design.weightGrams != null && <span>{Number(design.weightGrams).toLocaleString("en-IN")} g</span>}
-                          {design.priceInr != null && <span>₹{Number(design.priceInr).toLocaleString("en-IN")}</span>}
-                        </p>
-                      )}
+                      <p>{design.metalType} <span>•</span> {design.styleLabel || "Traditional Indian"} <span>•</span> {design.regionalInspiration || "Pan-Indian"}</p>
+                      <p className="nkj-design-card-specs">
+                        <span>{design.materialLabel || design.purity || "Material to be confirmed"}</span>
+                        {design.purity && <span>{design.purity}</span>}
+                        {design.weightGrams != null && <span>{Number(design.weightGrams).toLocaleString("en-IN")} g</span>}
+                        {design.imageStatus === "PENDING" && <span className="nkj-design-pending-chip">Photo pending</span>}
+                      </p>
                       <button type="button" onClick={() => openDesign(design)}>
                         View Design <ArrowUpRight size={15} />
                       </button>
@@ -503,10 +560,14 @@ export default function JewelleryDesignsPage() {
                 <h2 id="nkj-design-modal-title">{selected.designName}</h2>
                 <p>{selected.description}</p>
                 <dl>
-                  <div><dt>Style</dt><dd>{selected.styleLabel || "—"}</dd></div>
-                  <div><dt>Purity</dt><dd>{selected.purity || "Not specified"}</dd></div>
+                  <div><dt>Jewellery type</dt><dd>{selected.subcategoryName || "—"}</dd></div>
+                  <div><dt>Style</dt><dd>{selected.styleLabel || "Traditional Indian"}</dd></div>
+                  <div><dt>Regional inspiration</dt><dd>{selected.regionalInspiration || "Pan-Indian"}</dd></div>
+                  <div><dt>Material</dt><dd>{selected.materialLabel || "To be confirmed"}</dd></div>
+                  <div><dt>Purity / fineness</dt><dd>{selected.purity || "Not specified"}</dd></div>
                   <div><dt>Weight</dt><dd>{selected.weightGrams != null ? Number(selected.weightGrams).toLocaleString("en-IN") + " g" : "Not specified"}</dd></div>
-                  <div><dt>Images</dt><dd>{selected.images?.length || selected.imageCount || 0}</dd></div>
+                  <div><dt>Photograph</dt><dd>{selected.imageStatus === "READY" ? "Available" : "Pending upload"}</dd></div>
+                  <div><dt>Additional images</dt><dd>{selected.images?.length || selected.imageCount || 0}</dd></div>
                   <div><dt>Catalogue status</dt><dd>{selected.isSample ? "Sample inspiration" : "Owner-uploaded shop design"}</dd></div>
                 </dl>
                 {selected.images?.length > 1 && (
