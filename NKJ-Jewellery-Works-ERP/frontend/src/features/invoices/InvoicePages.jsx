@@ -1016,10 +1016,9 @@ export function InvoicePage() {
 
     const onCalculatorKeyDown = (event) => {
       if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
-      // Never steal keystrokes from invoice/customer/item inputs.
-      if (isEditableElement(event.target) || isEditableElement(document.activeElement)) return;
-
       const key = event.key;
+      // Escape always closes the popup, even when focus is currently in an
+      // invoice field. All other calculator keys leave editable fields alone.
       if (key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -1027,6 +1026,7 @@ export function InvoicePage() {
         setCalculatorError("");
         return;
       }
+      if (isEditableElement(event.target) || isEditableElement(document.activeElement)) return;
       if (key === "Enter" || key === "=") {
         event.preventDefault();
         event.stopPropagation();
