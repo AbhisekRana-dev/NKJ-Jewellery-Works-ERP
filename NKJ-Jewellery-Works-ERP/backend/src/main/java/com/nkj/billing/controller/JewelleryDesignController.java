@@ -194,18 +194,33 @@ public class JewelleryDesignController {
         Map<String, Object> schema = jdbc.queryForMap("""
                 SELECT
                     to_regclass('public.jewellery_design_upload_sessions') IS NOT NULL AS "tableExists",
-                    EXISTS (
-                        SELECT 1 FROM information_schema.columns
-                         WHERE table_schema='public'
-                           AND table_name='jewellery_design_upload_sessions'
-                           AND column_name='first_scanned_at'
-                    ) AS "scanColumnExists"
+                    COALESCE((
+                        SELECT STRING_AGG(expected.column_name, ', ' ORDER BY expected.column_name)
+                          FROM UNNEST(ARRAY[
+                              'session_id', 'token_hash', 'created_by', 'created_at',
+                              'expires_at', 'consumed_at', 'revoked_at', 'uploaded_design_id',
+                              'created_ip', 'uploaded_ip', 'first_scanned_at'
+                          ]::TEXT[]) AS expected(column_name)
+                         WHERE NOT EXISTS (
+                             SELECT 1
+                               FROM information_schema.columns actual
+                              WHERE actual.table_schema = 'public'
+                                AND actual.table_name = 'jewellery_design_upload_sessions'
+                                AND actual.column_name = expected.column_name
+                         )
+                    ), '') AS "missingColumns"
                 """);
-        if (!Boolean.TRUE.equals(schema.get("tableExists"))
-                || !Boolean.TRUE.equals(schema.get("scanColumnExists"))) {
+        if (!Boolean.TRUE.equals(schema.get("tableExists"))) {
             response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             return Map.of("message",
-                    "The mobile upload database is not ready. Restart the backend and confirm Flyway migrations V32 and V37 have been applied successfully.");
+                    "The QR upload database table is missing. Restart the backend and confirm Flyway migration V32 has completed successfully.");
+        }
+        String missingColumns = String.valueOf(schema.get("missingColumns"));
+        if (!missingColumns.isBlank()) {
+            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            return Map.of("message",
+                    "The QR upload database schema is incomplete. Missing columns: " + missingColumns
+                    + ". Restart the backend and repair Flyway migrations V32 and V37.");
         }
 
         // Resolve and validate the website URL before revoking or creating sessions.
