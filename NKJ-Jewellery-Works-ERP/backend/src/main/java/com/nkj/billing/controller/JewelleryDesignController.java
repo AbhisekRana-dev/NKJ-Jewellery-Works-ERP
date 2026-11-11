@@ -259,11 +259,15 @@ public class JewelleryDesignController {
                     previous_value, new_value, ip_address
                 )
                 VALUES (?, 'DESIGN_SOFT_DELETED', 'JEWELLERY_DESIGNS', ?,
-                        CAST(? AS JSONB), CAST(? AS JSONB), ?)
+                        jsonb_build_object(
+                            'designId', ?, 'designName', ?, 'isActive', ?, 'isFeatured', ?
+                        ),
+                        jsonb_build_object('isDeleted', TRUE, 'isActive', FALSE),
+                        ?)
                 """,
                 auth.getUsername(), String.valueOf(id),
-                toJson(before),
-                "{\"isDeleted\":true,\"isActive\":false}",
+                before.get("designId"), before.get("designName"),
+                before.get("isActive"), before.get("isFeatured"),
                 request.getRemoteAddr());
 
         return Map.of(
@@ -571,22 +575,6 @@ public class JewelleryDesignController {
             throw new IllegalArgumentException("The selected jewellery subcategory is unavailable.");
         }
         return values.get(0);
-    }
-
-    private static String toJson(Map<String, Object> values) {
-        StringBuilder json = new StringBuilder("{");
-        boolean first = true;
-        for (Map.Entry<String, Object> entry : values.entrySet()) {
-            if (!first) json.append(",");
-            first = false;
-            String key = entry.getKey().replace("\\", "\\\\").replace("\"", "\\\"");
-            Object raw = entry.getValue();
-            String value = raw == null ? "null"
-                    : raw instanceof Boolean || raw instanceof Number ? String.valueOf(raw)
-                    : "\"" + String.valueOf(raw).replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
-            json.append("\"").append(key).append("\":").append(value);
-        }
-        return json.append("}").toString();
     }
 
     private static long number(Object value, String errorMessage) {
