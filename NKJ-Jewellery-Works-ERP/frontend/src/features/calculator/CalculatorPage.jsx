@@ -248,17 +248,26 @@ function OrnamentCalculator({ mode }) {
     setExtra("");
   }, []);
 
-  // Escape resets New/Old Ornament fields even while the user is focused
-  // inside a calculator input. The visible Reset button calls the same action.
+  // Use capture phase so shell/page keyboard handlers cannot swallow Escape.
+  // Escape works while focus is inside any calculator field or on the calculator page.
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      const insideCalculator = target instanceof Element
+        && Boolean(target.closest(".nkj-calc-ornament"));
+      const pageHasCalculatorFocus = target === document.body
+        || target === document.documentElement
+        || insideCalculator;
+      if (!pageHasCalculatorFocus) return;
+
       event.preventDefault();
+      event.stopPropagation();
       reset();
     };
 
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
+    window.addEventListener("keydown", handleEscape, true);
+    return () => window.removeEventListener("keydown", handleEscape, true);
   }, [reset]);
 
   return (
@@ -358,6 +367,16 @@ function OrnamentCalculator({ mode }) {
 
 export default function CalculatorPage() {
   const [mode, setMode] = useState("new");
+  const [calculatorResetVersion, setCalculatorResetVersion] = useState(0);
+
+  const changeMode = (nextMode) => {
+    if (nextMode === mode) return;
+    // Force a clean calculator instance whenever New/Old/Manual is changed.
+    // This clears values, validation messages and selected making-charge mode.
+    setMode(nextMode);
+    setCalculatorResetVersion((version) => version + 1);
+  };
+
   const options = [
     { id: "new", label: "New Ornaments", icon: Gem, description: "Gold / silver ornament calculation" },
     { id: "old", label: "Old Ornaments", icon: Scale, description: "Old gold exchange value" },
@@ -380,7 +399,7 @@ export default function CalculatorPage() {
                 type="button"
                 key={id}
                 className={mode === id ? "active" : ""}
-                onClick={() => setMode(id)}
+                onClick={() => changeMode(id)}
               >
                 <span className="nkj-calculator-option-icon"><Icon size={20} /></span>
                 <span className="nkj-calculator-option-copy">
@@ -397,8 +416,8 @@ export default function CalculatorPage() {
               <h2>{options.find((option) => option.id === mode)?.label}</h2>
             </div>
             {mode === "manual"
-              ? <ManualCalculator />
-              : <OrnamentCalculator key={mode} mode={mode} />}
+              ? <ManualCalculator key={`manual-${calculatorResetVersion}`} />
+              : <OrnamentCalculator key={`${mode}-${calculatorResetVersion}`} mode={mode} />}
           </section>
         </div>
       </div>
