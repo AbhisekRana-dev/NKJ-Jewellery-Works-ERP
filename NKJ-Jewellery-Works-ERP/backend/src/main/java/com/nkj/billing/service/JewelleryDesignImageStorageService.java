@@ -172,6 +172,24 @@ public class JewelleryDesignImageStorageService {
         }
     }
 
+    private void writeHighQualityJpeg(BufferedImage image, Path path) throws IOException {
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
+        if (!writers.hasNext()) throw new IOException("JPEG image encoding is not available.");
+        ImageWriter writer = writers.next();
+        try (ImageOutputStream output = ImageIO.createImageOutputStream(path.toFile())) {
+            if (output == null) throw new IOException("Could not create the image output stream.");
+            writer.setOutput(output);
+            ImageWriteParam parameters = writer.getDefaultWriteParam();
+            if (parameters.canWriteCompressed()) {
+                parameters.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                parameters.setCompressionQuality(0.94f);
+            }
+            writer.write(null, new IIOImage(image, null, null), parameters);
+        } finally {
+            writer.dispose();
+        }
+    }
+
     private BufferedImage createScaledJpeg(
             BufferedImage source,
             int maxEdge,
