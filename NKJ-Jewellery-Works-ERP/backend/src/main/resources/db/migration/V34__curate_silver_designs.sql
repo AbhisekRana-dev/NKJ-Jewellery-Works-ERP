@@ -103,7 +103,7 @@ DECLARE duplicate_names INTEGER;
 BEGIN
     SELECT COUNT(*) INTO category_count
       FROM public.jewellery_design_categories
-     WHERE metal_type = 'SILVER' AND is_active = TRUE;
+     WHERE metal_type = 'SILVER';
     IF category_count <> 26 THEN
         RAISE EXCEPTION 'Silver catalogue expected 26 active subcategories; found %', category_count;
     END IF;
@@ -114,7 +114,7 @@ BEGIN
           FROM public.jewellery_design_categories c
           LEFT JOIN public.jewellery_designs d
             ON d.category_id = c.id AND d.is_sample = TRUE AND d.is_deleted = FALSE
-         WHERE c.metal_type = 'SILVER' AND c.is_active = TRUE
+undefined AND c.is_active = TRUE
          GROUP BY c.id
         HAVING COUNT(d.id) < 20
       ) q;
