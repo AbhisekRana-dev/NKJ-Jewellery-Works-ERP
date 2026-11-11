@@ -99,8 +99,9 @@ public class JewelleryDesignController {
                 " AND BTRIM(d.material_label)<>''" + metalClause + " ORDER BY 1", String.class, args));
         facets.put("regions", jdbc.queryForList("SELECT DISTINCT d.regional_inspiration" + from +
                 " AND BTRIM(d.regional_inspiration)<>''" + metalClause + " ORDER BY 1", String.class, args));
-        facets.put("purities", jdbc.queryForList("SELECT DISTINCT d.purity" + from +
-                " AND BTRIM(d.purity)<>''" + metalClause + " ORDER BY 1", String.class, args));
+        // Return a controlled list for the selected metal. Do not derive this
+        // dropdown from old rows, which can contain unrelated/legacy values.
+        facets.put("purities", purityOptionsForMetal(normalizedMetal));
         return facets;
     }
 
@@ -471,12 +472,12 @@ public class JewelleryDesignController {
         String description = text(body.get("description"), 5000);
         String style = text(body.get("styleLabel"), 80);
         String keywords = text(body.get("keywords"), 800);
-        String purity = text(body.get("purity"), 40);
         String regional = text(body.get("regionalInspiration"), 80);
         String material = text(body.get("materialLabel"), 120);
         BigDecimal weightGrams = decimal(body.get("weightGrams"), "Weight");
         BigDecimal priceInr = decimal(body.get("priceInr"), "Price");
         String metal = categoryMetal(categoryId);
+        String purity = validatePurityForMetal(metal, text(body.get("purity"), 40), null);
         ensureUniqueDesignName(categoryId, name, null);
         if (material.isBlank()) material = defaultMaterialLabel(metal);
         if (regional.isBlank()) regional = "Pan-Indian";
@@ -515,9 +516,10 @@ public class JewelleryDesignController {
     public Map<String, Object> updateDesign(@PathVariable long id, @RequestBody Map<String, Object> body) {
         ensureDesignExists(id);
         Map<String, Object> existingDesign = jdbc.queryForMap(
-                "SELECT d.category_id AS \"categoryId\", c.metal_type AS \"metalType\", d.regional_inspiration AS \"regionalInspiration\", d.material_label AS \"materialLabel\" FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id=d.category_id WHERE d.id=?",
+                "SELECT d.category_id AS \"categoryId\", c.metal_type AS \"metalType\", d.purity AS \"purity\", d.regional_inspiration AS \"regionalInspiration\", d.material_label AS \"materialLabel\" FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id=d.category_id WHERE d.id=?",
                 id);
         String existingMetal = String.valueOf(existingDesign.get("metalType"));
+        String existingPurity = existingDesign.get("purity") == null ? "" : String.valueOf(existingDesign.get("purity"));
         long existingCategoryId = ((Number) existingDesign.get("categoryId")).longValue();
         String regionalValue = body.get("regionalInspiration") == null
                 ? String.valueOf(existingDesign.getOrDefault("regionalInspiration", "Pan-Indian"))
@@ -525,6 +527,9 @@ public class JewelleryDesignController {
         String materialValue = body.get("materialLabel") == null
                 ? String.valueOf(existingDesign.getOrDefault("materialLabel", defaultMaterialLabel(existingMetal)))
                 : text(body.get("materialLabel"), 120);
+        String requestedPurity = body.containsKey("purity")
+                ? text(body.get("purity"), 40) : existingPurity;
+        String purity = validatePurityForMetal(existingMetal, requestedPurity, existingPurity);
 
         long categoryId = number(body.get("categoryId"), "Choose a subcategory.");
         String updatedName = requiredText(body.get("designName"), "Design name is required.", 160);
@@ -559,7 +564,7 @@ public class JewelleryDesignController {
                 text(body.get("description"), 5000),
                 text(body.get("styleLabel"), 80),
                 text(body.get("keywords"), 800),
-                text(body.get("purity"), 40),
+                purity,
                 regionalValue,
                 materialValue,
                 decimal(body.get("weightGrams"), "Weight"),
@@ -614,6 +619,8 @@ public class JewelleryDesignController {
         }
 
         String designName = String.valueOf(before.get("designName"));
+        String existingPurity = before.get("purity") == null ? "" : String.valueOf(before.get("purity"));
+        String purity = validatePurityForMetal(metal, existingPurity, existingPurity);
         ensureUniqueDesignName(targetCategoryId, designName, null);
 
         // A category is embedded in Design ID, so a move creates a new record and
@@ -642,7 +649,7 @@ public class JewelleryDesignController {
                 """, Long.class,
                 newDesignCode, newDesignId, targetCategoryId, designName,
                 before.get("description"), before.get("styleLabel"), before.get("keywords"),
-                before.get("purity"), before.get("regionalInspiration"), before.get("materialLabel"),
+                purity, before.get("regionalInspiration"), before.get("materialLabel"),
                 before.get("weightGrams"), before.get("priceInr"), before.get("isSample"),
                 before.get("isFeatured"), before.get("isActive"), before.get("popularityCount"));
 
@@ -1027,6 +1034,13 @@ public class JewelleryDesignController {
         if (minWeight != null && maxWeight != null && minWeight.compareTo(maxWeight) > 0) {
             throw new IllegalArgumentException("Minimum weight cannot exceed maximum weight.");
         }
+        if (purity != null && !purity.isBlank()) {
+            String normalizedMetal = metal == null ? "" : metal.trim().toUpperCase(Locale.ROOT);
+            if (normalizedMetal.isBlank()) {
+                throw new IllegalArgumentException("Select Gold, Silver or Diamond before filtering by purity.");
+            }
+            purity = validatePurityForMetal(normalizedMetal, purity, null);
+        }
         StringBuilder filter = new StringBuilder(" WHERE d.is_deleted = FALSE AND (? = TRUE OR d.is_active = TRUE)");
         List<Object> parameters = new ArrayList<>();
         parameters.add(includeInactive);
@@ -1040,7 +1054,7 @@ public class JewelleryDesignController {
             parameters.add(subcategory.trim().toLowerCase(Locale.ROOT));
         }
         if (search != null && !search.isBlank()) {
-            filter.append(" AND (d.design_id ILIKE ? OR d.design_code ILIKE ? OR to_tsvector('simple', d.design_name || ' ' || d.keywords || ' ' || d.style_label || ' ' || d.regional_inspiration || ' ' || d.material_label) @@ plainto_tsquery('simple', ?))");
+            filter.append(" AND (d.design_id ILIKE ? OR d.design_code ILIKE ? OR to_tsvector('simple', d.design_name || ' ' || d.keywords || ' ' || d.style_label || ' ' || d.regional_inspiration || ' ' || d.material_label || ' ' || COALESCE(d.purity, '')) @@ plainto_tsquery('simple', ?))");
             String q = "%" + search.trim() + "%";
             parameters.add(q);
             parameters.add(q);
@@ -1247,6 +1261,35 @@ public class JewelleryDesignController {
         if (count == null || count == 0) {
             throw new IllegalArgumentException("Jewellery design not found.");
         }
+    }
+
+    private static List<String> purityOptionsForMetal(String metal) {
+        if (metal == null || metal.isBlank()) return List.of();
+        return switch (metal.trim().toUpperCase(Locale.ROOT)) {
+            case "GOLD" -> List.of("24K", "hallmark(916)", "22K");
+            case "SILVER" -> List.of("999 Silver", "925 Silver", "900 Silver", "800 Silver");
+            case "DIAMOND" -> List.of("Natural Diamond", "Lab-Grown Diamond");
+            default -> List.of();
+        };
+    }
+
+    /**
+     * New purity values must belong to the selected metal. An unchanged legacy
+     * value may be retained while editing/moving that same existing record so
+     * unrelated edits never silently overwrite historical purity data.
+     */
+    private static String validatePurityForMetal(String metal, String requested, String existingValue) {
+        String value = requested == null ? "" : requested.trim();
+        if (value.isBlank()) return "";
+        for (String option : purityOptionsForMetal(metal)) {
+            if (option.equalsIgnoreCase(value)) return option;
+        }
+        if (existingValue != null && existingValue.equalsIgnoreCase(value)) {
+            return existingValue.trim();
+        }
+        throw new IllegalArgumentException(
+                "Purity/type '" + value + "' is not valid for " + metal
+                        + ". Choose one of: " + String.join(", ", purityOptionsForMetal(metal)) + ".");
     }
 
     private String categoryMetal(long categoryId) {
