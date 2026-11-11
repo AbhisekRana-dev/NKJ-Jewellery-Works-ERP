@@ -67,13 +67,38 @@ public class JewelleryDesignController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int size,
             @RequestParam(required = false) String purity,
+            @RequestParam(required = false) String style,
+            @RequestParam(required = false) String material,
+            @RequestParam(required = false) String region,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) BigDecimal minWeight,
             @RequestParam(required = false) BigDecimal maxWeight,
             @RequestParam(defaultValue = "false") boolean featured) {
         return listDesigns(metal, subcategory, search, sort, page, size, false,
-                purity, minPrice, maxPrice, minWeight, maxWeight, featured);
+                purity, style, material, region, minPrice, maxPrice, minWeight, maxWeight, featured);
+    }
+
+    @GetMapping("/api/designs/filters")
+    public Map<String, Object> publicDesignFilters(@RequestParam(required = false) String metal) {
+        String normalizedMetal = metal == null || metal.isBlank() ? null : metal.trim().toUpperCase(Locale.ROOT);
+        if (normalizedMetal != null && !List.of("GOLD", "SILVER", "DIAMOND").contains(normalizedMetal)) {
+            throw new IllegalArgumentException("Choose Gold, Silver or Diamond.");
+        }
+        String metalClause = normalizedMetal == null ? "" : " AND c.metal_type = ?";
+        Object[] args = normalizedMetal == null ? new Object[0] : new Object[]{normalizedMetal};
+        String from = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id=d.category_id " +
+                "WHERE d.is_deleted=FALSE AND d.is_active=TRUE";
+        Map<String, Object> facets = new LinkedHashMap<>();
+        facets.put("styles", jdbc.queryForList("SELECT DISTINCT d.style_label" + from +
+                " AND BTRIM(d.style_label)<>''" + metalClause + " ORDER BY 1", String.class, args));
+        facets.put("materials", jdbc.queryForList("SELECT DISTINCT d.material_label" + from +
+                " AND BTRIM(d.material_label)<>''" + metalClause + " ORDER BY 1", String.class, args));
+        facets.put("regions", jdbc.queryForList("SELECT DISTINCT d.regional_inspiration" + from +
+                " AND BTRIM(d.regional_inspiration)<>''" + metalClause + " ORDER BY 1", String.class, args));
+        facets.put("purities", jdbc.queryForList("SELECT DISTINCT d.purity" + from +
+                " AND BTRIM(d.purity)<>''" + metalClause + " ORDER BY 1", String.class, args));
+        return facets;
     }
 
     @GetMapping("/api/designs/{id}")
@@ -97,13 +122,16 @@ public class JewelleryDesignController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size,
             @RequestParam(required = false) String purity,
+            @RequestParam(required = false) String style,
+            @RequestParam(required = false) String material,
+            @RequestParam(required = false) String region,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) BigDecimal minWeight,
             @RequestParam(required = false) BigDecimal maxWeight,
             @RequestParam(defaultValue = "false") boolean featured) {
         return listDesigns(metal, subcategory, search, sort, page, size, true,
-                purity, minPrice, maxPrice, minWeight, maxWeight, featured);
+                purity, style, material, region, minPrice, maxPrice, minWeight, maxWeight, featured);
     }
 
     @GetMapping("/api/admin/designs/{id}")
@@ -361,9 +389,14 @@ public class JewelleryDesignController {
         String style = text(body.get("styleLabel"), 80);
         String keywords = text(body.get("keywords"), 800);
         String purity = text(body.get("purity"), 40);
+        String regional = text(body.get("regionalInspiration"), 80);
+        String material = text(body.get("materialLabel"), 120);
         BigDecimal weightGrams = decimal(body.get("weightGrams"), "Weight");
         BigDecimal priceInr = decimal(body.get("priceInr"), "Price");
         String metal = categoryMetal(categoryId);
+        ensureUniqueDesignName(categoryId, name, null);
+        if (material.isBlank()) material = defaultMaterialLabel(metal);
+        if (regional.isBlank()) regional = "Pan-Indian";
         String designId = nextDesignId(categoryId, metal);
 
         Long next = jdbc.queryForObject(
@@ -382,13 +415,13 @@ public class JewelleryDesignController {
         Long id = jdbc.queryForObject("""
                 INSERT INTO public.jewellery_designs
                     (design_code, design_id, category_id, design_name, description, style_label, keywords,
-                     purity, weight_grams, price_inr,
+                     purity, regional_inspiration, material_label, weight_grams, price_inr,
                      is_sample, is_featured, is_active, popularity_count, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, 0, NOW(), NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, 0, NOW(), NOW())
                 RETURNING id
                 """, Long.class,
                 designCode, designId, categoryId, name, description, style, keywords,
-                purity, weightGrams, priceInr,
+                purity, regional, material, weightGrams, priceInr,
                 bool(body.get("isFeatured"), false), bool(body.get("isActive"), true));
         return designDetails(id, true);
     }
@@ -405,6 +438,8 @@ public class JewelleryDesignController {
         long existingCategoryId = ((Number) existingDesign.get("categoryId")).longValue();
 
         long categoryId = number(body.get("categoryId"), "Choose a subcategory.");
+        String updatedName = requiredText(body.get("designName"), "Design name is required.", 160);
+        ensureUniqueDesignName(categoryId, updatedName, id);
         if (categoryId != existingCategoryId) {
             throw new IllegalArgumentException("A design's subcategory cannot be changed after its Design ID is generated. Create a new design in the new subcategory instead.");
         }
@@ -421,6 +456,8 @@ public class JewelleryDesignController {
                        style_label = ?,
                        keywords = ?,
                        purity = ?,
+                       regional_inspiration = ?,
+                       material_label = ?,
                        weight_grams = ?,
                        price_inr = ?,
                        is_featured = ?,
@@ -429,11 +466,13 @@ public class JewelleryDesignController {
                  WHERE id = ?
                 """,
                 categoryId,
-                requiredText(body.get("designName"), "Design name is required.", 160),
+                updatedName,
                 text(body.get("description"), 5000),
                 text(body.get("styleLabel"), 80),
                 text(body.get("keywords"), 800),
                 text(body.get("purity"), 40),
+                text(body.get("regionalInspiration"), 80),
+                text(body.get("materialLabel"), 120),
                 decimal(body.get("weightGrams"), "Weight"),
                 decimal(body.get("priceInr"), "Price"),
                 bool(body.get("isFeatured"), false),
@@ -597,7 +636,7 @@ public class JewelleryDesignController {
                 SELECT c.id, c.metal_type AS "metalType",
                        c.subcategory_name AS "subcategoryName", c.slug,
                        c.display_order AS "displayOrder", c.is_active AS "isActive",
-                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE AND (? = TRUE OR EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id = d.id))) AS "activeDesignCount",
+                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE) AS "activeDesignCount",
                        COUNT(d.id) AS "totalDesignCount"
                   FROM public.jewellery_design_categories c
                   LEFT JOIN public.jewellery_designs d ON d.category_id = c.id AND d.is_deleted = FALSE
@@ -612,7 +651,8 @@ public class JewelleryDesignController {
     private Map<String, Object> listDesigns(
             String metal, String subcategory, String search, String sort,
             int requestedPage, int requestedSize, boolean includeInactive,
-            String purity, BigDecimal minPrice, BigDecimal maxPrice,
+            String purity, String style, String material, String region,
+            BigDecimal minPrice, BigDecimal maxPrice,
             BigDecimal minWeight, BigDecimal maxWeight, boolean featuredOnly) {
         int page = Math.max(0, requestedPage);
         int size = Math.max(1, Math.min(requestedSize, 60));
@@ -635,7 +675,7 @@ public class JewelleryDesignController {
             parameters.add(subcategory.trim().toLowerCase(Locale.ROOT));
         }
         if (search != null && !search.isBlank()) {
-            filter.append(" AND (d.design_id ILIKE ? OR d.design_code ILIKE ? OR to_tsvector('simple', d.design_name || ' ' || d.keywords || ' ' || d.style_label) @@ plainto_tsquery('simple', ?))");
+            filter.append(" AND (d.design_id ILIKE ? OR d.design_code ILIKE ? OR to_tsvector('simple', d.design_name || ' ' || d.keywords || ' ' || d.style_label || ' ' || d.regional_inspiration || ' ' || d.material_label) @@ plainto_tsquery('simple', ?))");
             String q = "%" + search.trim() + "%";
             parameters.add(q);
             parameters.add(q);
@@ -645,15 +685,23 @@ public class JewelleryDesignController {
             filter.append(" AND LOWER(d.purity) = LOWER(?)");
             parameters.add(purity.trim());
         }
+        if (style != null && !style.isBlank()) {
+            filter.append(" AND LOWER(d.style_label) = LOWER(?)");
+            parameters.add(style.trim());
+        }
+        if (material != null && !material.isBlank()) {
+            filter.append(" AND LOWER(d.material_label) = LOWER(?)");
+            parameters.add(material.trim());
+        }
+        if (region != null && !region.isBlank()) {
+            filter.append(" AND LOWER(d.regional_inspiration) = LOWER(?)");
+            parameters.add(region.trim());
+        }
         if (minPrice != null) { filter.append(" AND d.price_inr >= ?"); parameters.add(minPrice); }
         if (maxPrice != null) { filter.append(" AND d.price_inr <= ?"); parameters.add(maxPrice); }
         if (minWeight != null) { filter.append(" AND d.weight_grams >= ?"); parameters.add(minWeight); }
         if (maxWeight != null) { filter.append(" AND d.weight_grams <= ?"); parameters.add(maxWeight); }
         if (featuredOnly) filter.append(" AND d.is_featured = TRUE");
-        if (!includeInactive) {
-            filter.append(" AND EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id = d.id AND COALESCE(NULLIF(BTRIM(visible_image.thumbnail_url), ''), NULLIF(BTRIM(visible_image.original_url), '')) IS NOT NULL)");
-        }
-
         String categoryJoin = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id = d.category_id\n";
         Long total = jdbc.queryForObject("SELECT COUNT(*) " + categoryJoin + filter, Long.class, parameters.toArray());
         String orderBy = switch (sort == null ? "latest" : sort.toLowerCase(Locale.ROOT)) {
@@ -667,7 +715,9 @@ public class JewelleryDesignController {
                        d.description, d.style_label AS "styleLabel", d.keywords,
                        d.is_sample AS "isSample", d.is_featured AS "isFeatured",
                        d.is_active AS "isActive", d.popularity_count AS "popularityCount",
-                       d.purity, d.weight_grams AS "weightGrams", d.price_inr AS "priceInr",
+                       d.purity, d.regional_inspiration AS "regionalInspiration",
+                       d.material_label AS "materialLabel", d.image_status AS "imageStatus",
+                       d.weight_grams AS "weightGrams", d.price_inr AS "priceInr",
                        d.created_at AS "createdAt", d.updated_at AS "updatedAt",
                        c.metal_type AS "metalType", c.subcategory_name AS "subcategoryName",
                        c.slug AS "subcategorySlug",
@@ -691,6 +741,7 @@ public class JewelleryDesignController {
         dataParameters.add(size);
         dataParameters.add((long) page * size);
         List<Map<String, Object>> items = jdbc.queryForList(sql, dataParameters.toArray());
+        if (!includeInactive) items.forEach(item -> item.remove("priceInr"));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("items", items);
@@ -722,22 +773,21 @@ public class JewelleryDesignController {
                        d.description, d.style_label AS "styleLabel", d.keywords,
                        d.is_sample AS "isSample", d.is_featured AS "isFeatured",
                        d.is_active AS "isActive", d.popularity_count AS "popularityCount",
-                       d.purity, d.weight_grams AS "weightGrams", d.price_inr AS "priceInr",
+                       d.purity, d.regional_inspiration AS "regionalInspiration",
+                       d.material_label AS "materialLabel", d.image_status AS "imageStatus",
+                       d.weight_grams AS "weightGrams", d.price_inr AS "priceInr",
                        d.created_at AS "createdAt", d.updated_at AS "updatedAt",
                        c.id AS "categoryId", c.metal_type AS "metalType",
                        c.subcategory_name AS "subcategoryName", c.slug AS "subcategorySlug"
                   FROM public.jewellery_designs d
                   JOIN public.jewellery_design_categories c ON c.id=d.category_id
-                 WHERE d.id=? AND d.is_deleted=FALSE AND (? = TRUE OR (d.is_active=TRUE AND EXISTS (
-                     SELECT 1 FROM public.jewellery_design_images visible_image
-                      WHERE visible_image.design_id=d.id
-                        AND COALESCE(NULLIF(BTRIM(visible_image.thumbnail_url), ''), NULLIF(BTRIM(visible_image.original_url), '')) IS NOT NULL
-                 )))
+                 WHERE d.id=? AND d.is_deleted=FALSE AND (? = TRUE OR d.is_active=TRUE)
                 """, id, includeInactive);
         if (results.isEmpty()) {
             throw new IllegalArgumentException("Jewellery design not found.");
         }
         Map<String, Object> result = new LinkedHashMap<>(results.get(0));
+        if (!includeInactive) result.remove("priceInr");
         result.put("images", jdbc.queryForList("""
                 SELECT id,
                        COALESCE(NULLIF(BTRIM(original_url), ''), NULLIF(BTRIM(thumbnail_url), '')) AS "originalUrl",
@@ -750,6 +800,34 @@ public class JewelleryDesignController {
                  ORDER BY display_order, id
                 """, id));
         return result;
+    }
+
+    private void ensureUniqueDesignName(long categoryId, String name, Long excludeId) {
+        Integer matches;
+        if (excludeId == null) {
+            matches = jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM public.jewellery_designs
+                     WHERE category_id=? AND is_deleted=FALSE
+                       AND LOWER(BTRIM(design_name))=LOWER(BTRIM(?))
+                    """, Integer.class, categoryId, name);
+        } else {
+            matches = jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM public.jewellery_designs
+                     WHERE category_id=? AND is_deleted=FALSE AND id<>?
+                       AND LOWER(BTRIM(design_name))=LOWER(BTRIM(?))
+                    """, Integer.class, categoryId, excludeId, name);
+        }
+        if (matches != null && matches > 0) {
+            throw new IllegalArgumentException("A design with this name already exists in the selected subcategory. Choose a genuinely distinct design name.");
+        }
+    }
+
+    private static String defaultMaterialLabel(String metal) {
+        return switch (metal) {
+            case "GOLD" -> "Gold concept · actual karat not specified";
+            case "SILVER" -> "Silver concept · fineness and plating not specified";
+            default -> "Diamond concept · natural/lab-grown origin and grading not specified";
+        };
     }
 
     private String nextDesignId(long categoryId, String metal) {
