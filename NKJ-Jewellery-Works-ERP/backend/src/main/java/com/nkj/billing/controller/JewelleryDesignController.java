@@ -779,10 +779,24 @@ public class JewelleryDesignController {
                         """, id, stored.originalUrl(), stored.displayUrl(), stored.thumbnailUrl(),
                         stored.fileName(), stored.sha256(), nextOrder++);
             }
+            // A stored owner photograph must immediately become visible to both
+            // the owner detail view and the public catalogue. The public query
+            // intentionally hides image URLs while image_status is PENDING.
             jdbc.update("""
-                    UPDATE public.jewellery_designs
-                       SET is_sample = FALSE, updated_at = NOW()
-                     WHERE id = ?
+                    UPDATE public.jewellery_designs d
+                       SET is_sample = FALSE,
+                           image_status = CASE WHEN EXISTS (
+                               SELECT 1
+                                 FROM public.jewellery_design_images i
+                                WHERE i.design_id = d.id
+                                  AND (
+                                      i.original_url LIKE '/api/uploads/designs/%'
+                                      OR i.display_url LIKE '/api/uploads/designs/%'
+                                      OR i.thumbnail_url LIKE '/api/uploads/designs/%'
+                                  )
+                           ) THEN 'READY' ELSE 'PENDING' END,
+                           updated_at = NOW()
+                     WHERE d.id = ?
                     """, id);
         } catch (RuntimeException | IOException error) {
             createdFiles.forEach(imageStorage::deleteStoredPath);
@@ -802,6 +816,21 @@ public class JewelleryDesignController {
         if (found == null || found == 0) throw new IllegalArgumentException("Design image not found.");
         jdbc.update("UPDATE public.jewellery_design_images SET display_order = display_order + 1 WHERE design_id=? AND id<>?", id, imageId);
         jdbc.update("UPDATE public.jewellery_design_images SET display_order=0 WHERE id=? AND design_id=?", imageId, id);
+        jdbc.update("""
+                UPDATE public.jewellery_designs d
+                   SET image_status = CASE WHEN EXISTS (
+                       SELECT 1
+                         FROM public.jewellery_design_images i
+                        WHERE i.design_id = d.id
+                          AND (
+                              i.original_url LIKE '/api/uploads/designs/%'
+                              OR i.display_url LIKE '/api/uploads/designs/%'
+                              OR i.thumbnail_url LIKE '/api/uploads/designs/%'
+                          )
+                   ) THEN 'READY' ELSE 'PENDING' END,
+                       updated_at = NOW()
+                 WHERE d.id = ?
+                """, id);
         return designDetails(id, true);
     }
 
@@ -824,9 +853,31 @@ public class JewelleryDesignController {
             jdbc.update("UPDATE public.jewellery_design_images SET display_order=? WHERE id=? AND design_id=?",
                     index, remainingImageIds.get(index), id);
         }
-        if (remainingImageIds.isEmpty()) {
-            jdbc.update("UPDATE public.jewellery_designs SET is_sample=TRUE, updated_at=NOW() WHERE id=?", id);
-        }
+        jdbc.update("""
+                UPDATE public.jewellery_designs d
+                   SET image_status = CASE WHEN EXISTS (
+                       SELECT 1
+                         FROM public.jewellery_design_images i
+                        WHERE i.design_id = d.id
+                          AND (
+                              i.original_url LIKE '/api/uploads/designs/%'
+                              OR i.display_url LIKE '/api/uploads/designs/%'
+                              OR i.thumbnail_url LIKE '/api/uploads/designs/%'
+                          )
+                   ) THEN 'READY' ELSE 'PENDING' END,
+                       is_sample = NOT EXISTS (
+                           SELECT 1
+                             FROM public.jewellery_design_images i
+                            WHERE i.design_id = d.id
+                              AND (
+                                  i.original_url LIKE '/api/uploads/designs/%'
+                                  OR i.display_url LIKE '/api/uploads/designs/%'
+                                  OR i.thumbnail_url LIKE '/api/uploads/designs/%'
+                              )
+                       ),
+                       updated_at = NOW()
+                 WHERE d.id = ?
+                """, id);
         return designDetails(id, true);
     }
 
