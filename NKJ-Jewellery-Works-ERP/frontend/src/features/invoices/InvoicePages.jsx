@@ -64,11 +64,11 @@ function evaluateCalculatorExpression(rawExpression) {
     .replace(/[×xX]/g, "*")
     .replace(/[÷]/g, "/")
     .replace(/[−]/g, "-")
-    .replace(/\\s+/g, "");
+    .replace(/\s+/g, "");
 
   if (!expression) throw new Error("Enter a calculation first.");
 
-  const tokens = expression.match(/\\d+(?:\\.\\d*)?|\\.\\d+|[+\\-*/%()]/g) || [];
+  const tokens = expression.match(/\d+(?:\.\d*)?|\.\d+|[+\-*/%()]/g) || [];
   if (tokens.join("") !== expression) throw new Error("Check the expression and try again.");
 
   let cursor = 0;
@@ -82,7 +82,7 @@ function evaluateCalculatorExpression(rawExpression) {
       cursor += 1;
       return nested;
     }
-    if (!token || !/^(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(token)) {
+    if (!token || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token)) {
       throw new Error("Enter a number.");
     }
     cursor += 1;
@@ -950,8 +950,9 @@ export function InvoicePage() {
     setCalculatorExpression((current) => {
       const operators = ["+", "−", "×", "÷"];
       const isOperator = operators.includes(token);
+      const continuesResult = isOperator || token === "%";
       let next = calculatorResult !== ""
-        ? (isOperator ? calculatorResult : "")
+        ? (continuesResult ? calculatorResult : "")
         : current;
       const last = next.slice(-1);
 
