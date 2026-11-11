@@ -237,6 +237,28 @@ public class JewelleryDesignController {
         return Map.of("revoked", changed > 0, "sessionId", sessionId.toString());
     }
 
+    @GetMapping("/api/mobile-design-upload/{token}")
+    public Map<String, Object> mobileUploadSessionInfo(@PathVariable String token) {
+        if (token == null || token.length() < 40 || token.length() > 100
+                || !token.matches("[A-Za-z0-9_-]+")) {
+            throw new IllegalArgumentException("This QR upload link is invalid.");
+        }
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT CASE
+                         WHEN consumed_at IS NOT NULL THEN 'UPLOADED'
+                         WHEN revoked_at IS NOT NULL THEN 'REVOKED'
+                         WHEN expires_at <= NOW() THEN 'EXPIRED'
+                         ELSE 'WAITING'
+                       END AS status,
+                       expires_at AS "expiresAt",
+                       GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (expires_at - NOW()))))::BIGINT AS "secondsRemaining"
+                  FROM public.jewellery_design_upload_sessions
+                 WHERE token_hash=?
+                """, sha256Hex(token));
+        if (rows.isEmpty()) throw new IllegalArgumentException("This QR upload link is invalid.");
+        return rows.get(0);
+    }
+
     @PostMapping(value = "/api/mobile-design-upload/{token}/design", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
@@ -251,6 +273,8 @@ public class JewelleryDesignController {
             @RequestParam(value = "weightGrams", required = false) String weightGrams,
             @RequestParam(value = "isActive", defaultValue = "true") boolean isActive,
             @RequestParam(value = "isFeatured", defaultValue = "false") boolean isFeatured,
+            @RequestParam(value = "rotations", required = false) List<Integer> rotations,
+            @RequestParam(value = "cropZooms", required = false) List<Double> cropZooms,
             @RequestParam("files") List<MultipartFile> files,
             HttpServletRequest request) throws IOException {
         if (token == null || token.length() < 40 || token.length() > 100
@@ -297,7 +321,7 @@ public class JewelleryDesignController {
         // The locked session row guarantees only one mobile design submission.
         Map<String, Object> saved = createDesign(body);
         long designPk = ((Number) saved.get("id")).longValue();
-        Map<String, Object> withImages = uploadImages(designPk, files);
+        Map<String, Object> withImages = storeDesignImages(designPk, files, rotations, cropZooms);
 
         jdbc.update("""
                 UPDATE public.jewellery_design_upload_sessions
@@ -453,6 +477,14 @@ public class JewelleryDesignController {
     public Map<String, Object> uploadImages(
             @PathVariable long id,
             @RequestParam("files") List<MultipartFile> files) throws IOException {
+        return storeDesignImages(id, files, null, null);
+    }
+
+    private Map<String, Object> storeDesignImages(
+            long id,
+            List<MultipartFile> files,
+            List<Integer> rotations,
+            List<Double> cropZooms) throws IOException {
         ensureDesignExists(id);
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Choose at least one image.");
@@ -460,19 +492,25 @@ public class JewelleryDesignController {
         if (files.size() > 20) {
             throw new IllegalArgumentException("Upload at most 20 images per batch.");
         }
+        if (rotations != null && !rotations.isEmpty() && rotations.size() != files.size()) {
+            throw new IllegalArgumentException("Image rotation settings do not match the selected photographs.");
+        }
+        if (cropZooms != null && !cropZooms.isEmpty() && cropZooms.size() != files.size()) {
+            throw new IllegalArgumentException("Image crop settings do not match the selected photographs.");
+        }
 
         List<String> createdFiles = new ArrayList<>();
         try {
-            // Once the owner uploads a real shop photograph, remove any bundled
-            // sample inspiration image so the verified shop photo becomes primary.
             jdbc.update(
                     "DELETE FROM public.jewellery_design_images WHERE design_id=? AND original_url LIKE '/nkj-design-samples/%'",
                     id);
             int nextOrder = jdbc.queryForObject(
                     "SELECT COALESCE(MAX(display_order), -1) + 1 FROM public.jewellery_design_images WHERE design_id=?",
                     Integer.class, id);
-            for (MultipartFile file : files) {
-                StoredImage stored = imageStorage.store(id, file);
+            for (int index = 0; index < files.size(); index++) {
+                int rotation = rotations == null || rotations.isEmpty() ? 0 : rotations.get(index);
+                double cropZoom = cropZooms == null || cropZooms.isEmpty() ? 1.0d : cropZooms.get(index);
+                StoredImage stored = imageStorage.store(id, files.get(index), rotation, cropZoom);
                 createdFiles.add(stored.originalUrl());
                 createdFiles.add(stored.displayUrl());
                 createdFiles.add(stored.thumbnailUrl());
@@ -514,8 +552,8 @@ public class JewelleryDesignController {
     @Transactional
     public Map<String, Object> deleteImage(@PathVariable long id, @PathVariable long imageId) {
         List<List<String>> urls = jdbc.query(
-                "SELECT original_url, thumbnail_url FROM public.jewellery_design_images WHERE id=? AND design_id=?",
-                (rs, rowNum) -> List.of(rs.getString(1), rs.getString(2)), imageId, id);
+                "SELECT original_url, display_url, thumbnail_url FROM public.jewellery_design_images WHERE id=? AND design_id=?",
+                (rs, rowNum) -> List.of(rs.getString(1), rs.getString(2), rs.getString(3)), imageId, id);
         if (urls.isEmpty()) {
             throw new IllegalArgumentException("Design image not found.");
         }
