@@ -196,18 +196,44 @@ export default function JewelleryCatalogAdminPage() {
   useRealtimeRefresh(() => loadDesigns(page), ["designs"]);
 
   useEffect(() => {
-    if (!qrOpen || !qrSession?.sessionId || qrSession.status !== "WAITING") return undefined;
+    if (!qrOpen || !qrSession?.sessionId || !["WAITING", "SCANNED"].includes(qrSession.status)) return undefined;
     let active = true;
+    let uploadHandled = false;
     const timer = window.setInterval(async () => {
       setQrNow(Date.now());
       try {
         const status = await request(`/admin/design-upload-sessions/${qrSession.sessionId}`);
         if (!active) return;
         setQrSession((current) => current ? { ...current, ...status } : current);
-        if (status.status === "UPLOADED") {
+
+        if (status.status === "UPLOADED" && !uploadHandled) {
+          uploadHandled = true;
+          const nextMetal = status.metalType || metal;
+          const nextSubcategory = status.subcategorySlug || "";
+          setMetal(nextMetal);
+          setSubcategory(nextSubcategory);
+          setSearch("");
+          setSort("latest");
+          setPage(0);
           setMessage(`New jewellery design uploaded: ${status.generatedDesignId || ""} ${status.designName || ""}`);
-          await Promise.all([loadCategories(), loadDesigns(0)]);
+
+          // Fetch using the uploaded design's category rather than the
+          // catalogue's previous filter (for example, SILVER -> GOLD).
+          const params = new URLSearchParams({
+            metal: nextMetal,
+            sort: "latest",
+            page: "0",
+            size: String(PAGE_SIZE),
+          });
+          if (nextSubcategory) params.set("subcategory", nextSubcategory);
+          const refreshed = await request(`/admin/designs?${params.toString()}`);
+          if (!active) return;
+          setItems(Array.isArray(refreshed.items) ? refreshed.items : []);
+          setTotal(Number(refreshed.total) || 0);
+          setPage(Number(refreshed.page) || 0);
+          await loadCategories();
         }
+
         if (status.status === "EXPIRED" || status.status === "REVOKED") {
           setQrError(status.status === "EXPIRED"
             ? "This QR code has expired. Generate a new one to continue."
@@ -223,7 +249,7 @@ export default function JewelleryCatalogAdminPage() {
       window.clearInterval(timer);
       window.clearInterval(clock);
     };
-  }, [qrOpen, qrSession?.sessionId, qrSession?.status, loadCategories, loadDesigns]);
+  }, [qrOpen, qrSession?.sessionId, qrSession?.status, loadCategories, metal]);
 
   // Periodic fallback: mobile QR uploads still appear if the browser's SSE
   // connection is temporarily unavailable or the laptop resumes from sleep.
@@ -692,7 +718,8 @@ export default function JewelleryCatalogAdminPage() {
                     {qrSession?.status === "UPLOADED" ? "Upload completed successfully"
                       : qrSession?.status === "EXPIRED" ? "QR session expired"
                         : qrSession?.status === "REVOKED" ? "QR session revoked"
-                          : qrLoading ? "Creating secure connection…" : "Waiting for mobile phone to scan"}
+                          : qrSession?.status === "SCANNED" ? "Mobile phone connected · selecting photographs"
+                            : qrLoading ? "Creating secure connection…" : "Waiting for mobile phone to scan"}
                   </div>
                 </div>
               </div>
