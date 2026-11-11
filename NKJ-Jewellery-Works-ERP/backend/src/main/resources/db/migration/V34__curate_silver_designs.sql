@@ -85,9 +85,11 @@ UPDATE public.jewellery_designs d
        image_status = CASE WHEN EXISTS (
            SELECT 1 FROM public.jewellery_design_images i
             WHERE i.design_id = d.id
-              AND COALESCE(NULLIF(BTRIM(i.thumbnail_url), ''),
-                           NULLIF(BTRIM(i.display_url), ''),
-                           NULLIF(BTRIM(i.original_url), '')) IS NOT NULL
+              AND (
+                  i.original_url LIKE '/api/uploads/designs/%'
+                  OR i.display_url LIKE '/api/uploads/designs/%'
+                  OR i.thumbnail_url LIKE '/api/uploads/designs/%'
+              )
        ) THEN 'READY' ELSE 'PENDING' END,
        updated_at = NOW()
   FROM classified x
