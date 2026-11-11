@@ -763,8 +763,9 @@ public class JewelleryDesignController {
                        d.created_at AS "createdAt", d.updated_at AS "updatedAt",
                        c.metal_type AS "metalType", c.subcategory_name AS "subcategoryName",
                        c.subcategory_name AS "jewelleryType", c.slug AS "subcategorySlug",
-                       img.thumbnail_url AS "thumbnailUrl", img.original_url AS "originalUrl",
-                       COALESCE(img.image_count, 0) AS "imageCount"
+                       CASE WHEN d.image_status = 'READY' THEN img.thumbnail_url END AS "thumbnailUrl",
+                       CASE WHEN d.image_status = 'READY' THEN img.original_url END AS "originalUrl",
+                       CASE WHEN d.image_status = 'READY' THEN COALESCE(img.image_count, 0) ELSE 0 END AS "imageCount"
                 """ + categoryJoin + """
                 LEFT JOIN LATERAL (
                     SELECT COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''), NULLIF(BTRIM(di.original_url), '')) AS thumbnail_url,
@@ -830,7 +831,7 @@ public class JewelleryDesignController {
         }
         Map<String, Object> result = new LinkedHashMap<>(results.get(0));
         if (!includeInactive) result.remove("priceInr");
-        result.put("images", jdbc.queryForList("""
+        String imageSql = """
                 SELECT id,
                        COALESCE(NULLIF(BTRIM(original_url), ''), NULLIF(BTRIM(thumbnail_url), '')) AS "originalUrl",
                        COALESCE(NULLIF(BTRIM(thumbnail_url), ''), NULLIF(BTRIM(original_url), '')) AS "thumbnailUrl",
@@ -839,8 +840,12 @@ public class JewelleryDesignController {
                   FROM public.jewellery_design_images
                  WHERE design_id=?
                    AND COALESCE(NULLIF(BTRIM(thumbnail_url), ''), NULLIF(BTRIM(original_url), '')) IS NOT NULL
-                 ORDER BY display_order, id
-                """, id));
+                """ + (includeInactive ? "" : """
+                   AND (original_url LIKE '/api/uploads/designs/%'
+                        OR display_url LIKE '/api/uploads/designs/%'
+                        OR thumbnail_url LIKE '/api/uploads/designs/%')
+                """) + " ORDER BY display_order, id";
+        result.put("images", jdbc.queryForList(imageSql, id));
         return result;
     }
 
