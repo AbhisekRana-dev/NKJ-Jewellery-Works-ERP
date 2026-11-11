@@ -432,10 +432,16 @@ public class JewelleryDesignController {
     public Map<String, Object> updateDesign(@PathVariable long id, @RequestBody Map<String, Object> body) {
         ensureDesignExists(id);
         Map<String, Object> existingDesign = jdbc.queryForMap(
-                "SELECT d.category_id AS \"categoryId\", c.metal_type AS \"metalType\" FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id=d.category_id WHERE d.id=?",
+                "SELECT d.category_id AS \"categoryId\", c.metal_type AS \"metalType\", d.regional_inspiration AS \"regionalInspiration\", d.material_label AS \"materialLabel\" FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id=d.category_id WHERE d.id=?",
                 id);
         String existingMetal = String.valueOf(existingDesign.get("metalType"));
         long existingCategoryId = ((Number) existingDesign.get("categoryId")).longValue();
+        String regionalValue = body.get("regionalInspiration") == null
+                ? String.valueOf(existingDesign.getOrDefault("regionalInspiration", "Pan-Indian"))
+                : text(body.get("regionalInspiration"), 80);
+        String materialValue = body.get("materialLabel") == null
+                ? String.valueOf(existingDesign.getOrDefault("materialLabel", defaultMaterialLabel(existingMetal)))
+                : text(body.get("materialLabel"), 120);
 
         long categoryId = number(body.get("categoryId"), "Choose a subcategory.");
         String updatedName = requiredText(body.get("designName"), "Design name is required.", 160);
@@ -471,8 +477,8 @@ public class JewelleryDesignController {
                 text(body.get("styleLabel"), 80),
                 text(body.get("keywords"), 800),
                 text(body.get("purity"), 40),
-                text(body.get("regionalInspiration"), 80),
-                text(body.get("materialLabel"), 120),
+                regionalValue,
+                materialValue,
                 decimal(body.get("weightGrams"), "Weight"),
                 decimal(body.get("priceInr"), "Price"),
                 bool(body.get("isFeatured"), false),
