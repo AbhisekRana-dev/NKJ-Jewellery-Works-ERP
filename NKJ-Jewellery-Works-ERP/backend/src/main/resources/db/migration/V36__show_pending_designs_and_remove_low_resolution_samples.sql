@@ -4,6 +4,17 @@
 --
 -- Only generated repository sample-image references are removed. Owner-uploaded
 -- images use /api/uploads/designs/... and are deliberately preserved.
+-- The original V25 image table did not define display_url even though the
+-- current catalogue API reads it. Add/backfill it before referencing it here.
+ALTER TABLE public.jewellery_design_images
+    ADD COLUMN IF NOT EXISTS display_url VARCHAR(500);
+
+UPDATE public.jewellery_design_images
+   SET display_url = COALESCE(NULLIF(BTRIM(display_url), ''), original_url)
+ WHERE display_url IS NULL OR BTRIM(display_url) = '';
+
+ALTER TABLE public.jewellery_design_images
+    ALTER COLUMN display_url SET NOT NULL;
 
 DELETE FROM public.jewellery_design_images
  WHERE original_url LIKE '/nkj-design-samples/%'
