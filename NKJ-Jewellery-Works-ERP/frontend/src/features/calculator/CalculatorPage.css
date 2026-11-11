@@ -294,3 +294,29 @@
   line-height: 1.5;
   text-align: center;
 }
+
+
+/* Making charge unit selector follows the calculator's existing field styling. */
+.nkj-calc-fields select {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 34px 9px 11px;
+  border: 1px solid #e5d6d3;
+  border-radius: 8px;
+  background: #fffdfa;
+  color: #30232a;
+  font: 600 13px Arial, sans-serif;
+  outline: none;
+  cursor: pointer;
+}
+.nkj-calc-fields select:focus {
+  border-color: #b17d32;
+  box-shadow: 0 0 0 3px rgba(201, 154, 55, .13);
+}
+.nkj-calc-fields select option {
+  color: #30232a;
+  background: #fffdfa;
+}
+.nkj-calc-fields .nkj-calc-making-mode-field {
+  align-content: start;
+}

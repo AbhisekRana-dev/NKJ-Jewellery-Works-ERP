@@ -216,6 +216,7 @@ function OrnamentCalculator({ mode }) {
   const [purity, setPurity] = useState("");
   const [rate, setRate] = useState("");
   const [making, setMaking] = useState("");
+  const [makingMode, setMakingMode] = useState("rupees");
   const [stamp, setStamp] = useState("");
   const [extra, setExtra] = useState("");
   const purityPercent = Number(purity);
@@ -223,18 +224,26 @@ function OrnamentCalculator({ mode }) {
   const pureWeight = isOld
     ? (Math.max(0, Number(weight) || 0) * Math.max(0, Number(purity) || 0)) / 100
     : Math.max(0, Number(weight) || 0);
+  const metalValue = pureWeight * Math.max(0, Number(rate) || 0);
+  const makingInputValue = Math.max(0, Number(making) || 0);
+  const isMakingValid = isOld || makingMode !== "percentage" || making === ""
+    || (Number.isFinite(Number(making)) && Number(making) >= 0 && Number(making) <= 100);
+  const makingChargeRupees = makingMode === "percentage"
+    ? (metalValue * makingInputValue) / 100
+    : makingInputValue;
   const total = useMemo(() => {
-    const metalValue = pureWeight * Math.max(0, Number(rate) || 0);
     return isOld
       ? (isPurityValid ? metalValue : 0)
-      : metalValue + Math.max(0, Number(making) || 0) + Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0);
-  }, [pureWeight, rate, making, stamp, extra, isOld, isPurityValid]);
+      : metalValue + (isMakingValid ? makingChargeRupees : 0)
+        + Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0);
+  }, [metalValue, makingChargeRupees, stamp, extra, isOld, isPurityValid, isMakingValid]);
 
   const reset = () => {
     setWeight("");
     setPurity("");
     setRate("");
     setMaking("");
+    setMakingMode("rupees");
     setStamp("");
     setExtra("");
   };
@@ -270,7 +279,38 @@ function OrnamentCalculator({ mode }) {
         </label>
         {!isOld && (
           <>
-            <label>Making Charge (₹)<input {...numberInput(making, setMaking)} placeholder="0.00" /></label>
+            <label className="nkj-calc-making-mode-field">
+              Making Charge Type
+              <select
+                value={makingMode}
+                onChange={(event) => {
+                  setMakingMode(event.target.value);
+                  setMaking("");
+                }}
+                aria-label="Making charge type"
+              >
+                <option value="rupees">Rupees (₹)</option>
+                <option value="percentage">Percentage (%)</option>
+              </select>
+            </label>
+            <label>
+              Making Charge ({makingMode === "percentage" ? "%" : "₹"})
+              {makingMode === "percentage"
+                ? <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={making}
+                    onChange={(event) => setMaking(event.target.value)}
+                    placeholder="Enter percentage (e.g. 12)"
+                    aria-label="Making charge percentage"
+                    aria-invalid={!isMakingValid}
+                  />
+                : <input {...numberInput(making, setMaking)} placeholder="Enter making charge in rupees" />}
+              {!isMakingValid && <small className="nkj-calc-error">Making charge percentage must be between 0 and 100%.</small>}
+            </label>
             <label>Stamp Charge (₹)<input {...numberInput(stamp, setStamp)} placeholder="0.00" /></label>
             <label>Extra Charge (₹)<input {...numberInput(extra, setExtra)} placeholder="0.00" /></label>
           </>
@@ -286,7 +326,13 @@ function OrnamentCalculator({ mode }) {
                 <small>Value = weight × purity ÷ 100 × rate per gram</small>
                 {!isPurityValid && <small className="nkj-calc-error">Enter a purity percentage from 0 to 100.</small>}
               </>
-            : <small>Metal value + making + stamp + extra charges</small>}
+            : <>
+                <small>Metal value: ₹ {money(metalValue)}</small>
+                <small>Making charge{makingMode === "percentage" ? ` (${makingInputValue}% of metal value)` : ""}: ₹ {money(isMakingValid ? makingChargeRupees : 0)}</small>
+                {makingMode === "percentage" && <small>Calculation: ₹ {money(metalValue)} × {makingInputValue}% ÷ 100</small>}
+                <small>Stamp + extra charges: ₹ {money(Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0))}</small>
+                {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
+              </>}
         </div>
         <button type="button" className="nkj-calc-reset" onClick={reset}>
           <RotateCcw size={15} /> Reset
