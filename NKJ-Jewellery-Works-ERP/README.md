@@ -53,4 +53,4 @@ The owner catalogue's **QR Code Upload** action creates a five-minute, one-desig
 4. The backend locks the session row, validates the unexpired/unrevoked/unconsumed token, generates the immutable category-scoped Design ID, stores original/display/thumbnail assets, writes image metadata, and consumes the session in one database transaction.
 5. The backend publishes the existing `designs` real-time invalidation topic. The desktop catalogue also polls the QR session and has a 30-second refresh fallback.
 
-Flyway migration `V36__track_qr_upload_scans.sql` adds the first-scan timestamp used by the desktop connection indicator. Existing design rows and image records are retained.
+Flyway migration `V37__track_qr_upload_scans.sql` adds the first-scan timestamp used by the desktop connection indicator. Existing design rows and image records are retained.
