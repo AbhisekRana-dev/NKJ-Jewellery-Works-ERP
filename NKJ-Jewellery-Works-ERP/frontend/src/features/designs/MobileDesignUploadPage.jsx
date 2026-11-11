@@ -23,6 +23,7 @@ export default function MobileDesignUploadPage() {
   const [session, setSession] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState("");
+  const [sessionSeconds, setSessionSeconds] = useState(0);
   const [categories, setCategories] = useState([]);
   const [metal, setMetal] = useState("GOLD");
   const [categoryId, setCategoryId] = useState("");
@@ -62,6 +63,15 @@ export default function MobileDesignUploadPage() {
       .then(([sessionInfo, categoryRows]) => {
         if (!active) return;
         setSession(sessionInfo);
+        setSessionSeconds(Number(sessionInfo.secondsRemaining) || 0);
+        if (sessionInfo.status === "UPLOADED" && sessionInfo.generatedDesignId) {
+          // Recover a successful upload if the phone lost the original POST response.
+          setSavedDesign({
+            designId: sessionInfo.generatedDesignId,
+            designName: sessionInfo.designName || "Jewellery design",
+            uploadStatus: "UPLOADED",
+          });
+        }
         setCategories(Array.isArray(categoryRows) ? categoryRows : []);
         const gold = (Array.isArray(categoryRows) ? categoryRows : []).find(
           (category) => category.metalType === "GOLD" && category.isActive !== false,
@@ -77,10 +87,85 @@ export default function MobileDesignUploadPage() {
     return () => { active = false; };
   }, [token]);
 
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = "Secure Jewellery Design Upload · Nandikishor Jewellery Works";
+    let referrerMeta = document.querySelector('meta[name="referrer"]');
+    const createdMeta = !referrerMeta;
+    if (!referrerMeta) {
+      referrerMeta = document.createElement("meta");
+      referrerMeta.name = "referrer";
+      document.head.appendChild(referrerMeta);
+    }
+    const previousReferrer = referrerMeta.content;
+    referrerMeta.content = "no-referrer";
+    let robotsMeta = document.querySelector('meta[name="robots"]');
+    const createdRobotsMeta = !robotsMeta;
+    if (!robotsMeta) {
+      robotsMeta = document.createElement("meta");
+      robotsMeta.name = "robots";
+      document.head.appendChild(robotsMeta);
+    }
+    const previousRobots = robotsMeta.content;
+    robotsMeta.content = "noindex,nofollow,noarchive";
+    return () => {
+      document.title = previousTitle;
+      if (createdMeta) referrerMeta.remove();
+      else referrerMeta.content = previousReferrer;
+      if (createdRobotsMeta) robotsMeta.remove();
+      else robotsMeta.content = previousRobots;
+    };
+  }, []);
+
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
   }, []);
+
+  useEffect(() => {
+    if (!session?.expiresAt || !["WAITING", "SCANNED"].includes(session.status)) return undefined;
+    const refreshCountdown = () => {
+      const remaining = Math.max(0, Math.ceil((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
+      setSessionSeconds(remaining);
+      if (remaining <= 0) {
+        setSession((current) => current && ["WAITING", "SCANNED"].includes(current.status)
+          ? { ...current, status: "EXPIRED" }
+          : current);
+      }
+    };
+    refreshCountdown();
+    const timer = window.setInterval(refreshCountdown, 1000);
+    return () => window.clearInterval(timer);
+  }, [session?.expiresAt, session?.status]);
+
+  // Detect expiry, owner revocation or a completed upload if the mobile page
+  // remains open. This also recovers the generated ID after a lost POST response.
+  useEffect(() => {
+    if (!token || !session || !["WAITING", "SCANNED"].includes(session.status) || saving) return undefined;
+    let active = true;
+    const timer = window.setInterval(async () => {
+      try {
+        const latest = await request(`/mobile-design-upload/${encodeURIComponent(token)}`, { publicRequest: true });
+        if (!active) return;
+        setSession(latest);
+        setSessionSeconds(Number(latest.secondsRemaining) || 0);
+        if (latest.status === "UPLOADED" && latest.generatedDesignId) {
+          setSavedDesign({
+            designId: latest.generatedDesignId,
+            designName: latest.designName || "Jewellery design",
+            uploadStatus: "UPLOADED",
+          });
+          closeCamera();
+        }
+      } catch (err) {
+        if (active) setSessionError(err.message || "The secure upload session could not be checked.");
+      }
+    }, 8000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [token, session?.status, saving]);
 
   useEffect(() => {
     if (!cameraOpen) return undefined;
@@ -211,7 +296,7 @@ export default function MobileDesignUploadPage() {
   const submitDesign = async (event) => {
     event.preventDefault();
     if (saveInFlightRef.current || saving) return;
-    if (!session || session.status !== "WAITING") {
+    if (!session || !["WAITING", "SCANNED"].includes(session.status)) {
       setError("This upload session is no longer active. Ask the owner to generate a new QR code.");
       return;
     }
@@ -329,7 +414,11 @@ export default function MobileDesignUploadPage() {
         <span>OWNER-APPROVED QR SESSION</span>
         <h1>Upload Jewellery Designs</h1>
         <p>Select jewellery photographs from your phone or capture new photos using the rear camera.</p>
-        <div className="nkj-mobile-expiry"><Clock3 size={14} /> Temporary link · 5-minute expiry · One design per QR</div>
+        <div className="nkj-mobile-expiry"><Clock3 size={14} />
+          <span>Secure upload link</span>
+          <b>{Math.floor(sessionSeconds / 60)}:{String(sessionSeconds % 60).padStart(2, "0")} remaining</b>
+          <small>One design per QR</small>
+        </div>
       </section>
 
       <form className="nkj-mobile-design-form" onSubmit={submitDesign}>
@@ -438,7 +527,7 @@ export default function MobileDesignUploadPage() {
           </div>
         )}
 
-        <button type="submit" className="nkj-mobile-save" disabled={saving || session.status !== "WAITING" || !photos.length}>
+        <button type="submit" className="nkj-mobile-save" disabled={saving || !["WAITING", "SCANNED"].includes(session.status) || !photos.length}>
           {saving ? <LoaderCircle className="spin" size={18} /> : <CheckCircle2 size={18} />}
           {saving ? "Saving Design…" : "Save Design"}
         </button>
