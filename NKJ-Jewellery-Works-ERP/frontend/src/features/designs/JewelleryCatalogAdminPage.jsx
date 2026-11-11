@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Page } from "../../shared/layouts/OwnerShell";
+import { useLocation, useNavigate } from "react-router-dom";
 import { request } from "../../core/api/client";
 import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
 import "./JewelleryCatalogAdminPage.css";
@@ -78,6 +79,8 @@ const cleanFileName = (name) => String(name || "Jewellery Design")
   .slice(0, 150);
 
 export default function JewelleryCatalogAdminPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [metal, setMetal] = useState("GOLD");
   const [subcategory, setSubcategory] = useState("");
@@ -264,6 +267,18 @@ export default function JewelleryCatalogAdminPage() {
       setError(err.message || "Could not open this design.");
     }
   };
+
+  useEffect(() => {
+    const openQr = Boolean(location.state?.openQr);
+    const openNewDesign = Boolean(location.state?.openNewDesign);
+    if (!openQr && !openNewDesign) return;
+    if (openNewDesign) openNewForm();
+    if (openQr) {
+      setQrOpen(true);
+      generateQrSession();
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.key, categories.length]);
 
   const addSubcategory = async (event) => {
     event.preventDefault();
