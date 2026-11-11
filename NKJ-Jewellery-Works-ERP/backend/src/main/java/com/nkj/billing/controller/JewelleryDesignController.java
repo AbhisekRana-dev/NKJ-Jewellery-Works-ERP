@@ -523,6 +523,118 @@ public class JewelleryDesignController {
         return designDetails(id, true);
     }
 
+    @PostMapping("/api/admin/designs/{id}/move")
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
+    @Transactional
+    public Map<String, Object> moveDesign(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+        Map<String, Object> before = jdbc.queryForMap("""
+                SELECT d.design_id AS "designId",
+                       d.design_code AS "designCode",
+                       d.category_id AS "categoryId",
+                       c.metal_type AS "metalType",
+                       d.design_name AS "designName",
+                       d.description,
+                       d.style_label AS "styleLabel",
+                       d.keywords,
+                       d.purity,
+                       d.regional_inspiration AS "regionalInspiration",
+                       d.material_label AS "materialLabel",
+                       d.weight_grams AS "weightGrams",
+                       d.price_inr AS "priceInr",
+                       d.is_sample AS "isSample",
+                       d.is_featured AS "isFeatured",
+                       d.is_active AS "isActive",
+                       d.popularity_count AS "popularityCount"
+                  FROM public.jewellery_designs d
+                  JOIN public.jewellery_design_categories c ON c.id=d.category_id
+                 WHERE d.id=? AND d.is_deleted=FALSE
+                 FOR UPDATE OF d
+                """, id);
+
+        long sourceCategoryId = ((Number) before.get("categoryId")).longValue();
+        long targetCategoryId = number(body.get("categoryId"), "Choose a destination subcategory.");
+        if (targetCategoryId == sourceCategoryId) {
+            throw new IllegalArgumentException("Choose a different destination subcategory.");
+        }
+
+        String metal = String.valueOf(before.get("metalType"));
+        String targetMetal = categoryMetal(targetCategoryId);
+        if (!metal.equals(targetMetal)) {
+            throw new IllegalArgumentException("A design can only be moved between subcategories of the same metal. Create a new design for a different metal.");
+        }
+
+        String designName = String.valueOf(before.get("designName"));
+        ensureUniqueDesignName(targetCategoryId, designName, null);
+
+        // A category is embedded in Design ID, so a move creates a new record and
+        // new ID. The old record is archived with its original ID unchanged.
+        String newDesignId = nextDesignId(targetCategoryId, metal);
+        Long nextCode = jdbc.queryForObject(
+                "UPDATE public.jewellery_design_code_counters SET last_value=last_value+1 WHERE metal_type=? RETURNING last_value",
+                Long.class, metal);
+        if (nextCode == null) {
+            throw new IllegalStateException("Design code counter is not initialized for " + metal + ".");
+        }
+        String codePrefix = switch (metal) {
+            case "GOLD" -> "NKJ-GOLD-";
+            case "SILVER" -> "NKJ-SILVER-";
+            default -> "NKJ-DIA-";
+        };
+        String newDesignCode = codePrefix + String.format(Locale.ROOT, "%05d", nextCode);
+
+        Long newId = jdbc.queryForObject("""
+                INSERT INTO public.jewellery_designs
+                    (design_code, design_id, category_id, design_name, description, style_label, keywords,
+                     purity, regional_inspiration, material_label, weight_grams, price_inr,
+                     is_sample, is_featured, is_active, popularity_count, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                RETURNING id
+                """, Long.class,
+                newDesignCode, newDesignId, targetCategoryId, designName,
+                before.get("description"), before.get("styleLabel"), before.get("keywords"),
+                before.get("purity"), before.get("regionalInspiration"), before.get("materialLabel"),
+                before.get("weightGrams"), before.get("priceInr"), before.get("isSample"),
+                before.get("isFeatured"), before.get("isActive"), before.get("popularityCount"));
+
+        int movedImages = jdbc.update(
+                "UPDATE public.jewellery_design_images SET design_id=? WHERE design_id=?",
+                newId, id);
+
+        jdbc.update("""
+                UPDATE public.jewellery_designs
+                   SET is_deleted=TRUE, deleted_at=NOW(), deleted_by=?,
+                       is_active=FALSE, is_featured=FALSE, updated_at=NOW()
+                 WHERE id=? AND is_deleted=FALSE
+                """, auth.getUsername(), id);
+
+        jdbc.update("""
+                INSERT INTO public.audit_logs(
+                    actor_identity, action, module, record_id,
+                    previous_value, new_value, ip_address
+                )
+                VALUES (?, 'DESIGN_MOVED', 'JEWELLERY_DESIGNS', ?,
+                        jsonb_build_object(
+                            'designId', ?, 'designCode', ?, 'categoryId', ?, 'designName', ?
+                        ),
+                        jsonb_build_object(
+                            'designId', ?, 'designCode', ?, 'categoryId', ?, 'designName', ?, 'movedImages', ?
+                        ), ?)
+                """,
+                auth.getUsername(), String.valueOf(id),
+                before.get("designId"), before.get("designCode"), sourceCategoryId, designName,
+                newDesignId, newDesignCode, targetCategoryId, designName, movedImages,
+                request.getRemoteAddr());
+
+        Map<String, Object> result = new LinkedHashMap<>(designDetails(newId, true));
+        result.put("movedFromDesignId", before.get("designId"));
+        result.put("movedFromRecordId", id);
+        result.put("movedImageCount", movedImages);
+        return result;
+    }
+
     @DeleteMapping("/api/admin/designs/{id}")
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
