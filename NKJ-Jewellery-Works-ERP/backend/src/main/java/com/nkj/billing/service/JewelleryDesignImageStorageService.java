@@ -45,6 +45,17 @@ public class JewelleryDesignImageStorageService {
     }
 
     public StoredImage store(long designId, MultipartFile file) throws IOException {
+        return store(designId, file, 0, 1.0d);
+    }
+
+    public StoredImage store(long designId, MultipartFile file, int rotationDegrees, double cropZoom) throws IOException {
+        int rotation = ((rotationDegrees % 360) + 360) % 360;
+        if (rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270) {
+            throw new IllegalArgumentException("Image rotation must be 0, 90, 180 or 270 degrees.");
+        }
+        if (!Double.isFinite(cropZoom) || cropZoom < 1.0d || cropZoom > 2.0d) {
+            throw new IllegalArgumentException("Image crop zoom must be between 1.0× and 2.0×.");
+        }
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Choose a non-empty image file.");
         }
@@ -121,11 +132,11 @@ public class JewelleryDesignImageStorageService {
 
             // A separate high-quality display derivative is capped at 2400px;
             // the 640px thumbnail is used only for dense catalogue cards.
-            BufferedImage display = createScaledJpeg(source, DISPLAY_MAX_EDGE);
+            BufferedImage display = createScaledJpeg(source, DISPLAY_MAX_EDGE, rotation, cropZoom);
             if (!ImageIO.write(display, "jpg", displayPath.toFile())) {
                 throw new IOException("The optimized display image could not be generated.");
             }
-            BufferedImage thumbnail = createScaledJpeg(source, THUMBNAIL_MAX_EDGE);
+            BufferedImage thumbnail = createScaledJpeg(source, THUMBNAIL_MAX_EDGE, rotation, cropZoom);
             if (!ImageIO.write(thumbnail, "jpg", thumbnailPath.toFile())) {
                 throw new IOException("The image thumbnail could not be generated.");
             }
@@ -161,11 +172,18 @@ public class JewelleryDesignImageStorageService {
         }
     }
 
-    private BufferedImage createScaledJpeg(BufferedImage source, int maxEdge) {
-        double scale = Math.min(1.0, (double) maxEdge /
-                Math.max(source.getWidth(), source.getHeight()));
-        int width = Math.max(1, (int) Math.round(source.getWidth() * scale));
-        int height = Math.max(1, (int) Math.round(source.getHeight() * scale));
+    private BufferedImage createScaledJpeg(
+            BufferedImage source,
+            int maxEdge,
+            int rotationDegrees,
+            double cropZoom) {
+        boolean quarterTurn = rotationDegrees == 90 || rotationDegrees == 270;
+        int rotatedWidth = quarterTurn ? source.getHeight() : source.getWidth();
+        int rotatedHeight = quarterTurn ? source.getWidth() : source.getHeight();
+        double scale = Math.min(1.0, (double) maxEdge / Math.max(rotatedWidth, rotatedHeight));
+        int width = Math.max(1, (int) Math.round(rotatedWidth * scale));
+        int height = Math.max(1, (int) Math.round(rotatedHeight * scale));
+
         BufferedImage output = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = output.createGraphics();
         try {
@@ -174,7 +192,10 @@ public class JewelleryDesignImageStorageService {
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             graphics.setColor(java.awt.Color.WHITE);
             graphics.fillRect(0, 0, width, height);
-            graphics.drawImage(source, 0, 0, width, height, null);
+            graphics.translate(width / 2.0d, height / 2.0d);
+            graphics.rotate(Math.toRadians(rotationDegrees));
+            graphics.scale(scale * cropZoom, scale * cropZoom);
+            graphics.drawImage(source, -source.getWidth() / 2, -source.getHeight() / 2, null);
         } finally {
             graphics.dispose();
         }
