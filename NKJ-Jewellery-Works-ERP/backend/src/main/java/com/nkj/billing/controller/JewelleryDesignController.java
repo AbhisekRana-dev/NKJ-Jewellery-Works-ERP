@@ -772,10 +772,16 @@ public class JewelleryDesignController {
                            COALESCE(NULLIF(BTRIM(di.original_url), ''), NULLIF(BTRIM(di.thumbnail_url), '')) AS original_url,
                            (SELECT COUNT(*) FROM public.jewellery_design_images all_images
                              WHERE all_images.design_id=d.id
-                               AND COALESCE(NULLIF(BTRIM(all_images.thumbnail_url), ''), NULLIF(BTRIM(all_images.original_url), '')) IS NOT NULL) AS image_count
+                               AND COALESCE(NULLIF(BTRIM(all_images.thumbnail_url), ''), NULLIF(BTRIM(all_images.original_url), '')) IS NOT NULL
+                               AND (all_images.original_url LIKE '/api/uploads/designs/%'
+                                    OR all_images.display_url LIKE '/api/uploads/designs/%'
+                                    OR all_images.thumbnail_url LIKE '/api/uploads/designs/%')) AS image_count
                       FROM public.jewellery_design_images di
                      WHERE di.design_id = d.id
                        AND COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''), NULLIF(BTRIM(di.original_url), '')) IS NOT NULL
+                       AND (di.original_url LIKE '/api/uploads/designs/%'
+                            OR di.display_url LIKE '/api/uploads/designs/%'
+                            OR di.thumbnail_url LIKE '/api/uploads/designs/%')
                      ORDER BY di.display_order, di.id
                      LIMIT 1
                 ) img ON TRUE
