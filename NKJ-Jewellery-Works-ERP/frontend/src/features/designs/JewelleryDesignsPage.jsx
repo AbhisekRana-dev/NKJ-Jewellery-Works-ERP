@@ -281,7 +281,9 @@ export default function JewelleryDesignsPage() {
   }, [selected]);
 
   const activeImage = selected?.images?.[activeImageIndex] || selected?.images?.[0] || null;
-  const modalImageUrl = activeImage?.originalUrl || selected?.originalUrl || activeImage?.thumbnailUrl || selected?.thumbnailUrl || "";
+  const modalImageUrl = zoomed
+    ? (activeImage?.originalUrl || selected?.originalUrl || activeImage?.displayUrl || activeImage?.thumbnailUrl || "")
+    : (activeImage?.displayUrl || activeImage?.originalUrl || selected?.originalUrl || activeImage?.thumbnailUrl || selected?.thumbnailUrl || "");
   const modalThumbnailUrl = activeImage?.thumbnailUrl || selected?.thumbnailUrl || "";
 
   return (
