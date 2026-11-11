@@ -28,9 +28,32 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String,String>> internal(Exception e, HttpServletRequest request) {
+        Throwable root = e;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String rootMessage = root.getMessage() == null ? "" : root.getMessage().replaceAll("[\\r\\n\\t]+", " ").trim();
         log.error("Unhandled API exception for {} {}. Root cause: {}",
                 request.getMethod(), request.getRequestURI(),
-                e.getCause() == null ? e.getMessage() : e.getCause().getMessage(), e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "The server could not complete the request. Check the backend log for details."));
+                rootMessage.isBlank() ? root.getClass().getSimpleName() : rootMessage, e);
+
+        // This path is protected by AuthInterceptor (/api/admin/**). Give the
+        // signed-in owner a useful diagnostic for QR creation failures instead
+        // of hiding every database/configuration failure behind a generic 500.
+        if ("POST".equalsIgnoreCase(request.getMethod())
+                && "/api/admin/design-upload-sessions".equals(request.getRequestURI())) {
+            String detail = root.getClass().getSimpleName();
+            if (!rootMessage.isBlank()) {
+                detail += ": " + rootMessage.substring(0, Math.min(rootMessage.length(), 320));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "message", "QR upload session creation failed. " + detail
+                            + ". Check the backend console for the full stack trace."
+            ));
+        }
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "message", "The server could not complete the request. Check the backend log for details."
+        ));
     }
 }
