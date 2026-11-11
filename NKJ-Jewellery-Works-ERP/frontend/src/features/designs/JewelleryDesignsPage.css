@@ -1101,3 +1101,66 @@
 }
 .nkj-design-modal-photo-pending b { color: #7b1733; font-size: 12px; letter-spacing: 1.4px; }
 .nkj-design-modal-photo-pending span { max-width: 360px; color: #826f68; font-size: 12px; line-height: 1.65; }
+
+
+/* Owner-only primary photograph replacement in the public design detail modal */
+.nkj-design-replace-photo-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 16px 0 12px;
+  padding: 12px;
+  border: 1px solid #ead7b5;
+  border-radius: 10px;
+  background: #fffaf0;
+}
+.nkj-design-replace-photo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  max-width: 100%;
+  padding: 9px 13px;
+  border: 1px solid #8b1535;
+  border-radius: 8px;
+  background: #841432;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .16s ease, transform .16s ease;
+}
+.nkj-design-replace-photo-button:hover:not(.is-busy) {
+  background: #681027;
+  transform: translateY(-1px);
+}
+.nkj-design-replace-photo-button.is-busy {
+  opacity: .72;
+  cursor: wait;
+}
+.nkj-design-replace-photo-button input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.nkj-design-replace-photo-tools > small {
+  color: #806e62;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.nkj-design-replace-photo-error {
+  margin: 0;
+  padding: 7px 9px;
+  border: 1px solid #efc1c1;
+  border-radius: 7px;
+  background: #fff2f2;
+  color: #a21f34;
+  font-size: 11px;
+  line-height: 1.45;
+}
