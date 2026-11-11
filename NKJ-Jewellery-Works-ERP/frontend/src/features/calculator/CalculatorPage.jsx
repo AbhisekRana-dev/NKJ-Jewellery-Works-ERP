@@ -114,46 +114,64 @@ function ManualCalculator() {
     setExpression((current) => current.length <= 1 ? "0" : current.slice(0, -1));
   }, []);
 
-  // Listen only while ManualCalculator is mounted. This lets the owner type
-  // directly from the physical keyboard without first focusing a hidden input.
+  // Capture keyboard input while this calculator is mounted. Capture mode
+  // lets the calculator receive keys before other page shortcuts can swallow them.
   useEffect(() => {
     const handleCalculatorKeyDown = (event) => {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
 
       const target = event.target;
       const isEditingField = target instanceof HTMLElement && (
         target.isContentEditable
         || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+        || Boolean(target.closest('[contenteditable="true"], [role="textbox"]'))
       );
       if (isEditingField) return;
 
       const key = event.key;
-      if (/^[0-9.]$/.test(key) || ["+", "-", "*", "/", "%", "(", ")"].includes(key)) {
+      const consume = () => {
         event.preventDefault();
+        event.stopPropagation();
+      };
+
+      if (/^[0-9.]$/.test(key) || ["+", "-", "*", "/", "%", "(", ")"].includes(key)) {
+        consume();
         append(key);
         return;
       }
 
+      if (key === "x" || key === "X" || key === "×") {
+        consume();
+        append("*");
+        return;
+      }
+
+      if (key === "÷") {
+        consume();
+        append("/");
+        return;
+      }
+
       if (key === "Enter" || key === "=") {
-        event.preventDefault();
+        consume();
         calculate();
         return;
       }
 
       if (key === "Backspace" || key === "Delete") {
-        event.preventDefault();
+        consume();
         backspace();
         return;
       }
 
       if (key === "Escape") {
-        event.preventDefault();
+        consume();
         clear();
       }
     };
 
-    window.addEventListener("keydown", handleCalculatorKeyDown);
-    return () => window.removeEventListener("keydown", handleCalculatorKeyDown);
+    window.addEventListener("keydown", handleCalculatorKeyDown, true);
+    return () => window.removeEventListener("keydown", handleCalculatorKeyDown, true);
   }, [append, calculate, clear, backspace]);
 
   const keys = [
