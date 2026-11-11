@@ -32,3 +32,25 @@ The public rate board shows 24K gold, 22K gold and 999 silver per 10 grams. The 
 - Never commit `backend/.env`, passwords, TOTP secrets, SMTP credentials or API keys.
 - Owner-only routes are guarded in React and `/api/admin/**` is independently protected by the backend interceptor.
 - Public read access to `/api/rates` does not permit editing or reading rate history.
+
+
+## QR-based mobile jewellery design uploads
+
+The owner catalogue's **QR Code Upload** action creates a five-minute, one-design upload session. The QR contains a cryptographically random capability token; PostgreSQL stores only its SHA-256 hash. Regenerating or closing the QR revokes the previous session. The mobile route does not receive an owner password or permanent JWT and cannot call design edit/delete/category-management APIs.
+
+### Required deployment settings
+
+- Set `DESIGNS_MOBILE_UPLOAD_BASE_URL` to the public frontend origin (for example, `https://erp.example.com`) when running behind a reverse proxy or when the backend cannot rely on the browser's `Origin` header. QR links must use HTTPS in production.
+- Set `DESIGNS_UPLOAD_DIR` to a persistent disk/volume path. The backend stores three separate assets for every new upload: the untouched original, a high-quality display JPEG, and a thumbnail. A container filesystem that is discarded on redeploy is not persistent storage.
+- Add the deployed frontend origin to `CORS_ALLOWED_ORIGINS` when the frontend and API are on different origins. Set the frontend `VITE_API_BASE_URL` to the API base (normally `https://api.example.com/api`).
+- For more than one backend instance, all instances must share the same persistent upload volume (or an equivalent shared object store) and the same PostgreSQL database.
+
+### Mobile upload flow
+
+1. An owner-authenticated desktop request creates the QR session. Older active sessions for that owner are revoked.
+2. Scanning the QR opens `/mobile-design-upload/{token}`. The backend validates the token hash and records the first scan.
+3. The mobile page accepts up to 20 JPG/JPEG/PNG/WebP images (10 MB each), from the gallery or rear camera. It sends category and design information with the photographs.
+4. The backend locks the session row, validates the unexpired/unrevoked/unconsumed token, generates the immutable category-scoped Design ID, stores original/display/thumbnail assets, writes image metadata, and consumes the session in one database transaction.
+5. The backend publishes the existing `designs` real-time invalidation topic. The desktop catalogue also polls the QR session and has a 30-second refresh fallback.
+
+Flyway migration `V36__track_qr_upload_scans.sql` adds the first-scan timestamp used by the desktop connection indicator. Existing design rows and image records are retained.
