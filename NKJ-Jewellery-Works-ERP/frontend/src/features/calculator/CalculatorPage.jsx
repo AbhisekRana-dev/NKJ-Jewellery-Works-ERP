@@ -221,10 +221,10 @@ function OrnamentCalculator({ mode, active }) {
   const [makingMode, setMakingMode] = useState("rupees");
   const [stamp, setStamp] = useState("");
   const [extra, setExtra] = useState("");
-  const purityPercent = Number(purity);
-  const isPurityValid = !isOld || purity === "" || (Number.isFinite(purityPercent) && purityPercent >= 0 && purityPercent <= 100);
+  const purityPercent = purity.trim() === "" ? 100 : Number(purity);
+  const isPurityValid = !isOld || (Number.isFinite(purityPercent) && purityPercent >= 0 && purityPercent <= 100);
   const pureWeight = isOld
-    ? (Math.max(0, Number(weight) || 0) * Math.max(0, Number(purity) || 0)) / 100
+    ? (Math.max(0, Number(weight) || 0) * Math.max(0, purityPercent)) / 100
     : Math.max(0, Number(weight) || 0);
   const metalValue = pureWeight * Math.max(0, Number(rate) || 0);
   const makingInputValue = Math.max(0, Number(making) || 0);
@@ -348,8 +348,8 @@ function OrnamentCalculator({ mode, active }) {
           <strong>₹ {money(total)}</strong>
           {isOld
             ? <>
-                <small>Pure weight: {money(pureWeight)} gm ({weight || "0"} gm × {purity || "0"}%)</small>
-                <small>Value = weight × purity ÷ 100 × rate per gram</small>
+                <small>Pure weight: {money(pureWeight)} gm ({weight || "0"} gm × {purity.trim() === "" ? "100% default" : purity + "%"})</small>
+                <small>{purity.trim() === "" ? "Value = weight × rate per gram (100% purity assumed)" : "Value = weight × purity ÷ 100 × rate per gram"}</small>
                 {!isPurityValid && <small className="nkj-calc-error">Enter a purity percentage from 0 to 100.</small>}
               </>
             : <>
