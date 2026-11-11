@@ -380,7 +380,7 @@ public class JewelleryDesignController {
         if (maxWeight != null) { filter.append(" AND d.weight_grams <= ?"); parameters.add(maxWeight); }
         if (featuredOnly) filter.append(" AND d.is_featured = TRUE");
         if (!includeInactive) {
-            filter.append(" AND EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id = d.id)");
+            filter.append(" AND EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id = d.id AND COALESCE(NULLIF(BTRIM(visible_image.thumbnail_url), ''), NULLIF(BTRIM(visible_image.original_url), '')) IS NOT NULL)");
         }
 
         String categoryJoin = " FROM public.jewellery_designs d JOIN public.jewellery_design_categories c ON c.id = d.category_id\n";
@@ -404,10 +404,14 @@ public class JewelleryDesignController {
                        COALESCE(img.image_count, 0) AS "imageCount"
                 """ + categoryJoin + """
                 LEFT JOIN LATERAL (
-                    SELECT di.thumbnail_url, di.original_url,
-                           (SELECT COUNT(*) FROM public.jewellery_design_images all_images WHERE all_images.design_id=d.id) AS image_count
+                    SELECT COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''), NULLIF(BTRIM(di.original_url), '')) AS thumbnail_url,
+                           COALESCE(NULLIF(BTRIM(di.original_url), ''), NULLIF(BTRIM(di.thumbnail_url), '')) AS original_url,
+                           (SELECT COUNT(*) FROM public.jewellery_design_images all_images
+                             WHERE all_images.design_id=d.id
+                               AND COALESCE(NULLIF(BTRIM(all_images.thumbnail_url), ''), NULLIF(BTRIM(all_images.original_url), '')) IS NOT NULL) AS image_count
                       FROM public.jewellery_design_images di
                      WHERE di.design_id = d.id
+                       AND COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''), NULLIF(BTRIM(di.original_url), '')) IS NOT NULL
                      ORDER BY di.display_order, di.id
                      LIMIT 1
                 ) img ON TRUE
@@ -453,17 +457,24 @@ public class JewelleryDesignController {
                        c.subcategory_name AS "subcategoryName", c.slug AS "subcategorySlug"
                   FROM public.jewellery_designs d
                   JOIN public.jewellery_design_categories c ON c.id=d.category_id
-                 WHERE d.id=? AND (? = TRUE OR (d.is_active=TRUE AND EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id=d.id)))
+                 WHERE d.id=? AND (? = TRUE OR (d.is_active=TRUE AND EXISTS (
+                     SELECT 1 FROM public.jewellery_design_images visible_image
+                      WHERE visible_image.design_id=d.id
+                        AND COALESCE(NULLIF(BTRIM(visible_image.thumbnail_url), ''), NULLIF(BTRIM(visible_image.original_url), '')) IS NOT NULL
+                 )))
                 """, id, includeInactive);
         if (results.isEmpty()) {
             throw new IllegalArgumentException("Jewellery design not found.");
         }
         Map<String, Object> result = new LinkedHashMap<>(results.get(0));
         result.put("images", jdbc.queryForList("""
-                SELECT id, original_url AS "originalUrl", thumbnail_url AS "thumbnailUrl",
+                SELECT id,
+                       COALESCE(NULLIF(BTRIM(original_url), ''), NULLIF(BTRIM(thumbnail_url), '')) AS "originalUrl",
+                       COALESCE(NULLIF(BTRIM(thumbnail_url), ''), NULLIF(BTRIM(original_url), '')) AS "thumbnailUrl",
                        alt_text AS "altText", display_order AS "displayOrder"
                   FROM public.jewellery_design_images
                  WHERE design_id=?
+                   AND COALESCE(NULLIF(BTRIM(thumbnail_url), ''), NULLIF(BTRIM(original_url), '')) IS NOT NULL
                  ORDER BY display_order, id
                 """, id));
         return result;
