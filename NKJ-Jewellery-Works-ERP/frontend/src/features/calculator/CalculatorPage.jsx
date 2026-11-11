@@ -238,7 +238,7 @@ function OrnamentCalculator({ mode }) {
         + Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0);
   }, [metalValue, makingChargeRupees, stamp, extra, isOld, isPurityValid, isMakingValid]);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setWeight("");
     setPurity("");
     setRate("");
@@ -246,7 +246,20 @@ function OrnamentCalculator({ mode }) {
     setMakingMode("rupees");
     setStamp("");
     setExtra("");
-  };
+  }, []);
+
+  // Escape resets New/Old Ornament fields even while the user is focused
+  // inside a calculator input. The visible Reset button calls the same action.
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      reset();
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [reset]);
 
   return (
     <section className="nkj-calc-ornament">
@@ -333,6 +346,7 @@ function OrnamentCalculator({ mode }) {
                 <small>Stamp + extra charges: ₹ {money(Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0))}</small>
                 {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
               </>}
+          <small className="nkj-calc-reset-hint">Press Esc to reset, or click the Reset button.</small>
         </div>
         <button type="button" className="nkj-calc-reset" onClick={reset}>
           <RotateCcw size={15} /> Reset
