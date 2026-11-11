@@ -223,6 +223,15 @@ export default function JewelleryCatalogAdminPage() {
     };
   }, [qrOpen, qrSession?.sessionId, qrSession?.status, loadCategories, loadDesigns]);
 
+  // Periodic fallback: mobile QR uploads still appear if the browser's SSE
+  // connection is temporarily unavailable or the laptop resumes from sleep.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadDesigns(page);
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, [loadDesigns, page]);
+
   useEffect(() => {
     loadCategories().catch((err) => setError(err.message || "Could not load catalogue categories."));
   }, [loadCategories]);
@@ -723,7 +732,7 @@ export default function JewelleryCatalogAdminPage() {
                 <label>Weight (grams)<input type="number" min="0" step="0.001" value={form.weightGrams} onChange={(event) => setForm((current) => ({ ...current, weightGrams: event.target.value }))} placeholder="Optional" /></label>
                 <label>Price (₹)<input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" /></label>
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
-                <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload multiple design photographs
+                <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload From Computer · multiple design photographs
                   <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setImageFiles(Array.from(event.target.files || []))} />
                   <small>JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Originals and optimized JPEG thumbnails are stored separately.</small>
                 </label>
