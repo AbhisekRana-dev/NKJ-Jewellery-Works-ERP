@@ -925,3 +925,20 @@
   .nkj-design-modal-photo img,
   .nkj-design-image-zoom-hint { transition: none !important; }
 }
+
+
+.nkj-designs-owner-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:15px; }
+.nkj-designs-owner-tools a,
+.nkj-designs-owner-tools button {
+  display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:39px;
+  padding:8px 12px; border:1px solid #d7bd86; border-radius:8px; background:#fff9eb;
+  color:#74132f; font-size:10px; font-weight:850; text-decoration:none; cursor:pointer;
+}
+.nkj-designs-owner-tools a:first-child { border-color:#74132f; background:#74132f; color:#fff8e8; }
+.nkj-designs-owner-tools a:nth-child(2) { border-color:#c7a155; background:#fff8e8; }
+.nkj-designs-owner-tools button:hover,
+.nkj-designs-owner-tools a:hover { filter:brightness(.97); }
+@media(max-width:620px) {
+  .nkj-designs-owner-tools { display:grid; grid-template-columns:1fr 1fr; width:100%; }
+  .nkj-designs-owner-tools button { grid-column:1/-1; }
+}
