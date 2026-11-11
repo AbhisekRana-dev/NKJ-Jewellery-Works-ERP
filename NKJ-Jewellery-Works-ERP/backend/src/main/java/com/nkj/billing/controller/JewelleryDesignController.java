@@ -223,10 +223,14 @@ public class JewelleryDesignController {
             throw new IllegalArgumentException("The mobile upload website URL is invalid. Check DESIGNS_MOBILE_UPLOAD_BASE_URL.");
         }
         String scheme = baseUri.getScheme();
-        if (baseUri.getHost() == null || baseUri.getRawUserInfo() != null || baseUri.getFragment() != null
-                || !("https".equalsIgnoreCase(scheme)
-                || "http".equalsIgnoreCase(scheme) && ("localhost".equalsIgnoreCase(baseUri.getHost())
-                || "127.0.0.1".equals(baseUri.getHost())))) {
+        String baseHost = baseUri.getHost();
+        if (baseHost != null && ("localhost".equalsIgnoreCase(baseHost)
+                || "127.0.0.1".equals(baseHost) || "::1".equals(baseHost))) {
+            throw new IllegalArgumentException(
+                    "This QR URL points to localhost and cannot be opened from your phone. Set DESIGNS_MOBILE_UPLOAD_BASE_URL to an HTTPS website address or secure tunnel reachable from the phone.");
+        }
+        if (baseHost == null || baseUri.getRawUserInfo() != null || baseUri.getFragment() != null
+                || !("https".equalsIgnoreCase(scheme))) {
             throw new IllegalArgumentException(
                     "The mobile upload website URL must use HTTPS. HTTP is allowed only for localhost testing.");
         }

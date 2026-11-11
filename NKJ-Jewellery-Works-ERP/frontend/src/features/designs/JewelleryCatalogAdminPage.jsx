@@ -769,7 +769,7 @@ export default function JewelleryCatalogAdminPage() {
                 <div><span>SECURE MOBILE UPLOAD</span><h2 id="nkj-qr-upload-title">Upload Jewellery Designs From Mobile</h2></div>
                 <button type="button" onClick={closeQrModal} aria-label="Close QR upload"><X size={19} /></button>
               </header>
-              <p className="nkj-qr-upload-description">Scan this QR code using your mobile phone to upload jewellery photographs directly to your Jewellery ERP.</p>
+              <p className="nkj-qr-upload-description">Scan this QR code using your mobile phone to upload jewellery photographs directly to your Jewellery ERP. The link must use an HTTPS address reachable from your phone; localhost is only accessible on this computer.</p>
 
               <div className="nkj-qr-upload-body">
                 <div className="nkj-qr-code-frame">
