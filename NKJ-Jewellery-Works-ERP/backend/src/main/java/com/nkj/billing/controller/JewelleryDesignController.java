@@ -519,6 +519,18 @@ public class JewelleryDesignController {
                 int rotation = rotations == null || rotations.isEmpty() ? 0 : rotations.get(index);
                 double cropZoom = cropZooms == null || cropZooms.isEmpty() ? 1.0d : cropZooms.get(index);
                 StoredImage stored = imageStorage.store(id, files.get(index), rotation, cropZoom);
+                List<Long> existingImageOwners = jdbc.queryForList(
+                        "SELECT design_id FROM public.jewellery_design_images WHERE content_sha256=? LIMIT 1",
+                        Long.class, stored.sha256());
+                if (!existingImageOwners.isEmpty()) {
+                    imageStorage.deleteStoredPath(stored.originalUrl());
+                    imageStorage.deleteStoredPath(stored.displayUrl());
+                    imageStorage.deleteStoredPath(stored.thumbnailUrl());
+                    if (existingImageOwners.get(0).longValue() == id) {
+                        continue; // Safe retry after a partial multi-batch desktop upload.
+                    }
+                    throw new IllegalArgumentException("This photograph is already attached to another jewellery design.");
+                }
                 createdFiles.add(stored.originalUrl());
                 createdFiles.add(stored.displayUrl());
                 createdFiles.add(stored.thumbnailUrl());
