@@ -6,7 +6,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
+import javax.imageio.ImageWriter;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.IIOImage;
 import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.ImageOutputStream;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -133,13 +137,9 @@ public class JewelleryDesignImageStorageService {
             // A separate high-quality display derivative is capped at 2400px;
             // the 640px thumbnail is used only for dense catalogue cards.
             BufferedImage display = createScaledJpeg(source, DISPLAY_MAX_EDGE, rotation, cropZoom);
-            if (!ImageIO.write(display, "jpg", displayPath.toFile())) {
-                throw new IOException("The optimized display image could not be generated.");
-            }
+            writeHighQualityJpeg(display, displayPath);
             BufferedImage thumbnail = createScaledJpeg(source, THUMBNAIL_MAX_EDGE, rotation, cropZoom);
-            if (!ImageIO.write(thumbnail, "jpg", thumbnailPath.toFile())) {
-                throw new IOException("The image thumbnail could not be generated.");
-            }
+            writeHighQualityJpeg(thumbnail, thumbnailPath);
         } catch (IOException error) {
             Files.deleteIfExists(originalPath);
             Files.deleteIfExists(displayPath);
