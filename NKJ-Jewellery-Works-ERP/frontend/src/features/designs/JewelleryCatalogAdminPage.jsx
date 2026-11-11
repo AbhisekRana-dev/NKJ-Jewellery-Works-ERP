@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { request } from "../../core/api/client";
 import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
 import "./JewelleryCatalogAdminPage.css";
+import { getPurityOptions, isPurityAllowed } from "./purityOptions";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 const PAGE_SIZE = 30;
@@ -95,6 +96,7 @@ export default function JewelleryCatalogAdminPage() {
   const [subcategory, setSubcategory] = useState("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("latest");
+  const [purityFilter, setPurityFilter] = useState("");
   const [page, setPage] = useState(0);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -147,6 +149,8 @@ export default function JewelleryCatalogAdminPage() {
     () => categories.filter((item) => item.metalType === form.metalType && item.isActive !== false),
     [categories, form.metalType],
   );
+  const formPurityOptions = getPurityOptions(form.metalType);
+  const hasLegacyPurity = Boolean(form.purity) && !isPurityAllowed(form.metalType, form.purity);
 
   const loadCategories = useCallback(async () => {
     const data = await request("/admin/designs/categories");
@@ -203,6 +207,7 @@ export default function JewelleryCatalogAdminPage() {
       const params = new URLSearchParams({ metal, sort, page: String(nextPage), size: String(PAGE_SIZE) });
       if (subcategory) params.set("subcategory", subcategory);
       if (search.trim()) params.set("q", search.trim());
+      if (purityFilter) params.set("purity", purityFilter);
       const result = await request(`/admin/designs?${params.toString()}`);
       setItems(Array.isArray(result.items) ? result.items : []);
       setTotal(Number(result.total) || 0);
@@ -212,7 +217,7 @@ export default function JewelleryCatalogAdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [metal, subcategory, search, sort, page]);
+  }, [metal, subcategory, search, sort, purityFilter, page]);
 
   useRealtimeRefresh(() => loadDesigns(page), ["designs"]);
 
@@ -288,7 +293,7 @@ export default function JewelleryCatalogAdminPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => loadDesigns(0), search.trim() ? 250 : 0);
     return () => window.clearTimeout(timer);
-  }, [metal, subcategory, search, sort]);
+  }, [metal, subcategory, search, sort, purityFilter]);
 
   const openNewForm = () => {
     const categoryId = metalCategories[0]?.id || categories[0]?.id || "";
@@ -703,14 +708,18 @@ export default function JewelleryCatalogAdminPage() {
         </section>
 
         <section className="nkj-catalog-filters">
-          <label><span>Metal</span><select value={metal} onChange={(event) => { setMetal(event.target.value); setSubcategory(""); }}>
+          <label><span>Metal</span><select value={metal} onChange={(event) => { setMetal(event.target.value); setSubcategory(""); setPurityFilter(""); }}>
             <option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="DIAMOND">Diamond</option>
           </select></label>
           <label><span>Subcategory</span><select value={subcategory} onChange={(event) => setSubcategory(event.target.value)}>
             <option value="">All {metal} designs</option>
             {metalCategories.map((item) => <option key={item.id} value={item.slug}>{item.subcategoryName}</option>)}
           </select></label>
-          <label className="nkj-catalog-search"><span>Search catalogue</span><div><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, code or style" /></div></label>
+          <label><span>Purity / type</span><select value={purityFilter} onChange={(event) => setPurityFilter(event.target.value)}>
+            <option value="">All {metal} purities</option>
+            {getPurityOptions(metal).map((item) => <option key={item} value={item}>{item}</option>)}
+          </select></label>
+          <label className="nkj-catalog-search"><span>Search catalogue</span><div><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, code, style or purity" /></div></label>
           <label><span>Sort</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="latest">Latest</option><option value="popular">Popularity</option></select></label>
         </section>
 
@@ -910,7 +919,7 @@ export default function JewelleryCatalogAdminPage() {
                   <select required disabled={Boolean(editingId)} value={form.metalType} onChange={(event) => {
                     const nextMetal = event.target.value;
                     const first = categories.find((item) => item.metalType === nextMetal && item.isActive !== false);
-                    setForm((current) => ({ ...current, metalType: nextMetal, categoryId: first ? String(first.id) : "" }));
+                    setForm((current) => ({ ...current, metalType: nextMetal, categoryId: first ? String(first.id) : "", purity: "" }));
                   }}>
                     <option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="DIAMOND">Diamond</option>
                   </select>
@@ -946,7 +955,14 @@ export default function JewelleryCatalogAdminPage() {
                 <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
                 <label>Regional inspiration<input maxLength={80} value={form.regionalInspiration} onChange={(event) => setForm((current) => ({ ...current, regionalInspiration: event.target.value }))} placeholder="e.g. Bengali / Rajasthani / Pan-Indian" /></label>
                 <label className="wide">Material description<input maxLength={120} value={form.materialLabel} onChange={(event) => setForm((current) => ({ ...current, materialLabel: event.target.value }))} placeholder="e.g. Gold concept · actual karat not specified" /></label>
-                <label>Purity / fineness<input maxLength={40} value={form.purity} onChange={(event) => setForm((current) => ({ ...current, purity: event.target.value }))} placeholder="Only enter verified purity, e.g. 22K / 925" /></label>
+                <label>Purity / fineness
+                  <select value={form.purity} onChange={(event) => setForm((current) => ({ ...current, purity: event.target.value }))}>
+                    <option value="">Not specified</option>
+                    {hasLegacyPurity && <option value={form.purity}>Existing saved value (kept): {form.purity}</option>}
+                    {formPurityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                  {hasLegacyPurity && <small className="nkj-catalog-purity-legacy">This saved value is outside the current {form.metalType} options. It is preserved until you choose a valid value above.</small>}
+                </label>
                 <label>Search keywords<input maxLength={800} value={form.keywords} onChange={(event) => setForm((current) => ({ ...current, keywords: event.target.value }))} placeholder="Motif, finish, occasion…" /></label>
                 <label>Weight (grams)<input type="number" min="0" step="0.001" value={form.weightGrams} onChange={(event) => setForm((current) => ({ ...current, weightGrams: event.target.value }))} placeholder="Optional" /></label>
                 <label>Price (₹)<input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" /></label>

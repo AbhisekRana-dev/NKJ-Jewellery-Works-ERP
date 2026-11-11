@@ -10,6 +10,7 @@ import { request } from "../../core/api/client";
 import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
 import { useAuth } from "../../core/auth/AuthProvider";
 import "./JewelleryDesignsPage.css";
+import { getPurityOptions } from "./purityOptions";
 
 const PAGE_SIZE = 24;
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -177,18 +178,18 @@ export default function JewelleryDesignsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setFacets({ styles: [], materials: [], regions: [], purities: [] });
+    setFacets({ styles: [], materials: [], regions: [], purities: getPurityOptions(metal) });
     request(`/designs/filters?metal=${encodeURIComponent(metal)}`, { publicRequest: true })
       .then((data) => {
         if (!cancelled) setFacets({
           styles: Array.isArray(data.styles) ? data.styles : [],
           materials: Array.isArray(data.materials) ? data.materials : [],
           regions: Array.isArray(data.regions) ? data.regions : [],
-          purities: Array.isArray(data.purities) ? data.purities : [],
+          purities: getPurityOptions(metal),
         });
       })
       .catch(() => {
-        if (!cancelled) setFacets({ styles: [], materials: [], regions: [], purities: [] });
+        if (!cancelled) setFacets({ styles: [], materials: [], regions: [], purities: getPurityOptions(metal) });
       });
     return () => { cancelled = true; };
   }, [metal]);
