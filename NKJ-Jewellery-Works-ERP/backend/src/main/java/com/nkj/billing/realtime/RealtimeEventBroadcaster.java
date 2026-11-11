@@ -142,7 +142,8 @@ public class RealtimeEventBroadcaster {
         if (path.startsWith("/api/admin/rates")) {
             return List.of("rates", "invoices");
         }
-        if (path.startsWith("/api/admin/designs")) {
+        if (path.startsWith("/api/admin/designs")
+                || path.startsWith("/api/mobile-design-upload/")) {
             return List.of("designs");
         }
         if (path.startsWith("/api/admin/profile")) {
