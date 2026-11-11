@@ -356,10 +356,6 @@ export default function JewelleryCatalogAdminPage() {
       setError("Choose a subcategory and enter a design name.");
       return;
     }
-    if (!editingId && imageFiles.length === 0) {
-      setError("Choose at least one jewellery photograph for a new design.");
-      return;
-    }
     saveInFlightRef.current = true;
     setSaving(true);
     setError("");
@@ -747,7 +743,7 @@ export default function JewelleryCatalogAdminPage() {
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
                 <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload From Computer · multiple design photographs
                   <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setImageFiles(Array.from(event.target.files || []))} />
-                  <small>JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Originals and optimized JPEG thumbnails are stored separately.</small>
+                  <small>HD recommended: 1200 × 1200 px or higher · JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Original quality is preserved. Photo upload is optional: save without a photo and the catalogue will show “Photo pending” until the owner uploads one.</small>
                 </label>
               </div>
               {imageFiles.length > 0 && (
