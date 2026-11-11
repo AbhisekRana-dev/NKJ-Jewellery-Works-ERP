@@ -22,7 +22,19 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String,String>> conflict(DataIntegrityViolationException e, HttpServletRequest request) {
-        log.warn("Database integrity conflict for {} {}: {}", request.getMethod(), request.getRequestURI(), e.getMostSpecificCause().getMessage(), e);
+        String rootMessage = e.getMostSpecificCause().getMessage() == null
+                ? "" : e.getMostSpecificCause().getMessage().replaceAll("[\\r\\n\\t]+", " ").trim();
+        log.warn("Database integrity conflict for {} {}: {}", request.getMethod(), request.getRequestURI(), rootMessage, e);
+        boolean replacePhotoRequest = "POST".equalsIgnoreCase(request.getMethod())
+                && request.getRequestURI() != null
+                && request.getRequestURI().matches("/api/admin/designs/[0-9]+/images/replace-primary");
+        if (replacePhotoRequest) {
+            String detail = rootMessage.isBlank() ? "Database constraint rejected the new image." :
+                    rootMessage.substring(0, Math.min(rootMessage.length(), 300));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "message", "Photograph replacement was rejected by the database: " + detail
+            ));
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "This change conflicts with existing records. Check required fields, duplicate IDs and linked records."));
     }
 
