@@ -49,12 +49,26 @@ empty_rows AS (
       JOIN targets t ON t.design_id = di.design_id
      WHERE COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''),
                     NULLIF(BTRIM(di.original_url), '')) IS NULL
+       AND NOT EXISTS (
+           SELECT 1
+             FROM public.jewellery_design_images usable
+            WHERE usable.design_id = di.design_id
+              AND COALESCE(NULLIF(BTRIM(usable.thumbnail_url), ''),
+                           NULLIF(BTRIM(usable.original_url), '')) IS NOT NULL
+       )
 )
 UPDATE public.jewellery_design_images di
    SET original_url = e.image_path,
        thumbnail_url = e.image_path,
        alt_text = e.alt_text,
-       content_sha256 = e.image_sha256,
+       content_sha256 = CASE
+           WHEN NOT EXISTS (
+               SELECT 1 FROM public.jewellery_design_images duplicate_hash
+                WHERE duplicate_hash.content_sha256 = e.image_sha256
+                  AND duplicate_hash.id <> di.id
+           ) THEN e.image_sha256
+           ELSE di.content_sha256
+       END,
        display_order = 0
   FROM empty_rows e
  WHERE di.id = e.image_id
