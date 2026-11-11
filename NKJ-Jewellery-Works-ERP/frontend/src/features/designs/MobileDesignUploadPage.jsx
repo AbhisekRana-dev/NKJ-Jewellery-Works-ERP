@@ -41,6 +41,9 @@ export default function MobileDesignUploadPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [savedDesign, setSavedDesign] = useState(null);
+  const [reservedDesignId, setReservedDesignId] = useState("");
+  const [designIdLoading, setDesignIdLoading] = useState(false);
+  const [designIdError, setDesignIdError] = useState("");
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -166,6 +169,32 @@ export default function MobileDesignUploadPage() {
       window.clearInterval(timer);
     };
   }, [token, session?.status, saving]);
+
+  useEffect(() => {
+    if (!token || !session || !categoryId || !["WAITING", "SCANNED"].includes(session.status)) {
+      setReservedDesignId("");
+      return undefined;
+    }
+    let active = true;
+    setDesignIdLoading(true);
+    setDesignIdError("");
+    setReservedDesignId("");
+    request(`/mobile-design-upload/${encodeURIComponent(token)}/design-id`, {
+      method: "POST",
+      publicRequest: true,
+      body: JSON.stringify({ categoryId }),
+    })
+      .then((result) => {
+        if (active) setReservedDesignId(result.designId || "");
+      })
+      .catch((err) => {
+        if (active) setDesignIdError(err.message || "Could not reserve a Design ID.");
+      })
+      .finally(() => {
+        if (active) setDesignIdLoading(false);
+      });
+    return () => { active = false; };
+  }, [token, session?.status, categoryId]);
 
   useEffect(() => {
     if (!cameraOpen) return undefined;
@@ -306,6 +335,10 @@ export default function MobileDesignUploadPage() {
     }
     if (!photos.length) {
       setError("Select at least one jewellery photograph.");
+      return;
+    }
+    if (!reservedDesignId || designIdLoading) {
+      setError(designIdError || "The server is generating your Design ID. Please wait a moment.");
       return;
     }
 
@@ -512,7 +545,7 @@ export default function MobileDesignUploadPage() {
               <input type="number" min="0" step="0.001" value={weightGrams} onChange={(event) => setWeightGrams(event.target.value)} placeholder="0.000" />
             </label>
           </div>
-          <div className="nkj-mobile-id-note"><ShieldCheck size={16} /><span><b>Design ID generated automatically</b><small>The server generates the unique category-based ID when you save. It cannot be edited on this phone.</small></span></div>
+          <div className="nkj-mobile-id-note"><ShieldCheck size={16} /><span><b>Design ID · read only</b><small>{designIdLoading ? "Reserving a unique category-based ID…" : designIdError || (reservedDesignId || "Select a subcategory to generate the Design ID.")}</small></span></div>
           <label className="nkj-mobile-active-toggle">
             <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} />
             <span><b>Active / Publish design</b><small>When enabled, the design appears in the public jewellery catalogue after saving.</small></span>
@@ -527,7 +560,7 @@ export default function MobileDesignUploadPage() {
           </div>
         )}
 
-        <button type="submit" className="nkj-mobile-save" disabled={saving || !["WAITING", "SCANNED"].includes(session.status) || !photos.length}>
+        <button type="submit" className="nkj-mobile-save" disabled={saving || designIdLoading || !reservedDesignId || !["WAITING", "SCANNED"].includes(session.status) || !photos.length}>
           {saving ? <LoaderCircle className="spin" size={18} /> : <CheckCircle2 size={18} />}
           {saving ? "Saving Design…" : "Save Design"}
         </button>
