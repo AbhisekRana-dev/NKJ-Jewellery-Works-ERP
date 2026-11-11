@@ -176,19 +176,27 @@ public class JewelleryDesignController {
                 VALUES (?, ?, ?, ?, ?)
                 """, sessionId, sha256Hex(token), owner, expiresAt, request.getRemoteAddr());
 
+        // Prefer an explicit deployment URL; otherwise derive the website origin
+        // from the authenticated browser request so QR links work on the current host.
+        String configuredBase = mobileUploadBaseUrl == null ? "" : mobileUploadBaseUrl.trim();
+        String baseCandidate = configuredBase.isBlank() ? request.getHeader("Origin") : configuredBase;
+        if (baseCandidate == null || baseCandidate.isBlank()) {
+            throw new IllegalStateException("Open the owner catalogue from the public website origin or set DESIGNS_MOBILE_UPLOAD_BASE_URL.");
+        }
         URI baseUri;
         try {
-            baseUri = URI.create(mobileUploadBaseUrl == null ? "" : mobileUploadBaseUrl.trim());
+            baseUri = URI.create(baseCandidate.trim());
         } catch (IllegalArgumentException error) {
-            throw new IllegalStateException("Set DESIGNS_MOBILE_UPLOAD_BASE_URL to the public ERP website URL.");
+            throw new IllegalStateException("The mobile upload base URL is invalid.");
         }
         String scheme = baseUri.getScheme();
-        if (baseUri.getHost() == null || !("https".equalsIgnoreCase(scheme)
+        if (baseUri.getHost() == null || baseUri.getRawUserInfo() != null || baseUri.getFragment() != null
+                || !("https".equalsIgnoreCase(scheme)
                 || "http".equalsIgnoreCase(scheme) && ("localhost".equalsIgnoreCase(baseUri.getHost())
                 || "127.0.0.1".equals(baseUri.getHost())))) {
             throw new IllegalStateException("The mobile upload base URL must be HTTPS (HTTP is allowed only for localhost).");
         }
-        String base = mobileUploadBaseUrl.trim().replaceAll("/+$", "");
+        String base = baseCandidate.trim().replaceAll("/+$", "");
         return Map.of("sessionId", sessionId.toString(),
                 "uploadUrl", base + "/mobile-design-upload/" + token,
                 "expiresAt", expiresAt.toInstant().toString(),
