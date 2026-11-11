@@ -2,7 +2,10 @@ package com.nkj.billing.controller;
 
 import com.nkj.billing.service.JewelleryDesignImageStorageService;
 import com.nkj.billing.service.JewelleryDesignImageStorageService.StoredImage;
+import com.nkj.billing.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.cache.annotation.Cacheable;
@@ -12,20 +15,41 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 public class JewelleryDesignController {
+    private static final SecureRandom QR_TOKEN_RANDOM = new SecureRandom();
+    private static final long QR_SESSION_TTL_MILLIS = 5 * 60 * 1000L;
+
     private final JdbcTemplate jdbc;
     private final JewelleryDesignImageStorageService imageStorage;
+    private final AuthService auth;
+    private final String mobileUploadBaseUrl;
 
-    public JewelleryDesignController(JdbcTemplate jdbc, JewelleryDesignImageStorageService imageStorage) {
+    public JewelleryDesignController(
+            JdbcTemplate jdbc,
+            JewelleryDesignImageStorageService imageStorage,
+            AuthService auth,
+            @Value("${nkj.designs.mobile-upload-base-url:http://localhost:5173}") String mobileUploadBaseUrl) {
         this.jdbc = jdbc;
         this.imageStorage = imageStorage;
+        this.auth = auth;
+        this.mobileUploadBaseUrl = mobileUploadBaseUrl;
     }
 
     @GetMapping("/api/designs/categories")
@@ -54,7 +78,7 @@ public class JewelleryDesignController {
 
     @GetMapping("/api/designs/{id}")
     public Map<String, Object> publicDesignDetails(@PathVariable long id) {
-        jdbc.update("UPDATE public.jewellery_designs SET popularity_count = popularity_count + 1 WHERE id = ? AND is_active = TRUE", id);
+        jdbc.update("UPDATE public.jewellery_designs SET popularity_count = popularity_count + 1 WHERE id = ? AND is_active = TRUE AND is_deleted = FALSE", id);
         return designDetails(id, false);
     }
 
@@ -124,6 +148,175 @@ public class JewelleryDesignController {
                  WHERE id = ?
                 """, name, slug, active, order, id);
         return categoryDetails(id);
+    }
+
+    @PostMapping("/api/admin/design-upload-sessions")
+    @Transactional
+    public Map<String, Object> createMobileUploadSession(HttpServletRequest request) {
+        String owner = auth.getUsername();
+        if (owner == null || owner.isBlank()) throw new IllegalStateException("An authenticated owner session is required.");
+
+        // Regeneration invalidates every still-live QR issued by this owner.
+        jdbc.update("""
+                UPDATE public.jewellery_design_upload_sessions
+                   SET revoked_at=NOW()
+                 WHERE created_by=? AND consumed_at IS NULL
+                   AND revoked_at IS NULL AND expires_at > NOW()
+                """, owner);
+
+        byte[] randomBytes = new byte[32];
+        QR_TOKEN_RANDOM.nextBytes(randomBytes);
+        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+        UUID sessionId = UUID.randomUUID();
+        Timestamp expiresAt = new Timestamp(System.currentTimeMillis() + QR_SESSION_TTL_MILLIS);
+
+        jdbc.update("""
+                INSERT INTO public.jewellery_design_upload_sessions
+                    (session_id, token_hash, created_by, expires_at, created_ip)
+                VALUES (?, ?, ?, ?, ?)
+                """, sessionId, sha256Hex(token), owner, expiresAt, request.getRemoteAddr());
+
+        URI baseUri;
+        try {
+            baseUri = URI.create(mobileUploadBaseUrl == null ? "" : mobileUploadBaseUrl.trim());
+        } catch (IllegalArgumentException error) {
+            throw new IllegalStateException("Set DESIGNS_MOBILE_UPLOAD_BASE_URL to the public ERP website URL.");
+        }
+        String scheme = baseUri.getScheme();
+        if (baseUri.getHost() == null || !("https".equalsIgnoreCase(scheme)
+                || "http".equalsIgnoreCase(scheme) && ("localhost".equalsIgnoreCase(baseUri.getHost())
+                || "127.0.0.1".equals(baseUri.getHost())))) {
+            throw new IllegalStateException("The mobile upload base URL must be HTTPS (HTTP is allowed only for localhost).");
+        }
+        String base = mobileUploadBaseUrl.trim().replaceAll("/+$", "");
+        return Map.of("sessionId", sessionId.toString(),
+                "uploadUrl", base + "/mobile-design-upload/" + token,
+                "expiresAt", expiresAt.toInstant().toString(),
+                "expiresInSeconds", 300, "status", "WAITING");
+    }
+
+    @GetMapping("/api/admin/design-upload-sessions/{sessionId}")
+    public Map<String, Object> mobileUploadSessionStatus(@PathVariable UUID sessionId) {
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT session_id AS "sessionId",
+                       CASE
+                         WHEN consumed_at IS NOT NULL THEN 'UPLOADED'
+                         WHEN revoked_at IS NOT NULL THEN 'REVOKED'
+                         WHEN expires_at <= NOW() THEN 'EXPIRED'
+                         ELSE 'WAITING'
+                       END AS status,
+                       expires_at AS "expiresAt",
+                       uploaded_design_id AS "designId",
+                       created_at AS "createdAt",
+                       consumed_at AS "uploadedAt"
+                  FROM public.jewellery_design_upload_sessions
+                 WHERE session_id=? AND created_by=?
+                """, sessionId, auth.getUsername());
+        if (rows.isEmpty()) throw new IllegalArgumentException("QR upload session not found.");
+        Map<String, Object> result = new LinkedHashMap<>(rows.get(0));
+        Object designId = result.get("designId");
+        if (designId instanceof Number number) {
+            List<Map<String, Object>> design = jdbc.queryForList("""
+                    SELECT design_id AS "generatedDesignId", design_name AS "designName"
+                      FROM public.jewellery_designs WHERE id=?
+                    """, number.longValue());
+            if (!design.isEmpty()) result.putAll(design.get(0));
+        }
+        return result;
+    }
+
+    @DeleteMapping("/api/admin/design-upload-sessions/{sessionId}")
+    @Transactional
+    public Map<String, Object> revokeMobileUploadSession(@PathVariable UUID sessionId) {
+        int changed = jdbc.update("""
+                UPDATE public.jewellery_design_upload_sessions
+                   SET revoked_at=NOW()
+                 WHERE session_id=? AND created_by=?
+                   AND consumed_at IS NULL AND revoked_at IS NULL
+                """, sessionId, auth.getUsername());
+        return Map.of("revoked", changed > 0, "sessionId", sessionId.toString());
+    }
+
+    @PostMapping(value = "/api/mobile-design-upload/{token}/design", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
+    @Transactional
+    public Map<String, Object> uploadDesignFromMobileQr(
+            @PathVariable String token,
+            @RequestParam("categoryId") String categoryId,
+            @RequestParam("designName") String designName,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "styleLabel", required = false) String styleLabel,
+            @RequestParam(value = "keywords", required = false) String keywords,
+            @RequestParam(value = "purity", required = false) String purity,
+            @RequestParam(value = "weightGrams", required = false) String weightGrams,
+            @RequestParam(value = "isActive", defaultValue = "true") boolean isActive,
+            @RequestParam(value = "isFeatured", defaultValue = "false") boolean isFeatured,
+            @RequestParam("files") List<MultipartFile> files,
+            HttpServletRequest request) throws IOException {
+        if (token == null || token.length() < 40 || token.length() > 100
+                || !token.matches("[A-Za-z0-9_-]+")) {
+            throw new IllegalArgumentException("This QR upload link is invalid. Ask the owner to generate a new QR code.");
+        }
+
+        List<Map<String, Object>> sessions = jdbc.queryForList("""
+                SELECT session_id, created_by,
+                       (expires_at > NOW()) AS "notExpired",
+                       (consumed_at IS NOT NULL) AS consumed,
+                       (revoked_at IS NOT NULL) AS revoked
+                  FROM public.jewellery_design_upload_sessions
+                 WHERE token_hash=?
+                 FOR UPDATE
+                """, sha256Hex(token));
+        if (sessions.isEmpty()) throw new IllegalArgumentException("This QR upload link is invalid or has expired.");
+        Map<String, Object> session = sessions.get(0);
+        if (Boolean.TRUE.equals(session.get("revoked"))) {
+            throw new IllegalArgumentException("This QR upload link was revoked. Ask the owner to generate a new QR code.");
+        }
+        if (Boolean.TRUE.equals(session.get("consumed"))) {
+            throw new IllegalArgumentException("This QR upload link has already been used. Ask the owner to generate a new QR code.");
+        }
+        if (!Boolean.TRUE.equals(session.get("notExpired"))) {
+            throw new IllegalArgumentException("This QR upload link has expired. Ask the owner to generate a new QR code.");
+        }
+        if (files == null || files.isEmpty() || files.size() > 20) {
+            throw new IllegalArgumentException("Select between 1 and 20 jewellery photographs.");
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("categoryId", categoryId);
+        body.put("designName", designName);
+        body.put("description", description == null ? "" : description);
+        body.put("styleLabel", styleLabel == null ? "Shop photograph" : styleLabel);
+        body.put("keywords", keywords == null ? "" : keywords);
+        body.put("purity", purity == null ? "" : purity);
+        body.put("weightGrams", weightGrams == null ? "" : weightGrams);
+        body.put("isActive", isActive);
+        body.put("isFeatured", isFeatured);
+
+        // Use the same backend-generated ID and image-storage methods as desktop.
+        // The locked session row guarantees only one mobile design submission.
+        Map<String, Object> saved = createDesign(body);
+        long designPk = ((Number) saved.get("id")).longValue();
+        Map<String, Object> withImages = uploadImages(designPk, files);
+
+        jdbc.update("""
+                UPDATE public.jewellery_design_upload_sessions
+                   SET consumed_at=NOW(), uploaded_design_id=?, uploaded_ip=?
+                 WHERE session_id=? AND consumed_at IS NULL AND revoked_at IS NULL
+                """, designPk, request.getRemoteAddr(), session.get("session_id"));
+
+        Map<String, Object> response = new LinkedHashMap<>(withImages);
+        response.put("uploadStatus", "UPLOADED");
+        return response;
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException error) {
+            throw new IllegalStateException("SHA-256 is not available.", error);
+        }
     }
 
     @PostMapping("/api/admin/designs")
@@ -220,20 +413,38 @@ public class JewelleryDesignController {
     @DeleteMapping("/api/admin/designs/{id}")
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
-    public Map<String, Object> deleteDesign(@PathVariable long id) {
-        List<String> storedUrls = jdbc.query(
-                """
-                SELECT original_url FROM public.jewellery_design_images WHERE design_id=?
-                UNION ALL
-                SELECT thumbnail_url FROM public.jewellery_design_images WHERE design_id=?
+    public Map<String, Object> deleteDesign(@PathVariable long id, HttpServletRequest request) {
+        Map<String, Object> before = jdbc.queryForMap("""
+                SELECT design_id, design_name, is_active, is_featured
+                  FROM public.jewellery_designs
+                 WHERE id=? AND is_deleted=FALSE
+                 FOR UPDATE
+                """, id);
+        int changed = jdbc.update("""
+                UPDATE public.jewellery_designs
+                   SET is_deleted=TRUE, deleted_at=NOW(), deleted_by=?,
+                       is_active=FALSE, is_featured=FALSE, updated_at=NOW()
+                 WHERE id=? AND is_deleted=FALSE
+                """, auth.getUsername(), id);
+        if (changed == 0) throw new IllegalArgumentException("Design not found or already archived.");
+
+        jdbc.update("""
+                INSERT INTO public.audit_logs(
+                    actor_identity, action, module, record_id,
+                    previous_value, new_value, ip_address
+                )
+                VALUES (?, 'DESIGN_ARCHIVED', 'JEWELLERY_DESIGNS', ?,
+                        jsonb_build_object('designId', ?, 'designName', ?, 'isActive', ?, 'isFeatured', ?),
+                        jsonb_build_object('isDeleted', TRUE, 'isActive', FALSE), ?)
                 """,
-                (rs, rowNum) -> rs.getString(1), id, id);
-        int deleted = jdbc.update("DELETE FROM public.jewellery_designs WHERE id=?", id);
-        if (deleted == 0) {
-            throw new IllegalArgumentException("Design not found.");
-        }
-        storedUrls.forEach(imageStorage::deleteStoredPath);
-        return Map.of("deleted", true, "id", id);
+                auth.getUsername(), String.valueOf(id), before.get("design_id"),
+                before.get("design_name"), before.get("is_active"), before.get("is_featured"),
+                request.getRemoteAddr());
+
+        // Retain photo objects and history. Sequence rows are deliberately untouched.
+        return Map.of("deleted", true, "archived", true, "id", id,
+                "designId", String.valueOf(before.get("design_id")),
+                "designName", String.valueOf(before.get("design_name")));
     }
 
     @PostMapping(value = "/api/admin/designs/{id}/images", consumes = "multipart/form-data")
@@ -263,12 +474,14 @@ public class JewelleryDesignController {
             for (MultipartFile file : files) {
                 StoredImage stored = imageStorage.store(id, file);
                 createdFiles.add(stored.originalUrl());
+                createdFiles.add(stored.displayUrl());
                 createdFiles.add(stored.thumbnailUrl());
                 jdbc.update("""
                         INSERT INTO public.jewellery_design_images
-                            (design_id, original_url, thumbnail_url, alt_text, content_sha256, display_order, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, NOW())
-                        """, id, stored.originalUrl(), stored.thumbnailUrl(), stored.fileName(), stored.sha256(), nextOrder++);
+                            (design_id, original_url, display_url, thumbnail_url, alt_text, content_sha256, display_order, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                        """, id, stored.originalUrl(), stored.displayUrl(), stored.thumbnailUrl(),
+                        stored.fileName(), stored.sha256(), nextOrder++);
             }
             jdbc.update("""
                     UPDATE public.jewellery_designs
@@ -329,7 +542,7 @@ public class JewelleryDesignController {
                        COUNT(d.id) FILTER (WHERE d.is_active = TRUE AND (? = TRUE OR EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id = d.id))) AS "activeDesignCount",
                        COUNT(d.id) AS "totalDesignCount"
                   FROM public.jewellery_design_categories c
-                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id
+                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id AND d.is_deleted = FALSE
                  WHERE (? = TRUE OR c.is_active = TRUE)
                  GROUP BY c.id
                  ORDER BY CASE c.metal_type WHEN 'GOLD' THEN 1 WHEN 'SILVER' THEN 2 ELSE 3 END,
@@ -351,7 +564,7 @@ public class JewelleryDesignController {
         if (minWeight != null && maxWeight != null && minWeight.compareTo(maxWeight) > 0) {
             throw new IllegalArgumentException("Minimum weight cannot exceed maximum weight.");
         }
-        StringBuilder filter = new StringBuilder(" WHERE (? = TRUE OR d.is_active = TRUE)");
+        StringBuilder filter = new StringBuilder(" WHERE d.is_deleted = FALSE AND (? = TRUE OR d.is_active = TRUE)");
         List<Object> parameters = new ArrayList<>();
         parameters.add(includeInactive);
 
@@ -437,7 +650,7 @@ public class JewelleryDesignController {
                        COUNT(d.id) FILTER (WHERE d.is_active = TRUE) AS "activeDesignCount",
                        COUNT(d.id) AS "totalDesignCount"
                   FROM public.jewellery_design_categories c
-                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id
+                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id AND d.is_deleted = FALSE
                  WHERE c.id = ?
                  GROUP BY c.id
                 """, id);
@@ -457,7 +670,7 @@ public class JewelleryDesignController {
                        c.subcategory_name AS "subcategoryName", c.slug AS "subcategorySlug"
                   FROM public.jewellery_designs d
                   JOIN public.jewellery_design_categories c ON c.id=d.category_id
-                 WHERE d.id=? AND (? = TRUE OR (d.is_active=TRUE AND EXISTS (
+                 WHERE d.id=? AND d.is_deleted=FALSE AND (? = TRUE OR (d.is_active=TRUE AND EXISTS (
                      SELECT 1 FROM public.jewellery_design_images visible_image
                       WHERE visible_image.design_id=d.id
                         AND COALESCE(NULLIF(BTRIM(visible_image.thumbnail_url), ''), NULLIF(BTRIM(visible_image.original_url), '')) IS NOT NULL
@@ -471,6 +684,7 @@ public class JewelleryDesignController {
                 SELECT id,
                        COALESCE(NULLIF(BTRIM(original_url), ''), NULLIF(BTRIM(thumbnail_url), '')) AS "originalUrl",
                        COALESCE(NULLIF(BTRIM(thumbnail_url), ''), NULLIF(BTRIM(original_url), '')) AS "thumbnailUrl",
+                       display_url AS "displayUrl",
                        alt_text AS "altText", display_order AS "displayOrder"
                   FROM public.jewellery_design_images
                  WHERE design_id=?
@@ -506,7 +720,7 @@ public class JewelleryDesignController {
     }
 
     private void ensureDesignExists(long id) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM public.jewellery_designs WHERE id=?", Integer.class, id);
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM public.jewellery_designs WHERE id=? AND is_deleted=FALSE", Integer.class, id);
         if (count == null || count == 0) {
             throw new IllegalArgumentException("Jewellery design not found.");
         }
