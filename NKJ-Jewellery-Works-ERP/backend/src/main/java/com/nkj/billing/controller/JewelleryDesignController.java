@@ -492,7 +492,7 @@ public class JewelleryDesignController {
                        COUNT(d.id) FILTER (WHERE d.is_active = TRUE) AS "activeDesignCount",
                        COUNT(d.id) AS "totalDesignCount"
                   FROM public.jewellery_design_categories c
-                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id
+                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id AND d.is_deleted = FALSE
                  WHERE c.id = ?
                  GROUP BY c.id
                 """, id);
