@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
-  Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird,
+  Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird, Camera, LayoutGrid, List as ListIcon,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
 import { useRealtimeRefresh } from "../../core/realtime/realtime";
+import { useAuth } from "../../core/auth/AuthProvider";
 import "./JewelleryDesignsPage.css";
 
 const PAGE_SIZE = 24;
@@ -120,7 +122,9 @@ function DesignImage({ design }) {
 }
 
 export default function JewelleryDesignsPage() {
+  const { isAdmin } = useAuth();
   const [categories, setCategories] = useState([]);
+  const [viewMode, setViewMode] = useState("grid");
   const [metal, setMetal] = useState("GOLD");
   const [subcategory, setSubcategory] = useState("");
   const [search, setSearch] = useState("");
@@ -304,6 +308,14 @@ export default function JewelleryDesignsPage() {
             <h1>Jewellery Designs</h1>
             <p>Discover elegant gold, silver and diamond designs for weddings, celebrations and everyday wear.</p>
           </div>
+          {isAdmin && (
+            <div className="nkj-designs-admin-actions">
+              <Link to="/design-catalog" state={{ openScanner: true }} className="nkj-designs-admin-scan">
+                <Camera size={18} /> Scanner / Add Design
+              </Link>
+              <Link to="/design-catalog" className="nkj-designs-admin-manage">Manage Catalogue</Link>
+            </div>
+          )}
         </section>
 
         <section className="nkj-designs-metal-section" aria-label="Browse by metal">
@@ -398,6 +410,10 @@ export default function JewelleryDesignsPage() {
                 </select>
                 <ChevronDown size={14} />
               </label>
+              <div className="nkj-designs-view-toggle" role="group" aria-label="Design catalogue view">
+                <button type="button" className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")} aria-pressed={viewMode === "grid"} title="Grid view"><LayoutGrid size={17} /></button>
+                <button type="button" className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")} aria-pressed={viewMode === "list"} title="List view"><ListIcon size={17} /></button>
+              </div>
             </div>
           </div>
 
@@ -417,7 +433,7 @@ export default function JewelleryDesignsPage() {
             <div className="nkj-designs-loading"><LoaderCircle className="spin" size={24} /> Loading designs…</div>
           ) : items.length ? (
             <>
-              <div className="nkj-designs-grid">
+              <div className={`nkj-designs-grid${viewMode === "list" ? " is-list" : ""}`}>
                 {items.map((design) => (
                   <article className="nkj-design-card" key={design.id}>
                     <div className="nkj-design-card-image">
