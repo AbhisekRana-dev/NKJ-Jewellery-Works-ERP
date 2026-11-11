@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, Camera, RotateCcw, RotateCw, Crop, Sun, Contrast, Images, Smartphone, MonitorUp } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
 import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
@@ -9,9 +8,8 @@ import "./JewelleryCatalogAdminPage.css";
 const API = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 const PAGE_SIZE = 30;
 const assetUrl = (path) => path && path.startsWith("/api/") ? `${API}${path.slice(4)}` : path;
-const blankForm = (categoryId = "", metalType = "GOLD") => ({
+const blankForm = (categoryId = "") => ({
   categoryId: String(categoryId),
-  metalType,
   designName: "",
   description: "",
   styleLabel: "",
@@ -71,43 +69,6 @@ async function uploadDesignImages(designId, files) {
   return latestResult;
 }
 
-async function prepareDesignImage(file, adjustments) {
-  const bitmap = await createImageBitmap(file);
-  try {
-    const maxEdge = 3000;
-    const downscale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-    const width = Math.max(1, Math.round(bitmap.width * downscale));
-    const height = Math.max(1, Math.round(bitmap.height * downscale));
-    const rotation = ((Number(adjustments.rotation) || 0) % 360 + 360) % 360;
-    const quarterTurn = rotation === 90 || rotation === 270;
-    const canvas = document.createElement("canvas");
-    canvas.width = quarterTurn ? height : width;
-    canvas.height = quarterTurn ? width : height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Image editing is not supported by this browser.");
-
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.translate(canvas.width / 2, canvas.height / 2);
-    context.rotate((rotation * Math.PI) / 180);
-    context.scale(Number(adjustments.cropZoom) || 1, Number(adjustments.cropZoom) || 1);
-    context.filter = `brightness(${Number(adjustments.brightness) || 100}%) contrast(${Number(adjustments.contrast) || 100}%)`;
-    context.drawImage(bitmap, -width / 2, -height / 2, width, height);
-
-    const blob = await new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (value) => value ? resolve(value) : reject(new Error("Could not prepare this jewellery photograph.")),
-        "image/jpeg",
-        0.94,
-      );
-    });
-    const name = String(file.name || "jewellery-design").replace(/\.(jpe?g|png|webp)$/i, "") + ".jpg";
-    return new File([blob], name, { type: "image/jpeg", lastModified: Date.now() });
-  } finally {
-    bitmap.close?.();
-  }
-}
-
 const cleanFileName = (name) => String(name || "Jewellery Design")
   .replace(/\.[^.]+$/, "")
   .replace(/[_-]+/g, " ")
@@ -116,8 +77,6 @@ const cleanFileName = (name) => String(name || "Jewellery Design")
   .slice(0, 150);
 
 export default function JewelleryCatalogAdminPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [metal, setMetal] = useState("GOLD");
   const [subcategory, setSubcategory] = useState("");
@@ -136,8 +95,6 @@ export default function JewelleryCatalogAdminPage() {
   const [form, setForm] = useState(blankForm());
   const [imageFiles, setImageFiles] = useState([]);
   const [currentImages, setCurrentImages] = useState([]);
-  const [viewingDesign, setViewingDesign] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [bulkFiles, setBulkFiles] = useState([]);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -145,21 +102,6 @@ export default function JewelleryCatalogAdminPage() {
   const [newSubcategoryMetal, setNewSubcategoryMetal] = useState("GOLD");
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
   const [categorySaving, setCategorySaving] = useState(false);
-  const [cameraOpen, setCameraOpen] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cameraError, setCameraError] = useState("");
-  const [rotation, setRotation] = useState(0);
-  const [cropZoom, setCropZoom] = useState(1);
-  const [brightness, setBrightness] = useState(100);
-  const [contrast, setContrast] = useState(100);
-  const videoRef = useRef(null);
-  const cameraStreamRef = useRef(null);
-  const saveInFlightRef = useRef(false);
-  const bulkInFlightRef = useRef(false);
-  const lastCameraCaptureRef = useRef("");
-  const galleryInputRef = useRef(null);
-  const computerInputRef = useRef(null);
-  const cameraFallbackInputRef = useRef(null);
   const imagePreviews = useMemo(
     () => imageFiles.map((file) => ({ file, url: URL.createObjectURL(file) })),
     [imageFiles],
@@ -170,10 +112,6 @@ export default function JewelleryCatalogAdminPage() {
   }, [imagePreviews]);
 
   const metalCategories = useMemo(() => categories.filter((item) => item.metalType === metal && item.isActive !== false), [categories, metal]);
-  const formMetalCategories = useMemo(
-    () => categories.filter((item) => item.metalType === form.metalType && item.isActive !== false),
-    [categories, form.metalType],
-  );
   const selectedCategory = categories.find((item) => String(item.id) === String(form.categoryId));
 
   const loadCategories = useCallback(async () => {
@@ -214,10 +152,10 @@ export default function JewelleryCatalogAdminPage() {
   }, [metal, subcategory, search, sort]);
 
   const openNewForm = () => {
-    const categoryId = metalCategories[0]?.id || categories.find((item) => item.metalType === metal && item.isActive !== false)?.id || "";
+    const categoryId = metalCategories[0]?.id || categories[0]?.id || "";
     setEditingId(null);
     setCurrentDesignId("");
-    setForm(blankForm(categoryId, metal));
+    setForm(blankForm(categoryId));
     setImageFiles([]);
     setCurrentImages([]);
     setShowForm(true);
@@ -232,7 +170,6 @@ export default function JewelleryCatalogAdminPage() {
       setCurrentDesignId(detail.designId || "");
       setForm({
         categoryId: String(detail.categoryId),
-        metalType: detail.metalType || "GOLD",
         designName: detail.designName || "",
         description: detail.description || "",
         styleLabel: detail.styleLabel || "",
@@ -250,147 +187,6 @@ export default function JewelleryCatalogAdminPage() {
       setError(err.message || "Could not open this design.");
     }
   };
-
-  const openDetails = async (design) => {
-    setDetailLoading(true);
-    setError("");
-    try {
-      const detail = await request(`/admin/designs/${design.id}`);
-      setViewingDesign(detail);
-    } catch (err) {
-      setError(err.message || "Could not load design details.");
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const openCamera = () => {
-    setCameraError("");
-    setCameraReady(false);
-    setCameraOpen(true);
-  };
-
-  const closeCamera = () => {
-    setCameraOpen(false);
-    setCameraReady(false);
-  };
-
-  const appendSelectedImages = (fileList) => {
-    const selected = Array.from(fileList || []);
-    const valid = [];
-    const rejected = [];
-    selected.forEach((file) => {
-      const allowedMime = ["image/jpeg", "image/png", "image/webp"].includes(String(file.type || "").toLowerCase());
-      const allowedExtension = /\.(jpe?g|png|webp)$/i.test(file.name || "");
-      if (!(allowedMime || allowedExtension)) {
-        rejected.push(file.name || "Unknown file");
-      } else if (file.size > 10 * 1024 * 1024) {
-        rejected.push((file.name || "Image") + " (over 10 MB)");
-      } else {
-        valid.push(file);
-      }
-    });
-    if (rejected.length) setError("Skipped unsupported or oversized image(s): " + rejected.join(", "));
-    if (valid.length) {
-      setImageFiles((current) => [...current, ...valid]);
-      setError("");
-    }
-  };
-
-  const captureCameraPhoto = () => {
-    const video = videoRef.current;
-    if (!video || !video.videoWidth || !video.videoHeight) {
-      setCameraError("The camera is not ready yet. Wait for the preview and try again.");
-      return;
-    }
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext("2d");
-    if (!context) {
-      setCameraError("This browser cannot capture a camera photograph.");
-      return;
-    }
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        setCameraError("The camera photograph could not be captured. Please try again.");
-        return;
-      }
-      const fileName = `camera-scan-${Date.now()}.jpg`;
-      const file = new File([blob], fileName, { type: "image/jpeg", lastModified: Date.now() });
-      const previousCapture = lastCameraCaptureRef.current;
-      setImageFiles((current) => [
-        ...current.filter((item) => item.name !== previousCapture),
-        file,
-      ]);
-      lastCameraCaptureRef.current = fileName;
-      setError("");
-      closeCamera();
-    }, "image/jpeg", 0.96);
-  };
-
-  const resetImageAdjustments = () => {
-    setRotation(0);
-    setCropZoom(1);
-    setBrightness(100);
-    setContrast(100);
-  };
-
-  useEffect(() => {
-    if (!cameraOpen) return undefined;
-    let cancelled = false;
-    let activeStream = null;
-    setCameraReady(false);
-    setCameraError("");
-
-    const start = async () => {
-      try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error("Live camera access is not available in this browser. Use the camera file picker, Gallery or Computer upload instead.");
-        }
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
-        });
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        activeStream = stream;
-        cameraStreamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => {});
-        }
-        setCameraReady(true);
-      } catch (error) {
-        if (!cancelled) {
-          setCameraError(error.message || "Camera permission was denied or no camera is available.");
-          setCameraReady(false);
-        }
-      }
-    };
-    start();
-
-    return () => {
-      cancelled = true;
-      (activeStream || cameraStreamRef.current)?.getTracks().forEach((track) => track.stop());
-      cameraStreamRef.current = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
-    };
-  }, [cameraOpen]);
-
-  useEffect(() => {
-    if (!location.state?.openScanner || !categories.length) return;
-    openNewForm();
-    openCamera();
-    navigate(location.pathname, { replace: true, state: null });
-  }, [location.key, categories.length]);
 
   const addSubcategory = async (event) => {
     event.preventDefault();
@@ -449,16 +245,6 @@ export default function JewelleryCatalogAdminPage() {
 
   const saveDesign = async (event) => {
     event.preventDefault();
-    if (saveInFlightRef.current) return;
-    if (!form.categoryId || !form.designName.trim()) {
-      setError("Choose a main category, subcategory and design name before saving.");
-      return;
-    }
-    if (!editingId && imageFiles.length === 0) {
-      setError("Add at least one jewellery photograph before creating a new catalogue design.");
-      return;
-    }
-    saveInFlightRef.current = true;
     setSaving(true);
     setError("");
     setMessage("");
@@ -471,33 +257,15 @@ export default function JewelleryCatalogAdminPage() {
         ? await request(`/admin/designs/${editingId}`, { method: "PUT", body: JSON.stringify(payload) })
         : await request("/admin/designs", { method: "POST", body: JSON.stringify(payload) });
       const id = Number(saved.id);
-      // If image upload fails after the record is created, keep this form linked
-      // to the saved database row. A retry updates the same design instead of
-      // creating another design ID.
-      if (!editingId) {
-        setEditingId(id);
-        setCurrentDesignId(saved.designId || "");
-      }
-      let uploaded = saved;
       if (imageFiles.length) {
-        const optimizedFiles = await Promise.all(imageFiles.map((file) => prepareDesignImage(file, {
-          rotation, cropZoom, brightness, contrast,
-        })));
-        uploaded = await uploadDesignImages(id, optimizedFiles);
-        setImageFiles([]);
-        lastCameraCaptureRef.current = "";
-        resetImageAdjustments();
+        await uploadDesignImages(id, imageFiles);
       }
-      if (Array.isArray(uploaded?.images)) setCurrentImages(uploaded.images);
       setShowForm(false);
-      setCameraOpen(false);
-      setMessage(`${saved.designId || saved.designCode || "Design"} saved successfully.`);
-      await Promise.all([loadCategories(), loadDesigns(0)]);
+      setMessage(`${saved.designCode || "Design"} saved successfully.`);
+      await loadDesigns(0);
     } catch (err) {
       setError(err.message || "Could not save the design.");
-      await loadDesigns(page);
     } finally {
-      saveInFlightRef.current = false;
       setSaving(false);
     }
   };
@@ -551,17 +319,13 @@ export default function JewelleryCatalogAdminPage() {
   };
 
   const deleteDesign = async (design) => {
-    const immutableId = design.designId || design.designCode;
-    const confirmed = window.confirm(
-      `Archive this jewellery design?\\n\\nDesign ID: ${immutableId}\\nDesign name: ${design.designName}\\n\\nThe design and photographs will be preserved in the database history. The ID will never be reused.`
-    );
-    if (!confirmed) return;
+    if (!window.confirm(`Delete ${design.designCode} — ${design.designName}? This removes this catalogue record and its uploaded photos.`)) return;
     try {
       await request(`/admin/designs/${design.id}`, { method: "DELETE" });
-      setMessage(`${immutableId} archived. Its ID and photographs have been preserved.`);
-      await Promise.all([loadCategories(), loadDesigns(page)]);
+      setMessage(`${design.designCode} deleted.`);
+      await loadDesigns(page);
     } catch (err) {
-      setError(err.message || "Could not archive this design.");
+      setError(err.message || "Could not delete this design.");
     }
   };
 
@@ -590,7 +354,6 @@ export default function JewelleryCatalogAdminPage() {
   };
 
   const runBulkUpload = async () => {
-    if (bulkInFlightRef.current) return;
     if (!bulkCategoryId) {
       setError("Choose the metal and subcategory for the bulk upload.");
       return;
@@ -599,7 +362,6 @@ export default function JewelleryCatalogAdminPage() {
       setError("Choose one or more JPG, PNG or WebP design photographs.");
       return;
     }
-    bulkInFlightRef.current = true;
     setBulkRunning(true);
     setBulkProgress("");
     setError("");
@@ -630,7 +392,6 @@ export default function JewelleryCatalogAdminPage() {
       setError(`${err.message || "Bulk upload stopped."} ${completed} design(s) uploaded before the error.`);
       await loadDesigns(0);
     } finally {
-      bulkInFlightRef.current = false;
       setBulkRunning(false);
     }
   };
@@ -644,12 +405,7 @@ export default function JewelleryCatalogAdminPage() {
             <h1><Layers3 size={25} /> Jewellery Catalog Management</h1>
             <p>Manage all 77 approved subcategories, add unlimited designs, and upload original shop photographs. Each subcategory starts with at least 25 clearly marked sample inspirations.</p>
           </div>
-          <div className="nkj-catalog-heading-actions">
-            <button type="button" className="nkj-catalog-scanner-button" onClick={() => { openNewForm(); openCamera(); }}>
-              <Camera size={18} /> Scanner / Add Design
-            </button>
-            <button type="button" className="nkj-catalog-primary" onClick={openNewForm}><Plus size={17} /> Add New Design</button>
-          </div>
+          <button type="button" className="nkj-catalog-primary" onClick={openNewForm}><Plus size={17} /> Add New Design</button>
         </header>
 
         <details className="nkj-catalog-subcategory-manager">
@@ -726,14 +482,13 @@ export default function JewelleryCatalogAdminPage() {
                       {design.thumbnailUrl ? <img src={assetUrl(design.thumbnailUrl)} alt="" loading="lazy" /> : <span className="nkj-catalog-placeholder"><ImagePlus size={17} /></span>}
                       <span><b>{design.designName}</b><small>{design.styleLabel}</small></span>
                     </div></td>
-                    <td><code title={design.designId || design.designCode}>{design.designId || design.designCode}</code><small className="nkj-catalog-subcategory">Legacy code: {design.designCode}</small></td>
+                    <td><code title={design.designId || design.designCode}>{design.designId || design.designCode}</code><small className="nkj-catalog-subcategory">Legacy: {design.designCode}</small></td>
                     <td>{design.metalType}<small className="nkj-catalog-subcategory">{design.subcategoryName}</small>
                       <small className="nkj-catalog-subcategory">{[design.purity, design.weightGrams != null ? Number(design.weightGrams).toLocaleString("en-IN") + " g" : "", design.priceInr != null ? "₹" + Number(design.priceInr).toLocaleString("en-IN") : ""].filter(Boolean).join(" · ") || "Specs not set"}</small>
                     </td>
                     <td>{design.isSample ? <span className="nkj-catalog-badge sample">Sample inspiration</span> : <span className="nkj-catalog-badge real">Shop photo</span>}</td>
                     <td>{design.isActive ? <span className="nkj-catalog-badge active">Active</span> : <span className="nkj-catalog-badge inactive">Inactive</span>}{design.isFeatured && <span className="nkj-catalog-badge featured">Featured</span>}</td>
                     <td><div className="nkj-catalog-actions">
-                      <button type="button" title="View design details" onClick={() => openDetails(design)} disabled={detailLoading}><Eye size={15} /></button>
                       <button type="button" title="Edit design" onClick={() => openEditForm(design)}><Pencil size={15} /></button>
                       <button type="button" title={design.isFeatured ? "Remove featured" : "Feature design"} onClick={() => changeFeatured(design)}><Star size={15} fill={design.isFeatured ? "currentColor" : "none"} /></button>
                       <button type="button" title={design.isActive ? "Deactivate" : "Activate"} onClick={() => changeStatus(design)}>{design.isActive ? <EyeOff size={15} /> : <Eye size={15} />}</button>
@@ -755,68 +510,20 @@ export default function JewelleryCatalogAdminPage() {
           </div>
         </div>
 
-        {viewingDesign && (
-          <div className="nkj-catalog-modal-backdrop nkj-catalog-details-backdrop" role="presentation" onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setViewingDesign(null);
-          }}>
-            <section className="nkj-catalog-details-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-catalog-details-title">
-              <header>
-                <div><span>JEWELLERY DESIGN DETAILS</span><h2 id="nkj-catalog-details-title">{viewingDesign.designName}</h2></div>
-                <button type="button" onClick={() => setViewingDesign(null)} aria-label="Close details"><X size={19} /></button>
-              </header>
-              <div className="nkj-catalog-details-id">{viewingDesign.designId || viewingDesign.designCode}</div>
-              <div className="nkj-catalog-details-photos">
-                {(viewingDesign.images || []).map((image) => (
-                  <img key={image.id} src={assetUrl(image.thumbnailUrl)} alt={image.altText || viewingDesign.designName} loading="lazy" />
-                ))}
-                {!viewingDesign.images?.length && <div>No uploaded shop photographs.</div>}
-              </div>
-              <dl>
-                <div><dt>Main category</dt><dd>{viewingDesign.metalType}</dd></div>
-                <div><dt>Subcategory</dt><dd>{viewingDesign.subcategoryName}</dd></div>
-                <div><dt>Design name</dt><dd>{viewingDesign.designName}</dd></div>
-                <div><dt>Style</dt><dd>{viewingDesign.styleLabel || "—"}</dd></div>
-                <div><dt>Purity</dt><dd>{viewingDesign.purity || "—"}</dd></div>
-                <div><dt>Weight</dt><dd>{viewingDesign.weightGrams == null ? "—" : Number(viewingDesign.weightGrams).toLocaleString("en-IN") + " g"}</dd></div>
-                <div><dt>Price</dt><dd>{viewingDesign.priceInr == null ? "Not set" : "₹" + Number(viewingDesign.priceInr).toLocaleString("en-IN")}</dd></div>
-                <div><dt>Status</dt><dd>{viewingDesign.isActive ? "Active" : "Inactive"}</dd></div>
-              </dl>
-              <p>{viewingDesign.description || "No description added."}</p>
-              <footer>
-                <button type="button" onClick={() => setViewingDesign(null)}>Close</button>
-                <button type="button" className="primary" onClick={() => {
-                  const design = viewingDesign;
-                  setViewingDesign(null);
-                  openEditForm({ id: design.id });
-                }}><Pencil size={15} /> Edit Design</button>
-              </footer>
-            </section>
-          </div>
-        )}
-
         {showForm && (
-          <div className="nkj-catalog-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) { closeCamera(); setShowForm(false); } }}>
+          <div className="nkj-catalog-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
             <form className="nkj-catalog-modal" onSubmit={saveDesign}>
-              <header><div><span>OWNER CATALOGUE</span><h2>{editingId ? "Edit Jewellery Design" : "Add New Design"}</h2></div><button type="button" onClick={() => { closeCamera(); setShowForm(false); }} aria-label="Close"><X size={19} /></button></header>
+              <header><div><span>OWNER CATALOGUE</span><h2>{editingId ? "Edit Jewellery Design" : "Add New Design"}</h2></div><button type="button" onClick={() => setShowForm(false)} aria-label="Close"><X size={19} /></button></header>
               <div className="nkj-catalog-form-grid">
                 <label className="wide">Design ID (generated automatically · read-only)
                   <input value={editingId ? currentDesignId : "Generated after saving"} readOnly aria-readonly="true" />
                 </label>
-                <label>Main Category
-                  <select required disabled={Boolean(editingId)} value={form.metalType} onChange={(event) => {
-                    const nextMetal = event.target.value;
-                    const firstCategory = categories.find((item) => item.metalType === nextMetal && item.isActive !== false);
-                    setForm((current) => ({ ...current, metalType: nextMetal, categoryId: firstCategory ? String(firstCategory.id) : "" }));
-                  }}>
-                    <option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="DIAMOND">Diamond</option>
-                  </select>
-                </label>
-                <label>Subcategory
+                <label className="wide">Approved metal / subcategory
                   <select required disabled={Boolean(editingId)} value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
                     <option value="">Choose subcategory</option>
-                    {formMetalCategories.map((item) => <option key={item.id} value={item.id}>{item.subcategoryName}</option>)}
+                    {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
                   </select>
-                  {editingId && <small>The original Design ID and category are immutable. Create a new design to use another subcategory.</small>}
+                  {editingId && <small>A Design ID contains its original category. To use another subcategory, create a new design instead.</small>}
                 </label>
                 <label className="wide">Design name<input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" /></label>
                 <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
@@ -825,78 +532,16 @@ export default function JewelleryCatalogAdminPage() {
                 <label>Weight (grams)<input type="number" min="0" step="0.001" value={form.weightGrams} onChange={(event) => setForm((current) => ({ ...current, weightGrams: event.target.value }))} placeholder="Optional" /></label>
                 <label>Price (₹)<input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" /></label>
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
-                <div className="wide nkj-catalog-upload-panel">
-                  <div className="nkj-catalog-upload-title"><Images size={19} /><span><b>Design Photographs</b><small>Capture on mobile or upload multiple photos from your device.</small></span></div>
-                  <div className="nkj-catalog-upload-actions">
-                    <button type="button" className="is-camera" onClick={openCamera}><Camera size={17} /> Scan Using Camera</button>
-                    <button type="button" onClick={() => galleryInputRef.current?.click()}><Smartphone size={17} /> Upload From Gallery</button>
-                    <button type="button" onClick={() => computerInputRef.current?.click()}><MonitorUp size={17} /> Upload From Computer</button>
-                    <button type="button" onClick={() => cameraFallbackInputRef.current?.click()}><ImagePlus size={17} /> Camera File Fallback</button>
-                  </div>
-                  <input ref={galleryInputRef} className="nkj-catalog-hidden-input" type="file" accept="image/*" multiple onChange={(event) => { appendSelectedImages(event.target.files); event.target.value = ""; }} />
-                  <input ref={computerInputRef} className="nkj-catalog-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => { appendSelectedImages(event.target.files); event.target.value = ""; }} />
-                  <input ref={cameraFallbackInputRef} className="nkj-catalog-hidden-input" type="file" accept="image/*" capture="environment" onChange={(event) => { appendSelectedImages(event.target.files); event.target.value = ""; }} />
-                  <small className="nkj-catalog-upload-help">JPG/JPEG/PNG/WebP · Maximum 10 MB per image · Photos are stored on the ERP server, not only on this device.</small>
-                </div>
+                <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload multiple design photographs
+                  <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setImageFiles(Array.from(event.target.files || []))} />
+                  <small>JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Originals and optimized JPEG thumbnails are stored separately.</small>
+                </label>
               </div>
-              {cameraOpen && (
-                <section className="nkj-catalog-camera-panel" aria-label="Mobile jewellery camera scanner">
-                  <header><span><Camera size={17} /> Rear camera scanner</span><button type="button" onClick={closeCamera} aria-label="Close camera"><X size={17} /></button></header>
-                  {cameraError ? (
-                    <div className="nkj-catalog-camera-error">
-                      <b>Camera unavailable</b><p>{cameraError}</p>
-                      <button type="button" onClick={() => cameraFallbackInputRef.current?.click()}><ImagePlus size={16} /> Use device camera / file picker</button>
-                    </div>
-                  ) : (
-                    <video ref={videoRef} autoPlay playsInline muted className="nkj-catalog-camera-video" />
-                  )}
-                  <footer>
-                    <small>{cameraReady ? "Rear camera ready · keep the jewellery in focus and well lit." : "Requesting camera permission…"}</small>
-                    <button type="button" className="nkj-catalog-capture-button" onClick={captureCameraPhoto} disabled={!cameraReady}><Camera size={17} /> Capture Photo</button>
-                    <button type="button" onClick={closeCamera}>Cancel</button>
-                  </footer>
-                </section>
-              )}
               {imageFiles.length > 0 && (
                 <>
-                  <div className="nkj-catalog-selected-files">
-                    <b>{imageFiles.length} photo(s) selected</b>
-                    <button type="button" onClick={() => { setImageFiles([]); lastCameraCaptureRef.current = ""; resetImageAdjustments(); }}>Remove all</button>
-                  </div>
-                  <div className="nkj-catalog-image-editor">
-                    <div className="nkj-catalog-editor-actions">
-                      <button type="button" onClick={() => setRotation((value) => (value + 270) % 360)}><RotateCcw size={15} /> Rotate left</button>
-                      <button type="button" onClick={() => setRotation((value) => (value + 90) % 360)}><RotateCw size={15} /> Rotate right</button>
-                      <button type="button" onClick={resetImageAdjustments}>Reset adjustments</button>
-                      {lastCameraCaptureRef.current && <button type="button" onClick={openCamera}><Camera size={15} /> Retake camera photo</button>}
-                    </div>
-                    <div className="nkj-catalog-editor-sliders">
-                      <label><Crop size={14} /> Crop / Zoom <b>{cropZoom.toFixed(1)}×</b><input type="range" min="1" max="2" step="0.1" value={cropZoom} onChange={(event) => setCropZoom(Number(event.target.value))} /></label>
-                      <label><Sun size={14} /> Brightness <b>{brightness}%</b><input type="range" min="70" max="130" step="1" value={brightness} onChange={(event) => setBrightness(Number(event.target.value))} /></label>
-                      <label><Contrast size={14} /> Contrast <b>{contrast}%</b><input type="range" min="70" max="130" step="1" value={contrast} onChange={(event) => setContrast(Number(event.target.value))} /></label>
-                    </div>
-                    <small>Adjustments are applied to each selected photograph before upload. High-resolution originals are resized to a detail-preserving 3000 px maximum edge.</small>
-                  </div>
+                  <p className="nkj-catalog-selected-files">{imageFiles.length} image(s) selected: {imageFiles.map((file) => file.name).join(", ")}</p>
                   <div className="nkj-catalog-image-previews" aria-label="Selected image previews">
-                    {imagePreviews.map((preview) => (
-                      <figure key={preview.url}>
-                        <div className="nkj-catalog-preview-frame">
-                          <img
-                            src={preview.url}
-                            alt={preview.file.name}
-                            style={{
-                              transform: `rotate(${rotation}deg) scale(${cropZoom})`,
-                              filter: `brightness(${brightness}%) contrast(${contrast}%)`,
-                            }}
-                          />
-                        </div>
-                        <figcaption title={preview.file.name}>{preview.file.name}</figcaption>
-                        <button type="button" onClick={() => {
-                          setImageFiles((current) => current.filter((file) => file !== preview.file));
-                          if (lastCameraCaptureRef.current === preview.file.name) lastCameraCaptureRef.current = "";
-                        }} aria-label={"Remove " + preview.file.name}><X size={13} /></button>
-                      </figure>
-                    ))}
+                    {imagePreviews.map((preview) => <figure key={preview.url}><img src={preview.url} alt={preview.file.name} /><figcaption>{preview.file.name}</figcaption></figure>)}
                   </div>
                 </>
               )}
@@ -916,7 +561,7 @@ export default function JewelleryCatalogAdminPage() {
                 <label><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Publish / active</label>
                 <label><input type="checkbox" checked={form.isFeatured} onChange={(event) => setForm((current) => ({ ...current, isFeatured: event.target.checked }))} /> Featured design</label>
               </div>
-              <footer><button type="button" className="secondary" disabled={saving} onClick={() => { closeCamera(); setShowForm(false); }}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}{saving ? "Saving…" : "Save Design"}</button></footer>
+              <footer><button type="button" className="secondary" disabled={saving} onClick={() => setShowForm(false)}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}{saving ? "Saving…" : "Save Design"}</button></footer>
             </form>
           </div>
         )}
