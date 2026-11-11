@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
-import { useRealtimeRefresh } from "../../core/realtime/realtime";
+import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
 import { useAuth } from "../../core/auth/AuthProvider";
 import "./JewelleryDesignsPage.css";
 
@@ -147,6 +147,8 @@ export default function JewelleryDesignsPage() {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [replacingPhoto, setReplacingPhoto] = useState(false);
+  const [replacePhotoError, setReplacePhotoError] = useState("");
   const [favorites, setFavorites] = useState(loadFavorites);
 
   const metalCategories = useMemo(
@@ -322,6 +324,55 @@ export default function JewelleryDesignsPage() {
   const modalThumbnailUrl = selected?.imageStatus === "READY"
     ? (activeImage?.thumbnailUrl || selected?.thumbnailUrl || "")
     : "";
+
+  const replaceSelectedPhoto = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !selected || !isAdmin) return;
+
+    setReplacingPhoto(true);
+    setReplacePhotoError("");
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = window.localStorage.getItem("nkj_token");
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/admin/designs/${selected.id}/images/replace-primary`,
+        {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "X-NKJ-Client-Id": getRealtimeClientId(),
+          },
+          body: formData,
+        },
+      );
+      const raw = await response.text();
+      let result = {};
+      if (raw) {
+        try { result = JSON.parse(raw); } catch { result = { message: raw }; }
+      }
+      if (response.status === 401) {
+        window.localStorage.removeItem("nkj_token");
+        window.localStorage.removeItem("nkj_user");
+        window.dispatchEvent(new Event("nkj:session-expired"));
+      }
+      if (!response.ok) {
+        throw new Error(result.message || `Photograph replacement failed (${response.status}).`);
+      }
+
+      const updated = await request(`/designs/${selected.id}`, { publicRequest: true });
+      setSelected(updated);
+      setActiveImageIndex(0);
+      setZoomed(false);
+      await refreshCatalogue();
+    } catch (error) {
+      setReplacePhotoError(error.message || "Could not replace the design photograph.");
+    } finally {
+      setReplacingPhoto(false);
+      event.target.value = "";
+    }
+  };
 
   return (
     <Page active="designs">
@@ -585,6 +636,22 @@ export default function JewelleryDesignsPage() {
                         <img src={assetUrl(image.thumbnailUrl)} alt={image.altText || selected.designName} loading="lazy" />
                       </button>
                     ))}
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="nkj-design-replace-photo-tools">
+                    <label className={"nkj-design-replace-photo-button" + (replacingPhoto ? " is-busy" : "")}>
+                      {replacingPhoto ? <LoaderCircle size={16} className="spin" /> : <ImagePlus size={16} />}
+                      <span>{replacingPhoto ? "Replacing photograph…" : "Change / Replace photograph"}</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                        disabled={replacingPhoto}
+                        onChange={replaceSelectedPhoto}
+                      />
+                    </label>
+                    <small>Replaces the primary photograph for this design. Other gallery images and the Design ID are kept.</small>
+                    {replacePhotoError && <p className="nkj-design-replace-photo-error" role="alert">{replacePhotoError}</p>}
                   </div>
                 )}
                 <small>{detailLoading ? "Loading complete design details…" : selected.isSample ? "Inspiration entry only. This is not confirmed stock or a product available for sale." : "Shop photograph uploaded by the owner. Confirm current availability and final price with the shop."}</small>
