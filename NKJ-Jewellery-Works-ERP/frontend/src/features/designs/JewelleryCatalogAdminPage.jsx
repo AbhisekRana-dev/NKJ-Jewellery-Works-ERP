@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone, RotateCcw, RotateCw } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone, RotateCcw, RotateCw, Info } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -112,6 +112,8 @@ export default function JewelleryCatalogAdminPage() {
   const [currentImages, setCurrentImages] = useState([]);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [deletingDesign, setDeletingDesign] = useState(false);
+  const [viewingDesign, setViewingDesign] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [bulkFiles, setBulkFiles] = useState([]);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -494,6 +496,19 @@ export default function JewelleryCatalogAdminPage() {
     }
   };
 
+  const viewDesignDetails = async (design) => {
+    setDetailsLoading(true);
+    setError("");
+    try {
+      const detail = await request(`/admin/designs/${design.id}`);
+      setViewingDesign(detail);
+    } catch (err) {
+      setError(err.message || "Could not load design details.");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
   const deleteDesign = (design) => {
     setDeleteCandidate(design);
   };
@@ -681,10 +696,12 @@ export default function JewelleryCatalogAdminPage() {
                     </td>
                     <td>{design.isActive ? <span className="nkj-catalog-badge active">Active</span> : <span className="nkj-catalog-badge inactive">Inactive</span>}{design.isFeatured && <span className="nkj-catalog-badge featured">Featured</span>}</td>
                     <td><div className="nkj-catalog-actions">
+                      <button type="button" title="View design details" disabled={detailsLoading} onClick={() => viewDesignDetails(design)}><Info size={15} /></button>
+                      <button type="button" title="Change / upload design images" onClick={() => openEditForm(design)}><ImagePlus size={15} /></button>
                       <button type="button" title="Edit design" onClick={() => openEditForm(design)}><Pencil size={15} /></button>
                       <button type="button" title={design.isFeatured ? "Remove featured" : "Feature design"} onClick={() => changeFeatured(design)}><Star size={15} fill={design.isFeatured ? "currentColor" : "none"} /></button>
                       <button type="button" title={design.isActive ? "Deactivate" : "Activate"} onClick={() => changeStatus(design)}>{design.isActive ? <EyeOff size={15} /> : <Eye size={15} />}</button>
-                      <button type="button" title="Delete design" className="delete" onClick={() => deleteDesign(design)}><Trash2 size={15} /></button>
+                      <button type="button" title="Archive design" className="delete" onClick={() => deleteDesign(design)}><Trash2 size={15} /></button>
                     </div></td>
                   </tr>
                 ))}
@@ -769,6 +786,47 @@ export default function JewelleryCatalogAdminPage() {
                   {qrLoading ? <LoaderCircle className="spin" size={16} /> : <RefreshCw size={16} />} Regenerate QR
                 </button>
                 <button type="button" onClick={closeQrModal}>Close</button>
+              </footer>
+            </section>
+          </div>
+        )}
+
+        {viewingDesign && (
+          <div className="nkj-catalog-modal-backdrop nkj-catalog-details-backdrop" role="presentation" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setViewingDesign(null);
+          }}>
+            <section className="nkj-catalog-details-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-catalog-admin-details-title">
+              <header>
+                <div><span>JEWELLERY DESIGN DETAILS</span><h2 id="nkj-catalog-admin-details-title">{viewingDesign.designName}</h2></div>
+                <button type="button" onClick={() => setViewingDesign(null)} aria-label="Close details"><X size={19} /></button>
+              </header>
+              <div className="nkj-catalog-details-id">{viewingDesign.designId || viewingDesign.designCode}</div>
+              <div className="nkj-catalog-details-photos">
+                {(viewingDesign.images || []).map((image) => (
+                  <img key={image.id} src={assetUrl(image.displayUrl || image.thumbnailUrl)} alt={image.altText || viewingDesign.designName} loading="lazy" />
+                ))}
+                {!viewingDesign.images?.length && <div>No photograph uploaded yet.</div>}
+              </div>
+              <dl>
+                <div><dt>Main category</dt><dd>{viewingDesign.metalType}</dd></div>
+                <div><dt>Subcategory</dt><dd>{viewingDesign.subcategoryName}</dd></div>
+                <div><dt>Design name</dt><dd>{viewingDesign.designName}</dd></div>
+                <div><dt>Style</dt><dd>{viewingDesign.styleLabel || "—"}</dd></div>
+                <div><dt>Purity / fineness</dt><dd>{viewingDesign.purity || "—"}</dd></div>
+                <div><dt>Weight</dt><dd>{viewingDesign.weightGrams == null ? "—" : Number(viewingDesign.weightGrams).toLocaleString("en-IN") + " g"}</dd></div>
+                <div><dt>Price</dt><dd>{viewingDesign.priceInr == null ? "Not set" : "₹" + Number(viewingDesign.priceInr).toLocaleString("en-IN")}</dd></div>
+                <div><dt>Status</dt><dd>{viewingDesign.isActive ? "Active" : "Inactive"}</dd></div>
+                <div><dt>Images</dt><dd>{viewingDesign.images?.length || 0}</dd></div>
+                <div><dt>Record type</dt><dd>{viewingDesign.isSample ? "Sample inspiration" : "Owner photograph"}</dd></div>
+              </dl>
+              <p>{viewingDesign.description || "No design description added."}</p>
+              <footer>
+                <button type="button" onClick={() => setViewingDesign(null)}>Close</button>
+                <button type="button" className="primary" onClick={() => {
+                  const selectedDesign = viewingDesign;
+                  setViewingDesign(null);
+                  openEditForm({ id: selectedDesign.id });
+                }}><Pencil size={15} /> Edit Design</button>
               </footer>
             </section>
           </div>
