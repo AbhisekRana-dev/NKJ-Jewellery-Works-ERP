@@ -942,3 +942,147 @@
   .nkj-designs-owner-tools { display:grid; grid-template-columns:1fr 1fr; width:100%; }
   .nkj-designs-owner-tools button { grid-column:1/-1; }
 }
+
+
+/* 1,900+ design catalogue: filters, list layout and honest photo-pending state */
+.nkj-designs-gallery-tools { flex-wrap: wrap; justify-content: flex-end; }
+.nkj-design-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 38px;
+  padding: 3px;
+  border: 1px solid #e7dad6;
+  border-radius: 9px;
+  background: #fff;
+}
+.nkj-design-view-toggle button {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #8b6a70;
+  cursor: pointer;
+}
+.nkj-design-view-toggle button.active {
+  background: #78102e;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(85, 11, 35, .18);
+}
+.nkj-design-filter-row {
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  align-items: end;
+}
+.nkj-design-filter-row > button { min-width: 92px; }
+.nkj-design-pending-chip {
+  border: 1px dashed #c7a96e !important;
+  background: #fffaf0 !important;
+  color: #8a6727 !important;
+}
+.nkj-designs-grid.is-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.nkj-designs-grid.is-list .nkj-design-card {
+  display: grid;
+  grid-template-columns: minmax(170px, 230px) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 175px;
+}
+.nkj-designs-grid.is-list .nkj-design-card-image {
+  min-width: 0;
+  min-height: 175px;
+  height: 100%;
+}
+.nkj-designs-grid.is-list .nkj-design-image-trigger,
+.nkj-designs-grid.is-list .nkj-design-photo,
+.nkj-designs-grid.is-list .nkj-design-photo-missing,
+.nkj-designs-grid.is-list .nkj-design-art {
+  width: 100%;
+  height: 100%;
+  min-height: 175px;
+  aspect-ratio: auto;
+}
+.nkj-designs-grid.is-list .nkj-design-photo img {
+  height: 100%;
+  min-height: 175px;
+  aspect-ratio: auto;
+  object-fit: contain !important;
+}
+.nkj-designs-grid.is-list .nkj-design-card-content {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 18px 22px;
+}
+.nkj-designs-grid.is-list .nkj-design-card-content h3 {
+  margin: 0;
+  font-size: 19px;
+}
+.nkj-designs-grid.is-list .nkj-design-card-content > p {
+  margin: 0;
+}
+.nkj-designs-grid.is-list .nkj-design-card-meta {
+  width: 100%;
+}
+.nkj-designs-grid.is-list .nkj-design-card-content > button {
+  margin-top: 5px;
+}
+.nkj-designs-grid.is-list .nkj-design-card-image .nkj-design-favorite {
+  top: 9px;
+  right: 9px;
+}
+.nkj-designs-grid.is-list .nkj-design-image-zoom-hint {
+  opacity: 0;
+}
+.nkj-designs-grid.is-list .nkj-design-image-trigger:hover .nkj-design-image-zoom-hint {
+  opacity: 1;
+}
+.nkj-design-photo-missing {
+  background:
+    linear-gradient(135deg, #fffdf8 0%, #f7f0e3 100%);
+  border: 1px dashed #d9c9a6;
+}
+.nkj-design-photo-missing span {
+  color: #8b6e3c;
+  font-size: 10px;
+  font-weight: 800;
+}
+.nkj-design-modal-content dl div:nth-child(4) dd {
+  color: #8a6727;
+}
+@media (max-width: 1050px) {
+  .nkj-design-filter-row { grid-template-columns: repeat(3, minmax(110px, 1fr)); }
+  .nkj-designs-grid.is-list .nkj-design-card { grid-template-columns: 185px minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  .nkj-designs-gallery-tools { width: 100%; justify-content: stretch; }
+  .nkj-designs-gallery-tools .nkj-designs-search { flex: 1 1 100%; max-width: none; }
+  .nkj-design-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nkj-design-filter-row > button { grid-column: 1 / -1; }
+  .nkj-designs-grid.is-list .nkj-design-card {
+    grid-template-columns: 118px minmax(0, 1fr);
+    min-height: 145px;
+  }
+  .nkj-designs-grid.is-list .nkj-design-card-image,
+  .nkj-designs-grid.is-list .nkj-design-image-trigger,
+  .nkj-designs-grid.is-list .nkj-design-photo,
+  .nkj-designs-grid.is-list .nkj-design-photo-missing,
+  .nkj-designs-grid.is-list .nkj-design-art {
+    min-height: 145px;
+  }
+  .nkj-designs-grid.is-list .nkj-design-photo img { min-height: 145px; }
+  .nkj-designs-grid.is-list .nkj-design-card-content { padding: 10px; }
+  .nkj-designs-grid.is-list .nkj-design-card-content h3 { font-size: 13px; }
+}
+@media (max-width: 430px) {
+  .nkj-designs-grid.is-list .nkj-design-card { grid-template-columns: 96px minmax(0, 1fr); }
+  .nkj-designs-grid.is-list .nkj-design-card-content { padding: 8px; }
+  .nkj-designs-grid.is-list .nkj-design-card-content h3 { font-size: 11px; }
+}
