@@ -833,7 +833,7 @@ public class JewelleryDesignController {
                     }
                 });
             }
-        } catch (RuntimeException | IOException error) {
+        } catch (RuntimeException error) {
             newFileUrls.forEach(imageStorage::deleteStoredPath);
             throw error;
         }
