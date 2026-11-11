@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.web.bind.annotation.*;
@@ -726,6 +728,119 @@ public class JewelleryDesignController {
         return storeDesignImages(id, files, null, null);
     }
 
+    /**
+     * Replaces only the primary photograph for a design. Other gallery images
+     * remain attached and keep their relative order. The design row and Design ID
+     * are never recreated.
+     */
+    @PostMapping(value = "/api/admin/designs/{id}/images/replace-primary", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
+    @Transactional
+    public Map<String, Object> replacePrimaryImage(
+            @PathVariable long id,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        ensureDesignExists(id);
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Choose a replacement jewellery photograph.");
+        }
+
+        StoredImage stored = imageStorage.store(id, file);
+        List<String> newFileUrls = List.of(stored.originalUrl(), stored.displayUrl(), stored.thumbnailUrl());
+        List<String> obsoleteFileUrls = new ArrayList<>();
+
+        try {
+            List<Map<String, Object>> duplicateImages = jdbc.queryForList("""
+                    SELECT id, design_id AS "designId"
+                      FROM public.jewellery_design_images
+                     WHERE content_sha256 = ?
+                     LIMIT 1
+                    """, stored.sha256());
+
+            if (!duplicateImages.isEmpty()) {
+                long existingImageId = ((Number) duplicateImages.get(0).get("id")).longValue();
+                long existingDesignId = ((Number) duplicateImages.get(0).get("designId")).longValue();
+                newFileUrls.forEach(imageStorage::deleteStoredPath);
+                if (existingDesignId != id) {
+                    throw new IllegalArgumentException(
+                            "This photograph is already attached to another jewellery design.");
+                }
+                jdbc.update("""
+                        UPDATE public.jewellery_design_images
+                           SET display_order = display_order + 1
+                         WHERE design_id = ? AND id <> ?
+                        """, id, existingImageId);
+                jdbc.update("""
+                        UPDATE public.jewellery_design_images
+                           SET display_order = 0
+                         WHERE id = ? AND design_id = ?
+                        """, existingImageId, id);
+            } else {
+                List<Map<String, Object>> primaryRows = jdbc.queryForList("""
+                        SELECT id, original_url AS "originalUrl",
+                               display_url AS "displayUrl", thumbnail_url AS "thumbnailUrl"
+                          FROM public.jewellery_design_images
+                         WHERE design_id = ?
+                         ORDER BY display_order, id
+                         LIMIT 1
+                        """, id);
+
+                if (!primaryRows.isEmpty()) {
+                    Map<String, Object> primary = primaryRows.get(0);
+                    long primaryId = ((Number) primary.get("id")).longValue();
+                    addNonBlankUrl(obsoleteFileUrls, primary.get("originalUrl"));
+                    addNonBlankUrl(obsoleteFileUrls, primary.get("displayUrl"));
+                    addNonBlankUrl(obsoleteFileUrls, primary.get("thumbnailUrl"));
+
+                    jdbc.update("""
+                            UPDATE public.jewellery_design_images
+                               SET display_order = display_order + 1
+                             WHERE design_id = ? AND id <> ?
+                            """, id, primaryId);
+                    jdbc.update("""
+                            UPDATE public.jewellery_design_images
+                               SET original_url = ?, display_url = ?, thumbnail_url = ?,
+                                   alt_text = ?, content_sha256 = ?, display_order = 0
+                             WHERE id = ? AND design_id = ?
+                            """, stored.originalUrl(), stored.displayUrl(), stored.thumbnailUrl(),
+                            stored.fileName(), stored.sha256(), primaryId, id);
+                } else {
+                    jdbc.update("""
+                            UPDATE public.jewellery_design_images
+                               SET display_order = display_order + 1
+                             WHERE design_id = ?
+                            """, id);
+                    jdbc.update("""
+                            INSERT INTO public.jewellery_design_images
+                                (design_id, original_url, display_url, thumbnail_url,
+                                 alt_text, content_sha256, display_order, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, 0, NOW())
+                            """, id, stored.originalUrl(), stored.displayUrl(), stored.thumbnailUrl(),
+                            stored.fileName(), stored.sha256());
+                }
+            }
+
+            jdbc.update("""
+                    UPDATE public.jewellery_designs
+                       SET is_sample = FALSE, image_status = 'READY', updated_at = NOW()
+                     WHERE id = ?
+                    """, id);
+
+            if (!obsoleteFileUrls.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        obsoleteFileUrls.forEach(imageStorage::deleteStoredPath);
+                    }
+                });
+            }
+        } catch (RuntimeException | IOException error) {
+            newFileUrls.forEach(imageStorage::deleteStoredPath);
+            throw error;
+        }
+
+        return designDetails(id, true);
+    }
+
     private Map<String, Object> storeDesignImages(
             long id,
             List<MultipartFile> files,
@@ -1119,6 +1234,12 @@ public class JewelleryDesignController {
                 .replaceAll("[^A-Z0-9]+", "_")
                 .replaceAll("^_+|_+$", "");
         return key.isBlank() ? "DESIGN" : key;
+    }
+
+    private static void addNonBlankUrl(List<String> target, Object value) {
+        if (value instanceof String url && !url.isBlank()) {
+            target.add(url);
+        }
     }
 
     private void ensureDesignExists(long id) {
