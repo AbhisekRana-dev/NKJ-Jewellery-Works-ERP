@@ -454,6 +454,10 @@ export default function JewelleryCatalogAdminPage() {
       setError("Choose a main category, subcategory and design name before saving.");
       return;
     }
+    if (!editingId && imageFiles.length === 0) {
+      setError("Add at least one jewellery photograph before creating a new catalogue design.");
+      return;
+    }
     saveInFlightRef.current = true;
     setSaving(true);
     setError("");
