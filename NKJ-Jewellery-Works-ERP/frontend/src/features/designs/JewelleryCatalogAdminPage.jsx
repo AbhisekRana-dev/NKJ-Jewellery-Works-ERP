@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Page } from "../../shared/layouts/OwnerShell";
@@ -91,6 +91,7 @@ export default function JewelleryCatalogAdminPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const saveInFlightRef = useRef(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -337,6 +338,12 @@ export default function JewelleryCatalogAdminPage() {
 
   const saveDesign = async (event) => {
     event.preventDefault();
+    if (saveInFlightRef.current) return;
+    if (!form.categoryId || !form.designName.trim()) {
+      setError("Choose a subcategory and enter a design name.");
+      return;
+    }
+    saveInFlightRef.current = true;
     setSaving(true);
     setError("");
     setMessage("");
@@ -345,19 +352,31 @@ export default function JewelleryCatalogAdminPage() {
         ...form,
         categoryId: Number(form.categoryId),
       };
+      const wasNewDesign = !editingId;
       const saved = editingId
         ? await request(`/admin/designs/${editingId}`, { method: "PUT", body: JSON.stringify(payload) })
         : await request("/admin/designs", { method: "POST", body: JSON.stringify(payload) });
       const id = Number(saved.id);
+
+      // If the record saves but photo transfer fails, bind the open form to that
+      // record. Retrying the form updates it instead of allocating another ID.
+      if (wasNewDesign) {
+        setEditingId(id);
+        setCurrentDesignId(saved.designId || "");
+      }
       if (imageFiles.length) {
-        await uploadDesignImages(id, imageFiles);
+        const uploaded = await uploadDesignImages(id, imageFiles);
+        if (Array.isArray(uploaded?.images)) setCurrentImages(uploaded.images);
+        setImageFiles([]);
       }
       setShowForm(false);
-      setMessage(`${saved.designCode || "Design"} saved successfully.`);
-      await loadDesigns(0);
+      setMessage(`${saved.designId || saved.designCode || "Design"} saved successfully.`);
+      await Promise.all([loadCategories(), loadDesigns(0)]);
     } catch (err) {
       setError(err.message || "Could not save the design.");
+      await loadDesigns(page);
     } finally {
+      saveInFlightRef.current = false;
       setSaving(false);
     }
   };
