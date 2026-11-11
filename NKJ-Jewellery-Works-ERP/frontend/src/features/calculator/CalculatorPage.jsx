@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import "./CalculatorPage.css";
@@ -85,14 +85,14 @@ function ManualCalculator() {
   const [result, setResult] = useState("0");
   const [error, setError] = useState("");
 
-  const append = (value) => {
+  const append = useCallback((value) => {
     setError("");
     setExpression((current) => current === "0" && /\d/.test(value)
       ? value
       : current + value);
-  };
+  }, []);
 
-  const calculate = () => {
+  const calculate = useCallback(() => {
     try {
       const value = evaluateExpression(expression);
       setResult(String(Number(value.toFixed(8))));
@@ -101,18 +101,18 @@ function ManualCalculator() {
     } catch (err) {
       setError(err.message || "Invalid calculation.");
     }
-  };
+  }, [expression]);
 
-  const clear = () => {
+  const clear = useCallback(() => {
     setExpression("0");
     setResult("0");
     setError("");
-  };
+  }, []);
 
-  const backspace = () => {
+  const backspace = useCallback(() => {
     setError("");
     setExpression((current) => current.length <= 1 ? "0" : current.slice(0, -1));
-  };
+  }, []);
 
   // Listen only while ManualCalculator is mounted. This lets the owner type
   // directly from the physical keyboard without first focusing a hidden input.
@@ -154,7 +154,7 @@ function ManualCalculator() {
 
     window.addEventListener("keydown", handleCalculatorKeyDown);
     return () => window.removeEventListener("keydown", handleCalculatorKeyDown);
-  }, []);
+  }, [append, calculate, clear, backspace]);
 
   const keys = [
     ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
