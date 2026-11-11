@@ -15,6 +15,8 @@ const blankForm = (categoryId = "") => ({
   designName: "",
   description: "",
   styleLabel: "",
+  regionalInspiration: "",
+  materialLabel: "",
   keywords: "",
   purity: "",
   weightGrams: "",
@@ -263,6 +265,8 @@ export default function JewelleryCatalogAdminPage() {
         designName: detail.designName || "",
         description: detail.description || "",
         styleLabel: detail.styleLabel || "",
+        regionalInspiration: detail.regionalInspiration || "Pan-Indian",
+        materialLabel: detail.materialLabel || "",
         keywords: detail.keywords || "",
         purity: detail.purity || "",
         weightGrams: detail.weightGrams ?? "",
@@ -403,6 +407,8 @@ export default function JewelleryCatalogAdminPage() {
           designName: design.designName,
           description: design.description,
           styleLabel: design.styleLabel,
+          regionalInspiration: design.regionalInspiration || "Pan-Indian",
+          materialLabel: design.materialLabel || "",
           keywords: design.keywords,
           purity: design.purity || "",
           weightGrams: design.weightGrams ?? "",
@@ -428,6 +434,8 @@ export default function JewelleryCatalogAdminPage() {
           designName: design.designName,
           description: design.description,
           styleLabel: design.styleLabel,
+          regionalInspiration: design.regionalInspiration || "Pan-Indian",
+          materialLabel: design.materialLabel || "",
           keywords: design.keywords,
           purity: design.purity || "",
           weightGrams: design.weightGrams ?? "",
@@ -615,7 +623,10 @@ export default function JewelleryCatalogAdminPage() {
                     <td>{design.metalType}<small className="nkj-catalog-subcategory">{design.subcategoryName}</small>
                       <small className="nkj-catalog-subcategory">{[design.purity, design.weightGrams != null ? Number(design.weightGrams).toLocaleString("en-IN") + " g" : "", design.priceInr != null ? "₹" + Number(design.priceInr).toLocaleString("en-IN") : ""].filter(Boolean).join(" · ") || "Specs not set"}</small>
                     </td>
-                    <td>{design.isSample ? <span className="nkj-catalog-badge sample">Sample inspiration</span> : <span className="nkj-catalog-badge real">Shop photo</span>}</td>
+                    <td>
+                      {design.isSample ? <span className="nkj-catalog-badge sample">Sample inspiration</span> : <span className="nkj-catalog-badge real">Shop design</span>}
+                      <span className={`nkj-catalog-badge ${design.imageStatus === "READY" ? "active" : "inactive"}`}>{design.imageStatus === "READY" ? "Photo ready" : "Photo pending"}</span>
+                    </td>
                     <td>{design.isActive ? <span className="nkj-catalog-badge active">Active</span> : <span className="nkj-catalog-badge inactive">Inactive</span>}{design.isFeatured && <span className="nkj-catalog-badge featured">Featured</span>}</td>
                     <td><div className="nkj-catalog-actions">
                       <button type="button" title="Edit design" onClick={() => openEditForm(design)}><Pencil size={15} /></button>
@@ -727,8 +738,10 @@ export default function JewelleryCatalogAdminPage() {
                 </label>
                 <label className="wide">Design name<input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" /></label>
                 <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
+                <label>Regional inspiration<input maxLength={80} value={form.regionalInspiration} onChange={(event) => setForm((current) => ({ ...current, regionalInspiration: event.target.value }))} placeholder="e.g. Bengali / Rajasthani / Pan-Indian" /></label>
+                <label className="wide">Material description<input maxLength={120} value={form.materialLabel} onChange={(event) => setForm((current) => ({ ...current, materialLabel: event.target.value }))} placeholder="e.g. Gold concept · actual karat not specified" /></label>
+                <label>Purity / fineness<input maxLength={40} value={form.purity} onChange={(event) => setForm((current) => ({ ...current, purity: event.target.value }))} placeholder="Only enter verified purity, e.g. 22K / 925" /></label>
                 <label>Search keywords<input maxLength={800} value={form.keywords} onChange={(event) => setForm((current) => ({ ...current, keywords: event.target.value }))} placeholder="Motif, finish, occasion…" /></label>
-                <label>Purity<input maxLength={40} value={form.purity} onChange={(event) => setForm((current) => ({ ...current, purity: event.target.value }))} placeholder="e.g. 22K / 18K / 925" /></label>
                 <label>Weight (grams)<input type="number" min="0" step="0.001" value={form.weightGrams} onChange={(event) => setForm((current) => ({ ...current, weightGrams: event.target.value }))} placeholder="Optional" /></label>
                 <label>Price (₹)<input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" /></label>
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
