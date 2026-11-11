@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
-  Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird,
+  Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird, ImagePlus, QrCode,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
 import { useRealtimeRefresh } from "../../core/realtime/realtime";
+import { useAuth } from "../../core/auth/AuthProvider";
 import "./JewelleryDesignsPage.css";
 
 const PAGE_SIZE = 24;
@@ -120,6 +122,7 @@ function DesignImage({ design }) {
 }
 
 export default function JewelleryDesignsPage() {
+  const { isAdmin } = useAuth();
   const [categories, setCategories] = useState([]);
   const [metal, setMetal] = useState("GOLD");
   const [subcategory, setSubcategory] = useState("");
@@ -290,6 +293,19 @@ export default function JewelleryDesignsPage() {
             <h1>Jewellery Designs</h1>
             <p>Discover elegant gold, silver and diamond designs for weddings, celebrations and everyday wear.</p>
           </div>
+          {isAdmin && (
+            <div className="nkj-designs-owner-tools">
+              <Link to="/design-catalog" state={{ openNewDesign: true }} className="nkj-designs-owner-add">
+                <ImagePlus size={17} /> Add New Design
+              </Link>
+              <Link to="/design-catalog" state={{ openQr: true }} className="nkj-designs-owner-qr">
+                <QrCode size={17} /> QR Code Upload
+              </Link>
+              <button type="button" onClick={() => refreshCatalogue()} className="nkj-designs-owner-refresh">
+                <LoaderCircle size={16} /> Refresh
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="nkj-designs-metal-section" aria-label="Browse by metal">
