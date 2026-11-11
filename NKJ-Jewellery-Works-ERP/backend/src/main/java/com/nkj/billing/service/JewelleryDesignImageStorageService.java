@@ -26,7 +26,7 @@ import java.util.UUID;
 @Service
 public class JewelleryDesignImageStorageService {
     private static final long MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
-    private static final int THUMBNAIL_MAX_EDGE = 640;
+    private static final int THUMBNAIL_MAX_EDGE = 1000;
 
     private final Path uploadRoot;
 

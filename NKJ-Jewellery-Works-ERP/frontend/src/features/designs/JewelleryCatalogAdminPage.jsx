@@ -534,7 +534,7 @@ export default function JewelleryCatalogAdminPage() {
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
                 <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload multiple design photographs
                   <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setImageFiles(Array.from(event.target.files || []))} />
-                  <small>JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Originals and optimized JPEG thumbnails are stored separately.</small>
+                  <small>HD recommended: 1200 × 1200 px or higher · JPG/JPEG/PNG/WebP · Maximum 10 MB. Original quality is preserved for the large design preview.</small>
                 </label>
               </div>
               {imageFiles.length > 0 && (
