@@ -20,6 +20,7 @@ import KarigarsPage from "../features/karigars/KarigarsPage";
 import CalculatorPage from "../features/calculator/CalculatorPage";
 import JewelleryDesignsPage from "../features/designs/JewelleryDesignsPage";
 import JewelleryCatalogAdminPage from "../features/designs/JewelleryCatalogAdminPage";
+import MobileDesignUploadPage from "../features/designs/MobileDesignUploadPage";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/invoice" element={<InvoicePage />} />
           <Route path="/designs" element={<JewelleryDesignsPage />} />
+          <Route path="/mobile-design-upload/:token" element={<MobileDesignUploadPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/setup-totp" element={<TotpSetup />} />
 
