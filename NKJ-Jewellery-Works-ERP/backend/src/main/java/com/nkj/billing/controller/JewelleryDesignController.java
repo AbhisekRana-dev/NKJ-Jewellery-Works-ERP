@@ -726,7 +726,7 @@ public class JewelleryDesignController {
                        d.weight_grams AS "weightGrams", d.price_inr AS "priceInr",
                        d.created_at AS "createdAt", d.updated_at AS "updatedAt",
                        c.metal_type AS "metalType", c.subcategory_name AS "subcategoryName",
-                       c.slug AS "subcategorySlug",
+                       c.subcategory_name AS "jewelleryType", c.slug AS "subcategorySlug",
                        img.thumbnail_url AS "thumbnailUrl", img.original_url AS "originalUrl",
                        COALESCE(img.image_count, 0) AS "imageCount"
                 """ + categoryJoin + """
@@ -784,7 +784,7 @@ public class JewelleryDesignController {
                        d.weight_grams AS "weightGrams", d.price_inr AS "priceInr",
                        d.created_at AS "createdAt", d.updated_at AS "updatedAt",
                        c.id AS "categoryId", c.metal_type AS "metalType",
-                       c.subcategory_name AS "subcategoryName", c.slug AS "subcategorySlug"
+                       c.subcategory_name AS "subcategoryName", c.subcategory_name AS "jewelleryType", c.slug AS "subcategorySlug"
                   FROM public.jewellery_designs d
                   JOIN public.jewellery_design_categories c ON c.id=d.category_id
                  WHERE d.id=? AND d.is_deleted=FALSE AND (? = TRUE OR d.is_active=TRUE)
