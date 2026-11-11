@@ -262,6 +262,39 @@ export default function JewelleryDesignsPage() {
     }
   };
 
+  useEffect(() => {
+    if (!selected) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handlePreviewKeys = (event) => {
+      if (event.key === "Escape") {
+        setSelected(null);
+        setZoomed(false);
+        return;
+      }
+      const imageCount = Array.isArray(selected.images) ? selected.images.length : 0;
+      if (imageCount < 2) return;
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        setActiveImageIndex((index) => (index + 1) % imageCount);
+        setZoomed(false);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        setActiveImageIndex((index) => (index - 1 + imageCount) % imageCount);
+        setZoomed(false);
+      }
+    };
+    window.addEventListener("keydown", handlePreviewKeys);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handlePreviewKeys);
+    };
+  }, [selected]);
+
+  const activeImage = selected?.images?.[activeImageIndex] || selected?.images?.[0] || null;
+  const modalImageUrl = activeImage?.originalUrl || selected?.originalUrl || activeImage?.thumbnailUrl || selected?.thumbnailUrl || "";
+  const modalThumbnailUrl = activeImage?.thumbnailUrl || selected?.thumbnailUrl || "";
+
   return (
     <Page active="designs">
       <div className="nkj-designs-page">
@@ -388,7 +421,15 @@ export default function JewelleryDesignsPage() {
                 {items.map((design) => (
                   <article className="nkj-design-card" key={design.id}>
                     <div className="nkj-design-card-image">
-                      <DesignImage design={design} />
+                      <button
+                        type="button"
+                        className="nkj-design-image-trigger"
+                        onClick={() => openDesign(design)}
+                        aria-label={`Open ${design.designName} photograph and details`}
+                      >
+                        <DesignImage design={design} />
+                        <span className="nkj-design-image-zoom-hint">View large photo <ArrowUpRight size={13} /></span>
+                      </button>
                       <button type="button" className={`nkj-design-favorite ${favorites.has(design.designCode) ? "saved" : ""}`}
                         onClick={() => toggleFavorite(design.designCode)}
                         aria-label={favorites.has(design.designCode) ? "Remove favorite" : "Add favorite"}>
@@ -448,10 +489,28 @@ export default function JewelleryDesignsPage() {
               <button type="button" className="nkj-design-modal-close" onClick={() => setSelected(null)} aria-label="Close design details">
                 <X size={19} />
               </button>
-              {(selected.images?.[activeImageIndex]?.originalUrl || selected.images?.[activeImageIndex]?.thumbnailUrl || selected.thumbnailUrl || selected.originalUrl)
-                ? <div className={"nkj-design-modal-photo" + (zoomed ? " zoomed" : "")} onClick={() => setZoomed((value) => !value)} title="Click to zoom">
-                    <img src={assetUrl(selected.images?.[activeImageIndex]?.originalUrl || selected.images?.[activeImageIndex]?.thumbnailUrl || selected.originalUrl || selected.thumbnailUrl)} alt={selected.images?.[activeImageIndex]?.altText || selected.designName} />
-                    <small>{zoomed ? "Click image to zoom out" : "Click image to zoom"}</small>
+              {modalImageUrl
+                ? <div className={"nkj-design-modal-photo" + (zoomed ? " zoomed" : "")}>
+                    <img
+                      src={assetUrl(modalImageUrl)}
+                      alt={activeImage?.altText || selected.designName}
+                      onClick={() => setZoomed((value) => !value)}
+                      onError={(event) => {
+                        const fallback = assetUrl(modalThumbnailUrl);
+                        if (fallback && fallback !== event.currentTarget.src && !event.currentTarget.dataset.fallbackTried) {
+                          event.currentTarget.dataset.fallbackTried = "true";
+                          event.currentTarget.src = fallback;
+                        }
+                      }}
+                    />
+                    {selected.images?.length > 1 && <>
+                      <button type="button" className="nkj-design-photo-nav prev" onClick={() => { setActiveImageIndex((index) => (index - 1 + selected.images.length) % selected.images.length); setZoomed(false); }} aria-label="Previous photograph">‹</button>
+                      <button type="button" className="nkj-design-photo-nav next" onClick={() => { setActiveImageIndex((index) => (index + 1) % selected.images.length); setZoomed(false); }} aria-label="Next photograph">›</button>
+                    </>}
+                    <button type="button" className="nkj-design-photo-zoom" onClick={() => setZoomed((value) => !value)}>
+                      {zoomed ? "Zoom out" : "Zoom in"}
+                    </button>
+                    <small>{zoomed ? "Zoomed view · click photo or Zoom out" : "Full-size photograph · click to zoom"}</small>
                   </div>
                 : <SampleArtwork design={selected} />}
               <div className="nkj-design-modal-content">
