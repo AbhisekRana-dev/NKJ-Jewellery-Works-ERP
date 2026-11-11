@@ -10,8 +10,9 @@ import "./JewelleryCatalogAdminPage.css";
 const API = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 const PAGE_SIZE = 30;
 const assetUrl = (path) => path && path.startsWith("/api/") ? `${API}${path.slice(4)}` : path;
-const blankForm = (categoryId = "") => ({
+const blankForm = (categoryId = "", metalType = "GOLD") => ({
   categoryId: String(categoryId),
+  metalType,
   designName: "",
   description: "",
   styleLabel: "",
@@ -25,7 +26,7 @@ const blankForm = (categoryId = "") => ({
   isFeatured: false,
 });
 
-async function uploadDesignImages(designId, files) {
+async function uploadDesignImages(designId, files, imageAdjustments = []) {
   const selectedFiles = Array.from(files || []);
   if (!selectedFiles.length) return null;
 
@@ -37,7 +38,13 @@ async function uploadDesignImages(designId, files) {
   // 20 photographs without asking the owner to repeat the selection.
   for (let offset = 0; offset < selectedFiles.length; offset += 20) {
     const formData = new FormData();
-    selectedFiles.slice(offset, offset + 20).forEach((file) => formData.append("files", file));
+    selectedFiles.slice(offset, offset + 20).forEach((file, index) => {
+      const sourceIndex = offset + index;
+      const adjustment = imageAdjustments[sourceIndex] || {};
+      formData.append("files", file);
+      formData.append("rotations", String(Number(adjustment.rotation) || 0));
+      formData.append("cropZooms", String(Number(adjustment.cropZoom) || 1));
+    });
 
     let response;
     try {
@@ -101,7 +108,10 @@ export default function JewelleryCatalogAdminPage() {
   const [currentDesignId, setCurrentDesignId] = useState("");
   const [form, setForm] = useState(blankForm());
   const [imageFiles, setImageFiles] = useState([]);
+  const [imageAdjustments, setImageAdjustments] = useState({});
   const [currentImages, setCurrentImages] = useState([]);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [deletingDesign, setDeletingDesign] = useState(false);
   const [bulkFiles, setBulkFiles] = useState([]);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -116,7 +126,11 @@ export default function JewelleryCatalogAdminPage() {
   const [qrNow, setQrNow] = useState(Date.now());
   const [qrCopied, setQrCopied] = useState(false);
   const imagePreviews = useMemo(
-    () => imageFiles.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    () => imageFiles.map((file) => ({
+      file,
+      key: `${file.name}::${file.size}::${file.lastModified}`,
+      url: URL.createObjectURL(file),
+    })),
     [imageFiles],
   );
 
@@ -125,7 +139,10 @@ export default function JewelleryCatalogAdminPage() {
   }, [imagePreviews]);
 
   const metalCategories = useMemo(() => categories.filter((item) => item.metalType === metal && item.isActive !== false), [categories, metal]);
-  const selectedCategory = categories.find((item) => String(item.id) === String(form.categoryId));
+  const formMetalCategories = useMemo(
+    () => categories.filter((item) => item.metalType === form.metalType && item.isActive !== false),
+    [categories, form.metalType],
+  );
 
   const loadCategories = useCallback(async () => {
     const data = await request("/admin/designs/categories");
@@ -273,8 +290,9 @@ export default function JewelleryCatalogAdminPage() {
     const categoryId = metalCategories[0]?.id || categories[0]?.id || "";
     setEditingId(null);
     setCurrentDesignId("");
-    setForm(blankForm(categoryId));
+    setForm(blankForm(categoryId, metal));
     setImageFiles([]);
+    setImageAdjustments({});
     setCurrentImages([]);
     setShowForm(true);
     setError("");
@@ -288,6 +306,7 @@ export default function JewelleryCatalogAdminPage() {
       setCurrentDesignId(detail.designId || "");
       setForm({
         categoryId: String(detail.categoryId),
+        metalType: detail.metalType || "GOLD",
         designName: detail.designName || "",
         description: detail.description || "",
         styleLabel: detail.styleLabel || "",
@@ -302,6 +321,7 @@ export default function JewelleryCatalogAdminPage() {
       });
       setCurrentImages(Array.isArray(detail.images) ? detail.images : []);
       setImageFiles([]);
+      setImageAdjustments({});
       setShowForm(true);
     } catch (err) {
       setError(err.message || "Could not open this design.");
@@ -404,9 +424,11 @@ export default function JewelleryCatalogAdminPage() {
         setCurrentDesignId(saved.designId || "");
       }
       if (imageFiles.length) {
-        const uploaded = await uploadDesignImages(id, imageFiles);
+        const transforms = imageFiles.map((file) => imageAdjustments[`${file.name}::${file.size}::${file.lastModified}`] || {});
+        const uploaded = await uploadDesignImages(id, imageFiles, transforms);
         if (Array.isArray(uploaded?.images)) setCurrentImages(uploaded.images);
         setImageFiles([]);
+        setImageAdjustments({});
       }
       setShowForm(false);
       setMessage(`${saved.designId || saved.designCode || "Design"} saved successfully.`);
@@ -472,14 +494,22 @@ export default function JewelleryCatalogAdminPage() {
     }
   };
 
-  const deleteDesign = async (design) => {
-    if (!window.confirm(`Delete ${design.designCode} — ${design.designName}? This removes this catalogue record and its uploaded photos.`)) return;
+  const deleteDesign = (design) => {
+    setDeleteCandidate(design);
+  };
+
+  const confirmDeleteDesign = async () => {
+    if (!deleteCandidate || deletingDesign) return;
+    setDeletingDesign(true);
     try {
-      await request(`/admin/designs/${design.id}`, { method: "DELETE" });
-      setMessage(`${design.designCode} deleted.`);
-      await loadDesigns(page);
+      await request(`/admin/designs/${deleteCandidate.id}`, { method: "DELETE" });
+      setMessage(`${deleteCandidate.designId || deleteCandidate.designCode} archived. The original record and photographs remain preserved.`);
+      setDeleteCandidate(null);
+      await Promise.all([loadCategories(), loadDesigns(page)]);
     } catch (err) {
-      setError(err.message || "Could not delete this design.");
+      setError(err.message || "Could not archive this design.");
+    } finally {
+      setDeletingDesign(false);
     }
   };
 
@@ -744,6 +774,31 @@ export default function JewelleryCatalogAdminPage() {
           </div>
         )}
 
+        {deleteCandidate && (
+          <div className="nkj-catalog-modal-backdrop nkj-catalog-delete-backdrop" role="presentation" onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !deletingDesign) setDeleteCandidate(null);
+          }}>
+            <section className="nkj-catalog-delete-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-delete-design-title">
+              <header><span>ARCHIVE JEWELLERY DESIGN</span><button type="button" onClick={() => setDeleteCandidate(null)} disabled={deletingDesign} aria-label="Close"><X size={18} /></button></header>
+              {deleteCandidate.thumbnailUrl && <img src={assetUrl(deleteCandidate.thumbnailUrl)} alt={deleteCandidate.designName} />}
+              <h2 id="nkj-delete-design-title">Archive this jewellery design?</h2>
+              <dl>
+                <div><dt>Design ID</dt><dd>{deleteCandidate.designId || deleteCandidate.designCode}</dd></div>
+                <div><dt>Design name</dt><dd>{deleteCandidate.designName}</dd></div>
+                <div><dt>Category</dt><dd>{deleteCandidate.metalType} · {deleteCandidate.subcategoryName}</dd></div>
+              </dl>
+              <p>The design will be hidden from the catalogue. Its database record, uploaded photographs, audit history and Design ID sequence will be preserved. This action does not delete invoice or transaction records.</p>
+              <footer>
+                <button type="button" disabled={deletingDesign} onClick={() => setDeleteCandidate(null)}>Cancel</button>
+                <button type="button" className="delete" disabled={deletingDesign} onClick={confirmDeleteDesign}>
+                  {deletingDesign ? <LoaderCircle className="spin" size={15} /> : <Trash2 size={15} />}
+                  {deletingDesign ? "Archiving…" : "Archive Design"}
+                </button>
+              </footer>
+            </section>
+          </div>
+        )}
+
         {showForm && (
           <div className="nkj-catalog-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
             <form className="nkj-catalog-modal" onSubmit={saveDesign}>
@@ -752,12 +807,21 @@ export default function JewelleryCatalogAdminPage() {
                 <label className="wide">Design ID (generated automatically · read-only)
                   <input value={editingId ? currentDesignId : "Generated after saving"} readOnly aria-readonly="true" />
                 </label>
-                <label className="wide">Approved metal / subcategory
+                <label>Main Category
+                  <select required disabled={Boolean(editingId)} value={form.metalType} onChange={(event) => {
+                    const nextMetal = event.target.value;
+                    const first = categories.find((item) => item.metalType === nextMetal && item.isActive !== false);
+                    setForm((current) => ({ ...current, metalType: nextMetal, categoryId: first ? String(first.id) : "" }));
+                  }}>
+                    <option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="DIAMOND">Diamond</option>
+                  </select>
+                </label>
+                <label>Subcategory
                   <select required disabled={Boolean(editingId)} value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
                     <option value="">Choose subcategory</option>
-                    {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
+                    {formMetalCategories.map((item) => <option key={item.id} value={item.id}>{item.subcategoryName}</option>)}
                   </select>
-                  {editingId && <small>A Design ID contains its original category. To use another subcategory, create a new design instead.</small>}
+                  {editingId && <small>The existing Design ID contains its original category. Create a new design to change subcategory.</small>}
                 </label>
                 <label className="wide">Design name<input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" /></label>
                 <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
@@ -769,15 +833,53 @@ export default function JewelleryCatalogAdminPage() {
                 <label>Price (₹)<input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" /></label>
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
                 <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload From Computer · multiple design photographs
-                  <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setImageFiles(Array.from(event.target.files || []))} />
-                  <small>HD recommended: 1200 × 1200 px or higher · JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Original quality is preserved. Photo upload is optional: save without a photo and the catalogue will show “Photo pending” until the owner uploads one.</small>
+                  <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => { setImageFiles(Array.from(event.target.files || [])); setImageAdjustments({}); event.target.value = ""; }} />
+                  <small>JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Original bytes are preserved; separate display and thumbnail copies are generated. You can rotate and crop before saving.</small>
                 </label>
               </div>
               {imageFiles.length > 0 && (
                 <>
-                  <p className="nkj-catalog-selected-files">{imageFiles.length} image(s) selected: {imageFiles.map((file) => file.name).join(", ")}</p>
+                  <div className="nkj-catalog-selected-files">{imageFiles.length} image(s) selected for upload</div>
                   <div className="nkj-catalog-image-previews" aria-label="Selected image previews">
-                    {imagePreviews.map((preview) => <figure key={preview.url}><img src={preview.url} alt={preview.file.name} /><figcaption>{preview.file.name}</figcaption></figure>)}
+                    {imagePreviews.map((preview) => {
+                      const adjustment = imageAdjustments[preview.key] || { rotation: 0, cropZoom: 1 };
+                      return (
+                        <figure key={preview.url}>
+                          <div className="nkj-catalog-preview-frame">
+                            <img
+                              src={preview.url}
+                              alt={preview.file.name}
+                              style={{ transform: `rotate(${adjustment.rotation}deg) scale(${adjustment.cropZoom})` }}
+                            />
+                          </div>
+                          <figcaption title={preview.file.name}>{preview.file.name}</figcaption>
+                          <div className="nkj-catalog-desktop-image-tools">
+                            <button type="button" onClick={() => setImageAdjustments((current) => ({
+                              ...current,
+                              [preview.key]: { ...adjustment, rotation: (adjustment.rotation + 270) % 360 },
+                            }))}><RotateCcw size={13} /> Left</button>
+                            <button type="button" onClick={() => setImageAdjustments((current) => ({
+                              ...current,
+                              [preview.key]: { ...adjustment, rotation: (adjustment.rotation + 90) % 360 },
+                            }))}><RotateCw size={13} /> Right</button>
+                          </div>
+                          <label className="nkj-catalog-desktop-crop">Crop / zoom · {Number(adjustment.cropZoom).toFixed(1)}×
+                            <input type="range" min="1" max="2" step="0.1" value={adjustment.cropZoom} onChange={(event) => setImageAdjustments((current) => ({
+                              ...current,
+                              [preview.key]: { ...adjustment, cropZoom: Number(event.target.value) },
+                            }))} />
+                          </label>
+                          <button type="button" className="nkj-catalog-remove-pending" onClick={() => {
+                            setImageFiles((current) => current.filter((file) => file !== preview.file));
+                            setImageAdjustments((current) => {
+                              const next = { ...current };
+                              delete next[preview.key];
+                              return next;
+                            });
+                          }} aria-label={"Remove " + preview.file.name}><X size={13} /> Remove</button>
+                        </figure>
+                      );
+                    })}
                   </div>
                 </>
               )}
