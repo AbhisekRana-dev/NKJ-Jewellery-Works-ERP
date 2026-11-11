@@ -395,9 +395,9 @@ public class JewelleryDesignController {
                  WHERE session_id=? AND consumed_at IS NULL AND revoked_at IS NULL
                 """, designPk, request.getRemoteAddr(), session.get("session_id"));
 
-        Map<String, Object> response = new LinkedHashMap<>(withImages);
-        response.put("uploadStatus", "UPLOADED");
-        return response;
+        Map<String, Object> uploadResponse = new LinkedHashMap<>(withImages);
+        uploadResponse.put("uploadStatus", "UPLOADED");
+        return uploadResponse;
     }
 
     private static void preventMobileUploadCaching(HttpServletResponse response) {
