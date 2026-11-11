@@ -78,7 +78,7 @@ function SampleArtwork({ design }) {
 function DesignImage({ design }) {
   const [loadState, setLoadState] = useState("loading");
   const [retry, setRetry] = useState(0);
-  const source = assetUrl(design.thumbnailUrl);
+  const source = design.imageStatus === "READY" ? assetUrl(design.thumbnailUrl) : "";
 
   if (!source) {
     return (
@@ -314,10 +314,14 @@ export default function JewelleryDesignsPage() {
   }, [selected]);
 
   const activeImage = selected?.images?.[activeImageIndex] || selected?.images?.[0] || null;
-  const modalImageUrl = zoomed
-    ? (activeImage?.originalUrl || selected?.originalUrl || activeImage?.displayUrl || activeImage?.thumbnailUrl || "")
-    : (activeImage?.displayUrl || activeImage?.originalUrl || selected?.originalUrl || activeImage?.thumbnailUrl || selected?.thumbnailUrl || "");
-  const modalThumbnailUrl = activeImage?.thumbnailUrl || selected?.thumbnailUrl || "";
+  const modalImageUrl = selected?.imageStatus === "READY"
+    ? (zoomed
+        ? (activeImage?.originalUrl || selected?.originalUrl || activeImage?.displayUrl || activeImage?.thumbnailUrl || "")
+        : (activeImage?.displayUrl || activeImage?.originalUrl || selected?.originalUrl || activeImage?.thumbnailUrl || selected?.thumbnailUrl || ""))
+    : "";
+  const modalThumbnailUrl = selected?.imageStatus === "READY"
+    ? (activeImage?.thumbnailUrl || selected?.thumbnailUrl || "")
+    : "";
 
   return (
     <Page active="designs">
