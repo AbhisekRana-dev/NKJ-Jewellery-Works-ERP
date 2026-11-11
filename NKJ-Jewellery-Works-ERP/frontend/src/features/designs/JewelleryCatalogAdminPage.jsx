@@ -136,6 +136,8 @@ export default function JewelleryCatalogAdminPage() {
   const [form, setForm] = useState(blankForm());
   const [imageFiles, setImageFiles] = useState([]);
   const [currentImages, setCurrentImages] = useState([]);
+  const [viewingDesign, setViewingDesign] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [bulkFiles, setBulkFiles] = useState([]);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -246,6 +248,19 @@ export default function JewelleryCatalogAdminPage() {
       setShowForm(true);
     } catch (err) {
       setError(err.message || "Could not open this design.");
+    }
+  };
+
+  const openDetails = async (design) => {
+    setDetailLoading(true);
+    setError("");
+    try {
+      const detail = await request(`/admin/designs/${design.id}`);
+      setViewingDesign(detail);
+    } catch (err) {
+      setError(err.message || "Could not load design details.");
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -714,6 +729,7 @@ export default function JewelleryCatalogAdminPage() {
                     <td>{design.isSample ? <span className="nkj-catalog-badge sample">Sample inspiration</span> : <span className="nkj-catalog-badge real">Shop photo</span>}</td>
                     <td>{design.isActive ? <span className="nkj-catalog-badge active">Active</span> : <span className="nkj-catalog-badge inactive">Inactive</span>}{design.isFeatured && <span className="nkj-catalog-badge featured">Featured</span>}</td>
                     <td><div className="nkj-catalog-actions">
+                      <button type="button" title="View design details" onClick={() => openDetails(design)} disabled={detailLoading}><Eye size={15} /></button>
                       <button type="button" title="Edit design" onClick={() => openEditForm(design)}><Pencil size={15} /></button>
                       <button type="button" title={design.isFeatured ? "Remove featured" : "Feature design"} onClick={() => changeFeatured(design)}><Star size={15} fill={design.isFeatured ? "currentColor" : "none"} /></button>
                       <button type="button" title={design.isActive ? "Deactivate" : "Activate"} onClick={() => changeStatus(design)}>{design.isActive ? <EyeOff size={15} /> : <Eye size={15} />}</button>
@@ -735,10 +751,49 @@ export default function JewelleryCatalogAdminPage() {
           </div>
         </div>
 
+        {viewingDesign && (
+          <div className="nkj-catalog-modal-backdrop nkj-catalog-details-backdrop" role="presentation" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setViewingDesign(null);
+          }}>
+            <section className="nkj-catalog-details-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-catalog-details-title">
+              <header>
+                <div><span>JEWELLERY DESIGN DETAILS</span><h2 id="nkj-catalog-details-title">{viewingDesign.designName}</h2></div>
+                <button type="button" onClick={() => setViewingDesign(null)} aria-label="Close details"><X size={19} /></button>
+              </header>
+              <div className="nkj-catalog-details-id">{viewingDesign.designId || viewingDesign.designCode}</div>
+              <div className="nkj-catalog-details-photos">
+                {(viewingDesign.images || []).map((image) => (
+                  <img key={image.id} src={assetUrl(image.thumbnailUrl)} alt={image.altText || viewingDesign.designName} loading="lazy" />
+                ))}
+                {!viewingDesign.images?.length && <div>No uploaded shop photographs.</div>}
+              </div>
+              <dl>
+                <div><dt>Main category</dt><dd>{viewingDesign.metalType}</dd></div>
+                <div><dt>Subcategory</dt><dd>{viewingDesign.subcategoryName}</dd></div>
+                <div><dt>Design name</dt><dd>{viewingDesign.designName}</dd></div>
+                <div><dt>Style</dt><dd>{viewingDesign.styleLabel || "—"}</dd></div>
+                <div><dt>Purity</dt><dd>{viewingDesign.purity || "—"}</dd></div>
+                <div><dt>Weight</dt><dd>{viewingDesign.weightGrams == null ? "—" : Number(viewingDesign.weightGrams).toLocaleString("en-IN") + " g"}</dd></div>
+                <div><dt>Price</dt><dd>{viewingDesign.priceInr == null ? "Not set" : "₹" + Number(viewingDesign.priceInr).toLocaleString("en-IN")}</dd></div>
+                <div><dt>Status</dt><dd>{viewingDesign.isActive ? "Active" : "Inactive"}</dd></div>
+              </dl>
+              <p>{viewingDesign.description || "No description added."}</p>
+              <footer>
+                <button type="button" onClick={() => setViewingDesign(null)}>Close</button>
+                <button type="button" className="primary" onClick={() => {
+                  const design = viewingDesign;
+                  setViewingDesign(null);
+                  openEditForm({ id: design.id });
+                }}><Pencil size={15} /> Edit Design</button>
+              </footer>
+            </section>
+          </div>
+        )}
+
         {showForm && (
-          <div className="nkj-catalog-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
+          <div className="nkj-catalog-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) { closeCamera(); setShowForm(false); } }}>
             <form className="nkj-catalog-modal" onSubmit={saveDesign}>
-              <header><div><span>OWNER CATALOGUE</span><h2>{editingId ? "Edit Jewellery Design" : "Add New Design"}</h2></div><button type="button" onClick={() => setShowForm(false)} aria-label="Close"><X size={19} /></button></header>
+              <header><div><span>OWNER CATALOGUE</span><h2>{editingId ? "Edit Jewellery Design" : "Add New Design"}</h2></div><button type="button" onClick={() => { closeCamera(); setShowForm(false); }} aria-label="Close"><X size={19} /></button></header>
               <div className="nkj-catalog-form-grid">
                 <label className="wide">Design ID (generated automatically · read-only)
                   <input value={editingId ? currentDesignId : "Generated after saving"} readOnly aria-readonly="true" />
@@ -857,7 +912,7 @@ export default function JewelleryCatalogAdminPage() {
                 <label><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Publish / active</label>
                 <label><input type="checkbox" checked={form.isFeatured} onChange={(event) => setForm((current) => ({ ...current, isFeatured: event.target.checked }))} /> Featured design</label>
               </div>
-              <footer><button type="button" className="secondary" disabled={saving} onClick={() => setShowForm(false)}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}{saving ? "Saving…" : "Save Design"}</button></footer>
+              <footer><button type="button" className="secondary" disabled={saving} onClick={() => { closeCamera(); setShowForm(false); }}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}{saving ? "Saving…" : "Save Design"}</button></footer>
             </form>
           </div>
         )}
