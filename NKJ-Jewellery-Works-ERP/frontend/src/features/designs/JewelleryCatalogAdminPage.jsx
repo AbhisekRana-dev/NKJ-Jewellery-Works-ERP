@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone, RotateCcw, RotateCw, Info } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone, RotateCcw, RotateCw, Info, ArrowRightLeft } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -106,6 +106,8 @@ export default function JewelleryCatalogAdminPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [currentDesignId, setCurrentDesignId] = useState("");
+  const [moveCategoryId, setMoveCategoryId] = useState("");
+  const [movingDesign, setMovingDesign] = useState(false);
   const [form, setForm] = useState(blankForm());
   const [imageFiles, setImageFiles] = useState([]);
   const [imageAdjustments, setImageAdjustments] = useState({});
@@ -292,6 +294,7 @@ export default function JewelleryCatalogAdminPage() {
     const categoryId = metalCategories[0]?.id || categories[0]?.id || "";
     setEditingId(null);
     setCurrentDesignId("");
+    setMoveCategoryId("");
     setForm(blankForm(categoryId, metal));
     setImageFiles([]);
     setImageAdjustments({});
@@ -306,6 +309,7 @@ export default function JewelleryCatalogAdminPage() {
       const detail = await request(`/admin/designs/${design.id}`);
       setEditingId(design.id);
       setCurrentDesignId(detail.designId || "");
+      setMoveCategoryId("");
       setForm({
         categoryId: String(detail.categoryId),
         metalType: detail.metalType || "GOLD",
@@ -506,6 +510,43 @@ export default function JewelleryCatalogAdminPage() {
       setError(err.message || "Could not load design details.");
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const moveDesign = async () => {
+    if (!editingId || !moveCategoryId || movingDesign) return;
+    const destination = formMetalCategories.find((item) => String(item.id) === String(moveCategoryId));
+    if (!destination) {
+      setError("Choose a valid destination subcategory.");
+      return;
+    }
+    const previousId = currentDesignId;
+    if (!window.confirm(
+      `Move "${form.designName}" to ${destination.subcategoryName}? A new Design ID will be generated. The original ID ${previousId} will remain in the archived record.`
+    )) return;
+
+    setMovingDesign(true);
+    setError("");
+    setMessage("");
+    try {
+      const moved = await request(`/admin/designs/${editingId}/move`, {
+        method: "POST",
+        body: JSON.stringify({ categoryId: Number(destination.id) }),
+      });
+      setShowForm(false);
+      setEditingId(null);
+      setCurrentDesignId("");
+      setMoveCategoryId("");
+      setSubcategory(destination.slug);
+      setPage(0);
+      setMessage(
+        `Moved to ${destination.subcategoryName}. New ID: ${moved.designId}. Original ID archived: ${moved.movedFromDesignId || previousId}.`
+      );
+      await loadCategories();
+    } catch (err) {
+      setError(err.message || "Could not move this design.");
+    } finally {
+      setMovingDesign(false);
     }
   };
 
@@ -879,8 +920,28 @@ export default function JewelleryCatalogAdminPage() {
                     <option value="">Choose subcategory</option>
                     {formMetalCategories.map((item) => <option key={item.id} value={item.id}>{item.subcategoryName}</option>)}
                   </select>
-                  {editingId && <small>The existing Design ID contains its original category. Create a new design to change subcategory.</small>}
+                  {editingId && <small>A Design ID never changes. Use the safe move option below to create a new ID and archive this original record.</small>}
                 </label>
+                {editingId && (
+                  <div className="wide nkj-catalog-move-panel">
+                    <div>
+                      <b>Move to another subcategory</b>
+                      <small>The original Design ID remains archived. Design details and photo references transfer to the new record.</small>
+                    </div>
+                    <div className="nkj-catalog-move-controls">
+                      <select value={moveCategoryId} onChange={(event) => setMoveCategoryId(event.target.value)} aria-label="Destination subcategory">
+                        <option value="">Choose destination subcategory</option>
+                        {formMetalCategories.filter((item) => String(item.id) !== String(form.categoryId)).map((item) => (
+                          <option key={item.id} value={item.id}>{item.subcategoryName}</option>
+                        ))}
+                      </select>
+                      <button type="button" disabled={!moveCategoryId || movingDesign || saving} onClick={moveDesign}>
+                        {movingDesign ? <LoaderCircle className="spin" size={14} /> : <ArrowRightLeft size={14} />}
+                        {movingDesign ? "Moving…" : "Move and generate new ID"}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <label className="wide">Design name<input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" /></label>
                 <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
                 <label>Regional inspiration<input maxLength={80} value={form.regionalInspiration} onChange={(event) => setForm((current) => ({ ...current, regionalInspiration: event.target.value }))} placeholder="e.g. Bengali / Rajasthani / Pan-Indian" /></label>
