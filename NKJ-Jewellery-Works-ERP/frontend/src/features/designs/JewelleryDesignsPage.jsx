@@ -126,11 +126,8 @@ export default function JewelleryDesignsPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("latest");
   const [purity, setPurity] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
   const [minWeight, setMinWeight] = useState("");
   const [maxWeight, setMaxWeight] = useState("");
-  const [featuredItems, setFeaturedItems] = useState([]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [items, setItems] = useState([]);
@@ -180,8 +177,6 @@ export default function JewelleryDesignsPage() {
       if (subcategory) params.set("subcategory", subcategory);
       if (search.trim()) params.set("q", search.trim());
       if (purity) params.set("purity", purity);
-      if (minPrice !== "") params.set("minPrice", minPrice);
-      if (maxPrice !== "") params.set("maxPrice", maxPrice);
       if (minWeight !== "") params.set("minWeight", minWeight);
       if (maxWeight !== "") params.set("maxWeight", maxWeight);
       const result = await request(`/designs?${params.toString()}`, { publicRequest: true });
@@ -198,21 +193,12 @@ export default function JewelleryDesignsPage() {
     } finally {
       setLoading(false);
     }
-  }, [metal, subcategory, search, sort, purity, minPrice, maxPrice, minWeight, maxWeight]);
+  }, [metal, subcategory, search, sort, purity, minWeight, maxWeight]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => loadDesigns(0, false), search.trim() ? 280 : 0);
     return () => window.clearTimeout(timer);
   }, [loadDesigns]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const params = new URLSearchParams({ metal, sort: "latest", page: "0", size: "6", featured: "true" });
-    request("/designs?" + params.toString(), { publicRequest: true })
-      .then((result) => { if (!cancelled) setFeaturedItems(Array.isArray(result.items) ? result.items : []); })
-      .catch(() => { if (!cancelled) setFeaturedItems([]); });
-    return () => { cancelled = true; };
-  }, [metal]);
 
   const refreshCatalogue = useCallback(async () => {
     const [categoryResult] = await Promise.all([
@@ -356,24 +342,6 @@ export default function JewelleryDesignsPage() {
           )}
         </section>
 
-        {featuredItems.length > 0 && (
-          <section className="nkj-designs-featured-section">
-            <div className="nkj-designs-section-heading">
-              <div><span>OWNER SELECTED</span><h2>Featured {currentMetal.label} Designs</h2></div>
-              <small>{featuredItems.length} featured</small>
-            </div>
-            <div className="nkj-designs-featured-grid">
-              {featuredItems.map((design) => (
-                <button type="button" className="nkj-designs-featured-card" key={design.id} onClick={() => openDesign(design)}>
-                  <DesignImage design={design} />
-                  <span><b>{design.designName}</b><small>{design.subcategoryName}</small></span>
-                  <Star size={14} fill="currentColor" />
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
         <section className="nkj-designs-gallery-section">
           <div className="nkj-designs-gallery-heading">
             <div>
@@ -405,11 +373,9 @@ export default function JewelleryDesignsPage() {
             <label>Purity<select value={purity} onChange={(event) => setPurity(event.target.value)}>
               <option value="">All purities</option><option value="24K">24K</option><option value="22K">22K</option><option value="18K">18K</option><option value="14K">14K</option><option value="925">925 Silver</option><option value="999">999 Silver</option>
             </select></label>
-            <label>Minimum price (₹)<input type="number" min="0" value={minPrice} onChange={(event) => setMinPrice(event.target.value)} placeholder="No minimum" /></label>
-            <label>Maximum price (₹)<input type="number" min="0" value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} placeholder="No maximum" /></label>
             <label>Minimum weight (g)<input type="number" min="0" step="0.001" value={minWeight} onChange={(event) => setMinWeight(event.target.value)} placeholder="No minimum" /></label>
             <label>Maximum weight (g)<input type="number" min="0" step="0.001" value={maxWeight} onChange={(event) => setMaxWeight(event.target.value)} placeholder="No maximum" /></label>
-            <button type="button" onClick={() => { setPurity(""); setMinPrice(""); setMaxPrice(""); setMinWeight(""); setMaxWeight(""); }}>Clear filters</button>
+            <button type="button" onClick={() => { setPurity(""); setMinWeight(""); setMaxWeight(""); }}>Clear filters</button>
           </div>
 
           {error && <div className="nkj-designs-error" role="alert">{error}</div>}
@@ -522,7 +488,6 @@ export default function JewelleryDesignsPage() {
                   <div><dt>Style</dt><dd>{selected.styleLabel || "—"}</dd></div>
                   <div><dt>Purity</dt><dd>{selected.purity || "Not specified"}</dd></div>
                   <div><dt>Weight</dt><dd>{selected.weightGrams != null ? Number(selected.weightGrams).toLocaleString("en-IN") + " g" : "Not specified"}</dd></div>
-                  <div><dt>Price</dt><dd>{selected.priceInr != null ? "₹" + Number(selected.priceInr).toLocaleString("en-IN") : "Contact shop"}</dd></div>
                   <div><dt>Images</dt><dd>{selected.images?.length || selected.imageCount || 0}</dd></div>
                   <div><dt>Catalogue status</dt><dd>{selected.isSample ? "Sample inspiration" : "Owner-uploaded shop design"}</dd></div>
                 </dl>
