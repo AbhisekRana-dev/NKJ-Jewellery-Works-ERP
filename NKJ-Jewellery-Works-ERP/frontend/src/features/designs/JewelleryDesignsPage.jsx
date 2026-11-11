@@ -553,7 +553,11 @@ export default function JewelleryDesignsPage() {
                     </button>
                     <small>{zoomed ? "Zoomed view · click photo or Zoom out" : "Full-size photograph · click to zoom"}</small>
                   </div>
-                : <SampleArtwork design={selected} />}
+                : <div className="nkj-design-photo-missing nkj-design-modal-photo-pending" role="img" aria-label="Jewellery photograph pending upload">
+                  <ImagePlus size={42} />
+                  <b>PHOTOGRAPH PENDING</b>
+                  <span>The owner has not uploaded a verified product photograph for this design yet.</span>
+                </div>}
               <div className="nkj-design-modal-content">
                 <span>{selected.designId || selected.designCode} • {selected.metalType} • {selected.subcategoryName}</span>
                 {selected.designId && selected.designCode && <small className="nkj-design-legacy-code">Legacy code: {selected.designCode}</small>}
