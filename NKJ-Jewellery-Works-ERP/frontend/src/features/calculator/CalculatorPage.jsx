@@ -80,7 +80,7 @@ function evaluateExpression(source) {
   return result;
 }
 
-function ManualCalculator() {
+function ManualCalculator({ active }) {
   const [expression, setExpression] = useState("0");
   const [result, setResult] = useState("0");
   const [error, setError] = useState("");
@@ -117,6 +117,8 @@ function ManualCalculator() {
   // Capture keyboard input while this calculator is mounted. Capture mode
   // lets the calculator receive keys before other page shortcuts can swallow them.
   useEffect(() => {
+    if (!active) return undefined;
+
     const handleCalculatorKeyDown = (event) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
 
@@ -172,7 +174,7 @@ function ManualCalculator() {
 
     window.addEventListener("keydown", handleCalculatorKeyDown, true);
     return () => window.removeEventListener("keydown", handleCalculatorKeyDown, true);
-  }, [append, calculate, clear, backspace]);
+  }, [active, append, calculate, clear, backspace]);
 
   const keys = [
     ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
@@ -210,7 +212,7 @@ function ManualCalculator() {
   );
 }
 
-function OrnamentCalculator({ mode }) {
+function OrnamentCalculator({ mode, active }) {
   const isOld = mode === "old";
   const [weight, setWeight] = useState("");
   const [purity, setPurity] = useState("");
@@ -251,14 +253,16 @@ function OrnamentCalculator({ mode }) {
   // Use capture phase so shell/page keyboard handlers cannot swallow Escape.
   // Escape works while focus is inside any calculator field or on the calculator page.
   useEffect(() => {
+    if (!active) return undefined;
+
     const handleEscape = (event) => {
       if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
-      const insideCalculator = target instanceof Element
-        && Boolean(target.closest(".nkj-calc-ornament"));
+      const insideCalculatorPage = target instanceof Element
+        && Boolean(target.closest(".nkj-calculator-page"));
       const pageHasCalculatorFocus = target === document.body
         || target === document.documentElement
-        || insideCalculator;
+        || insideCalculatorPage;
       if (!pageHasCalculatorFocus) return;
 
       event.preventDefault();
@@ -268,7 +272,7 @@ function OrnamentCalculator({ mode }) {
 
     window.addEventListener("keydown", handleEscape, true);
     return () => window.removeEventListener("keydown", handleEscape, true);
-  }, [reset]);
+  }, [active, reset]);
 
   return (
     <section className="nkj-calc-ornament">
@@ -367,14 +371,11 @@ function OrnamentCalculator({ mode }) {
 
 export default function CalculatorPage() {
   const [mode, setMode] = useState("new");
-  const [calculatorResetVersion, setCalculatorResetVersion] = useState(0);
 
   const changeMode = (nextMode) => {
     if (nextMode === mode) return;
-    // Force a clean calculator instance whenever New/Old/Manual is changed.
-    // This clears values, validation messages and selected making-charge mode.
+    // Preserve each calculator's independent values when changing tabs.
     setMode(nextMode);
-    setCalculatorResetVersion((version) => version + 1);
   };
 
   const options = [
@@ -415,9 +416,15 @@ export default function CalculatorPage() {
               <Coins size={20} />
               <h2>{options.find((option) => option.id === mode)?.label}</h2>
             </div>
-            {mode === "manual"
-              ? <ManualCalculator key={`manual-${calculatorResetVersion}`} />
-              : <OrnamentCalculator key={`${mode}-${calculatorResetVersion}`} mode={mode} />}
+            <div className="nkj-calculator-panel" hidden={mode !== "new"}>
+              <OrnamentCalculator mode="new" active={mode === "new"} />
+            </div>
+            <div className="nkj-calculator-panel" hidden={mode !== "old"}>
+              <OrnamentCalculator mode="old" active={mode === "old"} />
+            </div>
+            <div className="nkj-calculator-panel" hidden={mode !== "manual"}>
+              <ManualCalculator active={mode === "manual"} />
+            </div>
           </section>
         </div>
       </div>

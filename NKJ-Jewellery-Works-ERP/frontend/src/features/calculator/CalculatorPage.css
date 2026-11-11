@@ -320,3 +320,9 @@
 .nkj-calc-fields .nkj-calc-making-mode-field {
   align-content: start;
 }
+
+
+/* Keep inactive calculator modes mounted so their entered values persist. */
+.nkj-calculator-panel[hidden] {
+  display: none !important;
+}
