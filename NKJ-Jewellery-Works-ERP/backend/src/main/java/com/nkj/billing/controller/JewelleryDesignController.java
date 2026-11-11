@@ -202,7 +202,8 @@ public class JewelleryDesignController {
                           FROM UNNEST(ARRAY[
                               'session_id', 'token_hash', 'created_by', 'created_at',
                               'expires_at', 'consumed_at', 'revoked_at', 'uploaded_design_id',
-                              'created_ip', 'uploaded_ip', 'first_scanned_at'
+                              'created_ip', 'uploaded_ip', 'first_scanned_at',
+                              'reserved_design_id', 'reserved_category_id'
                           ]::TEXT[]) AS expected(column_name)
                          WHERE NOT EXISTS (
                              SELECT 1
@@ -223,7 +224,7 @@ public class JewelleryDesignController {
             response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             return Map.of("message",
                     "The QR upload database schema is incomplete. Missing columns: " + missingColumns
-                    + ". Restart the backend and repair Flyway migrations V32 and V37.");
+                    + ". Restart the backend and confirm Flyway migrations V32, V37 and V38 have completed successfully.");
         }
 
         // Resolve and validate the website URL before revoking or creating sessions.
@@ -371,6 +372,56 @@ public class JewelleryDesignController {
         return new LinkedHashMap<>(rows.get(0));
     }
 
+    @PostMapping("/api/mobile-design-upload/{token}/design-id")
+    @Transactional
+    public Map<String, Object> reserveMobileDesignId(
+            @PathVariable String token,
+            @RequestBody Map<String, Object> body,
+            HttpServletResponse response) {
+        preventMobileUploadCaching(response);
+        if (token == null || token.length() < 40 || token.length() > 100
+                || !token.matches("[A-Za-z0-9_-]+")) {
+            throw new IllegalArgumentException("This QR upload link is invalid.");
+        }
+
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT session_id, (expires_at > NOW()) AS "notExpired",
+                       (consumed_at IS NOT NULL) AS consumed,
+                       (revoked_at IS NOT NULL) AS revoked,
+                       reserved_design_id AS "reservedDesignId",
+                       reserved_category_id AS "reservedCategoryId"
+                  FROM public.jewellery_design_upload_sessions
+                 WHERE token_hash=?
+                 FOR UPDATE
+                """, sha256Hex(token));
+        if (rows.isEmpty()) throw new IllegalArgumentException("This QR upload link is invalid or expired.");
+        Map<String, Object> session = rows.get(0);
+        if (Boolean.TRUE.equals(session.get("revoked"))
+                || Boolean.TRUE.equals(session.get("consumed"))
+                || !Boolean.TRUE.equals(session.get("notExpired"))) {
+            throw new IllegalArgumentException("This QR upload session is no longer active. Ask the owner to generate a new QR code.");
+        }
+
+        long categoryId = number(body.get("categoryId"), "Choose a jewellery subcategory.");
+        String metal = categoryMetal(categoryId);
+        Object reservedCategory = session.get("reservedCategoryId");
+        String reservedId = (String) session.get("reservedDesignId");
+        if (reservedId != null && reservedCategory instanceof Number
+                && ((Number) reservedCategory).longValue() == categoryId) {
+            return Map.of("designId", reservedId, "categoryId", categoryId, "reserved", true);
+        }
+
+        // Locking the session row makes retries/concurrent requests safe.
+        // Unused sequence values are never reused when a category is changed.
+        String nextId = nextDesignId(categoryId, metal);
+        jdbc.update("""
+                UPDATE public.jewellery_design_upload_sessions
+                   SET reserved_design_id=?, reserved_category_id=?
+                 WHERE session_id=? AND consumed_at IS NULL AND revoked_at IS NULL
+                """, nextId, categoryId, session.get("session_id"));
+        return Map.of("designId", nextId, "categoryId", categoryId, "reserved", true);
+    }
+
     @PostMapping(value = "/api/mobile-design-upload/{token}/design", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
@@ -400,7 +451,9 @@ public class JewelleryDesignController {
                 SELECT session_id, created_by,
                        (expires_at > NOW()) AS "notExpired",
                        (consumed_at IS NOT NULL) AS consumed,
-                       (revoked_at IS NOT NULL) AS revoked
+                       (revoked_at IS NOT NULL) AS revoked,
+                       reserved_design_id AS "reservedDesignId",
+                       reserved_category_id AS "reservedCategoryId"
                   FROM public.jewellery_design_upload_sessions
                  WHERE token_hash=?
                  FOR UPDATE
@@ -431,9 +484,14 @@ public class JewelleryDesignController {
         body.put("isActive", isActive);
         body.put("isFeatured", isFeatured);
 
-        // Use the same backend-generated ID and image-storage methods as desktop.
-        // The locked session row guarantees only one mobile design submission.
-        Map<String, Object> saved = createDesign(body);
+        // Reuse the backend Design ID already shown on the phone when the selected
+        // subcategory matches. Otherwise allocate a fresh category-scoped ID.
+        String reservedDesignId = (String) session.get("reservedDesignId");
+        Object reservedCategoryId = session.get("reservedCategoryId");
+        boolean matchingReservation = reservedDesignId != null
+                && reservedCategoryId instanceof Number
+                && ((Number) reservedCategoryId).longValue() == Long.parseLong(categoryId);
+        Map<String, Object> saved = createDesign(body, matchingReservation ? reservedDesignId : null);
         long designPk = ((Number) saved.get("id")).longValue();
         Map<String, Object> withImages = storeDesignImages(designPk, files, rotations, cropZooms);
 
@@ -467,6 +525,10 @@ public class JewelleryDesignController {
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> createDesign(@RequestBody Map<String, Object> body) {
+        return createDesign(body, null);
+    }
+
+    private Map<String, Object> createDesign(Map<String, Object> body, String reservedDesignId) {
         long categoryId = number(body.get("categoryId"), "Choose a subcategory.");
         String name = requiredText(body.get("designName"), "Design name is required.", 160);
         String description = text(body.get("description"), 5000);
@@ -481,7 +543,20 @@ public class JewelleryDesignController {
         ensureUniqueDesignName(categoryId, name, null);
         if (material.isBlank()) material = defaultMaterialLabel(metal);
         if (regional.isBlank()) regional = "Pan-Indian";
-        String designId = nextDesignId(categoryId, metal);
+        String designId;
+        if (reservedDesignId == null || reservedDesignId.isBlank()) {
+            designId = nextDesignId(categoryId, metal);
+        } else {
+            String categoryName = jdbc.queryForObject(
+                    "SELECT subcategory_name FROM public.jewellery_design_categories WHERE id=? AND is_active=TRUE",
+                    String.class, categoryId);
+            String expectedPrefix = "NKJ_" + metal + "_" + categoryIdentifier(categoryName) + "_";
+            if (!reservedDesignId.startsWith(expectedPrefix)
+                    || !reservedDesignId.matches("NKJ_[A-Z0-9_]+_[0-9]{4,}")) {
+                throw new IllegalArgumentException("The reserved Design ID does not match the selected category.");
+            }
+            designId = reservedDesignId;
+        }
 
         Long next = jdbc.queryForObject(
                 "UPDATE public.jewellery_design_code_counters SET last_value = last_value + 1 WHERE metal_type = ? RETURNING last_value",
