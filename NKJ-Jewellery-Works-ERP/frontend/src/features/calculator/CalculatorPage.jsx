@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import "./CalculatorPage.css";
@@ -114,6 +114,48 @@ function ManualCalculator() {
     setExpression((current) => current.length <= 1 ? "0" : current.slice(0, -1));
   };
 
+  // Listen only while ManualCalculator is mounted. This lets the owner type
+  // directly from the physical keyboard without first focusing a hidden input.
+  useEffect(() => {
+    const handleCalculatorKeyDown = (event) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+
+      const target = event.target;
+      const isEditingField = target instanceof HTMLElement && (
+        target.isContentEditable
+        || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+      );
+      if (isEditingField) return;
+
+      const key = event.key;
+      if (/^[0-9.]$/.test(key) || ["+", "-", "*", "/", "%", "(", ")"].includes(key)) {
+        event.preventDefault();
+        append(key);
+        return;
+      }
+
+      if (key === "Enter" || key === "=") {
+        event.preventDefault();
+        calculate();
+        return;
+      }
+
+      if (key === "Backspace" || key === "Delete") {
+        event.preventDefault();
+        backspace();
+        return;
+      }
+
+      if (key === "Escape") {
+        event.preventDefault();
+        clear();
+      }
+    };
+
+    window.addEventListener("keydown", handleCalculatorKeyDown);
+    return () => window.removeEventListener("keydown", handleCalculatorKeyDown);
+  }, []);
+
   const keys = [
     ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
     ["7", "7"], ["8", "8"], ["9", "9"], ["×", "*"],
@@ -130,7 +172,7 @@ function ManualCalculator() {
         <div className="nkj-calc-result">= {result}</div>
         {error && <small className="nkj-calc-error">{error}</small>}
       </div>
-      <div className="nkj-calc-keypad">
+      <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
         {keys.map(([label, value]) => (
           <button
             type="button"
@@ -145,6 +187,7 @@ function ManualCalculator() {
           <Delete size={18} /> DEL
         </button>
       </div>
+      <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc to clear</p>
     </section>
   );
 }
