@@ -111,6 +111,11 @@ public class JewelleryDesignImageStorageService {
                 if (width < 1 || height < 1 || width > 8000 || height > 8000 || (long) width * height > 24000000L) {
                     throw new IllegalArgumentException("Image dimensions must not exceed 8000 × 8000 pixels or 24 megapixels.");
                 }
+                int longEdge = Math.max(width, height);
+                int shortEdge = Math.min(width, height);
+                if (longEdge < 1200 || shortEdge < 600) {
+                    throw new IllegalArgumentException("For a clear jewellery catalogue photograph, upload an original image with a longest side of at least 1200 px and a shortest side of at least 600 px.");
+                }
                 source = reader.read(0);
             } finally {
                 reader.dispose();

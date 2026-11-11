@@ -834,7 +834,7 @@ export default function JewelleryCatalogAdminPage() {
                 <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
                 <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload From Computer · multiple design photographs
                   <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => { setImageFiles(Array.from(event.target.files || [])); setImageAdjustments({}); event.target.value = ""; }} />
-                  <small>JPG/JPEG/PNG/WebP · Maximum 10 MB per image. Original bytes are preserved; separate display and thumbnail copies are generated. You can rotate and crop before saving. Photo upload is optional: save without a photo and this design will show “Photo pending” until the owner uploads a verified photograph.</small>
+                  <small>HD photo required: longest side 1200 px minimum and shortest side 600 px minimum · JPG/JPEG/PNG/WebP · Maximum 10 MB. Original bytes are preserved; display and thumbnail copies are generated. You can rotate and crop before saving. Photo upload is optional: save without a photo and this design will show “Photo pending” until the owner uploads a verified photograph.</small>
                 </label>
               </div>
               {imageFiles.length > 0 && (

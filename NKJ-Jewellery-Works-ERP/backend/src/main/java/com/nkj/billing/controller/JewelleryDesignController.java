@@ -850,6 +850,11 @@ public class JewelleryDesignController {
     }
 
     private void ensureUniqueDesignName(long categoryId, String name, Long excludeId) {
+        // Serialize design-name checks within a subcategory so concurrent owner
+        // requests cannot create identical names between validation and save.
+        jdbc.queryForObject(
+                "SELECT id FROM public.jewellery_design_categories WHERE id=? AND is_active=TRUE FOR UPDATE",
+                Long.class, categoryId);
         Integer matches;
         if (excludeId == null) {
             matches = jdbc.queryForObject("""
