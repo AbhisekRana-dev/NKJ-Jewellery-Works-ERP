@@ -210,3 +210,182 @@
   .nkj-qr-upload-modal > header h2 { font-size:19px; }
   .nkj-qr-upload-modal > footer button { flex:1 1 30%; }
 }
+
+
+/* QR link connection state */
+.nkj-qr-connection-status.is-scanned {
+  border-color: #c5a15c;
+  background: #fff8e9;
+  color: #79551f;
+}
+.nkj-qr-connection-status.is-scanned > span { background: #c18b2f; box-shadow: 0 0 0 3px rgba(193,139,47,.14); }
+
+/* Desktop upload image editing */
+.nkj-catalog-image-previews figure {
+  width: 112px;
+  overflow: hidden;
+  border: 1px solid #e5d5cc;
+  border-radius: 9px;
+  background: #fff;
+}
+.nkj-catalog-preview-frame {
+  display: grid;
+  place-items: center;
+  width: 110px;
+  height: 86px;
+  overflow: hidden;
+  background: #fbf2e2;
+}
+.nkj-catalog-preview-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform .12s ease;
+}
+.nkj-catalog-desktop-image-tools {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 4px 2px;
+}
+.nkj-catalog-desktop-image-tools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 25px;
+  padding: 4px 6px;
+  border: 1px solid #e8d8c4;
+  border-radius: 5px;
+  background: #fffaf1;
+  color: #784052;
+  font-size: 8px;
+  font-weight: 800;
+}
+.nkj-catalog-desktop-crop {
+  display: grid;
+  gap: 3px;
+  padding: 3px 7px 6px;
+  color: #8a6b5d;
+  font-size: 8px;
+  font-weight: 800;
+}
+.nkj-catalog-desktop-crop input { width: 100%; accent-color: #791731; }
+.nkj-catalog-remove-pending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: calc(100% - 12px);
+  min-height: 24px;
+  margin: 0 6px 6px;
+  border: 1px solid #ead1d0;
+  border-radius: 5px;
+  background: #fff5f3;
+  color: #9a2839;
+  font-size: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Safe archive confirmation includes the primary design image and immutable ID. */
+.nkj-catalog-delete-modal {
+  width: min(440px, calc(100vw - 28px));
+  padding: 18px;
+  border: 1px solid #e6d8c5;
+  border-radius: 14px;
+  background: #fffdf9;
+  box-shadow: 0 20px 60px rgba(40, 7, 18, .25);
+}
+.nkj-catalog-delete-modal > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: #9b702d;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+}
+.nkj-catalog-delete-modal > header button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #e8d9cf;
+  border-radius: 50%;
+  background: white;
+  color: #74132f;
+}
+.nkj-catalog-delete-modal > img {
+  display: block;
+  width: 100%;
+  height: 160px;
+  margin: 12px 0;
+  border: 1px solid #ecdfd0;
+  border-radius: 9px;
+  background: #fcf6eb;
+  object-fit: contain;
+}
+.nkj-catalog-delete-modal h2 {
+  margin: 7px 0 11px;
+  color: #68102a;
+  font: 800 19px Georgia,serif;
+}
+.nkj-catalog-delete-modal dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+.nkj-catalog-delete-modal dl > div {
+  padding: 8px 9px;
+  border: 1px solid #eee4d8;
+  border-radius: 7px;
+  background: #fff;
+}
+.nkj-catalog-delete-modal dt {
+  color: #9a7b4a;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.nkj-catalog-delete-modal dd {
+  margin: 3px 0 0;
+  color: #49343b;
+  font-size: 10px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.nkj-catalog-delete-modal > p {
+  color: #85756f;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.nkj-catalog-delete-modal > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid #eee4dc;
+}
+.nkj-catalog-delete-modal > footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #dfd2c7;
+  border-radius: 7px;
+  background: #fff;
+  color: #6d3546;
+  font-size: 9px;
+  font-weight: 850;
+}
+.nkj-catalog-delete-modal > footer button.delete {
+  border-color: #8b1c36;
+  background: #8b1c36;
+  color: #fff7e9;
+}
+.nkj-catalog-delete-modal > footer button:disabled { opacity: .5; cursor: not-allowed; }
