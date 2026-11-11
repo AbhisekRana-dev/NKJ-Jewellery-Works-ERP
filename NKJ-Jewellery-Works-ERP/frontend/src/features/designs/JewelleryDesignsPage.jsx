@@ -460,7 +460,7 @@ export default function JewelleryDesignsPage() {
               <label className="nkj-designs-search">
                 <Search size={17} aria-hidden="true" />
                 <input value={search} onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search design, code or style…" aria-label="Search jewellery designs" />
+                  placeholder="Search design ID, name, code, style or purity…" aria-label="Search jewellery designs" />
                 {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={14} /></button>}
               </label>
               <div className="nkj-design-view-toggle" role="group" aria-label="Catalogue layout">

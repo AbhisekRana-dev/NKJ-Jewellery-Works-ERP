@@ -238,6 +238,7 @@ export default function JewelleryCatalogAdminPage() {
           const nextSubcategory = status.subcategorySlug || "";
           setMetal(nextMetal);
           setSubcategory(nextSubcategory);
+          setPurityFilter("");
           setSearch("");
           setSort("latest");
           setPage(0);
@@ -324,7 +325,7 @@ export default function JewelleryCatalogAdminPage() {
         regionalInspiration: detail.regionalInspiration || "Pan-Indian",
         materialLabel: detail.materialLabel || "",
         keywords: detail.keywords || "",
-        purity: detail.purity || "",
+        purity: getPurityOptions(detail.metalType || "GOLD").find((option) => option.toLowerCase() === String(detail.purity || "").trim().toLowerCase()) || detail.purity || "",
         weightGrams: detail.weightGrams ?? "",
         priceInr: detail.priceInr ?? "",
         isActive: Boolean(detail.isActive),
