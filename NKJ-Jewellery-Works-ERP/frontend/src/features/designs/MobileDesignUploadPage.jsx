@@ -302,7 +302,7 @@ export default function MobileDesignUploadPage() {
     );
   }
 
-  if (session.status === "EXPIRED" || session.status === "REVOKED" || session.status === "UPLOADED") {
+  if (!savedDesign && (session.status === "EXPIRED" || session.status === "REVOKED" || session.status === "UPLOADED")) {
     return (
       <main className="nkj-mobile-upload-page">
         <section className={`nkj-mobile-upload-state ${session.status === "UPLOADED" ? "is-success" : "is-error"}`}>
