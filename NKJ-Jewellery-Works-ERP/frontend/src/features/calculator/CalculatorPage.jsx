@@ -213,19 +213,26 @@ function ManualCalculator() {
 function OrnamentCalculator({ mode }) {
   const isOld = mode === "old";
   const [weight, setWeight] = useState("");
+  const [purity, setPurity] = useState("");
   const [rate, setRate] = useState("");
   const [making, setMaking] = useState("");
   const [stamp, setStamp] = useState("");
   const [extra, setExtra] = useState("");
+  const purityPercent = Number(purity);
+  const isPurityValid = !isOld || purity === "" || (Number.isFinite(purityPercent) && purityPercent >= 0 && purityPercent <= 100);
+  const pureWeight = isOld
+    ? (Math.max(0, Number(weight) || 0) * Math.max(0, Number(purity) || 0)) / 100
+    : Math.max(0, Number(weight) || 0);
   const total = useMemo(() => {
-    const metalValue = Math.max(0, Number(weight) || 0) * Math.max(0, Number(rate) || 0);
+    const metalValue = pureWeight * Math.max(0, Number(rate) || 0);
     return isOld
-      ? metalValue
+      ? (isPurityValid ? metalValue : 0)
       : metalValue + Math.max(0, Number(making) || 0) + Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0);
-  }, [weight, rate, making, stamp, extra, isOld]);
+  }, [pureWeight, rate, making, stamp, extra, isOld, isPurityValid]);
 
   const reset = () => {
     setWeight("");
+    setPurity("");
     setRate("");
     setMaking("");
     setStamp("");
@@ -236,9 +243,27 @@ function OrnamentCalculator({ mode }) {
     <section className="nkj-calc-ornament">
       <div className="nkj-calc-fields">
         <label>
-          {isOld ? "Pure Weight (gm)" : "Net Weight (gm)"}
+          {isOld ? "Weight (gm)" : "Net Weight (gm)"}
           <input {...numberInput(weight, setWeight)} placeholder="Enter weight" />
         </label>
+        {isOld && (
+          <label>
+            Purity (%)
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              inputMode="decimal"
+              value={purity}
+              onChange={(event) => setPurity(event.target.value)}
+              placeholder="Enter purity percentage"
+              aria-label="Purity percentage"
+              aria-invalid={!isPurityValid}
+            />
+            {!isPurityValid && <small className="nkj-calc-error">Purity must be between 0 and 100%.</small>}
+          </label>
+        )}
         <label>
           Rate / GM (₹)
           <input {...numberInput(rate, setRate)} placeholder="Enter rate per gram" />
@@ -255,7 +280,13 @@ function OrnamentCalculator({ mode }) {
         <div>
           <span>{isOld ? "OLD ORNAMENT VALUE" : "NEW ORNAMENT TOTAL"}</span>
           <strong>₹ {money(total)}</strong>
-          <small>{isOld ? "Pure weight × rate per gram" : "Metal value + making + stamp + extra charges"}</small>
+          {isOld
+            ? <>
+                <small>Pure weight: {money(pureWeight)} gm ({weight || "0"} gm × {purity || "0"}%)</small>
+                <small>Value = weight × purity ÷ 100 × rate per gram</small>
+                {!isPurityValid && <small className="nkj-calc-error">Enter a purity percentage from 0 to 100.</small>}
+              </>
+            : <small>Metal value + making + stamp + extra charges</small>}
         </div>
         <button type="button" className="nkj-calc-reset" onClick={reset}>
           <RotateCcw size={15} /> Reset
