@@ -40,14 +40,22 @@ public class RestExceptionHandler {
         // This path is protected by AuthInterceptor (/api/admin/**). Give the
         // signed-in owner a useful diagnostic for QR creation failures instead
         // of hiding every database/configuration failure behind a generic 500.
-        if ("POST".equalsIgnoreCase(request.getMethod())
-                && "/api/admin/design-upload-sessions".equals(request.getRequestURI())) {
+        boolean qrSessionRequest = "POST".equalsIgnoreCase(request.getMethod())
+                && "/api/admin/design-upload-sessions".equals(request.getRequestURI());
+        boolean replacePhotoRequest = "POST".equalsIgnoreCase(request.getMethod())
+                && request.getRequestURI() != null
+                && request.getRequestURI().matches("/api/admin/designs/[0-9]+/images/replace-primary");
+
+        if (qrSessionRequest || replacePhotoRequest) {
             String detail = root.getClass().getSimpleName();
             if (!rootMessage.isBlank()) {
                 detail += ": " + rootMessage.substring(0, Math.min(rootMessage.length(), 320));
             }
+            String operation = replacePhotoRequest
+                    ? "Primary photograph replacement failed"
+                    : "QR upload session creation failed";
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                    "message", "QR upload session creation failed. " + detail
+                    "message", operation + ". " + detail
                             + ". Check the backend console for the full stack trace."
             ));
         }
