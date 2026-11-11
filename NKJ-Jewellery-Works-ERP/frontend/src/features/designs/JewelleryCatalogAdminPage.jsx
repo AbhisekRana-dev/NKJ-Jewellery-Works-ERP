@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
 import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
@@ -102,6 +103,12 @@ export default function JewelleryCatalogAdminPage() {
   const [newSubcategoryMetal, setNewSubcategoryMetal] = useState("GOLD");
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
   const [categorySaving, setCategorySaving] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrSession, setQrSession] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState("");
+  const [qrNow, setQrNow] = useState(Date.now());
+  const [qrCopied, setQrCopied] = useState(false);
   const imagePreviews = useMemo(
     () => imageFiles.map((file) => ({ file, url: URL.createObjectURL(file) })),
     [imageFiles],
@@ -121,6 +128,76 @@ export default function JewelleryCatalogAdminPage() {
       setBulkCategoryId((current) => current || String(data.find((item) => item.metalType === "GOLD")?.id || data[0].id));
     }
   }, []);
+
+  const generateQrSession = async () => {
+    setQrLoading(true);
+    setQrError("");
+    setQrSession(null);
+    try {
+      const session = await request("/admin/design-upload-sessions", { method: "POST" });
+      setQrSession({ ...session, status: "WAITING" });
+      setQrNow(Date.now());
+    } catch (err) {
+      setQrError(err.message || "Could not generate a mobile upload QR code.");
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const closeQrModal = async () => {
+    const sessionId = qrSession?.sessionId;
+    setQrOpen(false);
+    setQrSession(null);
+    setQrError("");
+    if (sessionId) {
+      try {
+        await request(`/admin/design-upload-sessions/${sessionId}`, { method: "DELETE" });
+      } catch (err) {
+        console.warn("QR upload session revoke did not complete:", err);
+      }
+    }
+  };
+
+  const copyQrLink = async () => {
+    if (!qrSession?.uploadUrl) return;
+    try {
+      await navigator.clipboard.writeText(qrSession.uploadUrl);
+      setQrCopied(true);
+      window.setTimeout(() => setQrCopied(false), 1800);
+    } catch {
+      setQrError("Clipboard access is unavailable. Scan the QR code instead.");
+    }
+  };
+
+  useEffect(() => {
+    if (!qrOpen || !qrSession?.sessionId || qrSession.status !== "WAITING") return undefined;
+    let active = true;
+    const timer = window.setInterval(async () => {
+      setQrNow(Date.now());
+      try {
+        const status = await request(`/admin/design-upload-sessions/${qrSession.sessionId}`);
+        if (!active) return;
+        setQrSession((current) => current ? { ...current, ...status } : current);
+        if (status.status === "UPLOADED") {
+          setMessage(`New jewellery design uploaded: ${status.generatedDesignId || ""} ${status.designName || ""}`);
+          await Promise.all([loadCategories(), loadDesigns(0)]);
+        }
+        if (status.status === "EXPIRED" || status.status === "REVOKED") {
+          setQrError(status.status === "EXPIRED"
+            ? "This QR code has expired. Generate a new one to continue."
+            : "This QR code has been revoked.");
+        }
+      } catch (err) {
+        if (active) setQrError(err.message || "Could not check mobile upload status.");
+      }
+    }, 2200);
+    const clock = window.setInterval(() => setQrNow(Date.now()), 1000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.clearInterval(clock);
+    };
+  }, [qrOpen, qrSession?.sessionId, qrSession?.status, loadCategories, loadDesigns]);
 
   const loadDesigns = useCallback(async (nextPage = page) => {
     setLoading(true);
@@ -405,7 +482,12 @@ export default function JewelleryCatalogAdminPage() {
             <h1><Layers3 size={25} /> Jewellery Catalog Management</h1>
             <p>Manage all 77 approved subcategories, add unlimited designs, and upload original shop photographs. Each subcategory starts with at least 25 clearly marked sample inspirations.</p>
           </div>
-          <button type="button" className="nkj-catalog-primary" onClick={openNewForm}><Plus size={17} /> Add New Design</button>
+          <div className="nkj-catalog-heading-actions">
+            <button type="button" className="nkj-catalog-qr-button" onClick={() => { setQrOpen(true); generateQrSession(); }}>
+              <QrCode size={18} /> QR Code Upload
+            </button>
+            <button type="button" className="nkj-catalog-primary" onClick={openNewForm}><Plus size={17} /> Add New Design</button>
+          </div>
         </header>
 
         <details className="nkj-catalog-subcategory-manager">
@@ -509,6 +591,77 @@ export default function JewelleryCatalogAdminPage() {
             <button type="button" disabled={(page + 1) * PAGE_SIZE >= total || loading} onClick={() => loadDesigns(page + 1)}>Next</button>
           </div>
         </div>
+
+        {qrOpen && (
+          <div className="nkj-catalog-modal-backdrop nkj-qr-upload-backdrop" role="presentation" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeQrModal();
+          }}>
+            <section className="nkj-qr-upload-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-qr-upload-title">
+              <header>
+                <div><span>SECURE MOBILE UPLOAD</span><h2 id="nkj-qr-upload-title">Upload Jewellery Designs From Mobile</h2></div>
+                <button type="button" onClick={closeQrModal} aria-label="Close QR upload"><X size={19} /></button>
+              </header>
+              <p className="nkj-qr-upload-description">Scan this QR code using your mobile phone to upload jewellery photographs directly to your Jewellery ERP.</p>
+
+              <div className="nkj-qr-upload-body">
+                <div className="nkj-qr-code-frame">
+                  {qrLoading ? (
+                    <div className="nkj-qr-code-loading"><LoaderCircle className="spin" size={28} /><span>Generating secure QR…</span></div>
+                  ) : qrSession?.uploadUrl ? (
+                    <QRCodeSVG value={qrSession.uploadUrl} size={238} level="H" includeMargin />
+                  ) : (
+                    <div className="nkj-qr-code-loading"><QrCode size={32} /><span>QR code unavailable</span></div>
+                  )}
+                </div>
+                <div className="nkj-qr-upload-instructions">
+                  <b><Smartphone size={16} /> How to connect</b>
+                  <ol>
+                    <li>Open your phone camera.</li>
+                    <li>Scan this QR code and open the secure upload link.</li>
+                    <li>Select jewellery photographs and enter design details.</li>
+                    <li>Save the design. This desktop catalogue updates automatically.</li>
+                  </ol>
+                  <div className="nkj-qr-countdown">
+                    <Clock3 size={16} />
+                    <span>QR expires in</span>
+                    <strong>
+                      {qrSession?.expiresAt
+                        ? (() => {
+                            const left = Math.max(0, Math.ceil((new Date(qrSession.expiresAt).getTime() - qrNow) / 1000));
+                            return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+                          })()
+                        : "—"}
+                    </strong>
+                  </div>
+                  <div className={`nkj-qr-connection-status is-${String(qrSession?.status || (qrLoading ? "LOADING" : "ERROR")).toLowerCase()}`}>
+                    <span />
+                    {qrSession?.status === "UPLOADED" ? "Upload completed successfully"
+                      : qrSession?.status === "EXPIRED" ? "QR session expired"
+                        : qrSession?.status === "REVOKED" ? "QR session revoked"
+                          : qrLoading ? "Creating secure connection…" : "Waiting for mobile phone to scan"}
+                  </div>
+                </div>
+              </div>
+
+              {qrSession?.status === "UPLOADED" && (
+                <div className="nkj-qr-upload-success">
+                  <CheckCircle2 size={18} />
+                  <span><b>New design received</b><small>{qrSession.generatedDesignId} · {qrSession.designName}</small></span>
+                </div>
+              )}
+              {qrError && <div className="nkj-qr-upload-error" role="alert">{qrError}</div>}
+              <footer>
+                <button type="button" onClick={copyQrLink} disabled={!qrSession?.uploadUrl || qrSession.status !== "WAITING"}>
+                  {qrCopied ? <CheckCircle2 size={16} /> : <Copy size={16} />}{qrCopied ? "Copied" : "Copy upload link"}
+                </button>
+                <button type="button" className="primary" onClick={generateQrSession} disabled={qrLoading || qrSession?.status === "UPLOADED"}>
+                  {qrLoading ? <LoaderCircle className="spin" size={16} /> : <RefreshCw size={16} />} Regenerate QR
+                </button>
+                <button type="button" onClick={closeQrModal}>Close</button>
+              </footer>
+            </section>
+          </div>
+        )}
 
         {showForm && (
           <div className="nkj-catalog-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
