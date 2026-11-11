@@ -30,6 +30,7 @@ export default function MobileDesignUploadPage() {
   const [description, setDescription] = useState("");
   const [purity, setPurity] = useState("");
   const [weightGrams, setWeightGrams] = useState("");
+  const [isActive, setIsActive] = useState(true);
   const [photos, setPhotos] = useState([]);
   const [primaryPhotoId, setPrimaryPhotoId] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -240,7 +241,7 @@ export default function MobileDesignUploadPage() {
     data.append("keywords", designName.trim());
     data.append("purity", purity);
     data.append("weightGrams", weightGrams);
-    data.append("isActive", "true");
+    data.append("isActive", String(isActive));
     data.append("isFeatured", "false");
     orderedPhotos.forEach((photo) => {
       data.append("files", photo.file, photo.file.name);
@@ -423,6 +424,10 @@ export default function MobileDesignUploadPage() {
             </label>
           </div>
           <div className="nkj-mobile-id-note"><ShieldCheck size={16} /><span><b>Design ID generated automatically</b><small>The server generates the unique category-based ID when you save. It cannot be edited on this phone.</small></span></div>
+          <label className="nkj-mobile-active-toggle">
+            <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} />
+            <span><b>Active / Publish design</b><small>When enabled, the design appears in the public jewellery catalogue after saving.</small></span>
+          </label>
         </section>
 
         {error && <div className="nkj-mobile-form-error" role="alert"><AlertTriangle size={17} /> {error}</div>}
