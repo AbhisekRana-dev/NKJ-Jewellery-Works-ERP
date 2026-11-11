@@ -370,6 +370,13 @@ export default function JewelleryCatalogAdminPage() {
     };
   }, [cameraOpen]);
 
+  useEffect(() => {
+    if (!location.state?.openScanner || !categories.length) return;
+    openNewForm();
+    openCamera();
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.key, categories.length]);
+
   const addSubcategory = async (event) => {
     event.preventDefault();
     if (!newSubcategoryName.trim()) return;
