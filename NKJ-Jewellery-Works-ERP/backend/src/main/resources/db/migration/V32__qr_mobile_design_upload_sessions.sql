@@ -14,6 +14,9 @@ UPDATE public.jewellery_design_images
    SET display_url = original_url
  WHERE display_url IS NULL OR BTRIM(display_url) = '';
 
+ALTER TABLE public.jewellery_design_images
+    ALTER COLUMN display_url SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_jewellery_designs_not_deleted
     ON public.jewellery_designs(category_id, is_deleted, is_active, created_at DESC);
 
