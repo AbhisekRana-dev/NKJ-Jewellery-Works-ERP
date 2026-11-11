@@ -343,6 +343,10 @@ export default function JewelleryCatalogAdminPage() {
       setError("Choose a subcategory and enter a design name.");
       return;
     }
+    if (!editingId && imageFiles.length === 0) {
+      setError("Choose at least one jewellery photograph for a new design.");
+      return;
+    }
     saveInFlightRef.current = true;
     setSaving(true);
     setError("");
