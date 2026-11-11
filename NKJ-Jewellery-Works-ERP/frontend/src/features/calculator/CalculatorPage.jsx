@@ -3,6 +3,38 @@ import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw } fr
 import { Page } from "../../shared/layouts/OwnerShell";
 import "./CalculatorPage.css";
 
+const INITIAL_ORNAMENT_DRAFT = Object.freeze({
+  weight: "", purity: "", rate: "", making: "",
+  makingMode: "rupees", stamp: "", extra: "",
+});
+const INITIAL_MANUAL_DRAFT = Object.freeze({ expression: "0", result: "0", error: "" });
+
+function usePersistentDraft(storageKey, initialValue) {
+  const [draft, setDraft] = useState(() => {
+    if (typeof window === "undefined") return { ...initialValue };
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      if (!saved) return { ...initialValue };
+      const parsed = JSON.parse(saved);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? { ...initialValue, ...parsed }
+        : { ...initialValue };
+    } catch {
+      return { ...initialValue };
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(draft));
+    } catch {
+      // Keep calculator usable when browser storage is disabled or full.
+    }
+  }, [storageKey, draft]);
+
+  return [draft, setDraft];
+}
+
 const money = (value) => Number(value || 0).toLocaleString("en-IN", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -81,38 +113,44 @@ function evaluateExpression(source) {
 }
 
 function ManualCalculator({ active }) {
-  const [expression, setExpression] = useState("0");
-  const [result, setResult] = useState("0");
-  const [error, setError] = useState("");
+  const [draft, setDraft] = usePersistentDraft("nkj_manual_calculator_draft", INITIAL_MANUAL_DRAFT);
+  const { expression, result, error } = draft;
 
   const append = useCallback((value) => {
-    setError("");
-    setExpression((current) => current === "0" && /\d/.test(value)
-      ? value
-      : current + value);
-  }, []);
+    setDraft((current) => ({
+      ...current,
+      error: "",
+      expression: current.expression === "0" && /\d/.test(value) ? value : current.expression + value,
+    }));
+  }, [setDraft]);
 
   const calculate = useCallback(() => {
-    try {
-      const value = evaluateExpression(expression);
-      setResult(String(Number(value.toFixed(8))));
-      setExpression(String(Number(value.toFixed(8))));
-      setError("");
-    } catch (err) {
-      setError(err.message || "Invalid calculation.");
-    }
-  }, [expression]);
+    setDraft((current) => {
+      try {
+        const value = evaluateExpression(current.expression);
+        const formatted = String(Number(value.toFixed(8)));
+        return { ...current, result: formatted, expression: formatted, error: "" };
+      } catch (err) {
+        return { ...current, error: err.message || "Invalid calculation." };
+      }
+    });
+  }, [setDraft]);
 
   const clear = useCallback(() => {
-    setExpression("0");
-    setResult("0");
-    setError("");
-  }, []);
+    setDraft({ ...INITIAL_MANUAL_DRAFT });
+  }, [setDraft]);
+
+  const confirmReset = useCallback(() => {
+    if (window.confirm("Reset Manual Calculator? Only its saved draft will be cleared.")) clear();
+  }, [clear]);
 
   const backspace = useCallback(() => {
-    setError("");
-    setExpression((current) => current.length <= 1 ? "0" : current.slice(0, -1));
-  }, []);
+    setDraft((current) => ({
+      ...current,
+      error: "",
+      expression: current.expression.length <= 1 ? "0" : current.expression.slice(0, -1),
+    }));
+  }, [setDraft]);
 
   // Capture keyboard input while this calculator is mounted. Capture mode
   // lets the calculator receive keys before other page shortcuts can swallow them.
@@ -168,13 +206,13 @@ function ManualCalculator({ active }) {
 
       if (key === "Escape") {
         consume();
-        clear();
+        confirmReset();
       }
     };
 
     window.addEventListener("keydown", handleCalculatorKeyDown, true);
     return () => window.removeEventListener("keydown", handleCalculatorKeyDown, true);
-  }, [active, append, calculate, clear, backspace]);
+  }, [active, append, calculate, confirmReset, backspace]);
 
   const keys = [
     ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
@@ -198,7 +236,7 @@ function ManualCalculator({ active }) {
             type="button"
             key={label}
             className={value === "clear" ? "utility" : value === "equal" ? "equal" : ["+", "-", "*", "/", "%"].includes(value) ? "operator" : ""}
-            onClick={() => value === "clear" ? clear() : value === "equal" ? calculate() : append(value)}
+            onClick={() => value === "clear" ? confirmReset() : value === "equal" ? calculate() : append(value)}
           >
             {label}
           </button>
@@ -207,20 +245,22 @@ function ManualCalculator({ active }) {
           <Delete size={18} /> DEL
         </button>
       </div>
-      <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc to clear</p>
+      <button type="button" className="nkj-calc-manual-reset" onClick={confirmReset}>
+        <RotateCcw size={15} /> Reset Manual Calculator
+      </button>
+      <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc to reset (confirmation required)</p>
     </section>
   );
 }
 
 function OrnamentCalculator({ mode, active }) {
   const isOld = mode === "old";
-  const [weight, setWeight] = useState("");
-  const [purity, setPurity] = useState("");
-  const [rate, setRate] = useState("");
-  const [making, setMaking] = useState("");
-  const [makingMode, setMakingMode] = useState("rupees");
-  const [stamp, setStamp] = useState("");
-  const [extra, setExtra] = useState("");
+  const draftKey = isOld ? "nkj_old_ornament_draft" : "nkj_new_ornament_draft";
+  const [draft, setDraft] = usePersistentDraft(draftKey, INITIAL_ORNAMENT_DRAFT);
+  const { weight, purity, rate, making, makingMode, stamp, extra } = draft;
+  const updateDraftField = useCallback((field, value) => {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }, [setDraft]);
   const purityPercent = purity.trim() === "" ? 100 : Number(purity);
   const isPurityValid = !isOld || (Number.isFinite(purityPercent) && purityPercent >= 0 && purityPercent <= 100);
   const pureWeight = isOld
@@ -241,14 +281,13 @@ function OrnamentCalculator({ mode, active }) {
   }, [metalValue, makingChargeRupees, stamp, extra, isOld, isPurityValid, isMakingValid]);
 
   const reset = useCallback(() => {
-    setWeight("");
-    setPurity("");
-    setRate("");
-    setMaking("");
-    setMakingMode("rupees");
-    setStamp("");
-    setExtra("");
-  }, []);
+    setDraft({ ...INITIAL_ORNAMENT_DRAFT });
+  }, [setDraft]);
+
+  const confirmReset = useCallback(() => {
+    const name = isOld ? "Old Ornaments" : "New Ornaments";
+    if (window.confirm(`Reset ${name}? Only its saved draft will be cleared.`)) reset();
+  }, [isOld, reset]);
 
   // Use capture phase so shell/page keyboard handlers cannot swallow Escape.
   // Escape works while focus is inside any calculator field or on the calculator page.
@@ -267,19 +306,19 @@ function OrnamentCalculator({ mode, active }) {
 
       event.preventDefault();
       event.stopPropagation();
-      reset();
+      confirmReset();
     };
 
     window.addEventListener("keydown", handleEscape, true);
     return () => window.removeEventListener("keydown", handleEscape, true);
-  }, [active, reset]);
+  }, [active, confirmReset]);
 
   return (
     <section className="nkj-calc-ornament">
       <div className="nkj-calc-fields">
         <label>
           {isOld ? "Weight (gm)" : "Net Weight (gm)"}
-          <input {...numberInput(weight, setWeight)} placeholder="Enter weight" />
+          <input {...numberInput(weight, (value) => updateDraftField("weight", value))} placeholder="Enter weight" />
         </label>
         {isOld && (
           <label>
@@ -291,7 +330,7 @@ function OrnamentCalculator({ mode, active }) {
               step="0.01"
               inputMode="decimal"
               value={purity}
-              onChange={(event) => setPurity(event.target.value)}
+              onChange={(event) => updateDraftField("purity", event.target.value)}
               placeholder="Enter purity percentage"
               aria-label="Purity percentage"
               aria-invalid={!isPurityValid}
@@ -301,7 +340,7 @@ function OrnamentCalculator({ mode, active }) {
         )}
         <label>
           Rate / GM (₹)
-          <input {...numberInput(rate, setRate)} placeholder="Enter rate per gram" />
+          <input {...numberInput(rate, (value) => updateDraftField("rate", value))} placeholder="Enter rate per gram" />
         </label>
         {!isOld && (
           <>
@@ -310,8 +349,8 @@ function OrnamentCalculator({ mode, active }) {
               <select
                 value={makingMode}
                 onChange={(event) => {
-                  setMakingMode(event.target.value);
-                  setMaking("");
+                  updateDraftField("makingMode", event.target.value);
+                  updateDraftField("making", "");
                 }}
                 aria-label="Making charge type"
               >
@@ -334,11 +373,11 @@ function OrnamentCalculator({ mode, active }) {
                     aria-label="Making charge percentage"
                     aria-invalid={!isMakingValid}
                   />
-                : <input {...numberInput(making, setMaking)} placeholder="Enter making charge in rupees" />}
+                : <input {...numberInput(making, (value) => updateDraftField("making", value))} placeholder="Enter making charge in rupees" />}
               {!isMakingValid && <small className="nkj-calc-error">Making charge percentage must be between 0 and 100%.</small>}
             </label>
-            <label>Stamp Charge (₹)<input {...numberInput(stamp, setStamp)} placeholder="0.00" /></label>
-            <label>Extra Charge (₹)<input {...numberInput(extra, setExtra)} placeholder="0.00" /></label>
+            <label>Stamp Charge (₹)<input {...numberInput(stamp, (value) => updateDraftField("stamp", value))} placeholder="0.00" /></label>
+            <label>Extra Charge (₹)<input {...numberInput(extra, (value) => updateDraftField("extra", value))} placeholder="0.00" /></label>
           </>
         )}
       </div>
@@ -359,9 +398,9 @@ function OrnamentCalculator({ mode, active }) {
                 <small>Stamp + extra charges: ₹ {money(Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0))}</small>
                 {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
               </>}
-          <small className="nkj-calc-reset-hint">Press Esc to reset, or click the Reset button.</small>
+          <small className="nkj-calc-reset-hint">Press Esc or click Reset. Confirm to clear only this calculator.</small>
         </div>
-        <button type="button" className="nkj-calc-reset" onClick={reset}>
+        <button type="button" className="nkj-calc-reset" onClick={confirmReset}>
           <RotateCcw size={15} /> Reset
         </button>
       </div>
