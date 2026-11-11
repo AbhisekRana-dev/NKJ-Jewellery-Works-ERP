@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight,
+  Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
   Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
