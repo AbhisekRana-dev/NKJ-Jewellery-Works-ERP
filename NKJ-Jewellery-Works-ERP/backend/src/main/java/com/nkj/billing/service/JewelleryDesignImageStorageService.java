@@ -26,6 +26,7 @@ import java.util.UUID;
 @Service
 public class JewelleryDesignImageStorageService {
     private static final long MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
+    private static final int DISPLAY_MAX_EDGE = 2400;
     private static final int THUMBNAIL_MAX_EDGE = 640;
 
     private final Path uploadRoot;
@@ -112,21 +113,32 @@ public class JewelleryDesignImageStorageService {
         Files.createDirectories(designDirectory);
 
         Path originalPath = designDirectory.resolve(fileId + extension);
+        Path displayPath = designDirectory.resolve(fileId + "-display.jpg");
         Path thumbnailPath = designDirectory.resolve(fileId + "-thumb.jpg");
         try {
+            // Keep the uploaded bytes untouched as the archival original.
             Files.write(originalPath, bytes);
-            BufferedImage thumbnail = createThumbnail(source);
+
+            // A separate high-quality display derivative is capped at 2400px;
+            // the 640px thumbnail is used only for dense catalogue cards.
+            BufferedImage display = createScaledJpeg(source, DISPLAY_MAX_EDGE);
+            if (!ImageIO.write(display, "jpg", displayPath.toFile())) {
+                throw new IOException("The optimized display image could not be generated.");
+            }
+            BufferedImage thumbnail = createScaledJpeg(source, THUMBNAIL_MAX_EDGE);
             if (!ImageIO.write(thumbnail, "jpg", thumbnailPath.toFile())) {
                 throw new IOException("The image thumbnail could not be generated.");
             }
         } catch (IOException error) {
             Files.deleteIfExists(originalPath);
+            Files.deleteIfExists(displayPath);
             Files.deleteIfExists(thumbnailPath);
             throw error;
         }
 
         return new StoredImage(
                 "/api/uploads/designs/" + designId + "/" + fileId + extension,
+                "/api/uploads/designs/" + designId + "/" + fileId + "-display.jpg",
                 "/api/uploads/designs/" + designId + "/" + fileId + "-thumb.jpg",
                 file.getOriginalFilename() == null ? "Jewellery design" : file.getOriginalFilename(),
                 sha256(bytes)
@@ -149,8 +161,8 @@ public class JewelleryDesignImageStorageService {
         }
     }
 
-    private BufferedImage createThumbnail(BufferedImage source) {
-        double scale = Math.min(1.0, (double) THUMBNAIL_MAX_EDGE /
+    private BufferedImage createScaledJpeg(BufferedImage source, int maxEdge) {
+        double scale = Math.min(1.0, (double) maxEdge /
                 Math.max(source.getWidth(), source.getHeight()));
         int width = Math.max(1, (int) Math.round(source.getWidth() * scale));
         int height = Math.max(1, (int) Math.round(source.getHeight() * scale));
@@ -177,5 +189,5 @@ public class JewelleryDesignImageStorageService {
         }
     }
 
-    public record StoredImage(String originalUrl, String thumbnailUrl, String fileName, String sha256) {}
+    public record StoredImage(String originalUrl, String displayUrl, String thumbnailUrl, String fileName, String sha256) {}
 }
