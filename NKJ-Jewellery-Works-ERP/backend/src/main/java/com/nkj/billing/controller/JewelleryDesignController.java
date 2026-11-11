@@ -4,6 +4,7 @@ import com.nkj.billing.service.JewelleryDesignImageStorageService;
 import com.nkj.billing.service.JewelleryDesignImageStorageService.StoredImage;
 import com.nkj.billing.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -45,7 +46,7 @@ public class JewelleryDesignController {
             JdbcTemplate jdbc,
             JewelleryDesignImageStorageService imageStorage,
             AuthService auth,
-            @Value("${nkj.designs.mobile-upload-base-url:http://localhost:5173}") String mobileUploadBaseUrl) {
+            @Value("${nkj.designs.mobile-upload-base-url:}") String mobileUploadBaseUrl) {
         this.jdbc = jdbc;
         this.imageStorage = imageStorage;
         this.auth = auth;
@@ -232,33 +233,35 @@ public class JewelleryDesignController {
     }
 
     @GetMapping("/api/admin/design-upload-sessions/{sessionId}")
-    public Map<String, Object> mobileUploadSessionStatus(@PathVariable UUID sessionId) {
+    public Map<String, Object> mobileUploadSessionStatus(
+            @PathVariable UUID sessionId,
+            HttpServletResponse response) {
+        preventMobileUploadCaching(response);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT session_id AS "sessionId",
+                SELECT s.session_id AS "sessionId",
                        CASE
-                         WHEN consumed_at IS NOT NULL THEN 'UPLOADED'
-                         WHEN revoked_at IS NOT NULL THEN 'REVOKED'
-                         WHEN expires_at <= NOW() THEN 'EXPIRED'
+                         WHEN s.consumed_at IS NOT NULL THEN 'UPLOADED'
+                         WHEN s.revoked_at IS NOT NULL THEN 'REVOKED'
+                         WHEN s.expires_at <= NOW() THEN 'EXPIRED'
+                         WHEN s.first_scanned_at IS NOT NULL THEN 'SCANNED'
                          ELSE 'WAITING'
                        END AS status,
-                       expires_at AS "expiresAt",
-                       uploaded_design_id AS "designId",
-                       created_at AS "createdAt",
-                       consumed_at AS "uploadedAt"
-                  FROM public.jewellery_design_upload_sessions
-                 WHERE session_id=? AND created_by=?
+                       s.expires_at AS "expiresAt",
+                       s.uploaded_design_id AS "designRecordId",
+                       s.created_at AS "createdAt",
+                       s.first_scanned_at AS "scannedAt",
+                       s.consumed_at AS "uploadedAt",
+                       d.design_id AS "generatedDesignId",
+                       d.design_name AS "designName",
+                       c.metal_type AS "metalType",
+                       c.slug AS "subcategorySlug"
+                  FROM public.jewellery_design_upload_sessions s
+                  LEFT JOIN public.jewellery_designs d ON d.id=s.uploaded_design_id
+                  LEFT JOIN public.jewellery_design_categories c ON c.id=d.category_id
+                 WHERE s.session_id=? AND s.created_by=?
                 """, sessionId, auth.getUsername());
         if (rows.isEmpty()) throw new IllegalArgumentException("QR upload session not found.");
-        Map<String, Object> result = new LinkedHashMap<>(rows.get(0));
-        Object designId = result.get("designId");
-        if (designId instanceof Number number) {
-            List<Map<String, Object>> design = jdbc.queryForList("""
-                    SELECT design_id AS "generatedDesignId", design_name AS "designName"
-                      FROM public.jewellery_designs WHERE id=?
-                    """, number.longValue());
-            if (!design.isEmpty()) result.putAll(design.get(0));
-        }
-        return result;
+        return new LinkedHashMap<>(rows.get(0));
     }
 
     @DeleteMapping("/api/admin/design-upload-sessions/{sessionId}")
@@ -274,25 +277,50 @@ public class JewelleryDesignController {
     }
 
     @GetMapping("/api/mobile-design-upload/{token}")
-    public Map<String, Object> mobileUploadSessionInfo(@PathVariable String token) {
+    public Map<String, Object> mobileUploadSessionInfo(
+            @PathVariable String token,
+            HttpServletResponse response) {
+        preventMobileUploadCaching(response);
         if (token == null || token.length() < 40 || token.length() > 100
                 || !token.matches("[A-Za-z0-9_-]+")) {
             throw new IllegalArgumentException("This QR upload link is invalid.");
         }
+
+        String tokenHash = sha256Hex(token);
+        // The first successful mobile open changes the desktop connection state
+        // to SCANNED. Expired, revoked and already-used tokens remain read-only.
+        jdbc.update("""
+                UPDATE public.jewellery_design_upload_sessions
+                   SET first_scanned_at=COALESCE(first_scanned_at, NOW())
+                 WHERE token_hash=?
+                   AND consumed_at IS NULL
+                   AND revoked_at IS NULL
+                   AND expires_at > NOW()
+                """, tokenHash);
+
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT CASE
-                         WHEN consumed_at IS NOT NULL THEN 'UPLOADED'
-                         WHEN revoked_at IS NOT NULL THEN 'REVOKED'
-                         WHEN expires_at <= NOW() THEN 'EXPIRED'
+                         WHEN s.consumed_at IS NOT NULL THEN 'UPLOADED'
+                         WHEN s.revoked_at IS NOT NULL THEN 'REVOKED'
+                         WHEN s.expires_at <= NOW() THEN 'EXPIRED'
+                         WHEN s.first_scanned_at IS NOT NULL THEN 'SCANNED'
                          ELSE 'WAITING'
                        END AS status,
-                       expires_at AS "expiresAt",
-                       GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (expires_at - NOW()))))::BIGINT AS "secondsRemaining"
-                  FROM public.jewellery_design_upload_sessions
-                 WHERE token_hash=?
-                """, sha256Hex(token));
+                       s.expires_at AS "expiresAt",
+                       GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (s.expires_at - NOW()))))::BIGINT AS "secondsRemaining",
+                       s.consumed_at AS "uploadedAt",
+                       d.id AS "designRecordId",
+                       d.design_id AS "generatedDesignId",
+                       d.design_name AS "designName",
+                       c.metal_type AS "metalType",
+                       c.subcategory_name AS "subcategoryName"
+                  FROM public.jewellery_design_upload_sessions s
+                  LEFT JOIN public.jewellery_designs d ON d.id=s.uploaded_design_id
+                  LEFT JOIN public.jewellery_design_categories c ON c.id=d.category_id
+                 WHERE s.token_hash=?
+                """, tokenHash);
         if (rows.isEmpty()) throw new IllegalArgumentException("This QR upload link is invalid.");
-        return rows.get(0);
+        return new LinkedHashMap<>(rows.get(0));
     }
 
     @PostMapping(value = "/api/mobile-design-upload/{token}/design", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -312,7 +340,9 @@ public class JewelleryDesignController {
             @RequestParam(value = "rotations", required = false) List<Integer> rotations,
             @RequestParam(value = "cropZooms", required = false) List<Double> cropZooms,
             @RequestParam("files") List<MultipartFile> files,
-            HttpServletRequest request) throws IOException {
+            HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
+        preventMobileUploadCaching(response);
         if (token == null || token.length() < 40 || token.length() > 100
                 || !token.matches("[A-Za-z0-9_-]+")) {
             throw new IllegalArgumentException("This QR upload link is invalid. Ask the owner to generate a new QR code.");
@@ -368,6 +398,12 @@ public class JewelleryDesignController {
         Map<String, Object> response = new LinkedHashMap<>(withImages);
         response.put("uploadStatus", "UPLOADED");
         return response;
+    }
+
+    private static void preventMobileUploadCaching(HttpServletResponse response) {
+        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        response.setHeader("Pragma", "no-cache");
+        response.setHeader("Referrer-Policy", "no-referrer");
     }
 
     private static String sha256Hex(String value) {
