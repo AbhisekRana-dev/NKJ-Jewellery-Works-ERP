@@ -169,6 +169,26 @@ export default function JewelleryCatalogAdminPage() {
     }
   };
 
+  const loadDesigns = useCallback(async (nextPage = page) => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ metal, sort, page: String(nextPage), size: String(PAGE_SIZE) });
+      if (subcategory) params.set("subcategory", subcategory);
+      if (search.trim()) params.set("q", search.trim());
+      const result = await request(`/admin/designs?${params.toString()}`);
+      setItems(Array.isArray(result.items) ? result.items : []);
+      setTotal(Number(result.total) || 0);
+      setPage(Number(result.page) || 0);
+    } catch (err) {
+      setError(err.message || "Could not load the jewellery catalogue.");
+    } finally {
+      setLoading(false);
+    }
+  }, [metal, subcategory, search, sort, page]);
+
+  useRealtimeRefresh(() => loadDesigns(page), ["designs"]);
+
   useEffect(() => {
     if (!qrOpen || !qrSession?.sessionId || qrSession.status !== "WAITING") return undefined;
     let active = true;
@@ -198,26 +218,6 @@ export default function JewelleryCatalogAdminPage() {
       window.clearInterval(clock);
     };
   }, [qrOpen, qrSession?.sessionId, qrSession?.status, loadCategories, loadDesigns]);
-
-  const loadDesigns = useCallback(async (nextPage = page) => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams({ metal, sort, page: String(nextPage), size: String(PAGE_SIZE) });
-      if (subcategory) params.set("subcategory", subcategory);
-      if (search.trim()) params.set("q", search.trim());
-      const result = await request(`/admin/designs?${params.toString()}`);
-      setItems(Array.isArray(result.items) ? result.items : []);
-      setTotal(Number(result.total) || 0);
-      setPage(Number(result.page) || 0);
-    } catch (err) {
-      setError(err.message || "Could not load the jewellery catalogue.");
-    } finally {
-      setLoading(false);
-    }
-  }, [metal, subcategory, search, sort, page]);
-
-  useRealtimeRefresh(() => loadDesigns(page), ["designs"]);
 
   useEffect(() => {
     loadCategories().catch((err) => setError(err.message || "Could not load catalogue categories."));
