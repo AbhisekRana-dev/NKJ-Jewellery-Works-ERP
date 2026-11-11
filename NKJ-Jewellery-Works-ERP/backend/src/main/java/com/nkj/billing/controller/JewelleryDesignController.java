@@ -181,9 +181,56 @@ public class JewelleryDesignController {
 
     @PostMapping("/api/admin/design-upload-sessions")
     @Transactional
-    public Map<String, Object> createMobileUploadSession(HttpServletRequest request) {
+    public Map<String, Object> createMobileUploadSession(
+            HttpServletRequest request,
+            HttpServletResponse response) {
         String owner = auth.getUsername();
-        if (owner == null || owner.isBlank()) throw new IllegalStateException("An authenticated owner session is required.");
+        if (owner == null || owner.isBlank()) {
+            throw new IllegalArgumentException("Your owner session is not available. Sign in again and reopen the QR upload window.");
+        }
+
+        // Detect an unapplied QR schema migration before attempting INSERT/UPDATE.
+        // The browser receives a safe setup instruction instead of a generic 500.
+        Map<String, Object> schema = jdbc.queryForMap("""
+                SELECT
+                    to_regclass('public.jewellery_design_upload_sessions') IS NOT NULL AS "tableExists",
+                    EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                         WHERE table_schema='public'
+                           AND table_name='jewellery_design_upload_sessions'
+                           AND column_name='first_scanned_at'
+                    ) AS "scanColumnExists"
+                """);
+        if (!Boolean.TRUE.equals(schema.get("tableExists"))
+                || !Boolean.TRUE.equals(schema.get("scanColumnExists"))) {
+            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            return Map.of("message",
+                    "The mobile upload database is not ready. Restart the backend and confirm Flyway migrations V32 and V37 have been applied successfully.");
+        }
+
+        // Resolve and validate the website URL before revoking or creating sessions.
+        String configuredBase = mobileUploadBaseUrl == null ? "" : mobileUploadBaseUrl.trim();
+        String baseCandidate = configuredBase.isBlank() ? request.getHeader("Origin") : configuredBase;
+        if (baseCandidate == null || baseCandidate.isBlank()) {
+            throw new IllegalArgumentException(
+                    "The website origin was not received. Open the owner catalogue in your browser, or set DESIGNS_MOBILE_UPLOAD_BASE_URL to the frontend address.");
+        }
+
+        URI baseUri;
+        try {
+            baseUri = URI.create(baseCandidate.trim());
+        } catch (IllegalArgumentException error) {
+            throw new IllegalArgumentException("The mobile upload website URL is invalid. Check DESIGNS_MOBILE_UPLOAD_BASE_URL.");
+        }
+        String scheme = baseUri.getScheme();
+        if (baseUri.getHost() == null || baseUri.getRawUserInfo() != null || baseUri.getFragment() != null
+                || !("https".equalsIgnoreCase(scheme)
+                || "http".equalsIgnoreCase(scheme) && ("localhost".equalsIgnoreCase(baseUri.getHost())
+                || "127.0.0.1".equals(baseUri.getHost())))) {
+            throw new IllegalArgumentException(
+                    "The mobile upload website URL must use HTTPS. HTTP is allowed only for localhost testing.");
+        }
+        String base = baseCandidate.trim().replaceAll("/+$", "");
 
         // Regeneration invalidates every still-live QR issued by this owner.
         jdbc.update("""
@@ -205,27 +252,6 @@ public class JewelleryDesignController {
                 VALUES (?, ?, ?, ?, ?)
                 """, sessionId, sha256Hex(token), owner, expiresAt, request.getRemoteAddr());
 
-        // Prefer an explicit deployment URL; otherwise derive the website origin
-        // from the authenticated browser request so QR links work on the current host.
-        String configuredBase = mobileUploadBaseUrl == null ? "" : mobileUploadBaseUrl.trim();
-        String baseCandidate = configuredBase.isBlank() ? request.getHeader("Origin") : configuredBase;
-        if (baseCandidate == null || baseCandidate.isBlank()) {
-            throw new IllegalStateException("Open the owner catalogue from the public website origin or set DESIGNS_MOBILE_UPLOAD_BASE_URL.");
-        }
-        URI baseUri;
-        try {
-            baseUri = URI.create(baseCandidate.trim());
-        } catch (IllegalArgumentException error) {
-            throw new IllegalStateException("The mobile upload base URL is invalid.");
-        }
-        String scheme = baseUri.getScheme();
-        if (baseUri.getHost() == null || baseUri.getRawUserInfo() != null || baseUri.getFragment() != null
-                || !("https".equalsIgnoreCase(scheme)
-                || "http".equalsIgnoreCase(scheme) && ("localhost".equalsIgnoreCase(baseUri.getHost())
-                || "127.0.0.1".equals(baseUri.getHost())))) {
-            throw new IllegalStateException("The mobile upload base URL must be HTTPS (HTTP is allowed only for localhost).");
-        }
-        String base = baseCandidate.trim().replaceAll("/+$", "");
         return Map.of("sessionId", sessionId.toString(),
                 "uploadUrl", base + "/mobile-design-upload/" + token,
                 "expiresAt", expiresAt.toInstant().toString(),
