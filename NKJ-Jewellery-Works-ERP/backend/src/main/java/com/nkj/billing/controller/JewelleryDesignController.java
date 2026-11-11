@@ -2,7 +2,6 @@ package com.nkj.billing.controller;
 
 import com.nkj.billing.service.JewelleryDesignImageStorageService;
 import com.nkj.billing.service.JewelleryDesignImageStorageService.StoredImage;
-import com.nkj.billing.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +22,10 @@ import java.util.Map;
 public class JewelleryDesignController {
     private final JdbcTemplate jdbc;
     private final JewelleryDesignImageStorageService imageStorage;
-    private final AuthService auth;
 
-    public JewelleryDesignController(
-            JdbcTemplate jdbc,
-            JewelleryDesignImageStorageService imageStorage,
-            AuthService auth) {
+    public JewelleryDesignController(JdbcTemplate jdbc, JewelleryDesignImageStorageService imageStorage) {
         this.jdbc = jdbc;
         this.imageStorage = imageStorage;
-        this.auth = auth;
     }
 
     @GetMapping("/api/designs/categories")
@@ -226,56 +220,20 @@ public class JewelleryDesignController {
     @DeleteMapping("/api/admin/designs/{id}")
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
-    public Map<String, Object> deleteDesign(
-            @PathVariable long id,
-            HttpServletRequest request) {
-        Map<String, Object> before = jdbc.queryForMap("""
-                SELECT design_id AS "designId", design_name AS "designName",
-                       is_active AS "isActive", is_featured AS "isFeatured"
-                  FROM public.jewellery_designs
-                 WHERE id=? AND is_deleted=FALSE
-                 FOR UPDATE
-                """, id);
-
-        int changed = jdbc.update("""
-                UPDATE public.jewellery_designs
-                   SET is_deleted=TRUE,
-                       deleted_at=NOW(),
-                       deleted_by=?,
-                       is_active=FALSE,
-                       is_featured=FALSE,
-                       updated_at=NOW()
-                 WHERE id=? AND is_deleted=FALSE
-                """, auth.getUsername(), id);
-        if (changed == 0) {
-            throw new IllegalArgumentException("Design not found or it has already been archived.");
-        }
-
-        // Keep the record and image files for audit/history. The category-scoped
-        // counter is intentionally untouched so deleted IDs are never reused.
-        jdbc.update("""
-                INSERT INTO public.audit_logs(
-                    actor_identity, action, module, record_id,
-                    previous_value, new_value, ip_address
-                )
-                VALUES (?, 'DESIGN_SOFT_DELETED', 'JEWELLERY_DESIGNS', ?,
-                        jsonb_build_object(
-                            'designId', ?, 'designName', ?, 'isActive', ?, 'isFeatured', ?
-                        ),
-                        jsonb_build_object('isDeleted', TRUE, 'isActive', FALSE),
-                        ?)
+    public Map<String, Object> deleteDesign(@PathVariable long id) {
+        List<String> storedUrls = jdbc.query(
+                """
+                SELECT original_url FROM public.jewellery_design_images WHERE design_id=?
+                UNION ALL
+                SELECT thumbnail_url FROM public.jewellery_design_images WHERE design_id=?
                 """,
-                auth.getUsername(), String.valueOf(id),
-                before.get("designId"), before.get("designName"),
-                before.get("isActive"), before.get("isFeatured"),
-                request.getRemoteAddr());
-
-        return Map.of(
-                "deleted", true,
-                "softDeleted", true,
-                "id", id,
-                "designId", String.valueOf(before.get("designId")),
-                "designName", String.valueOf(before.get("designName")));
+                (rs, rowNum) -> rs.getString(1), id, id);
+        int deleted = jdbc.update("DELETE FROM public.jewellery_designs WHERE id=?", id);
+        if (deleted == 0) {
+            throw new IllegalArgumentException("Design not found.");
+        }
+        storedUrls.forEach(imageStorage::deleteStoredPath);
+        return Map.of("deleted", true, "id", id);
     }
 
     @PostMapping(value = "/api/admin/designs/{id}/images", consumes = "multipart/form-data")
@@ -304,18 +262,6 @@ public class JewelleryDesignController {
                     Integer.class, id);
             for (MultipartFile file : files) {
                 StoredImage stored = imageStorage.store(id, file);
-                Long existingOwner = jdbc.query("""
-                        SELECT design_id FROM public.jewellery_design_images
-                         WHERE content_sha256=? LIMIT 1
-                        """, rs -> rs.next() ? rs.getLong(1) : null, stored.sha256());
-                if (existingOwner != null) {
-                    imageStorage.deleteStoredPath(stored.originalUrl());
-                    imageStorage.deleteStoredPath(stored.thumbnailUrl());
-                    if (existingOwner.longValue() == id) {
-                        continue; // Idempotent retry: this exact photo is already attached.
-                    }
-                    throw new IllegalArgumentException("This photograph is already attached to another design. Choose a different image.");
-                }
                 createdFiles.add(stored.originalUrl());
                 createdFiles.add(stored.thumbnailUrl());
                 jdbc.update("""
@@ -354,7 +300,6 @@ public class JewelleryDesignController {
     @CacheEvict(cacheNames = {"jewelleryPublicCategories", "jewelleryAdminCategories"}, allEntries = true)
     @Transactional
     public Map<String, Object> deleteImage(@PathVariable long id, @PathVariable long imageId) {
-        ensureDesignExists(id);
         List<List<String>> urls = jdbc.query(
                 "SELECT original_url, thumbnail_url FROM public.jewellery_design_images WHERE id=? AND design_id=?",
                 (rs, rowNum) -> List.of(rs.getString(1), rs.getString(2)), imageId, id);
@@ -384,7 +329,7 @@ public class JewelleryDesignController {
                        COUNT(d.id) FILTER (WHERE d.is_active = TRUE AND (? = TRUE OR EXISTS (SELECT 1 FROM public.jewellery_design_images visible_image WHERE visible_image.design_id = d.id))) AS "activeDesignCount",
                        COUNT(d.id) AS "totalDesignCount"
                   FROM public.jewellery_design_categories c
-                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id AND d.is_deleted = FALSE
+                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id
                  WHERE (? = TRUE OR c.is_active = TRUE)
                  GROUP BY c.id
                  ORDER BY CASE c.metal_type WHEN 'GOLD' THEN 1 WHEN 'SILVER' THEN 2 ELSE 3 END,
@@ -406,7 +351,7 @@ public class JewelleryDesignController {
         if (minWeight != null && maxWeight != null && minWeight.compareTo(maxWeight) > 0) {
             throw new IllegalArgumentException("Minimum weight cannot exceed maximum weight.");
         }
-        StringBuilder filter = new StringBuilder(" WHERE d.is_deleted = FALSE AND (? = TRUE OR d.is_active = TRUE)");
+        StringBuilder filter = new StringBuilder(" WHERE (? = TRUE OR d.is_active = TRUE)");
         List<Object> parameters = new ArrayList<>();
         parameters.add(includeInactive);
 
@@ -492,7 +437,7 @@ public class JewelleryDesignController {
                        COUNT(d.id) FILTER (WHERE d.is_active = TRUE) AS "activeDesignCount",
                        COUNT(d.id) AS "totalDesignCount"
                   FROM public.jewellery_design_categories c
-                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id AND d.is_deleted = FALSE
+                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id
                  WHERE c.id = ?
                  GROUP BY c.id
                 """, id);
@@ -512,7 +457,7 @@ public class JewelleryDesignController {
                        c.subcategory_name AS "subcategoryName", c.slug AS "subcategorySlug"
                   FROM public.jewellery_designs d
                   JOIN public.jewellery_design_categories c ON c.id=d.category_id
-                 WHERE d.id=? AND d.is_deleted=FALSE AND (? = TRUE OR (d.is_active=TRUE AND EXISTS (
+                 WHERE d.id=? AND (? = TRUE OR (d.is_active=TRUE AND EXISTS (
                      SELECT 1 FROM public.jewellery_design_images visible_image
                       WHERE visible_image.design_id=d.id
                         AND COALESCE(NULLIF(BTRIM(visible_image.thumbnail_url), ''), NULLIF(BTRIM(visible_image.original_url), '')) IS NOT NULL
@@ -561,7 +506,7 @@ public class JewelleryDesignController {
     }
 
     private void ensureDesignExists(long id) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM public.jewellery_designs WHERE id=? AND is_deleted=FALSE", Integer.class, id);
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM public.jewellery_designs WHERE id=?", Integer.class, id);
         if (count == null || count == 0) {
             throw new IllegalArgumentException("Jewellery design not found.");
         }
