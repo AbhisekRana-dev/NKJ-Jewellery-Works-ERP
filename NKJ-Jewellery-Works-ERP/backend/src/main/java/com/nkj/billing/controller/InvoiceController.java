@@ -273,7 +273,7 @@ public class InvoiceController {
             throw new IllegalArgumentException("Invoice PDF must be between 1 byte and 12 MB.");
         }
         byte[] pdf = file.getBytes();
-        if (pdf.length < 5 || pdf[0] != '%' || pdf[1] != 'P' || pdf[2] != 'D' || pdf[3] != 'F' || pdf[4] != '-') {
+        if (pdf.length < 12 || pdf[0] != '%' || pdf[1] != 'P' || pdf[2] != 'D' || pdf[3] != 'F' || pdf[4] != '-' || !new String(pdf, StandardCharsets.ISO_8859_1).endsWith("%%EOF")) {
             throw new IllegalArgumentException("Only a valid PDF document can be shared.");
         }
         String pdfContents = new String(pdf, StandardCharsets.ISO_8859_1);
