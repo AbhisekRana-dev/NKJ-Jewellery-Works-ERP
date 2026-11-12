@@ -44,6 +44,10 @@ jobs:
           assert 'new File([blob], fileName, { type: "application/pdf" })' in source
           assert 'verifiedInvoiceId !== String(selectedInvoice.id)' in source
           assert 'await navigator.share({ files: [file] });' in source
+          assert '["width", "270mm"]' in source, "PDF should use the wide invoice layout."
+          assert '["zoom", "1"]' in source, "PDF export must not apply CSS zoom that distorts text."
+          assert 'margin: [3,13.5,3,13.5]' in source
+          assert 'orientation: "landscape"' in source, "Invoice PDF must use A4 landscape to fit its original wide layout."
           assert "makeInvoiceShareMessage" not in source
           assert "wa.me/" not in source
           assert "downloadInvoicePdfFile(file);" in source
