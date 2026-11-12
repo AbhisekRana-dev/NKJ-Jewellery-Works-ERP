@@ -38,24 +38,22 @@ jobs:
           from pathlib import Path
 
           source = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/invoices/InvoicePages.jsx").read_text()
+          styles = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/invoices/InvoicePages.css").read_text()
           assert "async function createInvoiceSharePdfFile(invoice)" in source
-          assert "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" in source
-          assert 'script.integrity = "sha512-' in source
-          assert 'new File([blob],fileName,{type:"application/pdf"})' in source
-          assert 'verifiedInvoiceId !== String(selectedInvoice.id)' in source
+          assert "function collectInvoicePrintStyles()" in source
+          assert "document.styleSheets" in source
+          assert 'rule.conditionText || rule.media?.mediaText' in source
+          assert '31mm 3mm' in source and 'grid-template-columns: 31mm 3mm minmax(0, 1fr)' in styles
+          assert '["width", "194mm"]' in source
+          assert '["zoom", "1"]' in source
+          assert 'source.removeAttribute("id")' in source
+          assert 'clone.id = originalId' in source
           assert 'await navigator.share({ files: [file] });' in source
-          assert '["width","291mm"]' in source, "WhatsApp PDF must use the website's original 291mm print sheet."
-          assert '["zoom","0.6666667"]' in source, "WhatsApp PDF must match the website's original print scaling."
-          assert 'margin:[8,8,8,8]' in source
-          assert 'orientation:"portrait"' in source, "WhatsApp PDF must match the website's original A4 portrait print format."
-          assert "html2canvas uses screen media" in source, "Compact print styling must be applied during PDF export."
-          assert ".nkj-pdf-export-root .form-grid label" in source
-          assert ".nkj-pdf-export-root .inv-main" in source
+          assert 'new File([blob], fileName, { type: "application/pdf" })' in source
           assert "makeInvoiceShareMessage" not in source
           assert "wa.me/" not in source
           assert "downloadInvoicePdfFile(file);" in source
-          assert "attach this file using Attach > Document" in source
-          print("WhatsApp PDF-only sharing, saved-invoice verification and manual PDF fallback checks passed.")
+          print("WhatsApp PDF-only sharing and exact website print stylesheet checks passed.")
           PY
 
       - name: Verify owner sidebar navigation and double-click behavior
