@@ -597,16 +597,16 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
     const printStyle = printDocument.createElement("style");
     printStyle.textContent = `
       @page {
-        size: A4 portrait;
-        margin: 8mm;
+        size: A4 landscape;
+        margin: 3mm;
       }
 
       @media print {
         html,
         body {
-          width: 194mm !important;
-          min-width: 0 !important;
-          max-width: 194mm !important;
+          width: 291mm !important;
+          min-width: 291mm !important;
+          max-width: 291mm !important;
           height: auto !important;
           min-height: 0 !important;
           margin: 0 !important;
@@ -628,7 +628,7 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
           margin: 0 !important;
           padding: 2mm !important;
           box-sizing: border-box !important;
-          zoom: 0.6666667 !important;
+          zoom: 1 !important;
           transform: none !important;
           rotate: none !important;
           translate: none !important;
@@ -639,6 +639,18 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
           box-shadow: none !important;
           break-inside: auto !important;
           page-break-inside: auto !important;
+        }
+
+        /* Avoid percentage tracks plus gaps overflowing the page at the right edge. */
+        #invoice-print .inv-bottom {
+          grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
+          gap: 2mm !important;
+          width: 100% !important;
+        }
+
+        #invoice-print .inv-meta span {
+          grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
+          gap: 1mm !important;
         }
 
         #invoice-print .invoice-actions,
