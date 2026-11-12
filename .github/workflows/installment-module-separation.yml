@@ -44,10 +44,13 @@ jobs:
           assert 'new File([blob], fileName, { type: "application/pdf" })' in source
           assert 'verifiedInvoiceId !== String(selectedInvoice.id)' in source
           assert 'await navigator.share({ files: [file] });' in source
-          assert '["width", "270mm"]' in source, "PDF should use the wide invoice layout."
-          assert '["zoom", "1"]' in source, "PDF export must not apply CSS zoom that distorts text."
-          assert 'margin: [3,13.5,3,13.5]' in source
-          assert 'orientation: "landscape"' in source, "Invoice PDF must use A4 landscape to fit its original wide layout."
+          assert '["width","291mm"]' in source, "WhatsApp PDF must use the website's original 291mm print sheet."
+          assert '["zoom","0.6666667"]' in source, "WhatsApp PDF must match the website's original print scaling."
+          assert 'margin:[8,8,8,8]' in source
+          assert 'orientation:"portrait"' in source, "WhatsApp PDF must match the website's original A4 portrait print format."
+          assert "html2canvas uses screen media" in source, "Compact print styling must be applied during PDF export."
+          assert ".nkj-pdf-export-root .form-grid label" in source
+          assert ".nkj-pdf-export-root .inv-main" in source
           assert "makeInvoiceShareMessage" not in source
           assert "wa.me/" not in source
           assert "downloadInvoicePdfFile(file);" in source
