@@ -276,6 +276,10 @@ public class InvoiceController {
         if (pdf.length < 5 || pdf[0] != '%' || pdf[1] != 'P' || pdf[2] != 'D' || pdf[3] != 'F' || pdf[4] != '-') {
             throw new IllegalArgumentException("Only a valid PDF document can be shared.");
         }
+        String pdfContents = new String(pdf, StandardCharsets.ISO_8859_1);
+        if (!pdfContents.contains(invoice.getInvoiceNo())) {
+            throw new IllegalArgumentException("The PDF does not match the selected saved invoice.");
+        }
 
         byte[] tokenBytes = new byte[32];
         SHARE_TOKEN_RANDOM.nextBytes(tokenBytes);
@@ -284,6 +288,8 @@ public class InvoiceController {
         String filename = invoice.getInvoiceNo().replaceAll("[^A-Za-z0-9_-]", "_") + ".pdf";
         Instant expiresAt = Instant.now().plus(Duration.ofDays(7));
 
+        // Remove expired binary documents during new link creation.
+        jdbc.update("DELETE FROM invoice_share_files WHERE expires_at <= ?", Timestamp.from(Instant.now()));
         jdbc.update("""
                 INSERT INTO invoice_share_files(
                     invoice_id, token_hash, file_name, pdf_bytes, expires_at, created_at
@@ -292,7 +298,7 @@ public class InvoiceController {
                 invoice.getId(), tokenHash, filename, pdf,
                 Timestamp.from(expiresAt), Timestamp.from(Instant.now()));
 
-        String configuredBase = System.getProperty("nkj.invoice.share-base-url", "").trim();
+        String configuredBase = System.getenv().getOrDefault("INVOICE_SHARE_BASE_URL", "").trim();
         String origin = configuredBase;
         if (origin.isEmpty()) {
             origin = URI.create(servletRequest.getRequestURL().toString()).resolve("/").toString();
