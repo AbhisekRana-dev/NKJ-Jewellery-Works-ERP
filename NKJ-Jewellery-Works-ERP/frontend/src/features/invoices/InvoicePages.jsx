@@ -850,13 +850,8 @@ function createInvoiceDraftKey() {
 }
 
 /**
- * Print only the invoice sheet in an isolated same-origin document.
- *
- * The previous implementation called window.print() on the full ERP page.
- * Its print CSS used visibility:hidden for unrelated application elements;
- * visibility preserves layout space, so the owner shell/sidebar could create
- * blank pages before the invoice. An iframe removes the shell from the print
- * document entirely while reusing the existing invoice markup and CSS.
+ * Download the canonical saved-invoice PDF. This is the same vector PDF
+ * generator used by the WhatsApp attachment and secure-link fallback.
  */
 async function printInvoiceAsPdf({ invoice, onAfterPrint } = {}) {
   if (!invoice?.id || !invoice?.invoiceNo) {
