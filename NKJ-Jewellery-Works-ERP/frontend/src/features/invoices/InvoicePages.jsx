@@ -3176,8 +3176,10 @@ export function SavedInvoices() {
       // for the user to attach as a Document in that already-open chat.
       const customerName = String(selectedInvoice.customerName || "Customer").trim();
       const invoiceNo = String(selectedInvoice.invoiceNo).trim();
-      const message = `Hello ${customerName}, please find invoice ${invoiceNo} attached.`;
-      const chatUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+      // Open the customer's direct chat without a prefilled text. The previous
+      // text parameter caused an unintended message to appear every time this
+      // button was clicked; users only want to attach and send the PDF.
+      const chatUrl = `https://wa.me/${whatsappPhone}`;
       const chatWindow = window.open(chatUrl, "_blank");
 
       if (!chatWindow) {
@@ -3191,7 +3193,7 @@ export function SavedInvoices() {
 
       downloadInvoicePdfFile(file);
       setDetailError(
-        `WhatsApp chat opened for ${customerName} (+${whatsappPhone}). The original invoice PDF (${file.name}) was downloaded. In the open chat, choose Attach > Document, select the downloaded PDF, and press Send.`,
+        `WhatsApp chat opened for ${customerName} (+${whatsappPhone}) for invoice ${invoiceNo}. No text message was pre-filled or sent. The original PDF (${file.name}) was downloaded; attach it in the open chat using Attach > Document, then press Send.`,
       );
     } catch (error) {
       setDetailError(error.message || "Could not open the customer's WhatsApp chat or download the invoice PDF.");
