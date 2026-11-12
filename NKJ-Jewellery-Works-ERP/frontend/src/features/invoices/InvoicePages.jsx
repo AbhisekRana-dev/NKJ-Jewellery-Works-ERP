@@ -376,7 +376,7 @@ async function createSavedInvoicePdf(invoice) {
 
   const drawHeader = (continuation = false) => {
     if (logoBytes && logoObjectId) {
-      ops.push("q 58 0 0 58 35 " + (pageH - 22 - 58) + " cm /NKJLogo Do Q");
+      ops.push("q 70 0 0 70 28 " + (pageH - 20 - 70) + " cm /NKJLogo Do Q");
     } else {
       ops.push(gold + " RG 2 w 63 " + (pageH - 77) + " 54 54 re S");
       textAt("NKJ", 90, 48, 19, true, maroon, "center");
@@ -402,6 +402,11 @@ async function createSavedInvoicePdf(invoice) {
   const beginPage = (continuation = false) => {
     ops = [];
     drawHeader(continuation);
+    // Match the thin gold frame used by the on-screen A4 invoice sheet.
+    line(18, 18, 824, 18, gold, 0.8);
+    line(824, 18, 824, pageH - 14, gold, 0.8);
+    line(824, pageH - 14, 18, pageH - 14, gold, 0.8);
+    line(18, pageH - 14, 18, 18, gold, 0.8);
     if (continuation) textAt("INVOICE CONTINUED - " + data.invoiceNo, left, y + 1, 8, true, maroon);
     pages.push(null);
   };
@@ -533,7 +538,8 @@ async function createSavedInvoicePdf(invoice) {
   line(left, y, right, y, gold, 0.8);
   textAt("Customer Signature", 160, y + 14, 7.5, false, ink, "center");
   textAt("Authorised Signature", 690, y + 14, 7.5, false, ink, "center");
-  textAt("Thank you for shopping with Nandikishor Jewellery Works.", 421, pageH - 23, 8.5, true, maroon, "center");
+  textAt("Thank You", 421, pageH - 48, 17, true, maroon, "center");
+  textAt("Visit Again", 421, pageH - 28, 9, true, maroon, "center");
   finishPage();
 
   // Assemble a standards-compliant PDF with selectable vector text and tables.
