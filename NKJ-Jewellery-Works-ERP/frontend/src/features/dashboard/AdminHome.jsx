@@ -2,10 +2,11 @@ import "./AdminHome.css";
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  CalendarCheck, ChartNoAxesColumn, Eye, Gem, Package, RefreshCw,
+  CalendarCheck, ChartNoAxesColumn, Eye, Gem, Package,
   Receipt, ShieldCheck, Users, Wallet, UserMinus, Banknote, TrendingUp, Truck
 } from "lucide-react";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { Page, Stat } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
@@ -25,21 +26,55 @@ export function AdminHome() {
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     if (!isAdmin) return;
-    setLoading(true); setError("");
-    try {
-      const [dashboard, finance] = await Promise.all([
-        request("/admin/dashboard"), request("/admin/reports/summary")
-      ]);
-      setStats({ ...initial, ...(dashboard || {}), ...(finance || {}) });
-    } catch (e) { setError(e.message || "Could not load the owner dashboard."); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+
+    const [dashboardResult, financeResult] = await Promise.allSettled([
+      request("/admin/dashboard"),
+      request("/admin/reports/summary"),
+    ]);
+
+    const dashboard = dashboardResult.status === "fulfilled"
+      ? dashboardResult.value || {}
+      : null;
+    const finance = financeResult.status === "fulfilled"
+      ? financeResult.value || {}
+      : null;
+
+    // Keep every successful data source visible when the other endpoint fails.
+    // /admin/dashboard exposes todayAmount; /admin/reports/summary exposes
+    // todaySales. Both use the same SalesAccountingService.
+    if (dashboard || finance) {
+      setStats({
+        ...initial,
+        ...(dashboard || {}),
+        ...(finance || {}),
+        todaySales: finance?.todaySales ?? dashboard?.todayAmount ?? initial.todaySales,
+        totalInvoices: dashboard?.totalInvoices ?? finance?.invoiceCount ?? initial.totalInvoices,
+        totalCustomers: dashboard?.totalCustomers ?? finance?.customerCount ?? initial.totalCustomers,
+      });
+    }
+
+    const failures = [];
+    if (!dashboard) {
+      failures.push(`Dashboard API: ${dashboardResult.reason?.message || "request failed"}`);
+    }
+    if (!finance) {
+      failures.push(`Reports summary API: ${financeResult.reason?.message || "request failed"}`);
+    }
+    if (failures.length) {
+      setError(failures.join(" | "));
+    }
+
+    setLoading(false);
   }, [isAdmin]);
   useEffect(() => { load(); }, [load]);
+  useRealtimeRefresh(load, ["dashboard", "invoices", "transactions", "cashbook", "inventory", "purchases", "expenses", "attendance", "salary", "customers", "bookings", "installments", "staff"]);
   if (!isAdmin) return null;
   const recent = (stats.recent || []).slice(0, 8);
   return <Page active="dashboard">
     <section className="nkj-dashboard nkj-owner-dashboard">
-      <div className="nkj-dashboard-heading"><div><span className="eyebrow">OWNER WORKSPACE</span><h2>Business Dashboard</h2><p>Live operational overview for Nandikishor Jewellery Works.</p></div><button className="nkj-dashboard-refresh" onClick={load} disabled={loading}><RefreshCw size={16} className={loading?"nkj-spin":""}/>{loading?"Refreshing":"Refresh data"}</button></div>
+      <div className="nkj-dashboard-heading"><div><span className="eyebrow">OWNER WORKSPACE</span><h2>Business Dashboard</h2><p>Live operational overview for Nandikishor Jewellery Works.</p></div></div>
       {error&&<p className="error">{error}</p>}
       <div className="nkj-stat-grid nkj-owner-kpis">
         <StatLink to="/reports/sales" icon={<Receipt/>} label="Today's Sales" value={loading?"…":"₹ " + money(stats.todaySales)} sub="Invoices and receipts received today"/>

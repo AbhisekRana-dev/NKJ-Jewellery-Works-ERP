@@ -1,18 +1,16 @@
 import "./ErpModulePage.css";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, RefreshCw, Search, Pencil, Trash2, X, Save, Printer, Package, Gem, Users, ShieldCheck, Clock3, Hammer } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Save, Printer, Package, Gem, Users, ShieldCheck, Clock3, Hammer } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 import { moduleConfig } from "./moduleConfig";
 
 const emptyForm = (fields) => Object.fromEntries(fields.map((field) => [field[0], ""]));
-const cashCreateModules = new Set(["payments", "pre-bookings", "expenses", "purchases", "salary", "salary-payments"]);
-const newIdempotencyKey = (module) => {
-  const token = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `ERP-${module}-${token}`;
-};
 const businessCodeFields = new Set(["staffCode", "customerCode", "itemCode", "supplierCode", "bookingNo", "orderNo"]);
+const cashCreateModules = new Set(["payments", "pre-bookings", "expenses", "purchases", "salary", "salary-payments"]);
+const newIdempotencyKey = (module) => "ERP-" + module + "-" + (globalThis.crypto?.randomUUID?.() || Date.now() + "-" + Math.random().toString(36).slice(2));
 const currencyFields = new Set([
   "monthlySalary", "openingBalance", "amount", "totalAmount", "paidAmount", "balance",
   "purchasePrice", "makingCharge", "estimatedRate", "estimatedValue", "makingEstimate",
@@ -63,7 +61,7 @@ export default function ErpModulePage({ module }) {
   }, [config.api, module]);
 
   useEffect(() => { load(); }, [load]);
-
+  useRealtimeRefresh(load, [config.api, "dashboard", "reports", "transactions", "cashbook"]);
   useEffect(() => {
     if (module !== "customers") return undefined;
     const refreshCustomers = () => { load(); };
@@ -91,8 +89,8 @@ export default function ErpModulePage({ module }) {
   }, [rows, search]);
 
   const startCreate = () => {
+    createRequestKeyRef.current = "";
     setEditingId(null);
-    createRequestKeyRef.current = cashCreateModules.has(module) ? newIdempotencyKey(module) : "";
     setForm(emptyForm(config.fields));
     setMessage("");
     setError("");
@@ -194,7 +192,7 @@ export default function ErpModulePage({ module }) {
             <p>{config.description}</p>
           </div>
           <div className="nkj-module-actions">
-            <button className="secondary" onClick={load} disabled={loading}><RefreshCw size={16} /> Refresh</button>
+            
             {!config.readOnly && !config.singleRecord && <button className="primary" onClick={startCreate}><Plus size={17} /> Add Record</button>}
           </div>
         </div>

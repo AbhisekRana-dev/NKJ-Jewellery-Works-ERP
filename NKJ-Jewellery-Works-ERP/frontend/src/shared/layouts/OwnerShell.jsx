@@ -1,139 +1,126 @@
 import "./OwnerShell.css";
 import React, { useLayoutEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
-  Wrench, ChevronRight, ArrowLeftRight,
+  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
 const SIDEBAR_STORAGE_KEY = "nkj-owner-sidebar-collapsed";
 const SIDEBAR_SCROLL_KEY = "nkj-owner-sidebar-scroll";
-const SIDEBAR_DOUBLE_CLICK_MS = 500;
-const SIDEBAR_DOUBLE_CLICK_DISTANCE = 18;
-
-// Retains the first click across React Router replacing the current Page/Nav
-// DOM after navigation. This is a timestamp comparison, not a timer/debounce.
-let previousSidebarClick = null;
-
-function isSecondSidebarClick(event, zone) {
-  const previous = previousSidebarClick;
-  const elapsed = previous ? event.timeStamp - previous.timeStamp : Infinity;
-  const distance = previous
-    ? Math.hypot(event.clientX - previous.x, event.clientY - previous.y)
-    : Infinity;
-  const secondClick = Boolean(
-    previous
-      && previous.zone === zone
-      && elapsed >= 0
-      && elapsed <= SIDEBAR_DOUBLE_CLICK_MS
-      && distance <= SIDEBAR_DOUBLE_CLICK_DISTANCE
-  );
-
-  previousSidebarClick = secondClick
-    ? null
-    : { zone, timeStamp: event.timeStamp, x: event.clientX, y: event.clientY };
-  return secondClick;
-}
+const SIDEBAR_NAV_CLICK_KEY = "nkj-owner-sidebar-nav-last-click";
+const SIDEBAR_DOUBLE_CLICK_MS = 450;
 
 function initialSidebarState() {
   try {
     const saved = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
     if (saved !== null) return saved === "true";
-    return window.matchMedia?.("(max-width: 1050px)").matches ?? false;
+    return window.matchMedia?.("(max-width: 1100px)").matches ?? false;
   } catch {
     return false;
   }
 }
 
-const compactNavigationLabels = {
-  dashboard: "Dash",
-  invoice: "New",
-  saved: "Bills",
-  bookings: "Book",
-  installments: "EMI",
-  "old-gold": "Old",
-  inventory: "Stock",
-  purchases: "Buy",
-  "stock-movements": "Moves",
-  rates: "Rates",
-  customers: "Client",
-  suppliers: "Supp",
-  expenses: "Exp.",
-  transactions: "Trans",
-  payments: "Pay",
-  reports: "Rpt.",
-  "reports-sales": "Sales",
-  "reports-profit": "P&L",
-  "reports-expenses": "ExRpt",
-  staff: "Staff",
-  attendance: "Attnd",
-  leaves: "Leave",
-  salary: "Salary",
-  "salary-payments": "Pay",
-  karigars: "Kari",
-  repairs: "Repair",
-  database: "Data",
-  "audit-logs": "Logs",
-  profile: "Prof",
-};
-
 const ownerNavigation = [
   { title: "OVERVIEW", items: [
-    ["dashboard", "Dashboard", "/dashboard", LayoutDashboard],
+    ["dashboard", "Dashboard", "/dashboard", LayoutDashboard, "Dash"],
   ]},
   { title: "BILLING & BOOKINGS", items: [
-    ["invoice", "New Invoice", "/invoice", FileText],
-    ["saved", "All Invoices", "/saved-invoices", Files],
-    ["bookings", "Pre-Booking Bills", "/bookings", Receipt],
-    ["installments", "Installment / EMI Management", "/installments", CalendarCheck],
-    ["old-gold", "Old Gold Exchange", "/old-gold", Coins],
+    ["invoice", "New Invoice", "/invoice", FileText, "Inv"],
+    ["saved", "All Invoices", "/saved-invoices", Files, "All Inv"],
+    ["bookings", "Pre-Booking Bills", "/bookings", Receipt, "Pre-Book"],
+    ["installments", "Installment / EMI Management", "/installments", CalendarCheck, "EMI"],
+    ["old-gold", "Old Gold Exchange", "/old-gold", Coins, "Old Gold"],
   ]},
   { title: "INVENTORY", items: [
-    ["inventory", "Jewellery Inventory", "/inventory", Boxes],
-    ["purchases", "Purchase Management", "/purchases", Banknote],
-    ["stock-movements", "Stock Movements", "/stock-movements", ArrowLeftRight],
-    ["rates", "Gold & Silver Rates", "/rates", Coins],
+    ["inventory", "Jewellery Inventory", "/inventory", Boxes, "Stock"],
+    ["purchases", "Purchase Management", "/purchases", Banknote, "Buy"],
+    ["stock-movements", "Stock Movements", "/stock-movements", ArrowLeftRight, "Move"],
+    ["rates", "Gold & Silver Rates", "/rates", Coins, "Rates"],
   ]},
   { title: "MASTERS", items: [
-    ["customers", "Customers", "/customers", Users],
-    ["suppliers", "Suppliers", "/suppliers", Contact],
+    ["customers", "Customers", "/customers", Users, "Cust"],
+    ["suppliers", "Suppliers", "/suppliers", Contact, "Supp"],
   ]},
   { title: "FINANCE & REPORTS", items: [
-    ["expenses", "Expenses", "/expenses", Wallet],
-    ["transactions", "Transactions", "/transactions", ArrowLeftRight],
-    ["payments", "Payments", "/payments", Receipt],
-    ["reports", "Reports Overview", "/reports", ChartNoAxesColumn],
-    ["reports-sales", "Sales Report", "/reports/sales", ChartNoAxesColumn],
-    ["reports-profit", "Profit & Loss", "/reports/profit", ChartNoAxesColumn],
-    ["reports-expenses", "Expense Report", "/reports/expenses", Receipt],
+    ["expenses", "Expenses", "/expenses", Wallet, "Exp"],
+    ["payments", "Payments", "/payments", Receipt, "Pay"],
+    ["transactions", "Transactions", "/transactions", ArrowLeftRight, "Trans"],
+    ["reports", "Reports Overview", "/reports", ChartNoAxesColumn, "Rpt"],
+    ["reports-sales", "Sales Report", "/reports/sales", ChartNoAxesColumn, "Sales"],
+    ["reports-profit", "Profit & Loss", "/reports/profit", ChartNoAxesColumn, "P&L"],
+    ["reports-expenses", "Expense Report", "/reports/expenses", Receipt, "Exp Rpt"],
   ]},
   { title: "PEOPLE", items: [
-    ["staff", "Staff Details", "/staff", Contact],
-    ["attendance", "Attendance", "/attendance", CalendarCheck],
-    ["leaves", "Staff Leave", "/leaves", ClipboardList],
-    ["salary", "Salary Management", "/salary", Banknote],
-    ["salary-payments", "Salary Payments", "/salary-payments", Wallet],
-    ["karigars", "Karigars", "/karigars", Users],
-    ["repairs", "Repair Orders", "/repairs", Wrench],
+    ["staff", "Staff Details", "/staff", Contact, "Staff"],
+    ["attendance", "Attendance", "/attendance", CalendarCheck, "Attnd"],
+    ["leaves", "Staff Leave", "/leaves", ClipboardList, "Leave"],
+    ["salary", "Salary Management", "/salary", Banknote, "Salary"],
+    ["salary-payments", "Salary Payments", "/salary-payments", Wallet, "Pay"],
+    ["karigars", "Karigars", "/karigars", Users, "Kari"],
+    ["repairs", "Repair Orders", "/repairs", Wrench, "Repair"],
   ]},
   { title: "SYSTEM", items: [
-    ["database", "Database Management", "/database", Database],
-    ["audit-logs", "Audit Logs", "/audit-logs", ScrollText],
-    ["profile", "Owner Profile", "/profile", User],
+    ["design-catalog", "Jewellery Catalog Management", "/design-catalog", Gem, "Designs"],
+    ["database", "Database Management", "/database", Database, "DB"],
+    ["audit-logs", "Audit Logs", "/audit-logs", ScrollText, "Audit"],
+    ["profile", "Owner Profile", "/profile", User, "Profile"],
   ]},
 ];
 
 export function Nav({ active = "home" }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
-  const sidebarCollapsedRef = useRef(sidebarCollapsed);
-  sidebarCollapsedRef.current = sidebarCollapsed;
   const sidebarNavRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
+
+  const persistSidebarState = (collapsed) => {
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
+    } catch {
+      // Keep the sidebar interactive if browser storage is unavailable.
+    }
+  };// The dedicated hamburger toggles the sidebar independently of navigation.
+  const handleSidebarToggle = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      persistSidebarState(next);
+      return next;
+    });
+  };
+
+  // Track two quick clicks on the same navigation item in sessionStorage.
+  // This survives route navigation, where React may remount the sidebar between
+  // the first and second click. A single click never changes the sidebar state.
+  const handleSidebarNavigationClick = (key) => {
+    const now = Date.now();
+
+    try {
+      const previous = JSON.parse(window.sessionStorage.getItem(SIDEBAR_NAV_CLICK_KEY) || "null");
+      const isDoubleClick = previous?.key === key
+        && Number.isFinite(previous?.at)
+        && now >= previous.at
+        && now - previous.at <= SIDEBAR_DOUBLE_CLICK_MS;
+
+      if (isDoubleClick) {
+        window.sessionStorage.removeItem(SIDEBAR_NAV_CLICK_KEY);
+        setSidebarCollapsed((current) => {
+          const next = !current;
+          persistSidebarState(next);
+          return next;
+        });
+        return;
+      }
+
+      window.sessionStorage.setItem(SIDEBAR_NAV_CLICK_KEY, JSON.stringify({ key, at: now }));
+    } catch {
+      // If session storage is unavailable, navigation remains usable; only
+      // the dedicated sidebar toggle will change expanded/collapsed state.
+    }
+  };
 
   useLayoutEffect(() => {
     const body = document.body;
@@ -160,119 +147,6 @@ export function Nav({ active = "home" }) {
     }
   }, [ownerWorkspace]);
 
-  useLayoutEffect(() => {
-    if (!ownerWorkspace) {
-      previousSidebarClick = null;
-      return undefined;
-    }
-
-    const elementFromTarget = (target) => (
-      target instanceof Element ? target : target?.parentElement
-    );
-
-    const commitSidebarState = (nextCollapsed) => {
-      sidebarCollapsedRef.current = nextCollapsed;
-      flushSync(() => setSidebarCollapsed(nextCollapsed));
-    };
-
-    const handleClickCapture = (event) => {
-      const target = elementFromTarget(event.target);
-      if (!target) return;
-
-      const collapsed = sidebarCollapsedRef.current;
-
-      if (collapsed) {
-        // A collapsed menu item must open the sidebar on its second click.
-        // The first click may navigate and replace the Nav DOM, so click memory
-        // is retained at module scope and matched again by the next Nav instance.
-        const collapsedMenuLink = target.closest(
-          ".nkj-owner-nav a, .nkj-owner-sidebar-bottom a"
-        );
-        if (collapsedMenuLink) {
-          const label = (
-            collapsedMenuLink.getAttribute("aria-label")
-            || collapsedMenuLink.textContent
-            || ""
-          ).trim().replace(/\s+/g, " ");
-          const isSecondMenuClick = event.detail === 2
-            || isSecondSidebarClick(event, `collapsed-sidebar-icon:${label}`);
-          if (!isSecondMenuClick) return;
-
-          previousSidebarClick = null;
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          commitSidebarState(false);
-          return;
-        }
-
-        const pageContent = target.closest(".app-content main");
-        if (!pageContent) {
-          previousSidebarClick = null;
-          return;
-        }
-
-        // Works for a stable element (click.detail) and after React Router
-        // remounts the page/sidebar between the first and second clicks.
-        const isSecondClick = event.detail === 2
-          || isSecondSidebarClick(event, "page-content");
-        if (!isSecondClick) return;
-        previousSidebarClick = null;
-
-        const repeatedContentAction = target.closest(
-          ".app-content main a, .app-content main button, .app-content main input[type='button'], .app-content main input[type='submit']"
-        );
-        if (repeatedContentAction) {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-        }
-
-        commitSidebarState(false);
-        return;
-      }
-
-      // Only menu text closes the expanded sidebar; icons/arrows do not.
-      const sidebarText = target.closest(
-        ".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span"
-      );
-      if (sidebarText) {
-        const label = (sidebarText.textContent || "").trim().replace(/\s+/g, " ");
-        const isSecondClick = event.detail === 2
-          || isSecondSidebarClick(event, `sidebar-text:${label}`);
-        if (!isSecondClick) return;
-        previousSidebarClick = null;
-
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        commitSidebarState(true);
-        return;
-      }
-
-      // Icon double-clicks do not toggle, but the second click must not
-      // activate the same navigation link twice.
-      const sidebarLink = target.closest(".nkj-owner-sidebar a");
-      if (sidebarLink) {
-        const label = sidebarLink.getAttribute("aria-label") || sidebarLink.textContent.trim();
-        const isSecondClick = event.detail === 2
-          || isSecondSidebarClick(event, `sidebar-icon:${label}`);
-        if (isSecondClick) {
-          previousSidebarClick = null;
-          event.preventDefault();
-          event.stopImmediatePropagation();
-        }
-        return;
-      }
-
-      previousSidebarClick = null;
-    };
-
-    document.addEventListener("click", handleClickCapture, true);
-    return () => {
-      document.removeEventListener("click", handleClickCapture, true);
-      // Keep the first-click record while an owner route is replaced.
-      // The next Nav instance consumes it if the second click arrives.
-    };
-  }, [ownerWorkspace]);
-
   if (ownerWorkspace) {
     return (
       <>
@@ -283,20 +157,18 @@ export function Nav({ active = "home" }) {
             aria-label={sidebarCollapsed ? "Expand owner sidebar" : "Collapse owner sidebar"}
             aria-expanded={!sidebarCollapsed}
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setSidebarCollapsed((value) => !value)}
+            onClick={handleSidebarToggle}
           >
             <ChevronRight size={18} />
           </button>
 
           <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home">
             <span className="nkj-owner-logo">NKJ</span>
-            <span><b>Nandikishor</b><small>Jewellery Works ERP</small></span>
+            <span className="nkj-owner-brand-copy">
+              <b>Nandikishor</b>
+              <small>Jewellery Works</small>
+            </span>
           </Link>
-
-          <div className="nkj-owner-user" title={user || "Owner account"}>
-            <span className="nkj-owner-avatar">{String(user || "O").slice(0, 1).toUpperCase()}</span>
-            <span><b>{user || "Owner"}</b><small>Owner account</small></span>
-          </div>
 
           <nav
             className="nkj-owner-nav"
@@ -312,7 +184,7 @@ export function Nav({ active = "home" }) {
             {ownerNavigation.map((group) => (
               <section className="nkj-owner-nav-group" key={group.title}>
                 <small className="nkj-owner-nav-title">{group.title}</small>
-                {group.items.map(([key, label, to, Icon]) => {
+                {group.items.map(([key, label, to, Icon, shortLabel]) => {
                   const selected = active === key || (key === "saved" && active === "saved");
                   return (
                     <Link
@@ -323,12 +195,12 @@ export function Nav({ active = "home" }) {
                       title={sidebarCollapsed ? label : undefined}
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
+                      data-nav-key={key}
+                      onClick={() => handleSidebarNavigationClick(key)}
                     >
                       <Icon size={18} aria-hidden="true" />
-                      <span className="nkj-owner-nav-label">{label}</span>
-                      <small className="nkj-owner-compact-label" aria-hidden="true">
-                        {compactNavigationLabels[key] || label}
-                      </small>
+                      <span className="nkj-owner-nav-full-label">{label}</span>
+                      <small className="nkj-owner-nav-short-label" aria-hidden="true">{shortLabel}</small>
                       <ChevronRight className="nkj-owner-nav-arrow" size={14} aria-hidden="true" />
                     </Link>
                   );
@@ -338,11 +210,15 @@ export function Nav({ active = "home" }) {
           </nav>
 
           <div className="nkj-owner-sidebar-bottom">
-            <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined}>
-              <HomeIcon size={18} /><span>Home</span>
-            </Link>
-            <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
-              <LogOut size={18} /><span>Exit</span>
+            <button
+              type="button"
+              className="nkj-owner-logout"
+              onClick={logout}
+              title="Logout"
+              aria-label="Logout"
+            >
+              <span className="nkj-owner-logout-icon"><LogOut size={19} aria-hidden="true" /></span>
+              <span className="nkj-owner-logout-label">Logout</span>
             </button>
           </div>
         </aside>
@@ -353,6 +229,15 @@ export function Nav({ active = "home" }) {
             <b>Nandikishor Jewellery Works</b>
           </div>
           <div className="nkj-owner-top-actions">
+            <Link to="/" className="nkj-calculator-link nkj-home-link" aria-label="Open home">
+              <HomeIcon size={17} /> <span>Home</span>
+            </Link>
+            <Link to="/designs" className="nkj-calculator-link nkj-designs-link" aria-label="Open jewellery designs">
+              <Gem size={17} /> <span>Jewellery Designs</span>
+            </Link>
+            <Link to="/calculator" className="nkj-calculator-link" aria-label="Open calculator">
+              <CalculatorIcon size={17} /> <span>Calculator</span>
+            </Link>
             <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
             <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
           </div>
@@ -369,6 +254,8 @@ export function Nav({ active = "home" }) {
       </Link>
       <nav aria-label="Main navigation">
         <Link className={active === "home" ? "active" : ""} to="/"><HomeIcon />Home</Link>
+        <Link className={active === "designs" ? "active" : ""} to="/designs"><Gem />Jewellery Designs</Link>
+        <Link className={active === "calculator" ? "active" : ""} to="/calculator"><CalculatorIcon />Calculator</Link>
         <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
         {isAdmin ? <>
           <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>

@@ -19,7 +19,7 @@ import {
   MessageCircle,
   Printer,
   Search,
-  RefreshCw,
+  ArrowLeftRight,
   Trash2,
   ArrowLeft,
   Save,
@@ -31,6 +31,7 @@ import {
   LayoutDashboard,
   Boxes,
   Coins,
+  Clock3,
   Contact,
   Truck,
   ShoppingCart,
@@ -45,15 +46,111 @@ import {
   Gem,
   Wrench,
   ChevronRight,
+  Calculator as CalculatorIcon,
 } from "lucide-react";
 
 
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 
 import { useAuth } from "../../core/auth/AuthProvider";
 import InvoicePinDialog from "../../shared/components/InvoicePinDialog";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
+
+
+function evaluateCalculatorExpression(rawExpression) {
+  const expression = String(rawExpression ?? "")
+    .replace(/[×xX]/g, "*")
+    .replace(/[÷]/g, "/")
+    .replace(/[−]/g, "-")
+    .replace(/\s+/g, "");
+
+  if (!expression) throw new Error("Enter a calculation first.");
+
+  const tokens = expression.match(/\d+(?:\.\d*)?|\.\d+|[+\-*/%()]/g) || [];
+  if (tokens.join("") !== expression) throw new Error("Check the expression and try again.");
+
+  let cursor = 0;
+
+  const parsePrimary = () => {
+    const token = tokens[cursor];
+    if (token === "(") {
+      cursor += 1;
+      const nested = parseExpression();
+      if (tokens[cursor] !== ")") throw new Error("Missing closing bracket.");
+      cursor += 1;
+      return nested;
+    }
+    if (!token || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token)) {
+      throw new Error("Enter a number.");
+    }
+    cursor += 1;
+    const value = Number(token);
+    if (!Number.isFinite(value)) throw new Error("The number is too large.");
+    return { value, isPercent: false };
+  };
+
+  const parseFactor = () => {
+    let sign = 1;
+    while (tokens[cursor] === "+" || tokens[cursor] === "-") {
+      if (tokens[cursor] === "-") sign *= -1;
+      cursor += 1;
+    }
+    const node = parsePrimary();
+    let isPercent = false;
+    while (tokens[cursor] === "%") {
+      node.value /= 100;
+      isPercent = true;
+      cursor += 1;
+    }
+    return { value: sign * node.value, isPercent };
+  };
+
+  const parseTerm = () => {
+    let left = parseFactor();
+    while (tokens[cursor] === "*" || tokens[cursor] === "/") {
+      const operator = tokens[cursor++];
+      const right = parseFactor();
+      if (operator === "/" && right.value === 0) {
+        throw new Error("Cannot divide by zero.");
+      }
+      left = {
+        value: operator === "*" ? left.value * right.value : left.value / right.value,
+        isPercent: false,
+      };
+      if (!Number.isFinite(left.value)) throw new Error("The result is outside the supported range.");
+    }
+    return left;
+  };
+
+  const parseExpression = () => {
+    let left = parseTerm();
+    while (tokens[cursor] === "+" || tokens[cursor] === "-") {
+      const operator = tokens[cursor++];
+      const right = parseTerm();
+      // For addition/subtraction, a postfix percentage is relative to the
+      // value on its left (for example, 200 + 10% = 220).
+      const rightValue = right.isPercent ? left.value * right.value : right.value;
+      left = {
+        value: operator === "+" ? left.value + rightValue : left.value - rightValue,
+        isPercent: false,
+      };
+      if (!Number.isFinite(left.value)) throw new Error("The result is outside the supported range.");
+    }
+    return left;
+  };
+
+  const result = parseExpression();
+  if (cursor !== tokens.length) throw new Error("Check the expression and try again.");
+  if (!Number.isFinite(result.value)) throw new Error("The result is not a valid number.");
+  return result.value;
+}
+
+function formatCalculatorValue(value) {
+  if (!Number.isFinite(value)) throw new Error("The result is not a valid number.");
+  return Number(value.toPrecision(12)).toString();
+}
 
 function parseInvoiceDetails(invoice) {
   if (!invoice) return {};
@@ -444,6 +541,308 @@ function createInvoiceDraftKey() {
   return `nkj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/**
+ * Print only the invoice sheet in an isolated same-origin document.
+ *
+ * The previous implementation called window.print() on the full ERP page.
+ * Its print CSS used visibility:hidden for unrelated application elements;
+ * visibility preserves layout space, so the owner shell/sidebar could create
+ * blank pages before the invoice. An iframe removes the shell from the print
+ * document entirely while reusing the existing invoice markup and CSS.
+ */
+async function printInvoiceAsPdf({ onAfterPrint } = {}) {
+  const source = document.getElementById("invoice-print");
+  if (!source) {
+    throw new Error("The invoice is not available for printing. Open the invoice and try again.");
+  }
+
+  const frame = document.createElement("iframe");
+  frame.title = "Invoice PDF print";
+  frame.setAttribute("aria-hidden", "true");
+  frame.setAttribute("tabindex", "-1");
+  Object.assign(frame.style, {
+    position: "fixed",
+    right: "0",
+    bottom: "0",
+    width: "1px",
+    height: "1px",
+    border: "0",
+    opacity: "0",
+    pointerEvents: "none",
+  });
+  document.body.appendChild(frame);
+
+  const printWindow = frame.contentWindow;
+  const printDocument = frame.contentDocument;
+  if (!printWindow || !printDocument) {
+    frame.remove();
+    throw new Error("The browser could not prepare the invoice print document.");
+  }
+
+  let cleanupTimer = null;
+  let cleanedUp = false;
+  const cleanup = () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    window.removeEventListener("afterprint", cleanup);
+    printWindow.removeEventListener("afterprint", cleanup);
+    if (cleanupTimer !== null) window.clearTimeout(cleanupTimer);
+    frame.remove();
+    onAfterPrint?.();
+  };
+
+  try {
+    printDocument.open();
+    printDocument.write("<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Invoice</title></head><body></body></html>");
+    printDocument.close();
+
+    const base = printDocument.createElement("base");
+    base.href = document.baseURI;
+    printDocument.head.prepend(base);
+
+    // Copy the app's existing stylesheets; no PDF library or duplicate invoice
+    // template is required.
+    const stylesheetLoads = [];
+    document.querySelectorAll('link[rel="stylesheet"]').forEach((originalLink) => {
+      const link = originalLink.cloneNode(true);
+      link.href = new URL(originalLink.getAttribute("href") || originalLink.href, document.baseURI).href;
+      stylesheetLoads.push(new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        };
+        link.addEventListener("load", finish, { once: true });
+        link.addEventListener("error", finish, { once: true });
+        printDocument.head.appendChild(link);
+        if (link.sheet) finish();
+        window.setTimeout(finish, 4000);
+      }));
+    });
+
+    document.querySelectorAll("style").forEach((style) => {
+      printDocument.head.appendChild(style.cloneNode(true));
+    });
+
+    const invoiceClone = source.cloneNode(true);
+    printDocument.body.appendChild(invoiceClone);
+
+    const invoiceNumber = source.querySelector(".inv-meta span strong")?.textContent?.trim() || "Invoice";
+    const itemTables = Array.from(invoiceClone.querySelectorAll(".items-table"));
+    const itemRowCount = itemTables.reduce(
+      (total, table) => total + table.querySelectorAll("tbody tr").length,
+      0,
+    );
+
+    // Repeated table headers identify the invoice on every printed page.
+    itemTables.forEach((table) => {
+      const header = table.tHead;
+      if (!header) return;
+      const columnCount = header.querySelectorAll("tr:last-child th").length || 1;
+      const continuationRow = printDocument.createElement("tr");
+      continuationRow.className = "nkj-pdf-repeat-header";
+      const continuationCell = printDocument.createElement("th");
+      continuationCell.colSpan = columnCount;
+      continuationCell.textContent = `INVOICE ${invoiceNumber}  •  ITEM DETAILS`;
+      continuationRow.appendChild(continuationCell);
+      header.insertBefore(continuationRow, header.firstChild);
+    });
+
+    // Very long item lists use a continuous vertical flow so the table can
+    // paginate naturally instead of forcing a tall CSS grid onto one sheet.
+    if (itemRowCount > 8) {
+      invoiceClone.classList.add("nkj-pdf-long-invoice");
+    }
+
+    // cloneNode does not copy current DOM properties for form controls.
+    const originalControls = source.querySelectorAll("input, textarea, select");
+    const clonedControls = invoiceClone.querySelectorAll("input, textarea, select");
+    originalControls.forEach((control, index) => {
+      const clone = clonedControls[index];
+      if (!clone) return;
+      if (control instanceof HTMLInputElement) {
+        clone.value = control.value;
+        clone.checked = control.checked;
+      } else if (control instanceof HTMLTextAreaElement) {
+        clone.value = control.value;
+      } else if (control instanceof HTMLSelectElement) {
+        clone.value = control.value;
+      }
+    });
+
+    const printStyle = printDocument.createElement("style");
+    printStyle.textContent = `
+      @page {
+        size: A4 portrait;
+        margin: 8mm;
+      }
+
+      @media print {
+        html,
+        body {
+          width: 194mm !important;
+          min-width: 0 !important;
+          max-width: 194mm !important;
+          height: auto !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          background: #fff !important;
+        }
+
+        body:has(#invoice-print) #invoice-print {
+          display: block !important;
+          position: relative !important;
+          inset: auto !important;
+          width: 291mm !important;
+          min-width: 291mm !important;
+          max-width: 291mm !important;
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          margin: 0 !important;
+          padding: 2mm !important;
+          box-sizing: border-box !important;
+          zoom: 0.6666667 !important;
+          transform: none !important;
+          rotate: none !important;
+          translate: none !important;
+          overflow: visible !important;
+          background: #fff !important;
+          border: 0.35mm solid #c98a2a !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          break-inside: auto !important;
+          page-break-inside: auto !important;
+        }
+
+        #invoice-print .invoice-actions,
+        #invoice-print .nkj-invoice-detail-actions,
+        #invoice-print .no-print,
+        #invoice-print button,
+        #invoice-print .icon-btn {
+          display: none !important;
+        }
+
+        #invoice-print .table-wrap {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow: visible !important;
+        }
+
+        #invoice-print table,
+        #invoice-print .items-table,
+        #invoice-print .new-items-table,
+        #invoice-print .old-items-table {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          table-layout: fixed !important;
+        }
+
+        #invoice-print .items-table thead {
+          display: table-header-group !important;
+        }
+
+        #invoice-print .items-table tbody {
+          break-inside: auto !important;
+          page-break-inside: auto !important;
+        }
+
+        #invoice-print .items-table tr {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+
+        #invoice-print .ornament-panel {
+          break-inside: auto !important;
+          page-break-inside: auto !important;
+        }
+
+        #invoice-print .items-table .nkj-pdf-repeat-header th {
+          display: table-cell !important;
+          padding: 0.7mm 1mm !important;
+          background: #fff7e8 !important;
+          color: #7a1029 !important;
+          font: 700 7pt/1.1 Georgia, "Times New Roman", serif !important;
+          text-align: left !important;
+          letter-spacing: 0.2px !important;
+        }
+
+        #invoice-print.nkj-pdf-long-invoice .inv-main {
+          display: block !important;
+        }
+
+        #invoice-print.nkj-pdf-long-invoice .inv-left {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+
+        #invoice-print.nkj-pdf-long-invoice .totals {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          margin-top: 2mm !important;
+        }
+
+        #invoice-print img {
+          max-width: 100% !important;
+          object-fit: contain !important;
+        }
+
+        #invoice-print .total-paid-row,
+        #invoice-print .due-amount-row,
+        #invoice-print .inv-head,
+        #invoice-print .inv-two,
+        #invoice-print .description-panel,
+        #invoice-print .words-panel {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+
+        /* Let ornament sections flow across pages while each table row stays intact. */
+        #invoice-print .ornament-panel {
+          break-inside: auto !important;
+          page-break-inside: auto !important;
+        }
+
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    `;
+    printDocument.head.appendChild(printStyle);
+
+    await Promise.all(stylesheetLoads);
+    if (printDocument.fonts?.ready) {
+      await Promise.race([
+        printDocument.fonts.ready.catch(() => {}),
+        new Promise((resolve) => window.setTimeout(resolve, 1500)),
+      ]);
+    }
+    await Promise.all(Array.from(invoiceClone.querySelectorAll("img")).map((image) => {
+      if (image.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", resolve, { once: true });
+        window.setTimeout(resolve, 2500);
+      });
+    }));
+
+    window.addEventListener("afterprint", cleanup, { once: true });
+    printWindow.addEventListener("afterprint", cleanup, { once: true });
+    cleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
+    printWindow.focus();
+    printWindow.print();
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+}
+
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -489,6 +888,14 @@ export function InvoicePage() {
 
   const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || initialDraft?.paymentMode || "Cash");
   const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || initialDraft?.referenceNo || "");
+  const [totalPaid, setTotalPaid] = useState(() => {
+    if (isEditingSavedInvoice) {
+      return String(invoiceSeed?.totalPaid ?? invoiceSeed?.paymentAmount ?? 0);
+    }
+    return initialDraft?.totalPaid === undefined || initialDraft?.totalPaid === null
+      ? null
+      : String(initialDraft.totalPaid);
+  });
   const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
   // and always start with exactly one empty row at the end.
@@ -523,8 +930,137 @@ export function InvoicePage() {
     isEditingSavedInvoice ? invoiceSeed?.id ?? null : null
   );
   const [showInvoicePin, setShowInvoicePin] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [calculatorExpression, setCalculatorExpression] = useState("");
+  const [calculatorResult, setCalculatorResult] = useState("");
+  const [calculatorError, setCalculatorError] = useState("");
+  const [isPrintPreparing, setIsPrintPreparing] = useState(false);
   const saveInProgressRef = useRef(false);
   const skipNextDraftPersistRef = useRef(false);
+
+  const clearCalculator = () => {
+    setCalculatorExpression("");
+    setCalculatorResult("");
+    setCalculatorError("");
+  };
+
+  const appendCalculatorToken = (token) => {
+    setCalculatorError("");
+    setCalculatorResult("");
+    setCalculatorExpression((current) => {
+      const operators = ["+", "−", "×", "÷"];
+      const isOperator = operators.includes(token);
+      const continuesResult = isOperator || token === "%";
+      let next = calculatorResult !== ""
+        ? (continuesResult ? calculatorResult : "")
+        : current;
+      const last = next.slice(-1);
+
+      if (isOperator) {
+        if (!next) return token === "−" ? token : "";
+        if (operators.includes(last)) {
+          if (next.length === 1 && last === "−" && token !== "−") return next;
+          return next.slice(0, -1) + token;
+        }
+        return next + token;
+      }
+
+      if (token === ".") {
+        const currentNumber = next.split(/[+−×÷*/()]/).pop() || "";
+        if (currentNumber.includes(".")) return next;
+        return next + (currentNumber ? "." : "0.");
+      }
+
+      if (token === "%") {
+        if (!/[0-9.)]$/.test(next) || last === "%") return next;
+        return next + token;
+      }
+
+      if (/^[0-9]$/.test(token)) return next + token;
+      if (token === "(") return next + token;
+      if (token === ")") return next + token;
+      return next;
+    });
+  };
+
+  const backspaceCalculator = () => {
+    setCalculatorError("");
+    setCalculatorResult("");
+    setCalculatorExpression((current) => {
+      const value = calculatorResult !== "" ? calculatorResult : current;
+      return value.slice(0, -1);
+    });
+  };
+
+  const calculateExpression = () => {
+    try {
+      const value = evaluateCalculatorExpression(calculatorExpression);
+      const formatted = formatCalculatorValue(value);
+      setCalculatorExpression(calculatorExpression);
+      setCalculatorResult(formatted);
+      setCalculatorError("");
+    } catch (error) {
+      setCalculatorResult("");
+      setCalculatorError(error.message || "Unable to calculate this expression.");
+    }
+  };
+
+  useEffect(() => {
+    if (!calculatorOpen || isPrintPreparing) return undefined;
+
+    const isEditableElement = (element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      return element.isContentEditable ||
+        Boolean(element.closest("input, textarea, select, [contenteditable='true'], [role='textbox']"));
+    };
+
+    const onCalculatorKeyDown = (event) => {
+      if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+      const key = event.key;
+      // Escape always closes the popup, even when focus is currently in an
+      // invoice field. All other calculator keys leave editable fields alone.
+      if (key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        setCalculatorOpen(false);
+        setCalculatorError("");
+        return;
+      }
+      if (isEditableElement(event.target) || isEditableElement(document.activeElement)) return;
+      if (key === "Enter" || key === "=") {
+        event.preventDefault();
+        event.stopPropagation();
+        calculateExpression();
+        return;
+      }
+      if (key === "Backspace") {
+        event.preventDefault();
+        event.stopPropagation();
+        backspaceCalculator();
+        return;
+      }
+      if (key === "Delete") {
+        event.preventDefault();
+        event.stopPropagation();
+        clearCalculator();
+        return;
+      }
+
+      const mapped = key === "*" || key.toLowerCase() === "x" ? "×"
+        : key === "/" ? "÷"
+          : key === "-" ? "−"
+            : key === "+" ? "+"
+              : key;
+      if (/^[0-9.]$/.test(mapped) || ["+", "−", "×", "÷", "%", "(", ")"].includes(mapped)) {
+        event.preventDefault();
+        event.stopPropagation();
+        appendCalculatorToken(mapped);
+      }
+    };
+
+    window.addEventListener("keydown", onCalculatorKeyDown, true);
+    return () => window.removeEventListener("keydown", onCalculatorKeyDown, true);
+  }, [calculatorOpen, isPrintPreparing, calculatorExpression, calculatorResult]);
 
   // Disable the browser print shortcut only while the New Invoice page is mounted.
   useEffect(() => {
@@ -575,6 +1111,7 @@ export function InvoicePage() {
       setCustomer({ name: "", mobile: "", address: "" });
       setPaymentMode("Cash");
       setReferenceNo("");
+      setTotalPaid(null);
       setNewItems([blankNew()]);
       setOldItems([blankOld()]);
       setDiscount("");
@@ -620,6 +1157,7 @@ export function InvoicePage() {
       customer,
       paymentMode,
       referenceNo,
+      totalPaid,
       newItems,
       oldItems,
       discount,
@@ -633,7 +1171,7 @@ export function InvoicePage() {
     } catch {
       // The invoice remains usable when browser storage is unavailable or full.
     }
-  }, [invoiceDate, customer, paymentMode, referenceNo, newItems, oldItems, discount, gst, description, showGstin, idempotencyKey, saved]);
+  }, [invoiceDate, customer, paymentMode, referenceNo, totalPaid, newItems, oldItems, discount, gst, description, showGstin, idempotencyKey, saved]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -667,6 +1205,10 @@ export function InvoicePage() {
   // Discount deducted after GST calculation
 
   const grand = Math.max(0, newTotal + tax - discountValue - oldTotal);
+  const totalPaidValue = totalPaid === null
+    ? grand
+    : Math.max(0, Number(totalPaid) || 0);
+  const dueAmount = Math.max(0, grand - totalPaidValue);
 
   // Update only the field being edited. Description and purity never
   // change or auto-fill the Rate / GM field.
@@ -772,9 +1314,11 @@ export function InvoicePage() {
       gstAmount: tax,
       otherCharge: 0,
       grandTotal: grand,
-      // This invoice screen records a full-payment invoice (payment mode is selected above).
-      // The backend uses this amount to create the matching Incoming cash transaction.
-      paymentAmount: grand,
+      totalPaid: totalPaidValue,
+      dueAmount,
+      // Reuse the existing initial-collection payment and Cashbook workflow.
+      // Editing a saved invoice must never create another receipt.
+      paymentAmount: isEditingSavedInvoice ? undefined : totalPaidValue,
     };
   }
 
@@ -789,6 +1333,7 @@ export function InvoicePage() {
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
     setReferenceNo("");
+    setTotalPaid(null);
     setNewItems([blankNew()]);
     setOldItems([blankOld()]);
     setDiscount("");
@@ -829,11 +1374,14 @@ export function InvoicePage() {
     );
     if (invalidOldItem) return "Old ornament weights and rates must be valid non-negative numbers.";
 
-    for (const [label, value] of [["GST", gst], ["Discount", discount]]) {
+    for (const [label, value] of [["GST", gst], ["Discount", discount], ["Total Paid", totalPaid === null ? "" : totalPaid]]) {
       const raw = String(value ?? "").trim();
       if (raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0)) {
         return `${label} must be a valid non-negative number.`;
       }
+    }
+    if (!isEditingSavedInvoice && totalPaidValue > grand + 0.005) {
+      return "Total Paid cannot be greater than the Grand Total.";
     }
     return "";
   }
@@ -917,12 +1465,10 @@ export function InvoicePage() {
       setInvoiceId(result.id);
       setInvoiceNo(result.invoiceNo);
       setSaved(true);
+      window.dispatchEvent(new Event("nkj:customers-updated"));
       setDraftRestored(false);
       setShowInvoicePin(false);
       setSuccessMessage(`Invoice ${result.invoiceNo} ${isEditingSavedInvoice ? "updated" : "saved"} successfully. It is now available in Invoice History.`);
-      // Customer Management reloads immediately if it is mounted; otherwise
-      // its normal page load fetches the newly committed customer row.
-      window.dispatchEvent(new Event("nkj:customers-updated"));
       return result;
     } catch (e) {
       setError(e.message || "Could not save the invoice. Printing and PDF download have been stopped; your draft is still available.");
@@ -938,9 +1484,14 @@ export function InvoicePage() {
   }
 
   async function requestPrintPin() {
+    setCalculatorOpen(false);
+    setIsPrintPreparing(true);
     setError("");
     const result = await persistInvoice();
-    if (!result?.id || !result?.invoiceNo) return;
+    if (!result?.id || !result?.invoiceNo) {
+      setIsPrintPreparing(false);
+      return;
+    }
 
     // persistInvoice returns the existing ID for a saved invoice and only
     // creates a database record for an unsaved draft. Never POST again on reprint.
@@ -951,12 +1502,23 @@ export function InvoicePage() {
   }
 
   async function printCurrentInvoice(ticket) {
-    await request("/invoices/consume-print-ticket", {
-      method: "POST",
-      body: JSON.stringify({ ticket, invoiceId }),
-    });
-    setShowInvoicePin(false);
-    window.setTimeout(() => window.print(), 120);
+    try {
+      await request("/invoices/consume-print-ticket", {
+        method: "POST",
+        body: JSON.stringify({ ticket, invoiceId }),
+      });
+      setShowInvoicePin(false);
+      window.setTimeout(() => {
+        printInvoiceAsPdf({ onAfterPrint: () => setIsPrintPreparing(false) }).catch((error) => {
+          setIsPrintPreparing(false);
+          setError(error.message || "Could not prepare the invoice PDF.");
+        });
+      }, 120);
+    } catch (error) {
+      setShowInvoicePin(false);
+      setIsPrintPreparing(false);
+      setError(error.message || "Could not authorize invoice printing.");
+    }
   }
 
   const now = new Date();
@@ -995,6 +1557,80 @@ export function InvoicePage() {
         </label>
         {isEditingSavedInvoice && invoiceNo && (
           <span className="nkj-editing-invoice-note">Editing {invoiceNo}</span>
+        )}
+        {!isPrintPreparing && (
+          <div className="nkj-invoice-calculator-anchor no-print">
+            <button
+              type="button"
+              className="nkj-calculator-trigger"
+              onClick={() => {
+                setCalculatorOpen((open) => !open);
+                setCalculatorError("");
+              }}
+              aria-label={calculatorOpen ? "Close calculator" : "Open manual calculator"}
+              aria-expanded={calculatorOpen}
+              aria-haspopup="dialog"
+              title="Manual calculator"
+            >
+              <CalculatorIcon size={19} />
+              <span>Calculator</span>
+            </button>
+
+            {calculatorOpen && (
+              <section
+                className="nkj-invoice-calculator-popup no-print"
+                role="dialog"
+                aria-label="Manual calculator"
+                aria-modal="false"
+              >
+                <header className="nkj-calculator-heading">
+                  <div>
+                    <CalculatorIcon size={17} />
+                    <strong>Manual Calculator</strong>
+                  </div>
+                  <button
+                    type="button"
+                    className="nkj-calculator-close"
+                    onClick={() => {
+                      setCalculatorOpen(false);
+                      setCalculatorError("");
+                    }}
+                    aria-label="Close calculator"
+                    title="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </header>
+
+                <div className="nkj-calculator-display" aria-live="polite" aria-atomic="true">
+                  <div className="nkj-calculator-expression">{calculatorExpression || "Enter calculation"}</div>
+                  <div className={`nkj-calculator-value${calculatorError ? " has-error" : ""}`}>
+                    {calculatorError || calculatorResult || calculatorExpression || "0"}
+                  </div>
+                </div>
+
+                <div className="nkj-calculator-keypad">
+                  {["AC", "⌫", "%", "÷", "7", "8", "9", "×", "4", "5", "6", "−", "1", "2", "3", "+", "0", ".", "="].map((key) => (
+                    <button
+                      type="button"
+                      key={key}
+                      className={`nkj-calc-key${["÷", "×", "−", "+"].includes(key) ? " is-operator" : ""}${key === "=" ? " is-equals" : ""}${key === "AC" || key === "⌫" ? " is-utility" : ""}`}
+                      onClick={() => {
+                        if (key === "AC") clearCalculator();
+                        else if (key === "⌫") backspaceCalculator();
+                        else if (key === "=") calculateExpression();
+                        else appendCalculatorToken(key);
+                      }}
+                      aria-label={key === "⌫" ? "Backspace" : key === "AC" ? "Clear calculator" : key}
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+                <p className="nkj-calculator-hint">Keyboard: 0–9, +, −, *, /, %, Enter, Backspace, Delete, Esc</p>
+              </section>
+            )}
+          </div>
         )}
       </div>
 
@@ -1394,7 +2030,7 @@ export function InvoicePage() {
 
             <section className="inv-panel ornament-panel old-panel">
               <h3>
-                <RefreshCw size={18} /> Old / Exchange Ornaments Details
+                <ArrowLeftRight size={18} /> Old / Exchange Ornaments Details
               </h3>
 
               <div className="table-wrap">
@@ -1609,6 +2245,28 @@ export function InvoicePage() {
 
               <b>{money(grand)}</b>
             </div>
+
+            <div className="total-row total-paid-row">
+              <span><Coins size={17} aria-hidden="true" /> TOTAL PAID (₹)</span>
+              <b>
+                <input
+                  aria-label="Total Paid"
+                  type="number"
+                  min="0"
+                  max={grand}
+                  step="0.01"
+                  value={totalPaid === null ? grand.toFixed(2) : totalPaid}
+                  readOnly={isEditingSavedInvoice || saved}
+                  onWheel={(event) => event.currentTarget.blur()}
+                  onChange={(event) => setTotalPaid(event.target.value)}
+                />
+              </b>
+            </div>
+
+            <div className="total-row due-amount-row">
+              <span><Clock3 size={17} aria-hidden="true" /> DUE AMOUNT (₹)</span>
+              <b>{money(dueAmount)}</b>
+            </div>
           </aside>
         </div>
 
@@ -1689,7 +2347,10 @@ export function InvoicePage() {
       {showInvoicePin && (
         <InvoicePinDialog
           invoiceId={invoiceId}
-          onClose={() => setShowInvoicePin(false)}
+          onClose={() => {
+            setShowInvoicePin(false);
+            setIsPrintPreparing(false);
+          }}
           onVerified={printCurrentInvoice}
           title="Authorize saved invoice printing"
         />
@@ -1736,6 +2397,8 @@ function SavedInvoicePrintSheet({ invoice }) {
     : 0;
   const discount = Number(data.discount) || 0;
   const grandTotal = Number(data.grandTotal ?? (newTotal + gstAmount - discount - oldTotal)) || 0;
+  const totalPaid = Math.max(0, Number(data.totalPaid ?? data.paymentAmount ?? 0) || 0);
+  const dueAmount = Math.max(0, grandTotal - totalPaid);
   const invoiceDate = displaySavedInvoiceDate(data.invoiceDate || data.date);
   const invoiceTime = displaySavedInvoiceTime(data.invoiceTime || data.time);
 
@@ -1842,7 +2505,7 @@ function SavedInvoicePrintSheet({ invoice }) {
           </section>
 
           <section className="inv-panel ornament-panel old-panel">
-            <h3><RefreshCw size={18} /> Old / Exchange Ornaments Details</h3>
+            <h3><ArrowLeftRight size={18} /> Old / Exchange Ornaments Details</h3>
             <div className="table-wrap">
               <table className="items-table old-items-table">
                 <thead>
@@ -1897,6 +2560,14 @@ function SavedInvoicePrintSheet({ invoice }) {
           <div className="grand">
             <span>GRAND TOTAL (₹)</span>
             <b>{money(grandTotal)}</b>
+          </div>
+          <div className="total-row total-paid-row">
+            <span><Coins size={15} aria-hidden="true" /> TOTAL PAID (₹)</span>
+            <b>{money(totalPaid)}</b>
+          </div>
+          <div className="total-row due-amount-row">
+            <span><Clock3 size={15} aria-hidden="true" /> DUE AMOUNT (₹)</span>
+            <b>{money(dueAmount)}</b>
           </div>
         </aside>
       </div>
@@ -1978,6 +2649,8 @@ export function SavedInvoices() {
       setLoading(false);
     }
   };
+
+  useRealtimeRefresh(load, ["invoices", "installments", "payments", "transactions", "cashbook", "dashboard", "reports", "customers"]);
 
   const openInvoiceDetails = async (invoice) => {
     setDetailLoading(true);
@@ -2115,7 +2788,11 @@ export function SavedInvoices() {
       body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
     });
     setShowPrintPin(false);
-    window.setTimeout(() => window.print(), 120);
+    window.setTimeout(() => {
+      printInvoiceAsPdf().catch((error) => {
+        setErr(error.message || "Could not prepare the invoice PDF.");
+      });
+    }, 120);
   };
 
   const shareInvoiceOnWhatsApp = () => {
@@ -2151,9 +2828,7 @@ export function SavedInvoices() {
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <button className="secondary" onClick={load} disabled={loading}>
-          <RefreshCw size={16} /> {loading ? "Loading" : "Refresh"}
-        </button>
+
       </div>
 
       {err && <p className="error">{err}</p>}

@@ -18,6 +18,10 @@ import StaffDetailsPage from "../features/staff/StaffDetailsPage";
 import InventoryPage from "../features/inventory/InventoryPage";
 import KarigarsPage from "../features/karigars/KarigarsPage";
 import TransactionsPage from "../features/transactions/TransactionsPage";
+import CalculatorPage from "../features/calculator/CalculatorPage";
+import JewelleryDesignsPage from "../features/designs/JewelleryDesignsPage";
+import JewelleryCatalogAdminPage from "../features/designs/JewelleryCatalogAdminPage";
+import MobileDesignUploadPage from "../features/designs/MobileDesignUploadPage";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
@@ -36,9 +40,11 @@ export default function App() {
     <div className="app-layout">
       <div className="app-content">
         <Routes>
-          {/* Public staff can access only Home and New Invoice. */}
+          {/* Public access: Home, Jewellery Designs, Calculator and New Invoice. */}
           <Route path="/" element={<Home />} />
           <Route path="/invoice" element={<InvoicePage />} />
+          <Route path="/designs" element={<JewelleryDesignsPage />} />
+          <Route path="/mobile-design-upload/:token" element={<MobileDesignUploadPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/setup-totp" element={<TotpSetup />} />
 
@@ -47,6 +53,7 @@ export default function App() {
           <Route path="/saved-invoices" element={<OwnerOnly><SavedInvoices /></OwnerOnly>} />
           <Route path="/customers" element={<OwnerOnly><Customers /></OwnerOnly>} />
           <Route path="/profile" element={<OwnerOnly><Profile /></OwnerOnly>} />
+          <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/rates" element={<OwnerOnly><MetalRatesPage /></OwnerOnly>} />
 
           <Route path="/inventory" element={<OwnerOnly><InventoryPage /></OwnerOnly>} />
@@ -72,6 +79,7 @@ export default function App() {
           <Route path="/reports/sales" element={<OwnerOnly><ReportsDashboard type="sales" /></OwnerOnly>} />
           <Route path="/reports/profit" element={<OwnerOnly><ReportsDashboard type="profit" /></OwnerOnly>} />
           <Route path="/reports/expenses" element={<OwnerOnly><ReportsDashboard type="expenses" /></OwnerOnly>} />
+          <Route path="/design-catalog" element={<OwnerOnly><JewelleryCatalogAdminPage /></OwnerOnly>} />
           <Route path="/database" element={<OwnerOnly><DatabaseStatus /></OwnerOnly>} />
           <Route path="/audit-logs" element={<OwnerOnly><AuditLogsPage /></OwnerOnly>} />
 

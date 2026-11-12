@@ -12,6 +12,10 @@ import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import com.nkj.billing.realtime.RealtimeEventBroadcaster;
 
 import com.nkj.billing.controller.MetalRateController.KolkataRateImportRequest;
 import com.nkj.billing.controller.MetalRateController.RateUpdateRequest;
@@ -26,11 +30,17 @@ public class MetalRateService {
     private final MetalRateRepository repository;
     private final JdbcTemplate jdbc;
     private final AuthService auth;
+    private final RealtimeEventBroadcaster realtimeEvents;
 
-    public MetalRateService(MetalRateRepository repository, JdbcTemplate jdbc, AuthService auth) {
+    public MetalRateService(
+            MetalRateRepository repository,
+            JdbcTemplate jdbc,
+            AuthService auth,
+            RealtimeEventBroadcaster realtimeEvents) {
         this.repository = repository;
         this.jdbc = jdbc;
         this.auth = auth;
+        this.realtimeEvents = realtimeEvents;
     }
 
     @Transactional
@@ -79,6 +89,7 @@ public class MetalRateService {
         MetalRate saved = repository.save(current);
 
         appendHistory(before, snapshotOf(saved), "MANUAL_RATE_UPDATE", "Manual rate update by administrator", auth.getUsername());
+        publishRatesChangedAfterCommit();
         return toResponse(saved);
     }
 
@@ -96,6 +107,7 @@ public class MetalRateService {
         // Mode selection alone is not a rate change, so it does not create
         // a duplicate daily price row in Rate Change History.
         MetalRate saved = repository.save(current);
+        publishRatesChangedAfterCommit();
         return toResponse(saved);
     }
 
@@ -227,6 +239,7 @@ public class MetalRateService {
         appendHistory(before, snapshotOf(saved), changeType,
                 "Verified Kolkata rate snapshot imported from " + sourceName,
                 "SYSTEM · DAILY IMPORT");
+        publishRatesChangedAfterCommit();
         return toResponse(saved);
     }
 
@@ -238,6 +251,21 @@ public class MetalRateService {
         // displayed publication date and last-rate-change timestamp remain accurate.
         jdbc.update("UPDATE metal_rates SET last_auto_fetch_at = ?, last_auto_fetch_date = ?, last_auto_fetch_status = ? WHERE id = ?",
                 attemptedAt, attemptedDate, status, RATE_ROW_ID);
+        publishRatesChangedAfterCommit();
+    }
+
+    private void publishRatesChangedAfterCommit() {
+        Runnable publish = () -> realtimeEvents.publishForRequest("/api/admin/rates", "PUT", "");
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            publish.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                publish.run();
+            }
+        });
     }
 
     /** Serialize manual edits and the daily import across concurrent backend instances. */

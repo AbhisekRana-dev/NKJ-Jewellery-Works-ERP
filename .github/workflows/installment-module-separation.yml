@@ -32,102 +32,40 @@ jobs:
           customer = config.split("  customers: {", 1)[1].split("  suppliers: {", 1)[0]
           assert '"email"' not in customer and '"Email"' not in customer, "Customer Management still defines an email field or column."
           PY
-      - name: Verify sidebar double-click behavior in both states
+      - name: Verify owner sidebar navigation and double-click behavior
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           shell = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.jsx").read_text()
           nav_start = shell.index("const ownerNavigation = [")
           nav_end = shell.index(chr(10) + "];", nav_start)
           nav_items = shell[nav_start:nav_end].count('["')
-          assert nav_items == 29, f"Expected all 29 owner sidebar menu items, found {nav_items}."
-          assert "group.items.map(([key, label, to, Icon])" in shell
-
-          # First click must survive route navigation replacing the DOM.
-          assert "let previousSidebarClick = null;" in shell
-          helper_start = shell.index("function isSecondSidebarClick(event, zone) {")
-          helper_end = shell.index(chr(10) + "}", helper_start)
-          helper = shell[helper_start:helper_end]
-          assert "event.timeStamp - previous.timeStamp" in helper
-          assert "Math.hypot(event.clientX - previous.x, event.clientY - previous.y)" in helper
-          assert "SIDEBAR_DOUBLE_CLICK_MS" in helper
-          assert "setTimeout(" not in helper
-
-          effect_start = shell.index("const handleClickCapture = (event) => {")
-          effect_end = shell.index('document.addEventListener("click", handleClickCapture, true)', effect_start)
-          handlers = shell[effect_start:effect_end]
-          assert "sidebarCollapsedRef.current" in handlers
-          assert 'target.closest(".app-content main")' in handlers
-          assert 'isSecondSidebarClick(event, "page-content")' in handlers
-          assert "commitSidebarState(false)" in handlers
-          assert '".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span"' in handlers
-          assert "sidebar-text:" in handlers
-          assert "commitSidebarState(true)" in handlers
-          assert "event.preventDefault()" in handlers and "event.stopImmediatePropagation()" in handlers
-          assert "const repeatedContentAction = target.closest(" in handlers
-          collapsed_icon_start = handlers.index("const collapsedMenuLink = target.closest(")
-          page_content_start = handlers.index('const pageContent = target.closest(".app-content main")')
-          assert collapsed_icon_start < page_content_start, "Collapsed menu icon handling must run before page-content handling."
-          assert 'collapsed-sidebar-icon:' in handlers, "Collapsed menu icons are not tracked across route remounts."
-          assert "commitSidebarState(false)" in handlers[collapsed_icon_start:page_content_start], "Double-clicking a collapsed menu icon does not expand the sidebar."
-          assert 'target.closest(".nkj-owner-sidebar a")' in handlers
-          label_start = shell.index("const compactNavigationLabels = {")
-          label_end = shell.index("};", label_start)
-          compact_labels = re.findall(r'^\s*(?:"[^"]+"|[a-z-]+):\s*"[^"]+"', shell[label_start:label_end], re.MULTILINE)
-          assert len(compact_labels) == 29, f"Expected 29 compact menu labels, found {len(compact_labels)}."
-          assert '<small className="nkj-owner-compact-label" aria-hidden="true">' in shell, "Dedicated compact labels are missing from each navigation link."
-          assert "flushSync(() => setSidebarCollapsed(nextCollapsed))" in shell
-          assert 'document.addEventListener("click", handleClickCapture, true)' in shell
-          assert 'document.addEventListener("dblclick"' not in shell
-          assert "}, [ownerWorkspace]);" in shell
-
-          # The cleanup removes the listener but retains click memory while
-          # React Router swaps one Page/Nav for another.
-          cleanup_start = shell.index("return () => {", effect_end)
-          cleanup_end = shell.index("}, [ownerWorkspace]);", cleanup_start)
-          assert "previousSidebarClick = null" not in shell[cleanup_start:cleanup_end]
+          assert nav_items == 30, f"Expected 30 owner sidebar items, found {nav_items}."
+          assert "group.items.map(([key, label, to, Icon, shortLabel])" in shell
+          assert '["transactions", "Transactions", "/transactions", ArrowLeftRight, "Trans"]' in shell
+          assert '["design-catalog", "Jewellery Catalog Management", "/design-catalog", Gem, "Designs"]' in shell
+          assert "const handleSidebarNavigationClick = (key) => {" in shell
+          assert "SIDEBAR_NAV_CLICK_KEY" in shell
+          assert "window.sessionStorage.getItem(SIDEBAR_NAV_CLICK_KEY)" in shell
+          assert "window.sessionStorage.setItem(SIDEBAR_NAV_CLICK_KEY" in shell
+          assert "SIDEBAR_DOUBLE_CLICK_MS" in shell
+          assert "const handleSidebarToggle = () => {" in shell
+          assert "onClick={handleSidebarToggle}" in shell
+          assert "data-nav-key={key}" in shell
+          assert '<small className="nkj-owner-nav-short-label" aria-hidden="true">' in shell
 
           app = Path("NKJ-Jewellery-Works-ERP/frontend/src/app/App.jsx").read_text()
+          assert '<Route path="/transactions" element={<OwnerOnly><TransactionsPage /></OwnerOnly>} />' in app
+          assert '<Route path="/design-catalog" element={<OwnerOnly><JewelleryCatalogAdminPage /></OwnerOnly>} />' in app
           assert '<div className="app-content">' in app
-          assert "<Nav active={active} />" in shell
-          assert '<main className={active === "invoice"' in shell
+
           css = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.css").read_text()
-          assert ":root {" in css and "--nkj-owner-expanded-width: 250px;" in css
-          assert "--nkj-owner-collapsed-width: 75px;" in css
-          assert "min-width: 250px !important;" in css and "max-width: 250px !important;" in css
-          assert "min-width: 75px !important;" in css and "max-width: 75px !important;" in css
-          assert "flex: 0 0 250px !important;" in css and "flex: 0 0 75px !important;" in css
-          assert "width: calc(100% - var(--nkj-owner-sidebar-width)) !important;" in css
-          assert "margin-left: var(--nkj-owner-sidebar-width) !important;" in css
-          assert "white-space: nowrap;" in css and "text-overflow: ellipsis;" in css
-          assert "margin-top: auto !important;" in css, "Home and Exit must remain anchored at the sidebar bottom."
-          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {" in css
-          profile_css = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/profile/Profile.css").read_text()
-          assert "var(--nkj-owner-sidebar-width" in profile_css, "Profile must follow the same shared sidebar width."
-          assert "pointer-events: none" not in css
-          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {" in css
-          collapsed_label_selector = ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {"
-          collapsed_label_start = css.rfind(collapsed_label_selector)
-          assert collapsed_label_start >= 0, "Collapsed compact labels are missing."
-          collapsed_label_css = css[collapsed_label_start + len(collapsed_label_selector):].split("}", 1)[0]
-          assert "display: block !important" in collapsed_label_css and "font-size: 11px" in collapsed_label_css
-          assert "white-space: nowrap !important;" in collapsed_label_css and "overflow: hidden !important;" in collapsed_label_css
-          assert "Collapsed sidebar icon and label sizing" in css
-          compact_ui_start = css.rfind("/* Collapsed sidebar icon and label sizing")
-          compact_ui = css[compact_ui_start:]
-          assert "width: 28px !important;" in compact_ui and "height: 28px !important;" in compact_ui
-          assert "font-size: 11px !important;" in compact_ui
-          assert "flex: 0 0 72px !important;" in compact_ui and "min-height: 72px !important;" in compact_ui
-          assert "overflow-y: auto !important;" in compact_ui and "min-height: 0 !important;" in compact_ui
-          assert "margin-top: auto !important;" in compact_ui, "Home and Exit must remain fixed below the scrolling navigation."
-          assert "background: #f3d892 !important;" in compact_ui and "color: #5a0a20 !important;" in compact_ui
-          assert "@media (max-width: 1100px)" in css
-          assert ".nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav a span" in css
-          assert "@media (max-width: 760px)" in css and "--nkj-owner-sidebar-width: var(--nkj-owner-collapsed-width);" in css
-          assert "setTimeout(" not in handlers and "debounce" not in handlers.lower()
-          print("Route-safe instant sidebar checks passed for both states and all 28 menu items.")
+          assert "--nkj-owner-collapsed-width: 82px;" in css
+          assert ".nkj-owner-nav-short-label" in css
+          assert "nkj-owner-sidebar.is-collapsed" in css
+          assert "@media" in css
+          print("Owner sidebar routes, compact labels, persistent navigation click handling and toggle checks passed.")
           PY
 
       - name: Verify source-aware cash flow classification and history

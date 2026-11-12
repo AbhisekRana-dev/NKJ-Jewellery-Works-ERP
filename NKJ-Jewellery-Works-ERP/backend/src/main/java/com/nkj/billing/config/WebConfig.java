@@ -1,27 +1,54 @@
 package com.nkj.billing.config;
 
 import java.util.Arrays;
+import java.nio.file.Path;
+
+import com.nkj.billing.realtime.RealtimeMutationInterceptor;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor auth;
+    private final RealtimeMutationInterceptor realtimeMutationInterceptor;
     private final String[] allowedOrigins;
+    private final String designsUploadDir;
 
     public WebConfig(
             AuthInterceptor auth,
-            @Value("${nkj.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}") String allowedOrigins) {
+            RealtimeMutationInterceptor realtimeMutationInterceptor,
+            @Value("${nkj.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}") String allowedOrigins,
+            @Value("${nkj.designs.upload-dir:uploads/designs}") String designsUploadDir) {
         this.auth = auth;
+        this.realtimeMutationInterceptor = realtimeMutationInterceptor;
+        this.designsUploadDir = designsUploadDir;
         this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .toArray(String[]::new);
+    }
+
+    @Bean
+    public CacheManager cacheManager() {
+        return new ConcurrentMapCacheManager("jewelleryPublicCategories", "jewelleryAdminCategories");
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String location = Path.of(designsUploadDir).toAbsolutePath().normalize().toUri().toString();
+        if (!location.endsWith("/")) location += "/";
+        registry.addResourceHandler("/api/uploads/designs/**")
+                .addResourceLocations(location)
+                .setCachePeriod(3600);
     }
 
     @Override
@@ -36,6 +63,8 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(auth)
-                .addPathPatterns("/api/admin/**", "/api/invoices", "/api/invoices/**");
+                .addPathPatterns("/api/admin/**", "/api/invoices", "/api/invoices/**", "/api/events");
+        registry.addInterceptor(realtimeMutationInterceptor)
+                .addPathPatterns("/api/**");
     }
 }

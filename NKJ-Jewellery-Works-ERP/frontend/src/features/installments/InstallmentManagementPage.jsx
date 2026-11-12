@@ -1,13 +1,14 @@
 import "./InstallmentManagementPage.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CalendarDays, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw,
+  CalendarDays, CheckCircle2, Clock3, CreditCard, Plus,
   Search, Wallet, Printer, UserRound, ReceiptText, Eye, Pencil,
   RotateCcw, History, AlertCircle,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 
 const today = () => new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata",
@@ -152,6 +153,7 @@ export default function InstallmentManagementPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useRealtimeRefresh(load, ["installments", "bookings", "invoices", "customers", "payments", "transactions", "cashbook", "dashboard", "reports"]);
 
   const selectedInvoice = eligibleInvoices.find((invoice) => String(invoice.id) === String(invoiceId));
 
@@ -625,7 +627,6 @@ export default function InstallmentManagementPage() {
             <p>Convert saved invoices into server-calculated installment plans and track every actual receipt.</p>
           </div>
           <div className="nkj-module-actions">
-            <button className="secondary" onClick={load} disabled={loading}><RefreshCw size={16}/> Refresh</button>
             <button className="primary" onClick={() => setTab("new")}><Plus size={16}/> New Installment</button>
           </div>
         </div>
