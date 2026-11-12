@@ -44,7 +44,9 @@ jobs:
           assert "document.styleSheets" in source
           assert 'rule.conditionText || rule.media?.mediaText' in source
           assert '31mm 3mm' in source and 'grid-template-columns: 31mm 3mm minmax(0, 1fr)' in styles
-          assert '["width", "194mm"]' in source
+          assert '["width", "291mm"]' in source
+          assert 'margin: [3, 3, 3, 3]' in source
+          assert 'orientation: "landscape"' in source
           assert '["zoom", "1"]' in source
           assert 'source.removeAttribute("id")' in source
           assert 'clone.id = originalId' in source
