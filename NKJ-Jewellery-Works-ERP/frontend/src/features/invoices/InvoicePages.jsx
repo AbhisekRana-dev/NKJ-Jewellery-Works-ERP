@@ -430,7 +430,9 @@ async function createSavedInvoicePdf(invoice) {
     y += 20;
   };
   const tableRow = (values, columns) => {
+    const previousPageCount = pages.length;
     ensureSpace(20, "ITEM DETAILS (CONTINUED)");
+    if (pages.length > previousPageCount) tableHeader(columns);
     rect(left, y, contentW, 20, "1 1 1", pale, 0.55);
     let x = left;
     values.forEach((value, index) => {
@@ -488,6 +490,7 @@ async function createSavedInvoicePdf(invoice) {
     { label: "Purity", width: 130 }, { label: "Wt. (gm)", width: 100 },
     { label: "Rate / GM (Rs.)", width: 110 }, { label: "Amount (Rs.)", width: 210 },
   ];
+  ensureSpace(45, null);
   section("OLD / EXCHANGE ORNAMENTS DETAILS");
   tableHeader(oldCols);
   if (!oldRows.length) tableRow(["-", "No old/exchange ornaments", "-", "-", "-", "0.00"], oldCols);
@@ -515,7 +518,8 @@ async function createSavedInvoicePdf(invoice) {
   textAt("Rs. " + fmt(grandTotal), 800, y + 7, 9, true, "1 1 1", "right");
   y += 32;
 
-  const description = data.description || data.additionalDescription || "";
+  const description = [data.description || data.additionalDescription || "", data.terms || data.paymentTerms || ""]
+    .filter(Boolean).join(" | ");
   if (description) {
     const lines = wrap(description, 105);
     ensureSpace(lines.length * 11 + 14, null);
