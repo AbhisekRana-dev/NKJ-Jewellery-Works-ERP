@@ -2582,7 +2582,7 @@ function collectInvoicePrintStyles() {
       // they can make html2canvas capture an entirely white page.
       const selectors = rule.selectorText.split(",")
         .map((selector) => selector.trim())
-        .filter((selector) => !/^body\\s*:has\\(/i.test(selector))
+        .filter((selector) => !/^body\s*:has\(/i.test(selector))
         .map((trimmed) => trimmed.includes("#invoice-print")
           ? trimmed.replaceAll("#invoice-print", "#invoice-print.nkj-pdf-export-root")
           : "#invoice-print.nkj-pdf-export-root " + trimmed);
