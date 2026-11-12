@@ -2618,7 +2618,7 @@ async function createInvoiceSharePdfFile(invoice) {
   }
 
   const printStyles = collectInvoicePrintStyles();
-  if (!printStyles || !printStyles.includes("grid-template-columns: 31mm 3mm minmax(0, 1fr)")) {
+  if (!printStyles || !printStyles.includes("31mm 3mm")) {
     throw new Error("The website's original invoice print styles could not be loaded. PDF sharing was stopped to avoid a broken invoice.");
   }
 
