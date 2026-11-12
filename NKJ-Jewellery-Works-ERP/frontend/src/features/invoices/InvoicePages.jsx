@@ -2576,13 +2576,19 @@ function collectInvoicePrintStyles() {
       }
       if (rule.type !== 1 || !insidePrint || !rule.selectorText || !relevantSelector.test(rule.selectorText)) return;
 
-      const selectors = rule.selectorText.split(",").map((selector) => {
-        const trimmed = selector.trim();
-        return trimmed.includes("#invoice-print")
+      // Keep invoice-scoped print rules, but never copy page-level body:has()
+      // rules into the html2canvas export document. Those rules hide the ERP
+      // shell and rely on :has() selector handling; in a cloned export tree
+      // they can make html2canvas capture an entirely white page.
+      const selectors = rule.selectorText.split(",")
+        .map((selector) => selector.trim())
+        .filter((selector) => !/^body\\s*:has\\(/i.test(selector))
+        .map((trimmed) => trimmed.includes("#invoice-print")
           ? trimmed.replaceAll("#invoice-print", "#invoice-print.nkj-pdf-export-root")
-          : "#invoice-print.nkj-pdf-export-root " + trimmed;
-      });
-      collected.push(selectors.join(",") + "{" + rule.style.cssText + "}");
+          : "#invoice-print.nkj-pdf-export-root " + trimmed);
+      if (selectors.length) {
+        collected.push(selectors.join(",") + "{" + rule.style.cssText + "}");
+      }
     });
   };
 
@@ -2661,7 +2667,28 @@ async function createInvoiceSharePdfFile(invoice) {
   ].forEach(([property, value]) => clone.style.setProperty(property, value, "important"));
 
   const style = document.createElement("style");
-  style.textContent = printStyles;
+  style.textContent = printStyles + `
+    #invoice-print.nkj-pdf-export-root {
+      display: block !important;
+      position: relative !important;
+      inset: auto !important;
+      width: 291mm !important;
+      min-width: 291mm !important;
+      max-width: 291mm !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 2mm !important;
+      overflow: visible !important;
+      visibility: visible !important;
+      background: #fff !important;
+    }
+    #invoice-print.nkj-pdf-export-root,
+    #invoice-print.nkj-pdf-export-root * {
+      visibility: visible !important;
+    }
+  `;
   host.appendChild(style);
   host.appendChild(clone);
 
