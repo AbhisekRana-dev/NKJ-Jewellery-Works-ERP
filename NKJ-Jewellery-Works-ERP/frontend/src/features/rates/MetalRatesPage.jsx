@@ -1,9 +1,10 @@
 import "./MetalRatesShared.css";
 import React, { useCallback, useEffect, useState } from "react";
 import "./MetalRatesPage.css";
-import { Save, RefreshCw, Newspaper, PencilLine, History, ArrowRightLeft, ExternalLink } from "lucide-react";
+import { Save, Newspaper, PencilLine, History, ArrowRightLeft, ExternalLink } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 
 const fmt = (v) => Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const per10 = (value) => String(Number(value || 0) * 10);
@@ -63,6 +64,7 @@ export default function MetalRatesPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useRealtimeRefresh(load, ["rates"]);
 
   const save = async (e) => {
     e.preventDefault();
@@ -128,9 +130,7 @@ export default function MetalRatesPage() {
             <h2>Gold &amp; Silver Rate Management</h2>
             <p>Manage Kolkata 24K, 22K and 999 silver reference rates. All entry and display values are per 10 grams.</p>
           </div>
-          <button className="secondary" onClick={load} disabled={loading}>
-            <RefreshCw size={16} /> Refresh
-          </button>
+
         </div>
 
         {error && <p className="error">{error}</p>}

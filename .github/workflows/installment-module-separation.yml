@@ -61,7 +61,7 @@ jobs:
           assert '<div className="app-content">' in app
 
           css = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.css").read_text()
-          assert "--nkj-owner-collapsed-width: 82px;" in css
+          assert "var(--nkj-owner-collapsed-width, 82px)" in css
           assert ".nkj-owner-nav-short-label" in css
           assert "nkj-owner-sidebar.is-collapsed" in css
           assert "@media" in css

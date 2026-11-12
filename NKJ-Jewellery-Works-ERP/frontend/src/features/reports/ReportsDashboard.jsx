@@ -1,9 +1,10 @@
 import "./ReportsDashboard.css";
 import React, { useCallback, useEffect, useState } from "react";
-import { BarChart3, TrendingUp, Wallet, Receipt, RefreshCw, AlertTriangle } from "lucide-react";
+import { BarChart3, TrendingUp, Wallet, Receipt, AlertTriangle } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 import { request } from "../../core/api/client";
+import { useRealtimeRefresh } from "../../core/realtime/realtime";
 
 function Kpi({ icon: Icon, title, value, note }) {
   return <article className="nkj-report-kpi"><span><Icon size={21}/></span><div><small>{title}</small><strong>₹ {money(value)}</strong><em>{note}</em></div></article>;
@@ -20,6 +21,7 @@ export default function ReportsDashboard({ type = "overview" }) {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
+  useRealtimeRefresh(load, ["dashboard", "reports", "cashbook", "transactions", "invoices", "payments", "expenses", "salary", "attendance", "inventory"]);
   const title = type === "sales" ? "Sales Report" : type === "expenses" ? "Expenses Report" : type === "profit" ? "Profit & Loss" : "Reports & Analytics";
   const sales = Number(data?.monthSales || 0);
   const expenses = Number(data?.monthExpenses || 0);
@@ -27,7 +29,7 @@ export default function ReportsDashboard({ type = "overview" }) {
   const activeKey = type === "sales" ? "reports-sales" : type === "expenses" ? "reports-expenses" : type === "profit" ? "reports-profit" : "reports-sales";
   return <Page active={activeKey}>
     <section className="nkj-module-page nkj-reports-page">
-      <div className="nkj-module-heading"><div><span className="eyebrow">OWNER FINANCE</span><h2>{title}</h2><p>Financial summary from saved invoices and recorded expense entries.</p></div><button className="secondary" onClick={load} disabled={loading}><RefreshCw size={16}/> Refresh</button></div>
+      <div className="nkj-module-heading"><div><span className="eyebrow">OWNER FINANCE</span><h2>{title}</h2><p>Financial summary from saved invoices and recorded expense entries.</p></div></div>
       {error && <p className="error">{error}</p>}
       {loading ? <div className="panel nkj-report-loading">Loading financial summary…</div> : data && <>
         <div className="nkj-report-kpis">

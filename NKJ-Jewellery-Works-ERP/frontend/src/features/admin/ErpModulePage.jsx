@@ -9,7 +9,7 @@ import { moduleConfig } from "./moduleConfig";
 
 const emptyForm = (fields) => Object.fromEntries(fields.map((field) => [field[0], ""]));
 const businessCodeFields = new Set(["staffCode", "customerCode", "itemCode", "supplierCode", "bookingNo", "orderNo"]);
-const cashCreateModules = new Set(["payments", "pre-bookings", "expenses", "purchases", "salary", "salary-payments"]);
+const cashCreateModules = new Set(["payments", "bookings", "pre-bookings", "expenses", "purchases", "salary", "salary-payments"]);
 const newIdempotencyKey = (module) => "ERP-" + module + "-" + (globalThis.crypto?.randomUUID?.() || Date.now() + "-" + Math.random().toString(36).slice(2));
 const currencyFields = new Set([
   "monthlySalary", "openingBalance", "amount", "totalAmount", "paidAmount", "balance",

@@ -64,9 +64,9 @@ body.nkj-owner-layout .jewellery-footer {
 
 body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed)
 .jewellery-footer {
-  width: calc(100% - var(--nkj-owner-collapsed-width, 78px));
-  max-width: calc(100% - var(--nkj-owner-collapsed-width, 78px));
-  margin-left: var(--nkj-owner-collapsed-width, 78px);
+  width: calc(100% - var(--nkj-owner-collapsed-width, 82px));
+  max-width: calc(100% - var(--nkj-owner-collapsed-width, 82px));
+  margin-left: var(--nkj-owner-collapsed-width, 82px);
 }
 
 /* =========================================
