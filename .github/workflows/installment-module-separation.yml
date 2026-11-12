@@ -32,7 +32,7 @@ jobs:
           customer = config.split("  customers: {", 1)[1].split("  suppliers: {", 1)[0]
           assert '"email"' not in customer and '"Email"' not in customer, "Customer Management still defines an email field or column."
           PY
-      - name: Verify WhatsApp shares PDF only
+      - name: Verify WhatsApp opens the invoice customer's chat
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -50,12 +50,17 @@ jobs:
           assert '["zoom", "1"]' in source
           assert 'source.removeAttribute("id")' in source
           assert 'clone.id = originalId' in source
-          assert 'await navigator.share({ files: [file] });' in source
           assert 'new File([blob], fileName, { type: "application/pdf" })' in source
-          assert "makeInvoiceShareMessage" not in source
-          assert "wa.me/" not in source
+          assert "function normalizeWhatsAppPhone(value)" in source
+          assert 'replace(/\\D/g, "")' in source
+          assert 'https://wa.me/\u0024{whatsappPhone}' in source
+          assert 'window.open(chatUrl, "_blank")' in source
+          assert "encodeURIComponent(message)" not in source
+          assert "?text=" not in source
+          assert "await navigator.share({ files: [file] });" not in source
           assert "downloadInvoicePdfFile(file);" in source
-          print("WhatsApp PDF-only sharing and exact website print stylesheet checks passed.")
+          assert "shareInProgressRef.current" in source
+          print("Invoice PDF generation, customer-number routing, no-prefilled-message, and download checks passed.")
           PY
 
       - name: Verify owner sidebar navigation and double-click behavior
