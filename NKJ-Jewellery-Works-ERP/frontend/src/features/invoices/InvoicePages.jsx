@@ -3177,11 +3177,20 @@ export function SavedInvoices() {
       return;
     }
 
-    // Desktop/unsupported-browser fallback: download only the PDF. Do not
-    // populate WhatsApp with a text invoice or pretend a chat URL attaches it.
+    // Desktop/unsupported-browser fallback: download the PDF, then open
+    // WhatsApp's manual contact picker with an optional invoice message.
+    // A wa.me link cannot attach files, so the user must attach the downloaded
+    // PDF with Attach > Document and press Send.
     try {
       downloadInvoicePdfFile(file);
-      setDetailError("The invoice PDF was downloaded. Open WhatsApp, choose the customer, and attach this file using Attach > Document.");
+      const message = `Please find invoice ${selectedInvoice.invoiceNo} from Nandikishor Jewellery Works.`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      const whatsappWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      if (!whatsappWindow) {
+        setDetailError("The invoice PDF was downloaded, but WhatsApp could not open because the popup was blocked. Open WhatsApp, select a contact, and attach the downloaded PDF using Attach > Document.");
+      } else {
+        setDetailError("The invoice PDF was downloaded and WhatsApp opened. Select a contact, attach the downloaded PDF using Attach > Document, then press Send.");
+      }
     } catch (error) {
       setDetailError(error.message || "Could not download the invoice PDF.");
     } finally {
