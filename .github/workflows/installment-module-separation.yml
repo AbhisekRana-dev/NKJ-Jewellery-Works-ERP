@@ -41,7 +41,7 @@ jobs:
           assert "async function createInvoiceSharePdfFile(invoice)" in source
           assert "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" in source
           assert 'script.integrity = "sha512-' in source
-          assert 'new File([blob], fileName, { type: "application/pdf" })' in source
+          assert 'new File([blob],fileName,{type:"application/pdf"})' in source
           assert 'verifiedInvoiceId !== String(selectedInvoice.id)' in source
           assert 'await navigator.share({ files: [file] });' in source
           assert '["width","291mm"]' in source, "WhatsApp PDF must use the website's original 291mm print sheet."
