@@ -2735,7 +2735,7 @@ async function createInvoiceSharePdfFile(invoice) {
         scrollX: 0,
         scrollY: 0,
       },
-      jsPDF: { unit: "mm", format: "a4", orientation: "landscape", compress: true },
+      jsPDF: { unit: "mm", format: [297, 210], orientation: "landscape", compress: true },
       pagebreak: {
         mode: ["css", "legacy"],
         avoid: ["#invoice-print", ".inv-head", ".inv-two", ".inv-main", ".inv-bottom", ".thankyou", ".items-table tr"],
@@ -2745,10 +2745,24 @@ async function createInvoiceSharePdfFile(invoice) {
     if (!(blob instanceof Blob) || blob.size < 1000) {
       throw new Error("The generated invoice PDF is empty or invalid.");
     }
-    const signature = new TextDecoder("ascii").decode(new Uint8Array(await blob.slice(0, 8).arrayBuffer()));
-    if (!signature.startsWith("%PDF-")) {
+    const pdfBytes = new Uint8Array(await blob.slice(0, Math.min(blob.size, 200000)).arrayBuffer());
+    const pdfHeader = new TextDecoder("ascii").decode(pdfBytes);
+    if (!pdfHeader.startsWith("%PDF-")) {
       throw new Error("The generated file is not a valid PDF. Nothing was shared.");
     }
+
+    // Do not let a portrait PDF escape: it would shrink the 291mm invoice
+    // into a narrow column and recreate the exact WhatsApp problem.
+    const mediaBox = pdfHeader.match(/\\/MediaBox\\s*\\[\\s*([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s*\\]/);
+    if (!mediaBox) {
+      throw new Error("Could not verify the PDF page dimensions. Nothing was shared.");
+    }
+    const pageWidth = Number(mediaBox[3]) - Number(mediaBox[1]);
+    const pageHeight = Number(mediaBox[4]) - Number(mediaBox[2]);
+    if (!(pageWidth > pageHeight && pageWidth >= 840 && pageHeight >= 590)) {
+      throw new Error("PDF was not generated in full A4 landscape. Nothing was shared; please update the app and try again.");
+    }
+
     return new File([blob], fileName, { type: "application/pdf" });
   } finally {
     host.remove();
