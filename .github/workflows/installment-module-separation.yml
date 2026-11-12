@@ -32,6 +32,25 @@ jobs:
           customer = config.split("  customers: {", 1)[1].split("  suppliers: {", 1)[0]
           assert '"email"' not in customer and '"Email"' not in customer, "Customer Management still defines an email field or column."
           PY
+      - name: Verify WhatsApp shares PDF only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/invoices/InvoicePages.jsx").read_text()
+          assert "async function createInvoiceSharePdfFile(invoice)" in source
+          assert "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" in source
+          assert 'script.integrity = "sha512-' in source
+          assert 'new File([blob], fileName, { type: "application/pdf" })' in source
+          assert 'verifiedInvoiceId !== String(selectedInvoice.id)' in source
+          assert 'await navigator.share({ files: [file] });' in source
+          assert "makeInvoiceShareMessage" not in source
+          assert "wa.me/" not in source
+          assert "downloadInvoicePdfFile(file);" in source
+          assert "attach this file using Attach > Document" in source
+          print("WhatsApp PDF-only sharing, saved-invoice verification and manual PDF fallback checks passed.")
+          PY
+
       - name: Verify owner sidebar navigation and double-click behavior
         run: |
           python3 - <<'PY'
