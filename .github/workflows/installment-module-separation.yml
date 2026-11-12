@@ -1148,3 +1148,13 @@ jobs:
           assert Decimal(str(summary["netCashFlow"])) == incoming_total - outgoing_total
           print("Incoming/Outgoing cash flow API regression scenarios passed.")
           PY
+
+      - name: Print backend diagnostics when live API regression fails
+        if: failure()
+        run: |
+          echo "===== Backend startup and request diagnostics ====="
+          if [ -f /tmp/nkj-v20.log ]; then
+            tail -n 350 /tmp/nkj-v20.log
+          else
+            echo "Backend log /tmp/nkj-v20.log was not found."
+          fi
