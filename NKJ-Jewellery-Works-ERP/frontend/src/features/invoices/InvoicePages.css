@@ -2222,3 +2222,80 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     gap: 6px;
   }
 }
+
+
+/* =========================================================
+   AUTHORITATIVE SAVED-INVOICE PRINT OVERRIDE
+   Keep the full 291mm invoice on A4 landscape without zooming.
+   This intentionally comes after legacy portrait print rules.
+   ========================================================= */
+@page {
+  size: A4 landscape;
+  margin: 3mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:has(#invoice-print) #root,
+  body:has(#invoice-print) main,
+  body:has(#invoice-print) .invoice-container,
+  body:has(#invoice-print) .nkj-owner-layout,
+  body:has(#invoice-print) .nkj-invoice-detail-overlay,
+  body:has(#invoice-print) .nkj-invoice-detail-sheet,
+  body:has(#invoice-print) .nkj-full-invoice-modal {
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    filter: none !important;
+    perspective: none !important;
+    contain: none !important;
+    overflow: visible !important;
+  }
+
+  body:has(#invoice-print) #invoice-print {
+    position: relative !important;
+    display: block !important;
+    width: 291mm !important;
+    min-width: 291mm !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+    zoom: 1 !important;
+    transform: none !important;
+    rotate: none !important;
+    translate: none !important;
+    overflow: visible !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  #invoice-print .inv-bottom {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
+    gap: 2mm !important;
+    width: 100% !important;
+  }
+
+  #invoice-print .inv-meta span {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
+    gap: 1mm !important;
+  }
+}
