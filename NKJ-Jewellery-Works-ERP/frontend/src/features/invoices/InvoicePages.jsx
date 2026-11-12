@@ -369,7 +369,7 @@ function createSavedInvoicePdf(invoice) {
   newRows.forEach((r,i)=>row([i+1,r.description||"Ornament",r.purity||"-",r.netWeight||"0",fmt(r.rate),fmt(r.makingCharge),fmt(r.stampCharge),fmt(r.extraCharge),fmt(r.amount??newAmt(r))],newCols));
   txt("Total New Ornaments: Rs. "+fmt(newTotal),W-M-205,y+5,8.5,true,"0.55 0.03 0.14"); y+=23;
 
-  const oldCols=[["No.",34],["Description",220],["Purity",145],["Weight (gm)",100],["Rate/GM",110],["Amount (Rs.)",220]];
+  const oldCols=[["No.",34],["Description",190],["Purity",135],["Weight (gm)",100],["Rate/GM",115],["Amount (Rs.)",200]];
   drawTableHead("OLD / EXCHANGE ORNAMENTS",oldCols);
   if(!oldRows.length) row(["-","No old/exchange ornaments","","","", "0.00"],oldCols);
   oldRows.forEach((r,i)=>row([i+1,r.description||"Ornament",r.purity||"-",r.pureWeight||"0",fmt(r.rate),fmt(r.amount??oldAmt(r))],oldCols));
