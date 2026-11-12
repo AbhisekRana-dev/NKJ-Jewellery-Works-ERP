@@ -592,6 +592,32 @@ function downloadInvoicePdf(file) {
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
 }
+
+async function createSavedInvoicePdfFile(invoice) {
+  if (!invoice?.id || !invoice?.invoiceNo) {
+    throw new Error("Only a saved, finalized invoice can be shared.");
+  }
+  const blob = await createSavedInvoicePdf(invoice);
+  const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
+  const file = new File([blob], fileName, { type: "application/pdf" });
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const header = new TextDecoder("ascii").decode(bytes.slice(0, 8));
+  const tail = new TextDecoder("ascii").decode(bytes.slice(Math.max(0, bytes.length - 32)));
+  const pdfText = new TextDecoder("latin1").decode(bytes);
+  if (file.type !== "application/pdf" || bytes.length < 1000 ||
+      !header.startsWith("%PDF-") || !tail.includes("%%EOF")) {
+    throw new Error("The generated invoice PDF is incomplete or invalid. Nothing was shared.");
+  }
+  if (!pdfText.includes(String(invoice.invoiceNo))) {
+    throw new Error("The generated PDF does not match the selected invoice number. Nothing was shared.");
+  }
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("This browser cannot verify the invoice PDF securely. Use a modern HTTPS browser.");
+  }
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return Object.assign(file, { sha256 });
+}
 const blankNew = () => ({
   description: "",
 
@@ -853,16 +879,13 @@ function createInvoiceDraftKey() {
  * Download the canonical saved-invoice PDF. This is the same vector PDF
  * generator used by the WhatsApp attachment and secure-link fallback.
  */
-async function printInvoiceAsPdf({ invoice, onAfterPrint } = {}) {
+async function printInvoiceAsPdf({ invoice, file: preparedFile, onAfterPrint } = {}) {
   if (!invoice?.id || !invoice?.invoiceNo) {
     throw new Error("Only a saved invoice can be downloaded as a final PDF.");
   }
-  const blob = await createSavedInvoicePdf(invoice);
-  const file = new File(
-    [blob],
-    String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf",
-    { type: "application/pdf" },
-  );
+  // When the saved-invoice dialog has already prepared its canonical PDF,
+  // download that exact File object. WhatsApp sharing uses the same bytes.
+  const file = preparedFile || await createSavedInvoicePdfFile(invoice);
   downloadInvoicePdf(file);
   onAfterPrint?.();
 }
@@ -2634,6 +2657,7 @@ export function SavedInvoices() {
   const [preparedShareFile, setPreparedShareFile] = useState(null);
   const [sharePreparing, setSharePreparing] = useState(false);
   const [sharingInvoice, setSharingInvoice] = useState(false);
+  const [verifiedInvoiceId, setVerifiedInvoiceId] = useState(null);
   const sharingInvoiceRef = useRef(false);
   const preparedPdfCacheRef = useRef(new Map());
   const [detailLoading, setDetailLoading] = useState(false);
@@ -2643,29 +2667,25 @@ export function SavedInvoices() {
   useEffect(() => {
     let active = true;
     setPreparedShareFile(null);
-    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo || !hasInvoiceLineItems(selectedInvoice)) {
+    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo ||
+        verifiedInvoiceId !== String(selectedInvoice.id) ||
+        !hasInvoiceLineItems(selectedInvoice)) {
       setSharePreparing(false);
       return undefined;
     }
-    const cacheKey = [
-      selectedInvoice.id,
-      selectedInvoice.invoiceNo,
-      selectedInvoice.totalPaid,
-      selectedInvoice.grandTotal,
-      JSON.stringify(selectedInvoice.newItems || []),
-      JSON.stringify(selectedInvoice.oldItems || []),
-    ].join("|");
+    // Cache by the complete immutable server snapshot, not a partial set of
+    // totals. This prevents stale customer/payment/item data being attached.
+    const cacheKey = JSON.stringify(selectedInvoice);
     let pdfPromise = preparedPdfCacheRef.current.get(cacheKey);
     if (!pdfPromise) {
-      pdfPromise = createSavedInvoicePdf(selectedInvoice);
+      pdfPromise = createSavedInvoicePdfFile(selectedInvoice);
       preparedPdfCacheRef.current.set(cacheKey, pdfPromise);
     }
     setSharePreparing(true);
     pdfPromise
       .then((blob) => {
         if (!active) return;
-        const filename = String(selectedInvoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
-        setPreparedShareFile(new File([blob], filename, { type: "application/pdf" }));
+        setPreparedShareFile(blob);
       })
       .catch((error) => {
         preparedPdfCacheRef.current.delete(cacheKey);
@@ -2675,7 +2695,7 @@ export function SavedInvoices() {
         if (active) setSharePreparing(false);
       });
     return () => { active = false; };
-  }, [selectedInvoice]);
+  }, [selectedInvoice, verifiedInvoiceId]);
 
   // Disable Ctrl+P / Cmd+P only while a saved invoice detail is open.
   useEffect(() => {
@@ -2721,15 +2741,22 @@ export function SavedInvoices() {
   const openInvoiceDetails = async (invoice) => {
     setDetailLoading(true);
     setDetailError("");
+    setVerifiedInvoiceId(null);
+    setPreparedShareFile(null);
     try {
-      const fullRecord = invoice.id
-        ? await request(`/invoices/${invoice.id}`)
-        : invoice;
+      if (!invoice?.id) throw new Error("This record has no saved invoice ID.");
+      // Always fetch the authoritative saved record before enabling PDF export
+      // or sharing. A summary row or a failed network response is never enough.
+      const fullRecord = await request(`/invoices/${invoice.id}`);
+      if (!fullRecord?.id || String(fullRecord.id) !== String(invoice.id) || !fullRecord.invoiceNo) {
+        throw new Error("The server did not return the complete saved invoice.");
+      }
       setSelectedInvoice(parseInvoiceDetails(fullRecord));
+      setVerifiedInvoiceId(String(fullRecord.id));
     } catch (error) {
       setSelectedInvoice(parseInvoiceDetails(invoice));
       setDetailError(
-        error.message || "Could not load the complete invoice record. Showing available saved data.",
+        error.message || "Could not verify the complete saved invoice. Reload it before printing or sharing.",
       );
     } finally {
       setDetailLoading(false);
@@ -2776,6 +2803,8 @@ export function SavedInvoices() {
 
   const closeInvoiceDetails = () => {
     setSelectedInvoice(null);
+    setVerifiedInvoiceId(null);
+    setPreparedShareFile(null);
     setDetailError("");
     if (location.search) navigate("/saved-invoices", { replace: true });
   };
@@ -2842,82 +2871,89 @@ export function SavedInvoices() {
     });
     setShowPrintPin(false);
     window.setTimeout(() => {
-      printInvoiceAsPdf({ invoice: selectedInvoice }).catch((error) => {
+      printInvoiceAsPdf({ invoice: selectedInvoice, file: preparedShareFile }).catch((error) => {
         setErr(error.message || "Could not prepare the invoice PDF.");
       });
     }, 120);
   };
 
   const shareInvoiceOnWhatsApp = async () => {
-    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo) {
-      setDetailError("Only a saved invoice can be shared.");
+    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo ||
+        verifiedInvoiceId !== String(selectedInvoice.id)) {
+      setDetailError("The complete saved invoice has not been verified. Close and reopen its details before sharing.");
       return;
     }
     if (!hasInvoiceLineItems(selectedInvoice)) {
-      setDetailError("The complete saved ornament details are unavailable. Reload the invoice before sharing it.");
+      setDetailError("The saved invoice does not contain complete ornament rows and cannot be shared as a final PDF.");
       return;
     }
     if (sharingInvoiceRef.current) return;
     if (!preparedShareFile) {
-      setDetailError("The invoice PDF is still being prepared. Please try again in a moment.");
+      setDetailError("The original invoice PDF is still being prepared. Please try again in a moment.");
       return;
     }
 
-    // Open a tab synchronously so desktop popup blockers do not block WhatsApp
-    // after the secure link has been created asynchronously.
-    const whatsappWindow = window.open("about:blank", "_blank");
+    const file = preparedShareFile;
+    if (file.type !== "application/pdf" || !file.sha256) {
+      setDetailError("The original invoice PDF failed validation. Nothing was shared.");
+      return;
+    }
+
     sharingInvoiceRef.current = true;
     setSharingInvoice(true);
     setDetailError("");
 
-    try {
-      const file = preparedShareFile;
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: "Invoice " + selectedInvoice.invoiceNo,
-            text: "Nandikishor Jewellery Works invoice " + selectedInvoice.invoiceNo,
-          });
-          if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
-          return;
-        } catch (error) {
-          if (error?.name === "AbortError") {
-            if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
-            return;
-          }
-          console.warn("Native PDF sharing unavailable; using secure link:", error);
+    // Do not await network work before navigator.share: browsers require the
+    // file-share call to run directly inside the user's click activation.
+    const canShareFile = typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [file] });
+
+    if (canShareFile) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "Invoice " + selectedInvoice.invoiceNo,
+          text: "Nandikishor Jewellery Works invoice " + selectedInvoice.invoiceNo,
+        });
+        setDetailError("The native share sheet has closed. Confirm the PDF was sent in WhatsApp; this website cannot verify delivery.");
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          setDetailError("Sharing was cancelled. No message was sent.");
+        } else {
+          console.warn("Native PDF file sharing is unavailable:", error);
+          setDetailError("This browser could not open native PDF sharing. The original PDF will be downloaded for manual attachment.");
+          downloadInvoicePdf(file);
         }
+      } finally {
+        sharingInvoiceRef.current = false;
+        setSharingInvoice(false);
       }
+      return;
+    }
 
-      const form = new FormData();
-      form.append("file", file, file.name);
-      const result = await request("/invoices/" + selectedInvoice.id + "/share-link", {
-        method: "POST",
-        body: form,
-      });
-      const downloadUrl = result.downloadUrl;
-      if (!downloadUrl) throw new Error("The server did not return a secure invoice download link.");
+    // Desktop browsers generally cannot attach local files through wa.me.
+    // Download the exact PDF first, then open the chat; the user must attach
+    // the downloaded document in WhatsApp before pressing Send.
+    const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
+    const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
+    const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
+    const message = "Invoice " + selectedInvoice.invoiceNo +
+      " from Nandikishor Jewellery Works. Please find the invoice PDF attached.";
+    const whatsappUrl = phone
+      ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(message)
+      : "https://wa.me/?text=" + encodeURIComponent(message);
 
-      const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
-      const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
-      const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
-      const message = "Your invoice " + selectedInvoice.invoiceNo +
-        " from Nandikishor Jewellery Works is ready. Download the original PDF: " + downloadUrl +
-        (result.expiresAt ? " (link expires " + result.expiresAt + ")" : "");
-      const whatsappUrl = phone
-        ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(message)
-        : "https://wa.me/?text=" + encodeURIComponent(message);
-
-      if (whatsappWindow && !whatsappWindow.closed) {
-        whatsappWindow.location.href = whatsappUrl;
-      } else {
-        await navigator.clipboard?.writeText(downloadUrl);
-        setDetailError("Secure invoice link copied. Paste it into the customer's WhatsApp chat.");
-      }
+    try {
+      downloadInvoicePdf(file);
+      const whatsappWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      setDetailError(
+        whatsappWindow
+          ? "The identical invoice PDF has been downloaded and WhatsApp has opened. In the chat, attach the downloaded PDF using Attach > Document, then review and press Send. The website has not sent it automatically."
+          : "The identical invoice PDF has been downloaded. Open the customer's WhatsApp chat, attach it using Attach > Document, then review and press Send.",
+      );
     } catch (error) {
-      if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
-      setDetailError(error.message || "Could not share the invoice. Please try again.");
+      setDetailError(error.message || "Could not download the original invoice PDF.");
     } finally {
       sharingInvoiceRef.current = false;
       setSharingInvoice(false);
@@ -3016,7 +3052,7 @@ export function SavedInvoices() {
               <button type="button" className="secondary" onClick={() => setShowPrintPin(true)}>
                 <Printer size={16} /> Print / Save PDF
               </button>
-              <button type="button" className="secondary nkj-whatsapp-action" onClick={shareInvoiceOnWhatsApp} disabled={sharePreparing || sharingInvoice || !preparedShareFile}>
+              <button type="button" className="secondary nkj-whatsapp-action" onClick={shareInvoiceOnWhatsApp} disabled={verifiedInvoiceId !== String(selectedInvoice?.id) || sharePreparing || sharingInvoice || !preparedShareFile}>
                 <MessageCircle size={16} /> {sharingInvoice ? "Sharing..." : sharePreparing ? "Preparing PDF..." : "Share via WhatsApp"}
               </button>
               <button type="button" className="primary" onClick={copySelectedInvoice}>
