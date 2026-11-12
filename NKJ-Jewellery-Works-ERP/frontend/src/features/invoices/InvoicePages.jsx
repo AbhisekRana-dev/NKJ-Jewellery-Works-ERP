@@ -2626,7 +2626,7 @@ async function createInvoiceSharePdfFile(invoice) {
   const host = document.createElement("div");
   host.setAttribute("aria-hidden", "true");
   host.style.cssText = [
-    "position:fixed", "left:0", "top:0", "width:194mm", "height:auto",
+    "position:fixed", "left:0", "top:0", "width:291mm", "height:auto",
     "overflow:visible", "pointer-events:none", "z-index:2147482999",
     "background:#fff",
   ].join(";");
@@ -2638,9 +2638,9 @@ async function createInvoiceSharePdfFile(invoice) {
     ["display", "block"],
     ["position", "relative"],
     ["inset", "auto"],
-    ["width", "194mm"],
-    ["min-width", "194mm"],
-    ["max-width", "194mm"],
+    ["width", "291mm"],
+    ["min-width", "291mm"],
+    ["max-width", "291mm"],
     ["height", "auto"],
     ["min-height", "0"],
     ["max-height", "none"],
@@ -2715,14 +2715,14 @@ async function createInvoiceSharePdfFile(invoice) {
     }
 
     const invoiceRect = clone.getBoundingClientRect();
-    const printableHeight = 281 * 96 / 25.4;
-    if (invoiceRect.width < 700 || invoiceRect.width > 750 || invoiceRect.height > printableHeight) {
+    const printableHeight = 204 * 96 / 25.4;
+    if (invoiceRect.width < 1060 || invoiceRect.width > 1130 || invoiceRect.height > printableHeight) {
       throw new Error("The invoice does not fit on one A4 page with the website's print layout. PDF sharing was stopped.");
     }
 
     const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
     const blob = await html2pdf().set({
-      margin: [8, 8, 8, 8],
+      margin: [3, 3, 3, 3],
       filename: fileName,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
@@ -2735,7 +2735,7 @@ async function createInvoiceSharePdfFile(invoice) {
         scrollX: 0,
         scrollY: 0,
       },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "landscape", compress: true },
       pagebreak: {
         mode: ["css", "legacy"],
         avoid: ["#invoice-print", ".inv-head", ".inv-two", ".inv-main", ".inv-bottom", ".thankyou", ".items-table tr"],
