@@ -3,6 +3,24 @@ package com.nkj.billing.controller;
 import java.math.BigDecimal;
 import java.util.List;
 import java.time.LocalDate;
+import java.time.Instant;
+import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.sql.Timestamp;
+import java.net.URI;
+
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import java.time.ZoneId;
 import java.sql.Date;
 import java.util.Locale;
@@ -46,6 +64,7 @@ public class InvoiceController {
     private final JdbcTemplate jdbc;
     private final CustomerService customerService;
     private final CashFlowService cashFlow;
+    private static final SecureRandom SHARE_TOKEN_RANDOM = new SecureRandom();
 
     public InvoiceController(InvoiceRepository repo, ObjectMapper mapper, AuthService auth,
                              JdbcTemplate jdbc, CustomerService customerService, CashFlowService cashFlow) {
@@ -236,6 +255,104 @@ public class InvoiceController {
                 org.springframework.http.HttpStatus.CONFLICT,
                 "Saved invoices cannot be edited. Create a new invoice or use Copy Invoice."
         );
+    }
+
+    /**
+     * Store the already-generated final PDF for a saved invoice and return a
+     * high-entropy, expiring download URL. The PDF is uploaded only by an
+     * authenticated owner session; the public URL never exposes the invoice ID.
+     */
+    @PostMapping(value = "/{id}/share-link", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, Object> createShareLink(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest servletRequest) throws Exception {
+        Invoice invoice = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Saved invoice not found."));
+        if (file == null || file.isEmpty() || file.getSize() > 12L * 1024L * 1024L) {
+            throw new IllegalArgumentException("Invoice PDF must be between 1 byte and 12 MB.");
+        }
+        byte[] pdf = file.getBytes();
+        if (pdf.length < 12 || pdf[0] != '%' || pdf[1] != 'P' || pdf[2] != 'D' || pdf[3] != 'F' || pdf[4] != '-' || !new String(pdf, StandardCharsets.ISO_8859_1).endsWith("%%EOF")) {
+            throw new IllegalArgumentException("Only a valid PDF document can be shared.");
+        }
+        String pdfContents = new String(pdf, StandardCharsets.ISO_8859_1);
+        if (!pdfContents.contains(invoice.getInvoiceNo())) {
+            throw new IllegalArgumentException("The PDF does not match the selected saved invoice.");
+        }
+
+        byte[] tokenBytes = new byte[32];
+        SHARE_TOKEN_RANDOM.nextBytes(tokenBytes);
+        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+        String tokenHash = sha256Hex(token);
+        String filename = invoice.getInvoiceNo().replaceAll("[^A-Za-z0-9_-]", "_") + ".pdf";
+        Instant expiresAt = Instant.now().plus(Duration.ofDays(7));
+
+        // Remove expired binary documents during new link creation.
+        jdbc.update("DELETE FROM invoice_share_files WHERE expires_at <= ?", Timestamp.from(Instant.now()));
+        jdbc.update("""
+                INSERT INTO invoice_share_files(
+                    invoice_id, token_hash, file_name, pdf_bytes, expires_at, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                invoice.getId(), tokenHash, filename, pdf,
+                Timestamp.from(expiresAt), Timestamp.from(Instant.now()));
+
+        String configuredBase = System.getenv().getOrDefault("INVOICE_SHARE_BASE_URL", "").trim();
+        String origin = configuredBase;
+        if (origin.isEmpty()) {
+            origin = URI.create(servletRequest.getRequestURL().toString()).resolve("/").toString();
+        }
+        while (origin.endsWith("/")) origin = origin.substring(0, origin.length() - 1);
+        String downloadUrl = origin + "/api/invoices/shared/" + token;
+
+        return Map.of(
+                "downloadUrl", downloadUrl,
+                "expiresAt", expiresAt.toString(),
+                "fileName", filename
+        );
+    }
+
+    /**
+     * Public bearer-link download. The raw token is never stored; only its
+     * SHA-256 digest is persisted. Expired or unknown links return 410.
+     */
+    @GetMapping("/shared/{token}")
+    public ResponseEntity<byte[]> downloadSharedInvoice(@PathVariable String token) throws Exception {
+        if (token == null || !token.matches("[A-Za-z0-9_-]{40,50}")) {
+            throw new ResponseStatusException(HttpStatus.GONE, "This invoice link has expired or is invalid.");
+        }
+        String tokenHash = sha256Hex(token);
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id, file_name, pdf_bytes FROM invoice_share_files WHERE token_hash = ? AND expires_at > ?",
+                tokenHash, Timestamp.from(Instant.now()));
+        if (rows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.GONE, "This invoice link has expired or is invalid.");
+        }
+
+        Map<String, Object> row = rows.get(0);
+        byte[] pdf = (byte[]) row.get("pdf_bytes");
+        String filename = String.valueOf(row.get("file_name"));
+        jdbc.update(
+                "UPDATE invoice_share_files SET download_count = download_count + 1, last_downloaded_at = ? WHERE id = ?",
+                Timestamp.from(Instant.now()), row.get("id"));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.inline().filename(filename, StandardCharsets.UTF_8).build());
+        headers.setContentLength(pdf.length);
+        headers.setCacheControl(CacheControl.noStore().getHeaderValue());
+        headers.set("X-Content-Type-Options", "nosniff");
+        headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
+    }
+
+    private static String sha256Hex(String value) throws Exception {
+        byte[] digest = MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8));
+        StringBuilder result = new StringBuilder(digest.length * 2);
+        for (byte item : digest) result.append(String.format(Locale.ROOT, "%02x", item));
+        return result.toString();
     }
 
     /**
