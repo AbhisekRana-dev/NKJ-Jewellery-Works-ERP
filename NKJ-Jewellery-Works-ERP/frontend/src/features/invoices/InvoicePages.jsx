@@ -2954,39 +2954,44 @@ export function SavedInvoices() {
 
   const shareInvoiceOnWhatsApp = async () => {
     if (!selectedInvoice?.id) return;
-    const invoiceNo = String(selectedInvoice.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
-    const file = new File(
-      [await createSavedInvoicePdf()],
-      invoiceNo + ".pdf",
-      { type: "application/pdf" },
-    );
+    try {
+      const invoiceNo = String(selectedInvoice.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const file = new File(
+        [await createSavedInvoicePdf()],
+        invoiceNo + ".pdf",
+        { type: "application/pdf" },
+      );
 
-    // Native file sharing attaches the actual PDF to WhatsApp on supported devices.
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: "Invoice " + (selectedInvoice.invoiceNo || "") });
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-        console.error("Native PDF sharing failed:", error);
+      // Native file sharing attaches the original invoice PDF on supported devices.
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: "Invoice " + (selectedInvoice.invoiceNo || "") });
+          return;
+        } catch (error) {
+          if (error?.name === "AbortError") return;
+          console.error("Native PDF sharing failed:", error);
+        }
       }
+
+      // Desktop browsers without file-sharing support download the original PDF.
+      const objectUrl = URL.createObjectURL(file);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = file.name;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+
+      const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
+      const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
+      const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
+      window.open(phone ? "https://wa.me/" + phone : "https://wa.me/", "_blank", "noopener,noreferrer");
+      window.alert("Your original invoice PDF has been downloaded. In WhatsApp, open the chat and attach the PDF document.");
+    } catch (error) {
+      console.error("Could not create the original invoice PDF:", error);
+      setErr(error?.message || "Could not create the invoice PDF. Please try again.");
     }
-
-    // Browsers without file-sharing support download the PDF for manual attachment.
-    const objectUrl = URL.createObjectURL(file);
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = file.name;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
-
-    const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
-    const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
-    const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
-    window.open(phone ? "https://wa.me/" + phone : "https://wa.me/", "_blank", "noopener,noreferrer");
-    window.alert("Your invoice PDF has been downloaded. In WhatsApp, open the chat and attach the downloaded PDF document.");
   };
 
   return (
