@@ -2408,8 +2408,8 @@ export function InvoicePage() {
       {!saved && (
         <p className="draft-note no-print" role="status">
           {draftRestored
-            ? "An unfinished draft was restored during in-app navigation. Refreshing this page clears the draft."
-            : "Unsaved invoice: refreshing this page clears these details. Select Save Invoice to keep it in Invoice History."}
+            ? "Your unfinished invoice draft was restored. Its save identity is preserved, so retrying will not create another invoice."
+            : "Unsaved invoice: this draft is restored after refresh. Use New Invoice / Reset to intentionally start a separate invoice."}
         </p>
       )}
       {showInvoicePin && (
