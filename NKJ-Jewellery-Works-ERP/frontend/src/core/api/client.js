@@ -9,9 +9,10 @@ export async function request(path, options = {}) {
     ...fetchOptions
   } = options;
   const token = localStorage.getItem("nkj_token");
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const headers = {
     Accept: "application/json",
-    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),
     ...(options.headers || {}),
   };
   const method = String(fetchOptions.method || "GET").toUpperCase();
