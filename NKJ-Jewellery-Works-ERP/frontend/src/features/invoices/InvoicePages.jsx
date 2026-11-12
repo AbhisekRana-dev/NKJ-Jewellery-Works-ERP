@@ -2591,7 +2591,7 @@ async function createInvoiceSharePdfFile(invoice) {
   ].forEach(([property, value]) => clone.style.setProperty(property, value, "important"));
 
   const exportStyle = document.createElement("style");
-  exportStyle.textContent = \`
+  exportStyle.textContent = `
     .nkj-pdf-export-root .inv-head { grid-template-columns:30mm minmax(0,1fr) 68mm !important; }
     .nkj-pdf-export-root .inv-two { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; }
     .nkj-pdf-export-root .inv-main { grid-template-columns:minmax(0,1fr) 68mm !important; gap:2mm !important; }
@@ -2608,7 +2608,7 @@ async function createInvoiceSharePdfFile(invoice) {
     .nkj-pdf-export-root,.nkj-pdf-export-root * {
       -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;
     }
-  \`;
+  `;
   host.appendChild(exportStyle);
   host.appendChild(clone);
   document.body.appendChild(host);
