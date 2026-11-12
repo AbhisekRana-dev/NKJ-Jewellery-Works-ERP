@@ -1692,7 +1692,7 @@ export function InvoicePage() {
         <div>
           <span className="eyebrow">BILLING</span>
 
-          <h2>{isEditingSavedInvoice ? "Edit Invoice" : "Create New Invoice"}</h2>
+          <h2>Create New Invoice</h2>
         </div>
 
         <Link to="/" className="secondary">
