@@ -376,7 +376,7 @@ async function createSavedInvoicePdf(invoice) {
 
   const drawHeader = (continuation = false) => {
     if (logoBytes && logoObjectId) {
-      ops.push("q 70 0 0 70 28 " + (pageH - 20 - 70) + " cm /NKJLogo Do Q");
+      ops.push("q 58 0 0 58 35 " + (pageH - 22 - 58) + " cm /NKJLogo Do Q");
     } else {
       ops.push(gold + " RG 2 w 63 " + (pageH - 77) + " 54 54 re S");
       textAt("NKJ", 90, 48, 19, true, maroon, "center");
@@ -397,16 +397,11 @@ async function createSavedInvoicePdf(invoice) {
     textAt("Time", 658, 82, 7.5, false, ink);
     textAt(displaySavedInvoiceTime(data.invoiceTime || data.time), 723, 82, 7.5, true, ink);
     line(left, 113, right, 113, gold, 1.2);
-    y = 108;
+    y = 125;
   };
   const beginPage = (continuation = false) => {
     ops = [];
     drawHeader(continuation);
-    // Match the thin gold frame used by the on-screen A4 invoice sheet.
-    line(18, 18, 824, 18, gold, 0.8);
-    line(824, 18, 824, pageH - 14, gold, 0.8);
-    line(824, pageH - 14, 18, pageH - 14, gold, 0.8);
-    line(18, pageH - 14, 18, 18, gold, 0.8);
     if (continuation) textAt("INVOICE CONTINUED - " + data.invoiceNo, left, y + 1, 8, true, maroon);
     pages.push(null);
   };
@@ -421,46 +416,46 @@ async function createSavedInvoicePdf(invoice) {
     }
   };
   const section = (label) => {
-    rect(left, y, contentW, 16, cream, gold);
-    textAt(label, left + 7, y + 3, 8.5, true, maroon);
-    y += 19;
+    rect(left, y, contentW, 18, cream, gold);
+    textAt(label, left + 7, y + 4, 9, true, maroon);
+    y += 23;
   };
   const tableHeader = (columns) => {
-    rect(left, y, contentW, 16, maroon, maroon);
+    rect(left, y, contentW, 20, maroon, maroon);
     let x = left;
     columns.forEach((column) => {
-      textAt(column.label, x + column.width / 2, y + 4, 6.7, true, "1 1 1", "center");
+      textAt(column.label, x + column.width / 2, y + 6, 7, true, "1 1 1", "center");
       x += column.width;
     });
-    y += 16;
+    y += 20;
   };
   const tableRow = (values, columns) => {
     const previousPageCount = pages.length;
-    ensureSpace(16, "ITEM DETAILS (CONTINUED)");
+    ensureSpace(20, "ITEM DETAILS (CONTINUED)");
     if (pages.length > previousPageCount) tableHeader(columns);
-    rect(left, y, contentW, 16, "1 1 1", pale, 0.55);
+    rect(left, y, contentW, 20, "1 1 1", pale, 0.55);
     let x = left;
     values.forEach((value, index) => {
-      if (index > 0) line(x, y, x, y + 16, pale, 0.45);
+      if (index > 0) line(x, y, x, y + 20, pale, 0.45);
       const maxChars = Math.max(5, Math.floor((columns[index].width - 8) / 4.1));
-      textAt(short(value, maxChars), x + 4, y + 4, 6.7, false, ink);
+      textAt(short(value, maxChars), x + 4, y + 6, 7, false, ink);
       x += columns[index].width;
     });
-    y += 16;
+    y += 20;
   };
   const totalLine = (label, value, fill = "1 1 1", color = ink, bold = true) => {
-    rect(545, y, 263, 14, fill, pale, 0.6);
-    textAt(label, 553, y + 3.5, 7.2, bold, color);
-    textAt(value, 800, y + 3.5, 7.2, bold, color, "right");
-    y += 14;
+    rect(545, y, 263, 18, fill, pale, 0.6);
+    textAt(label, 553, y + 5, 7.5, bold, color);
+    textAt(value, 800, y + 5, 7.5, bold, color, "right");
+    y += 18;
   };
 
   const logoObjectId = logoBytes ? 5 : null;
   beginPage(false);
 
   const half = (contentW - 10) / 2;
-  rect(left, y, half, 58, "1 1 1", pale);
-  rect(left + half + 10, y, half, 58, "1 1 1", pale);
+  rect(left, y, half, 65, "1 1 1", pale);
+  rect(left + half + 10, y, half, 65, "1 1 1", pale);
   textAt("CUSTOMER DETAILS", left + 8, y + 8, 8, true, maroon);
   textAt("Name: " + (data.customerName || data.name || "-"), left + 8, y + 25, 7.5);
   textAt("Mobile: " + (data.mobile || "-"), left + 8, y + 40, 7.5);
@@ -469,7 +464,7 @@ async function createSavedInvoicePdf(invoice) {
   textAt("PAYMENT DETAILS", payX, y + 8, 8, true, maroon);
   textAt("Payment Mode: " + (data.paymentMode || "Cash"), payX, y + 28, 7.5);
   textAt("Reference No.: " + (data.referenceNo || "-"), payX, y + 44, 7.5);
-  y += 68;
+  y += 77;
 
   const newCols = [
     { label: "Sl. No.", width: 34 }, { label: "Description", width: 150 },
@@ -503,7 +498,7 @@ async function createSavedInvoicePdf(invoice) {
     index + 1, row.description || "Ornament", row.purity || "-",
     row.pureWeight || "0", fmt(row.rate), fmt(row.amount ?? oldAmt(row)),
   ], oldCols));
-  ensureSpace(22, null);
+  ensureSpace(170, null);
   textAt("Total Old Exchange: Rs. " + fmt(oldTotal), right - 4, y + 4, 8.5, true, maroon, "right");
   y += 21;
 
@@ -518,10 +513,10 @@ async function createSavedInvoicePdf(invoice) {
     ["DUE AMOUNT", fmt(dueAmount)],
   );
   totals.forEach(([label, value]) => totalLine(label, value));
-  rect(545, y, 263, 20, maroon, maroon);
-  textAt("GRAND TOTAL", 553, y + 5.5, 8.5, true, "1 1 1");
-  textAt("Rs. " + fmt(grandTotal), 800, y + 5.5, 8.5, true, "1 1 1", "right");
-  y += 26;
+  rect(545, y, 263, 24, maroon, maroon);
+  textAt("GRAND TOTAL", 553, y + 7, 9, true, "1 1 1");
+  textAt("Rs. " + fmt(grandTotal), 800, y + 7, 9, true, "1 1 1", "right");
+  y += 32;
 
   const description = [data.description || data.additionalDescription || "", data.terms || data.paymentTerms || ""]
     .filter(Boolean).join(" | ");
@@ -532,14 +527,13 @@ async function createSavedInvoicePdf(invoice) {
     y += 12;
     lines.slice(0, 4).forEach((lineText) => { textAt(lineText, left, y, 7.5); y += 10; });
   }
-  ensureSpace(42, null);
+  ensureSpace(65, null);
   textAt("Amount in Words: " + amountInWords(grandTotal), left, y + 2, 8, true, ink);
-  y += 18;
+  y += 23;
   line(left, y, right, y, gold, 0.8);
-  textAt("Customer Signature", 160, y + 14, 7.5, false, ink, "center");
-  textAt("Authorised Signature", 690, y + 14, 7.5, false, ink, "center");
-  textAt("Thank You", 421, pageH - 48, 17, true, maroon, "center");
-  textAt("Visit Again", 421, pageH - 28, 9, true, maroon, "center");
+  textAt("Customer Signature", 160, y + 18, 8, false, ink, "center");
+  textAt("Authorised Signature", 690, y + 18, 8, false, ink, "center");
+  textAt("Thank you for shopping with Nandikishor Jewellery Works.", 421, pageH - 23, 8.5, true, maroon, "center");
   finishPage();
 
   // Assemble a standards-compliant PDF with selectable vector text and tables.
