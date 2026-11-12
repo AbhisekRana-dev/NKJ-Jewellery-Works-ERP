@@ -902,8 +902,10 @@ export function InvoicePage() {
   const invoiceSeed = editingInvoice || copiedInvoice;
   const [isEditingSavedInvoice] = useState(false);
   const startingNewInvoice = location.state?.startNewInvoice === true;
+  // Restore an unfinished draft and its idempotency key after refresh.
+  // Only an explicit New Invoice or Copy Invoice starts a separate draft.
   const [initialDraft] = useState(() =>
-    reloadResetPending || invoiceSeed || startingNewInvoice ? null : readInvoiceDraft()
+    invoiceSeed || startingNewInvoice ? null : readInvoiceDraft()
   );
   const [invoiceDate, setInvoiceDate] = useState(() =>
     invoiceSeed?.invoiceDate || initialDraft?.invoiceDate || getTodayIndiaDate()
@@ -1136,19 +1138,22 @@ export function InvoicePage() {
     const firstMountAfterReload = reloadResetPending && !initialReloadResetHandledRef.current;
     const explicitNewInvoice = !reloadResetPending && startingNewInvoice;
 
-    if (firstMountAfterReload || explicitNewInvoice) {
-      if (firstMountAfterReload) {
-        // Mark the reload only after render. Keeping the state initializer
-        // read-only makes this reliable under React Strict Mode.
-        initialReloadResetHandledRef.current = true;
-        markInvoiceReloadHandled();
-        setReloadResetPending(false);
+    if (firstMountAfterReload) {
+      // A browser refresh continues the same draft. Preserve its idempotency
+      // key so retrying after an uncertain network response cannot insert a
+      // second invoice.
+      initialReloadResetHandledRef.current = true;
+      markInvoiceReloadHandled();
+      setReloadResetPending(false);
+      if (location.state?.copyInvoice || location.state?.editInvoice || startingNewInvoice) {
+        navigate("/invoice", { replace: true, state: null });
       }
+      return;
+    }
 
-      // A full browser reload must always start a blank invoice, even when
-      // history.state still contains a copied invoice or a New Invoice flag.
-      // Explicit New Invoice navigation uses the same reset path. Saved
-      // database invoices and Invoice History are never modified here.
+    if (explicitNewInvoice) {
+      // Explicit New Invoice navigation intentionally creates a new draft.
+      // Matching details are allowed because repeat purchases are legitimate.
       try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
       setInvoiceDate(getTodayIndiaDate());
       setShowGstin(true);
@@ -1169,17 +1174,11 @@ export function InvoicePage() {
       setInvoiceNo("");
       setInvoiceId(null);
       setShowInvoicePin(false);
-
-      // Remove persisted router state so another refresh cannot reopen the
-      // invoice that was previously copied or selected.
       navigate("/invoice", { replace: true, state: null });
       return;
     }
 
-    // Do not process stale history.state while the initial reload reset is
-    // waiting to be committed.
     if (reloadResetPending) return;
-
     if (location.state?.copyInvoice || location.state?.editInvoice) {
       navigate("/invoice", { replace: true, state: null });
     }
@@ -1366,10 +1365,16 @@ export function InvoicePage() {
     };
   }
 
-  function discardDraft() {
-    if (saved || saving) return;
-    if (!window.confirm("Discard this unfinished invoice draft? This cannot be undone.")) return;
+  function resetInvoiceForm() {
+    if (saving || saveInProgressRef.current) return;
+    const message = saved
+      ? "Start a new invoice? The already-saved invoice will remain unchanged in Invoice History."
+      : "Discard the current draft and start a new invoice? This cannot be undone.";
+    if (!window.confirm(message)) return;
 
+    // Reset is explicit: rotate the idempotency key. The next save is a new
+    // invoice even if its details match a previous invoice. Do not compare
+    // invoice contents or block legitimate repeat purchases.
     skipNextDraftPersistRef.current = true;
     try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
     setInvoiceDate(getTodayIndiaDate());
@@ -1383,12 +1388,19 @@ export function InvoicePage() {
     setDiscount("");
     setGst("0");
     setDescription("");
+    setSaved(false);
     setSuccessMessage("");
     setInvoiceNo("");
     setInvoiceId(null);
     setIdempotencyKey(createInvoiceDraftKey());
     setDraftRestored(false);
+    setShowInvoicePin(false);
     setError("");
+    setCalculatorOpen(false);
+    setCalculatorExpression("");
+    setCalculatorResult("");
+    setCalculatorError("");
+    setIsPrintPreparing(false);
   }
 
   function validateInvoiceForm() {
@@ -2369,6 +2381,15 @@ export function InvoicePage() {
       {saving && <p className="draft-note no-print" role="status">Saving the complete invoice to PostgreSQL. Printing will start only after the server confirms the save.</p>}
 
       <div className="invoice-actions no-print">
+        <button
+          type="button"
+          className="secondary"
+          onClick={resetInvoiceForm}
+          disabled={saving}
+          title="Start a new invoice; previously saved invoices remain unchanged"
+        >
+          <Plus /> New Invoice / Reset
+        </button>
         <button type="button" className="primary" onClick={save} disabled={saving || saved}>
           <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
         </button>
