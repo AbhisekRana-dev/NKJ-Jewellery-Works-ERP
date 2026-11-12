@@ -2776,7 +2776,9 @@ export function SavedInvoices() {
       setSelectedInvoice(parseInvoiceDetails(fullRecord));
       setVerifiedInvoiceId(String(fullRecord.id));
     } catch (error) {
-      setDetailError(error.message || "Could not verify the saved invoice. Please reload and try again.");
+      const message = error.message || "Could not verify the saved invoice. Please reload and try again.";
+      setDetailError(message);
+      setErr(message);
     } finally {
       setDetailLoading(false);
     }
