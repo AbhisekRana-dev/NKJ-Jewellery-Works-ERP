@@ -99,9 +99,10 @@ UPDATE public.jewellery_designs d
    AND substring(d.design_id FROM '([0-9]+)$')::INTEGER = x.sequence_no;
 
 DO $$
-DECLARE category_count INTEGER;
-DECLARE incomplete_count INTEGER;
-DECLARE duplicate_names INTEGER;
+DECLARE
+    category_count INTEGER;
+    incomplete_count INTEGER;
+    duplicate_names INTEGER;
 BEGIN
     SELECT COUNT(*) INTO category_count
       FROM public.jewellery_design_categories
@@ -118,47 +119,28 @@ BEGIN
             ON d.category_id = c.id
            AND d.is_sample = TRUE
            AND d.is_deleted = FALSE
-           AND substring(d.design_id FROM '([0-9]+)
-         GROUP BY c.id
-        HAVING COUNT(d.id) < 20
-      ) q;
-    IF incomplete_count > 0 THEN
-        RAISE EXCEPTION 'Silver catalogue incomplete: % subcategories have fewer than 20 sample designs', incomplete_count;
-    END IF;
-
-    SELECT COUNT(*) INTO duplicate_names
-      FROM (
-        SELECT d.category_id, LOWER(BTRIM(d.design_name))
-          FROM public.jewellery_designs d
-          JOIN public.jewellery_design_categories c ON c.id=d.category_id
-         WHERE c.metal_type='SILVER' AND d.is_sample=TRUE AND d.is_deleted=FALSE
-         GROUP BY d.category_id, LOWER(BTRIM(d.design_name))
-        HAVING COUNT(*) > 1
-      ) q;
-    IF duplicate_names > 0 THEN
-        RAISE EXCEPTION 'Silver catalogue contains % duplicated design-name groups', duplicate_names;
-    END IF;
-END $$;
-)::INTEGER BETWEEN 1 AND 25
+           AND substring(d.design_id FROM '([0-9]+)$')::INTEGER BETWEEN 1 AND 25
          WHERE c.metal_type = 'SILVER'
          GROUP BY c.id
-        HAVING COUNT(d.id) < 20
+        HAVING COUNT(d.id) < 25
       ) q;
     IF incomplete_count > 0 THEN
-        RAISE EXCEPTION 'Silver catalogue incomplete: % subcategories have fewer than 20 sample designs', incomplete_count;
+        RAISE EXCEPTION 'Silver catalogue incomplete: % subcategories have fewer than 25 curated sample designs', incomplete_count;
     END IF;
 
     SELECT COUNT(*) INTO duplicate_names
       FROM (
         SELECT d.category_id, LOWER(BTRIM(d.design_name))
           FROM public.jewellery_designs d
-          JOIN public.jewellery_design_categories c ON c.id=d.category_id
-         WHERE c.metal_type='SILVER' AND d.is_sample=TRUE AND d.is_deleted=FALSE
+          JOIN public.jewellery_design_categories c ON c.id = d.category_id
+         WHERE c.metal_type = 'SILVER'
+           AND d.is_sample = TRUE
+           AND d.is_deleted = FALSE
            AND substring(d.design_id FROM '([0-9]+)$')::INTEGER BETWEEN 1 AND 25
          GROUP BY d.category_id, LOWER(BTRIM(d.design_name))
         HAVING COUNT(*) > 1
       ) q;
     IF duplicate_names > 0 THEN
-        RAISE EXCEPTION 'Silver catalogue contains % duplicated design-name groups', duplicate_names;
+        RAISE EXCEPTION 'Silver catalogue contains % duplicated design-name groups among curated sample IDs', duplicate_names;
     END IF;
 END $$;
