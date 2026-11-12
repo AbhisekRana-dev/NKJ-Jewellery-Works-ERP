@@ -2592,7 +2592,7 @@ async function createInvoiceSharePdfFile(invoice) {
   // html2canvas uses screen media, so apply the same compact rules as the
   // existing @media print stylesheet directly to this export-only clone.
   const style = document.createElement("style");
-  style.textContent = \`
+  style.textContent = `
     .nkj-pdf-export-root .inv-head{grid-template-columns:30mm minmax(0,1fr) 68mm!important;gap:2mm!important;padding-bottom:2mm!important}
     .nkj-pdf-export-root .inv-logo{width:25mm!important;height:25mm!important}
     .nkj-pdf-export-root .inv-shop h1{font-size:19pt!important;white-space:nowrap!important}
@@ -2641,7 +2641,7 @@ async function createInvoiceSharePdfFile(invoice) {
     .nkj-pdf-export-root .ornament-panel{break-inside:auto!important;page-break-inside:auto!important}
     .nkj-pdf-export-root img{max-width:100%!important;object-fit:contain!important}
     .nkj-pdf-export-root,.nkj-pdf-export-root *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  \`;
+  `;
   host.appendChild(style);
   host.appendChild(clone);
   document.body.appendChild(host);
