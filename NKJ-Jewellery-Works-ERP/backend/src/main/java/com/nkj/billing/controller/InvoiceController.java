@@ -164,6 +164,43 @@ public class InvoiceController {
             return view(existingInvoice);
         }
 
+        // Block a second invoice when the complete business payload is identical
+        // for the same invoice date and GSTIN setting, even if the browser has
+        // reset the form and generated a fresh Idempotency-Key. The advisory
+        // lock serializes concurrent requests for this exact payload.
+        String duplicateCheckPayload = sanitizedInvoicePayload(body);
+        boolean requestedShowGstin = booleanValue(body.get("showGstin"), true);
+        jdbc.query(
+                "SELECT pg_advisory_xact_lock(hashtextextended(CONCAT(?, '|', ?, '|', md5(?::jsonb::text)), 0))",
+                rs -> {
+                    if (rs.next()) {
+                        // Force PostgreSQL to acquire the transaction-scoped lock.
+                    }
+                    return null;
+                },
+                invoiceDate.toString(),
+                Boolean.toString(requestedShowGstin),
+                duplicateCheckPayload
+        );
+        List<String> matchingInvoiceNumbers = jdbc.query(
+                "SELECT invoice_no FROM public.invoices "
+                        + "WHERE invoice_date = ? AND show_gstin = ? "
+                        + "AND payload_json IS NOT NULL AND payload_json::jsonb = ?::jsonb "
+                        + "ORDER BY id LIMIT 1",
+                (rs, rowNum) -> rs.getString("invoice_no"),
+                Date.valueOf(invoiceDate),
+                requestedShowGstin,
+                duplicateCheckPayload
+        );
+        if (!matchingInvoiceNumbers.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Duplicate invoice blocked. An invoice with exactly the same details already exists: "
+                            + matchingInvoiceNumbers.get(0)
+                            + ". Open Invoice History to view the existing invoice. Change the invoice details or date only if this is a genuinely different sale."
+            );
+        }
+
         validateMobileNumber(body);
         String customerName = clean(body.get("customerName"));
         if (customerName.isEmpty()) {
