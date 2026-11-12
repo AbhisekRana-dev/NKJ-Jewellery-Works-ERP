@@ -313,6 +313,9 @@ async function createSavedInvoicePdf() {
   originals.forEach((original, index) => {
     const copy = clones[index];
     if (!copy) return;
+    if (original instanceof HTMLImageElement && copy instanceof HTMLImageElement) {
+      copy.src = original.currentSrc || new URL(original.getAttribute("src") || original.src, document.baseURI).href;
+    }
     const computed = window.getComputedStyle(original);
     let css = "";
     for (let i = 0; i < computed.length; i += 1) {
