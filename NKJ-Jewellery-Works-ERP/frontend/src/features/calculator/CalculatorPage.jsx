@@ -204,10 +204,8 @@ function ManualCalculator({ active }) {
         return;
       }
 
-      if (key === "Escape") {
-        consume();
-        confirmReset();
-      }
+      // Escape is intentionally not a reset shortcut. Clearing is available
+      // only through an explicit Reset/AC button click with confirmation.
     };
 
     window.addEventListener("keydown", handleCalculatorKeyDown, true);
@@ -248,7 +246,7 @@ function ManualCalculator({ active }) {
       <button type="button" className="nkj-calc-manual-reset" onClick={confirmReset}>
         <RotateCcw size={15} /> Reset Manual Calculator
       </button>
-      <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc to reset (confirmation required)</p>
+      <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Use Reset to clear (confirmation required)</p>
     </section>
   );
 }
@@ -288,30 +286,6 @@ function OrnamentCalculator({ mode, active }) {
     const name = isOld ? "Old Ornaments" : "New Ornaments";
     if (window.confirm(`Reset ${name}? Only its saved draft will be cleared.`)) reset();
   }, [isOld, reset]);
-
-  // Use capture phase so shell/page keyboard handlers cannot swallow Escape.
-  // Escape works while focus is inside any calculator field or on the calculator page.
-  useEffect(() => {
-    if (!active) return undefined;
-
-    const handleEscape = (event) => {
-      if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
-      const target = event.target;
-      const insideCalculatorPage = target instanceof Element
-        && Boolean(target.closest(".nkj-calculator-page"));
-      const pageHasCalculatorFocus = target === document.body
-        || target === document.documentElement
-        || insideCalculatorPage;
-      if (!pageHasCalculatorFocus) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      confirmReset();
-    };
-
-    window.addEventListener("keydown", handleEscape, true);
-    return () => window.removeEventListener("keydown", handleEscape, true);
-  }, [active, confirmReset]);
 
   return (
     <section className="nkj-calc-ornament">
@@ -398,7 +372,7 @@ function OrnamentCalculator({ mode, active }) {
                 <small>Stamp + extra charges: ₹ {money(Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0))}</small>
                 {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
               </>}
-          <small className="nkj-calc-reset-hint">Press Esc or click Reset. Confirm to clear only this calculator.</small>
+          <small className="nkj-calc-reset-hint">Click Reset and confirm to clear only this calculator.</small>
         </div>
         <button type="button" className="nkj-calc-reset" onClick={confirmReset}>
           <RotateCcw size={15} /> Reset
