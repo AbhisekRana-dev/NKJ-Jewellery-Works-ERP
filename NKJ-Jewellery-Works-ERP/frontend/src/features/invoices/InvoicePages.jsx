@@ -285,8 +285,15 @@ function makeInvoiceShareMessage(invoice) {
 }
 
 
-/** Generate a shareable PDF from a saved invoice without opening the Print dialog. */
-function createSavedInvoicePdf(invoice) {
+/**
+ * Canonical vector PDF generator for saved invoices.
+ * Both Print/Save PDF and WhatsApp sharing use these exact PDF bytes.
+ * It draws invoice text, tables and totals as PDF objects (not a screenshot).
+ */
+async function createSavedInvoicePdf(invoice) {
+  if (!invoice?.id || !invoice?.invoiceNo) {
+    throw new Error("Only a saved invoice with an invoice number can be exported.");
+  }
   const data = parseInvoiceDetails(invoice);
   const newRows = invoiceRows(data.newItems);
   const oldRows = invoiceRows(data.oldItems);
@@ -298,119 +305,293 @@ function createSavedInvoicePdf(invoice) {
   const discount = Number(data.discount) || 0;
   const grandTotal = Number(data.grandTotal ?? (newTotal + gstAmount - discount - oldTotal)) || 0;
   const totalPaid = Math.max(0, Number(data.totalPaid ?? data.paymentAmount ?? 0) || 0);
-  const dueAmount = Math.max(0, grandTotal - totalPaid);
-  const W = 842, H = 595, M = 34;
+  const dueAmount = Math.max(0, Number(data.dueAmount ?? (grandTotal - totalPaid)) || 0);
+  const pageW = 842, pageH = 595, left = 34, right = 808, contentW = right - left;
+  const maroon = "0.53 0.04 0.15", gold = "0.78 0.42 0.10", cream = "0.99 0.96 0.90";
+  const ink = "0.12 0.10 0.10", muted = "0.35 0.31 0.29", pale = "0.97 0.91 0.82";
+  const safe = (value) => String(value ?? "")
+    .replace(/₹/g, "Rs. ").replace(/[–—]/g, "-").replace(/[•·]/g, "-")
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/[^\x20-\x7E]/g, "");
+  const esc = (value) => safe(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  const fmt = (value) => Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const short = (value, max) => {
+    const valueText = safe(value);
+    return valueText.length > max ? valueText.slice(0, Math.max(0, max - 1)) + "…" : valueText;
+  };
   const pages = [];
-  let ops = [], y = 32;
+  let ops = [];
+  let y = 0;
 
-  const safe = (v) => String(v ?? "").replace(/₹/g, "Rs. ").replace(/[–—]/g, "-").replace(/[•·]/g, "-").replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[^\x20-\x7E]/g, "");
-  const esc = (v) => safe(v).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-  const fmt = (v) => Number(v || 0).toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2});
-  const addPage = () => { if (ops.length) pages.push(ops.join("\n")); ops = []; y = 32; };
-  const txt = (v,x,t,size=8,bold=false,color="0.12 0.12 0.12") => {
-    ops.push(color + " rg BT /" + (bold ? "F2" : "F1") + " " + size + " Tf 1 0 0 1 " + x + " " + (H-t-size) + " Tm (" + esc(v) + ") Tj ET");
+  const textAt = (value, x, top, size = 8, bold = false, color = ink, align = "left") => {
+    const label = safe(value);
+    const estimatedWidth = label.length * size * (bold ? 0.29 : 0.255);
+    const actualX = align === "center" ? x - estimatedWidth / 2 : align === "right" ? x - estimatedWidth : x;
+    ops.push(color + " rg BT /" + (bold ? "F2" : "F1") + " " + size + " Tf 1 0 0 1 " +
+      actualX.toFixed(2) + " " + (pageH - top - size).toFixed(2) + " Tm (" + esc(label) + ") Tj ET");
   };
-  const rule = (x1,t1,x2,t2,color="0.78 0.65 0.48",width=0.7) => {
-    ops.push(color + " RG " + width + " w " + x1 + " " + (H-t1) + " m " + x2 + " " + (H-t2) + " l S");
+  const line = (x1, top1, x2, top2, color = gold, width = 0.7) => {
+    ops.push(color + " RG " + width + " w " + x1 + " " + (pageH - top1) + " m " +
+      x2 + " " + (pageH - top2) + " l S");
   };
-  const box = (x,t,w,h,fill="1 1 1",stroke="0.86 0.75 0.65") => {
-    ops.push(fill + " rg " + stroke + " RG 0.7 w " + x + " " + (H-t-h) + " " + w + " " + h + " re B");
+  const rect = (x, top, width, height, fill = "1 1 1", stroke = pale, lineWidth = 0.7) => {
+    ops.push(fill + " rg " + stroke + " RG " + lineWidth + " w " + x + " " +
+      (pageH - top - height) + " " + width + " " + height + " re B");
+  };
+  const wrap = (value, maxChars) => {
+    const words = safe(value).split(/\s+/).filter(Boolean);
+    const result = [];
+    let current = "";
+    words.forEach((word) => {
+      const next = current ? current + " " + word : word;
+      if (next.length > maxChars && current) { result.push(current); current = word; }
+      else current = next;
+    });
+    if (current) result.push(current);
+    return result.length ? result : ["-"];
+  };
+  const logoBytes = await (async () => {
+    try {
+      const response = await fetch("/nkj-logo-reference.png", { credentials: "same-origin" });
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      try {
+        const image = new Image();
+        image.src = imageUrl;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = 240; canvas.height = 240;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 240, 240);
+        ctx.drawImage(image, 0, 0, 240, 240);
+        const binary = atob(canvas.toDataURL("image/jpeg", 0.9).split(",")[1]);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+      } finally { URL.revokeObjectURL(imageUrl); }
+    } catch { return null; }
+  })();
+
+  const drawHeader = (continuation = false) => {
+    if (logoBytes && logoObjectId) {
+      ops.push("q 58 0 0 58 35 " + (pageH - 22 - 58) + " cm /NKJLogo Do Q");
+    } else {
+      ops.push(gold + " RG 2 w 63 " + (pageH - 77) + " 54 54 re S");
+      textAt("NKJ", 90, 48, 19, true, maroon, "center");
+    }
+    textAt("NANDIKISHOR JEWELLERY WORKS", 405, 29, continuation ? 16 : 18, true, maroon, "center");
+    textAt("Owner : Bhuteswar Rana", 405, 52, 9, true, maroon, "center");
+    textAt("Contact No. : 99322770722 | 8116022248", 405, 66, 8.5, true, ink, "center");
+    textAt("Sasra, Gopiballavpur, Jhargram, Pin - 721506", 405, 79, 8, true, ink, "center");
+    textAt("Gold & Silver Ornaments", 405, 92, 9, true, maroon, "center");
+    if (showGstin) textAt("GSTIN No: 19ABCDE1234F1Z5", 405, 105, 7, true, maroon, "center");
+    rect(650, 20, 158, 78, "1 0.99 0.97", gold);
+    rect(650, 20, 158, 21, maroon, maroon);
+    textAt("INVOICE", 729, 24, 11, true, "1 1 1", "center");
+    textAt("Invoice No.", 658, 48, 7.5, false, ink);
+    textAt(data.invoiceNo || "-", 723, 48, 7.5, true, ink);
+    textAt("Date", 658, 65, 7.5, false, ink);
+    textAt(displaySavedInvoiceDate(data.invoiceDate || data.date), 723, 65, 7.5, true, ink);
+    textAt("Time", 658, 82, 7.5, false, ink);
+    textAt(displaySavedInvoiceTime(data.invoiceTime || data.time), 723, 82, 7.5, true, ink);
+    line(left, 113, right, 113, gold, 1.2);
+    y = 125;
+  };
+  const beginPage = (continuation = false) => {
+    ops = [];
+    drawHeader(continuation);
+    if (continuation) textAt("INVOICE CONTINUED - " + data.invoiceNo, left, y + 1, 8, true, maroon);
+    pages.push(null);
+  };
+  const finishPage = () => { pages[pages.length - 1] = ops.join("\n"); };
+  const ensureSpace = (needed, continuationLabel) => {
+    if (y + needed > pageH - 38) {
+      finishPage();
+      beginPage(true);
+      y += 13;
+      if (continuationLabel) textAt(continuationLabel, left, y, 8, true, maroon);
+      y += continuationLabel ? 14 : 0;
+    }
   };
   const section = (label) => {
-    box(M,y,W-2*M,19,"0.98 0.95 0.90");
-    txt(label,M+7,y+4,9,true,"0.48 0.08 0.16");
-    y += 25;
+    rect(left, y, contentW, 18, cream, gold);
+    textAt(label, left + 7, y + 4, 9, true, maroon);
+    y += 23;
   };
-  const drawTableHead = (label, cols) => {
-    section(label);
-    box(M,y,W-2*M,19,"0.53 0.04 0.14","0.53 0.04 0.14");
-    let x=M;
-    cols.forEach((c) => { txt(c[0],x+4,y+5,7,true,"1 1 1"); x+=c[1]; });
-    y+=19;
-  };
-  const row = (values, cols) => {
-    if (y > H-55) { addPage(); drawTableHead("ITEM DETAILS (CONTINUED)",cols); }
-    box(M,y,W-2*M,20);
-    let x=M;
-    values.forEach((v,i) => {
-      txt(safe(v).slice(0,Math.max(7,Math.floor(cols[i][1]/4.2))),x+4,y+5,7.2);
-      if(i) rule(x,y,x,y+20,"0.86 0.86 0.86",0.4);
-      x+=cols[i][1];
+  const tableHeader = (columns) => {
+    rect(left, y, contentW, 20, maroon, maroon);
+    let x = left;
+    columns.forEach((column) => {
+      textAt(column.label, x + column.width / 2, y + 6, 7, true, "1 1 1", "center");
+      x += column.width;
     });
-    y+=20;
+    y += 20;
+  };
+  const tableRow = (values, columns) => {
+    const previousPageCount = pages.length;
+    ensureSpace(20, "ITEM DETAILS (CONTINUED)");
+    if (pages.length > previousPageCount) tableHeader(columns);
+    rect(left, y, contentW, 20, "1 1 1", pale, 0.55);
+    let x = left;
+    values.forEach((value, index) => {
+      if (index > 0) line(x, y, x, y + 20, pale, 0.45);
+      const maxChars = Math.max(5, Math.floor((columns[index].width - 8) / 4.1));
+      textAt(short(value, maxChars), x + 4, y + 6, 7, false, ink);
+      x += columns[index].width;
+    });
+    y += 20;
+  };
+  const totalLine = (label, value, fill = "1 1 1", color = ink, bold = true) => {
+    rect(545, y, 263, 18, fill, pale, 0.6);
+    textAt(label, 553, y + 5, 7.5, bold, color);
+    textAt(value, 800, y + 5, 7.5, bold, color, "right");
+    y += 18;
   };
 
-  txt("NANDIKISHOR JEWELLERY WORKS",M,y,19,true,"0.55 0.03 0.14");
-  txt("Sasra, Gopiballavpur, Jhargram, West Bengal - 721506",M,y+22,8.5);
-  txt("Contact: 99322770722 | 8116022248",M,y+36,8.5);
-  if(showGstin) txt("GSTIN: 19ABCDE1234F1Z5",M,y+50,8);
-  box(615,y-2,193,67,"1 0.98 0.95","0.78 0.20 0.25");
-  txt("TAX INVOICE",675,y+5,11,true,"0.55 0.03 0.14");
-  txt("Invoice No.: " + (data.invoiceNo || "-"),625,y+24,8,true);
-  txt("Date: " + displaySavedInvoiceDate(data.invoiceDate || data.date),625,y+38,8);
-  txt("Time: " + displaySavedInvoiceTime(data.invoiceTime || data.time),625,y+51,8);
-  y+=78; rule(M,y,W-M,y,"0.65 0.35 0.12",1.2); y+=12;
+  const logoObjectId = logoBytes ? 5 : null;
+  beginPage(false);
 
-  const half=(W-2*M-10)/2;
-  box(M,y,half,67); box(M+half+10,y,half,67);
-  txt("CUSTOMER DETAILS",M+8,y+8,8,true,"0.55 0.03 0.14");
-  txt("Name: " + (data.customerName || data.name || "-"),M+8,y+24,8);
-  txt("Mobile: " + (data.mobile || "-"),M+8,y+38,8);
-  txt("Address: " + (data.address || "-"),M+8,y+52,7.5);
-  const px=M+half+18;
-  txt("PAYMENT DETAILS",px,y+8,8,true,"0.55 0.03 0.14");
-  txt("Payment mode: " + (data.paymentMode || "Cash"),px,y+26,8);
-  txt("Reference: " + (data.referenceNo || "-"),px,y+42,8);
-  y+=79;
+  const half = (contentW - 10) / 2;
+  rect(left, y, half, 65, "1 1 1", pale);
+  rect(left + half + 10, y, half, 65, "1 1 1", pale);
+  textAt("CUSTOMER DETAILS", left + 8, y + 8, 8, true, maroon);
+  textAt("Name: " + (data.customerName || data.name || "-"), left + 8, y + 25, 7.5);
+  textAt("Mobile: " + (data.mobile || "-"), left + 8, y + 40, 7.5);
+  textAt("Address: " + short(data.address || "-", 85), left + 8, y + 54, 7);
+  const payX = left + half + 18;
+  textAt("PAYMENT DETAILS", payX, y + 8, 8, true, maroon);
+  textAt("Payment Mode: " + (data.paymentMode || "Cash"), payX, y + 28, 7.5);
+  textAt("Reference No.: " + (data.referenceNo || "-"), payX, y + 44, 7.5);
+  y += 77;
 
-  const newCols=[["No.",34],["Description",150],["Purity",105],["Net Wt.",62],["Rate/GM",78],["Making",70],["Stamp",60],["Extra",60],["Amount (Rs.)",155]];
-  drawTableHead("NEW ORNAMENTS",newCols);
-  if(!newRows.length) row(["-","No new ornaments","","","","","","","0.00"],newCols);
-  newRows.forEach((r,i)=>row([i+1,r.description||"Ornament",r.purity||"-",r.netWeight||"0",fmt(r.rate),fmt(r.makingCharge),fmt(r.stampCharge),fmt(r.extraCharge),fmt(r.amount??newAmt(r))],newCols));
-  txt("Total New Ornaments: Rs. "+fmt(newTotal),W-M-205,y+5,8.5,true,"0.55 0.03 0.14"); y+=23;
+  const newCols = [
+    { label: "Sl. No.", width: 34 }, { label: "Description", width: 150 },
+    { label: "Purity", width: 92 }, { label: "Net Wt. (gm)", width: 62 },
+    { label: "Rate / GM (Rs.)", width: 78 }, { label: "Making (Rs.)", width: 72 },
+    { label: "Stamp (Rs.)", width: 65 }, { label: "Extra (Rs.)", width: 65 },
+    { label: "Amount (Rs.)", width: 156 },
+  ];
+  section("NEW ORNAMENTS DETAILS");
+  tableHeader(newCols);
+  if (!newRows.length) tableRow(["-", "No new ornaments", "-", "-", "-", "-", "-", "-", "0.00"], newCols);
+  newRows.forEach((row, index) => tableRow([
+    index + 1, row.description || "Ornament", row.purity || "-",
+    row.netWeight || "0", fmt(row.rate), fmt(row.makingCharge),
+    fmt(row.stampCharge), fmt(row.extraCharge), fmt(row.amount ?? newAmt(row)),
+  ], newCols));
+  ensureSpace(22, null);
+  textAt("Total New Ornaments Amount: Rs. " + fmt(newTotal), right - 4, y + 4, 8.5, true, maroon, "right");
+  y += 22;
 
-  const oldCols=[["No.",34],["Description",190],["Purity",135],["Weight (gm)",100],["Rate/GM",115],["Amount (Rs.)",200]];
-  drawTableHead("OLD / EXCHANGE ORNAMENTS",oldCols);
-  if(!oldRows.length) row(["-","No old/exchange ornaments","","","", "0.00"],oldCols);
-  oldRows.forEach((r,i)=>row([i+1,r.description||"Ornament",r.purity||"-",r.pureWeight||"0",fmt(r.rate),fmt(r.amount??oldAmt(r))],oldCols));
-  txt("Total Old Exchange: Rs. "+fmt(oldTotal),W-M-205,y+5,8.5,true,"0.55 0.03 0.14"); y+=24;
+  const oldCols = [
+    { label: "Sl. No.", width: 34 }, { label: "Description", width: 190 },
+    { label: "Purity", width: 130 }, { label: "Wt. (gm)", width: 100 },
+    { label: "Rate / GM (Rs.)", width: 110 }, { label: "Amount (Rs.)", width: 210 },
+  ];
+  ensureSpace(45, null);
+  section("OLD / EXCHANGE ORNAMENTS DETAILS");
+  tableHeader(oldCols);
+  if (!oldRows.length) tableRow(["-", "No old/exchange ornaments", "-", "-", "-", "0.00"], oldCols);
+  oldRows.forEach((row, index) => tableRow([
+    index + 1, row.description || "Ornament", row.purity || "-",
+    row.pureWeight || "0", fmt(row.rate), fmt(row.amount ?? oldAmt(row)),
+  ], oldCols));
+  ensureSpace(170, null);
+  textAt("Total Old Exchange: Rs. " + fmt(oldTotal), right - 4, y + 4, 8.5, true, maroon, "right");
+  y += 21;
 
-  if(y>H-145) addPage();
-  const tx=535,tw=273;
-  const totals=[["SUB TOTAL",fmt(newTotal)]].concat(showGstin?[["GST ("+gstPercent+"%)",fmt(gstAmount)]]:[]).concat([["DISCOUNT","- "+fmt(discount)],["OLD EXCHANGE","- "+fmt(oldTotal)],["TOTAL PAID",fmt(totalPaid)],["DUE AMOUNT",fmt(dueAmount)]]);
-  totals.forEach(([label,value])=>{box(tx,y,tw,17);txt(label,tx+8,y+4,7.5,true);txt(value,tx+180,y+4,7.5,true);y+=17;});
-  box(tx,y,tw,23,"0.53 0.04 0.14","0.53 0.04 0.14");
-  txt("GRAND TOTAL",tx+8,y+6,9,true,"1 1 1");txt("Rs. "+fmt(grandTotal),tx+180,y+6,9,true,"1 1 1");y+=31;
+  const totals = [
+    ["SUB TOTAL", fmt(newTotal)],
+  ];
+  if (showGstin) totals.push(["GST (" + gstPercent + "%)", fmt(gstAmount)]);
+  totals.push(
+    ["DISCOUNT", "- " + fmt(discount)],
+    ["OLD EXCHANGE", "- " + fmt(oldTotal)],
+    ["TOTAL PAID", fmt(totalPaid)],
+    ["DUE AMOUNT", fmt(dueAmount)],
+  );
+  totals.forEach(([label, value]) => totalLine(label, value));
+  rect(545, y, 263, 24, maroon, maroon);
+  textAt("GRAND TOTAL", 553, y + 7, 9, true, "1 1 1");
+  textAt("Rs. " + fmt(grandTotal), 800, y + 7, 9, true, "1 1 1", "right");
+  y += 32;
 
-  if(data.description){txt("Additional Description: "+data.description,M,y,8);y+=13;}
-  if(y>H-55) addPage();
-  txt("Amount in Words: "+amountInWords(grandTotal),M,y,8,true);y+=20;
-  rule(M,y,W-M,y);txt("Customer Signature",M+80,y+18,8);txt("Authorised Signature",W-M-155,y+18,8);
-  txt("Thank you for shopping with Nandikishor Jewellery Works.",245,H-24,8,true,"0.55 0.03 0.14");
-  if(ops.length) pages.push(ops.join("\n"));
+  const description = [data.description || data.additionalDescription || "", data.terms || data.paymentTerms || ""]
+    .filter(Boolean).join(" | ");
+  if (description) {
+    const lines = wrap(description, 105);
+    ensureSpace(lines.length * 11 + 14, null);
+    textAt("Additional Description:", left, y, 8, true, maroon);
+    y += 12;
+    lines.slice(0, 4).forEach((lineText) => { textAt(lineText, left, y, 7.5); y += 10; });
+  }
+  ensureSpace(65, null);
+  textAt("Amount in Words: " + amountInWords(grandTotal), left, y + 2, 8, true, ink);
+  y += 23;
+  line(left, y, right, y, gold, 0.8);
+  textAt("Customer Signature", 160, y + 18, 8, false, ink, "center");
+  textAt("Authorised Signature", 690, y + 18, 8, false, ink, "center");
+  textAt("Thank you for shopping with Nandikishor Jewellery Works.", 421, pageH - 23, 8.5, true, maroon, "center");
+  finishPage();
 
-  const objects=[];
-  const add=(v)=>{objects.push(v);return objects.length;};
-  const catalog=add(""), pagesObj=add("");
-  const regular=add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
-  const bold=add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
-  const pageIds=[];
-  pages.forEach((stream)=>{
-    const streamData=stream+"\n";
-    const contentId=add("<< /Length "+streamData.length+" >>\nstream\n"+streamData+"endstream");
-    pageIds.push(add("<< /Type /Page /Parent "+pagesObj+" 0 R /MediaBox [0 0 "+W+" "+H+"] /Resources << /Font << /F1 "+regular+" 0 R /F2 "+bold+" 0 R >> >> /Contents "+contentId+" 0 R >>"));
+  // Assemble a standards-compliant PDF with selectable vector text and tables.
+  const encoder = new TextEncoder();
+  const objects = [];
+  const add = (parts) => { objects.push(parts); return objects.length; };
+  const catalogId = add([]);
+  const pagesId = add([]);
+  const regularId = add(["<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>"]);
+  const boldId = add(["<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>"]);
+  let logoId = null;
+  if (logoBytes) logoId = add([
+    "<< /Type /XObject /Subtype /Image /Width 240 /Height 240 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + logoBytes.length + " >>\nstream\n",
+    logoBytes, "\nendstream",
+  ]);
+  const pageIds = [];
+  pages.forEach((stream) => {
+    const contentId = add(["<< /Length " + encoder.encode(stream + "\n").length + " >>\nstream\n", stream + "\n", "endstream"]);
+    const resources = "<< /Font << /F1 " + regularId + " 0 R /F2 " + boldId + " 0 R >>" +
+      (logoId ? " /XObject << /NKJLogo " + logoId + " 0 R >>" : "") + " >>";
+    pageIds.push(add(["<< /Type /Page /Parent " + pagesId + " 0 R /MediaBox [0 0 " + pageW + " " + pageH +
+      "] /Resources " + resources + " /Contents " + contentId + " 0 R >>"]));
   });
-  objects[catalog-1]="<< /Type /Catalog /Pages "+pagesObj+" 0 R >>";
-  objects[pagesObj-1]="<< /Type /Pages /Kids ["+pageIds.map(id=>id+" 0 R").join(" ")+"] /Count "+pageIds.length+" >>";
-  let pdf="%PDF-1.4\n";const offsets=[0];
-  objects.forEach((obj,i)=>{offsets.push(pdf.length);pdf+=(i+1)+" 0 obj\n"+obj+"\nendobj\n";});
-  const xref=pdf.length;
-  pdf+="xref\n0 "+(objects.length+1)+"\n0000000000 65535 f \n";
-  offsets.slice(1).forEach((off)=>{pdf+=String(off).padStart(10,"0")+" 00000 n \n";});
-  pdf+="trailer\n<< /Size "+(objects.length+1)+" /Root "+catalog+" 0 R >>\nstartxref\n"+xref+"\n%%EOF";
-  return new Blob([pdf],{type:"application/pdf"});
+  objects[catalogId - 1] = ["<< /Type /Catalog /Pages " + pagesId + " 0 R >>"];
+  objects[pagesId - 1] = ["<< /Type /Pages /Kids [" + pageIds.map((id) => id + " 0 R").join(" ") + "] /Count " + pageIds.length + " >>"];
+
+  const chunks = [];
+  const offsets = [0];
+  let byteLength = 0;
+  const push = (part) => {
+    const bytes = typeof part === "string" ? encoder.encode(part) : part;
+    chunks.push(bytes);
+    byteLength += bytes.length;
+  };
+  push("%PDF-1.4\n");
+  objects.forEach((parts, index) => {
+    offsets.push(byteLength);
+    push((index + 1) + " 0 obj\n");
+    parts.forEach(push);
+    push("\nendobj\n");
+  });
+  const xrefOffset = byteLength;
+  push("xref\n0 " + (objects.length + 1) + "\n0000000000 65535 f \n");
+  offsets.slice(1).forEach((offset) => push(String(offset).padStart(10, "0") + " 00000 n \n"));
+  push("trailer\n<< /Size " + (objects.length + 1) + " /Root " + catalogId + " 0 R >>\nstartxref\n" + xrefOffset + "\n%%EOF");
+  return new Blob(chunks, { type: "application/pdf" });
 }
 
+function downloadInvoicePdf(file) {
+  const objectUrl = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = file.name;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+}
 const blankNew = () => ({
   description: "",
 
@@ -669,321 +850,34 @@ function createInvoiceDraftKey() {
 }
 
 /**
- * Print only the invoice sheet in an isolated same-origin document.
- *
- * The previous implementation called window.print() on the full ERP page.
- * Its print CSS used visibility:hidden for unrelated application elements;
- * visibility preserves layout space, so the owner shell/sidebar could create
- * blank pages before the invoice. An iframe removes the shell from the print
- * document entirely while reusing the existing invoice markup and CSS.
+ * Download the canonical saved-invoice PDF. This is the same vector PDF
+ * generator used by the WhatsApp attachment and secure-link fallback.
  */
-async function printInvoiceAsPdf({ onAfterPrint } = {}) {
-  const source = document.getElementById("invoice-print");
-  if (!source) {
-    throw new Error("The invoice is not available for printing. Open the invoice and try again.");
+async function printInvoiceAsPdf({ invoice, onAfterPrint } = {}) {
+  if (!invoice?.id || !invoice?.invoiceNo) {
+    throw new Error("Only a saved invoice can be downloaded as a final PDF.");
   }
-
-  const frame = document.createElement("iframe");
-  frame.title = "Invoice PDF print";
-  frame.setAttribute("aria-hidden", "true");
-  frame.setAttribute("tabindex", "-1");
-  Object.assign(frame.style, {
-    position: "fixed",
-    right: "0",
-    bottom: "0",
-    width: "1px",
-    height: "1px",
-    border: "0",
-    opacity: "0",
-    pointerEvents: "none",
-  });
-  document.body.appendChild(frame);
-
-  const printWindow = frame.contentWindow;
-  const printDocument = frame.contentDocument;
-  if (!printWindow || !printDocument) {
-    frame.remove();
-    throw new Error("The browser could not prepare the invoice print document.");
-  }
-
-  let cleanupTimer = null;
-  let cleanedUp = false;
-  const cleanup = () => {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    window.removeEventListener("afterprint", cleanup);
-    printWindow.removeEventListener("afterprint", cleanup);
-    if (cleanupTimer !== null) window.clearTimeout(cleanupTimer);
-    frame.remove();
-    onAfterPrint?.();
-  };
-
-  try {
-    printDocument.open();
-    printDocument.write("<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Invoice</title></head><body></body></html>");
-    printDocument.close();
-
-    const base = printDocument.createElement("base");
-    base.href = document.baseURI;
-    printDocument.head.prepend(base);
-
-    // Copy the app's existing stylesheets; no PDF library or duplicate invoice
-    // template is required.
-    const stylesheetLoads = [];
-    document.querySelectorAll('link[rel="stylesheet"]').forEach((originalLink) => {
-      const link = originalLink.cloneNode(true);
-      link.href = new URL(originalLink.getAttribute("href") || originalLink.href, document.baseURI).href;
-      stylesheetLoads.push(new Promise((resolve) => {
-        let settled = false;
-        const finish = () => {
-          if (settled) return;
-          settled = true;
-          resolve();
-        };
-        link.addEventListener("load", finish, { once: true });
-        link.addEventListener("error", finish, { once: true });
-        printDocument.head.appendChild(link);
-        if (link.sheet) finish();
-        window.setTimeout(finish, 4000);
-      }));
-    });
-
-    document.querySelectorAll("style").forEach((style) => {
-      printDocument.head.appendChild(style.cloneNode(true));
-    });
-
-    const invoiceClone = source.cloneNode(true);
-    printDocument.body.appendChild(invoiceClone);
-
-    const invoiceNumber = source.querySelector(".inv-meta span strong")?.textContent?.trim() || "Invoice";
-    const itemTables = Array.from(invoiceClone.querySelectorAll(".items-table"));
-    const itemRowCount = itemTables.reduce(
-      (total, table) => total + table.querySelectorAll("tbody tr").length,
-      0,
-    );
-
-    // Repeated table headers identify the invoice on every printed page.
-    itemTables.forEach((table) => {
-      const header = table.tHead;
-      if (!header) return;
-      const columnCount = header.querySelectorAll("tr:last-child th").length || 1;
-      const continuationRow = printDocument.createElement("tr");
-      continuationRow.className = "nkj-pdf-repeat-header";
-      const continuationCell = printDocument.createElement("th");
-      continuationCell.colSpan = columnCount;
-      continuationCell.textContent = `INVOICE ${invoiceNumber}  •  ITEM DETAILS`;
-      continuationRow.appendChild(continuationCell);
-      header.insertBefore(continuationRow, header.firstChild);
-    });
-
-    // Very long item lists use a continuous vertical flow so the table can
-    // paginate naturally instead of forcing a tall CSS grid onto one sheet.
-    if (itemRowCount > 8) {
-      invoiceClone.classList.add("nkj-pdf-long-invoice");
-    }
-
-    // cloneNode does not copy current DOM properties for form controls.
-    const originalControls = source.querySelectorAll("input, textarea, select");
-    const clonedControls = invoiceClone.querySelectorAll("input, textarea, select");
-    originalControls.forEach((control, index) => {
-      const clone = clonedControls[index];
-      if (!clone) return;
-      if (control instanceof HTMLInputElement) {
-        clone.value = control.value;
-        clone.checked = control.checked;
-      } else if (control instanceof HTMLTextAreaElement) {
-        clone.value = control.value;
-      } else if (control instanceof HTMLSelectElement) {
-        clone.value = control.value;
-      }
-    });
-
-    const printStyle = printDocument.createElement("style");
-    printStyle.textContent = `
-      @page {
-        size: A4 portrait;
-        margin: 8mm;
-      }
-
-      @media print {
-        html,
-        body {
-          width: 194mm !important;
-          min-width: 0 !important;
-          max-width: 194mm !important;
-          height: auto !important;
-          min-height: 0 !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          overflow: visible !important;
-          background: #fff !important;
-        }
-
-        body:has(#invoice-print) #invoice-print {
-          display: block !important;
-          position: relative !important;
-          inset: auto !important;
-          width: 291mm !important;
-          min-width: 291mm !important;
-          max-width: 291mm !important;
-          height: auto !important;
-          min-height: 0 !important;
-          max-height: none !important;
-          margin: 0 !important;
-          padding: 2mm !important;
-          box-sizing: border-box !important;
-          zoom: 0.6666667 !important;
-          transform: none !important;
-          rotate: none !important;
-          translate: none !important;
-          overflow: visible !important;
-          background: #fff !important;
-          border: 0.35mm solid #c98a2a !important;
-          border-radius: 0 !important;
-          box-shadow: none !important;
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print .invoice-actions,
-        #invoice-print .nkj-invoice-detail-actions,
-        #invoice-print .no-print,
-        #invoice-print button,
-        #invoice-print .icon-btn {
-          display: none !important;
-        }
-
-        #invoice-print .table-wrap {
-          width: 100% !important;
-          max-width: 100% !important;
-          overflow: visible !important;
-        }
-
-        #invoice-print table,
-        #invoice-print .items-table,
-        #invoice-print .new-items-table,
-        #invoice-print .old-items-table {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          table-layout: fixed !important;
-        }
-
-        #invoice-print .items-table thead {
-          display: table-header-group !important;
-        }
-
-        #invoice-print .items-table tbody {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print .items-table tr {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-
-        #invoice-print .ornament-panel {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print .items-table .nkj-pdf-repeat-header th {
-          display: table-cell !important;
-          padding: 0.7mm 1mm !important;
-          background: #fff7e8 !important;
-          color: #7a1029 !important;
-          font: 700 7pt/1.1 Georgia, "Times New Roman", serif !important;
-          text-align: left !important;
-          letter-spacing: 0.2px !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .inv-main {
-          display: block !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .inv-left {
-          width: 100% !important;
-          max-width: 100% !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .totals {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          margin-top: 2mm !important;
-        }
-
-        #invoice-print img {
-          max-width: 100% !important;
-          object-fit: contain !important;
-        }
-
-        #invoice-print .total-paid-row,
-        #invoice-print .due-amount-row,
-        #invoice-print .inv-head,
-        #invoice-print .inv-two,
-        #invoice-print .description-panel,
-        #invoice-print .words-panel {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-
-        /* Let ornament sections flow across pages while each table row stays intact. */
-        #invoice-print .ornament-panel {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-    `;
-    printDocument.head.appendChild(printStyle);
-
-    await Promise.all(stylesheetLoads);
-    if (printDocument.fonts?.ready) {
-      await Promise.race([
-        printDocument.fonts.ready.catch(() => {}),
-        new Promise((resolve) => window.setTimeout(resolve, 1500)),
-      ]);
-    }
-    await Promise.all(Array.from(invoiceClone.querySelectorAll("img")).map((image) => {
-      if (image.complete) return Promise.resolve();
-      return new Promise((resolve) => {
-        image.addEventListener("load", resolve, { once: true });
-        image.addEventListener("error", resolve, { once: true });
-        window.setTimeout(resolve, 2500);
-      });
-    }));
-
-    window.addEventListener("afterprint", cleanup, { once: true });
-    printWindow.addEventListener("afterprint", cleanup, { once: true });
-    cleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
-    printWindow.focus();
-    printWindow.print();
-  } catch (error) {
-    cleanup();
-    throw error;
-  }
+  const blob = await createSavedInvoicePdf(invoice);
+  const file = new File(
+    [blob],
+    String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf",
+    { type: "application/pdf" },
+  );
+  downloadInvoicePdf(file);
+  onAfterPrint?.();
 }
 
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [reloadResetPending, setReloadResetPending] = useState(() => isUnconsumedInvoiceReload());
-  const editingInvoice = !reloadResetPending && location.state?.editInvoice
-    ? parseInvoiceDetails(location.state.editInvoice)
-    : null;
+  // Saved invoices are immutable. Only Copy Invoice may prefill a new draft.
+  const editingInvoice = null;
   const copiedInvoice = !reloadResetPending && location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
   const invoiceSeed = editingInvoice || copiedInvoice;
-  const [isEditingSavedInvoice] = useState(() =>
-    Boolean(location.state?.editInvoice?.id) && !isUnconsumedInvoiceReload()
-  );
+  const [isEditingSavedInvoice] = useState(false);
   const startingNewInvoice = location.state?.startNewInvoice === true;
   const [initialDraft] = useState(() =>
     reloadResetPending || invoiceSeed || startingNewInvoice ? null : readInvoiceDraft()
@@ -1636,7 +1530,10 @@ export function InvoicePage() {
       });
       setShowInvoicePin(false);
       window.setTimeout(() => {
-        printInvoiceAsPdf({ onAfterPrint: () => setIsPrintPreparing(false) }).catch((error) => {
+        printInvoiceAsPdf({
+          invoice: { ...buildInvoicePayload(), id: invoiceId, invoiceNo },
+          onAfterPrint: () => setIsPrintPreparing(false),
+        }).catch((error) => {
           setIsPrintPreparing(false);
           setError(error.message || "Could not prepare the invoice PDF.");
         });
@@ -1662,7 +1559,7 @@ export function InvoicePage() {
         <div>
           <span className="eyebrow">BILLING</span>
 
-          <h2>{isEditingSavedInvoice ? "Edit Invoice" : "Create New Invoice"}</h2>
+          <h2>Create New Invoice</h2>
         </div>
 
         <Link to="/" className="secondary">
@@ -2734,9 +2631,51 @@ export function SavedInvoices() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [preparedShareFile, setPreparedShareFile] = useState(null);
+  const [sharePreparing, setSharePreparing] = useState(false);
+  const [sharingInvoice, setSharingInvoice] = useState(false);
+  const sharingInvoiceRef = useRef(false);
+  const preparedPdfCacheRef = useRef(new Map());
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [showPrintPin, setShowPrintPin] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setPreparedShareFile(null);
+    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo || !hasInvoiceLineItems(selectedInvoice)) {
+      setSharePreparing(false);
+      return undefined;
+    }
+    const cacheKey = [
+      selectedInvoice.id,
+      selectedInvoice.invoiceNo,
+      selectedInvoice.totalPaid,
+      selectedInvoice.grandTotal,
+      JSON.stringify(selectedInvoice.newItems || []),
+      JSON.stringify(selectedInvoice.oldItems || []),
+    ].join("|");
+    let pdfPromise = preparedPdfCacheRef.current.get(cacheKey);
+    if (!pdfPromise) {
+      pdfPromise = createSavedInvoicePdf(selectedInvoice);
+      preparedPdfCacheRef.current.set(cacheKey, pdfPromise);
+    }
+    setSharePreparing(true);
+    pdfPromise
+      .then((blob) => {
+        if (!active) return;
+        const filename = String(selectedInvoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
+        setPreparedShareFile(new File([blob], filename, { type: "application/pdf" }));
+      })
+      .catch((error) => {
+        preparedPdfCacheRef.current.delete(cacheKey);
+        if (active) setDetailError(error.message || "Could not prepare the invoice PDF.");
+      })
+      .finally(() => {
+        if (active) setSharePreparing(false);
+      });
+    return () => { active = false; };
+  }, [selectedInvoice]);
 
   // Disable Ctrl+P / Cmd+P only while a saved invoice detail is open.
   useEffect(() => {
@@ -2822,20 +2761,7 @@ export function SavedInvoices() {
       (searchPhone.length > 0 && customerPhone.includes(searchPhone));
   });
 
-  const editSelectedInvoice = () => {
-    if (!selectedInvoice?.id) {
-      setDetailError("This saved invoice cannot be edited because its database ID is missing.");
-      return;
-    }
-    if (!hasInvoiceLineItems(selectedInvoice)) {
-      setDetailError("This older saved record has no ornament line items, so it cannot be edited as a complete invoice.");
-      return;
-    }
-    const invoice = selectedInvoice;
-    setSelectedInvoice(null);
-    setShowPrintPin(false);
-    navigate("/invoice", { state: { editInvoice: invoice } });
-  };
+
 
   const copySelectedInvoice = () => {
     if (!selectedInvoice) return;
@@ -2916,47 +2842,86 @@ export function SavedInvoices() {
     });
     setShowPrintPin(false);
     window.setTimeout(() => {
-      printInvoiceAsPdf().catch((error) => {
+      printInvoiceAsPdf({ invoice: selectedInvoice }).catch((error) => {
         setErr(error.message || "Could not prepare the invoice PDF.");
       });
     }, 120);
   };
 
   const shareInvoiceOnWhatsApp = async () => {
-    if (!selectedInvoice?.id) return;
-    const invoiceNo = String(selectedInvoice.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
-    const file = new File(
-      [createSavedInvoicePdf(selectedInvoice)],
-      invoiceNo + ".pdf",
-      { type: "application/pdf" },
-    );
-
-    // Native file sharing attaches the actual PDF to WhatsApp on supported devices.
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: "Invoice " + (selectedInvoice.invoiceNo || "") });
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-        console.error("Native PDF sharing failed:", error);
-      }
+    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo) {
+      setDetailError("Only a saved invoice can be shared.");
+      return;
+    }
+    if (!hasInvoiceLineItems(selectedInvoice)) {
+      setDetailError("The complete saved ornament details are unavailable. Reload the invoice before sharing it.");
+      return;
+    }
+    if (sharingInvoiceRef.current) return;
+    if (!preparedShareFile) {
+      setDetailError("The invoice PDF is still being prepared. Please try again in a moment.");
+      return;
     }
 
-    // Browsers without file-sharing support download the PDF for manual attachment.
-    const objectUrl = URL.createObjectURL(file);
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = file.name;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    // Open a tab synchronously so desktop popup blockers do not block WhatsApp
+    // after the secure link has been created asynchronously.
+    const whatsappWindow = window.open("about:blank", "_blank");
+    sharingInvoiceRef.current = true;
+    setSharingInvoice(true);
+    setDetailError("");
 
-    const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
-    const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
-    const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
-    window.open(phone ? "https://wa.me/" + phone : "https://wa.me/", "_blank", "noopener,noreferrer");
-    window.alert("Your invoice PDF has been downloaded. In WhatsApp, open the chat and attach the downloaded PDF document.");
+    try {
+      const file = preparedShareFile;
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: "Invoice " + selectedInvoice.invoiceNo,
+            text: "Nandikishor Jewellery Works invoice " + selectedInvoice.invoiceNo,
+          });
+          if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
+          return;
+        } catch (error) {
+          if (error?.name === "AbortError") {
+            if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
+            return;
+          }
+          console.warn("Native PDF sharing unavailable; using secure link:", error);
+        }
+      }
+
+      const form = new FormData();
+      form.append("file", file, file.name);
+      const result = await request("/invoices/" + selectedInvoice.id + "/share-link", {
+        method: "POST",
+        body: form,
+      });
+      const downloadUrl = result.downloadUrl;
+      if (!downloadUrl) throw new Error("The server did not return a secure invoice download link.");
+
+      const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
+      const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
+      const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
+      const message = "Your invoice " + selectedInvoice.invoiceNo +
+        " from Nandikishor Jewellery Works is ready. Download the original PDF: " + downloadUrl +
+        (result.expiresAt ? " (link expires " + result.expiresAt + ")" : "");
+      const whatsappUrl = phone
+        ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(message)
+        : "https://wa.me/?text=" + encodeURIComponent(message);
+
+      if (whatsappWindow && !whatsappWindow.closed) {
+        whatsappWindow.location.href = whatsappUrl;
+      } else {
+        await navigator.clipboard?.writeText(downloadUrl);
+        setDetailError("Secure invoice link copied. Paste it into the customer's WhatsApp chat.");
+      }
+    } catch (error) {
+      if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
+      setDetailError(error.message || "Could not share the invoice. Please try again.");
+    } finally {
+      sharingInvoiceRef.current = false;
+      setSharingInvoice(false);
+    }
   };
 
   return (
@@ -3048,14 +3013,11 @@ export function SavedInvoices() {
             aria-labelledby="invoice-detail-title"
           >
             <div className="nkj-invoice-detail-actions no-print">
-              <button type="button" className="secondary" onClick={editSelectedInvoice}>
-                <Pencil size={16} /> Edit Invoice
-              </button>
               <button type="button" className="secondary" onClick={() => setShowPrintPin(true)}>
                 <Printer size={16} /> Print / Save PDF
               </button>
-              <button type="button" className="secondary nkj-whatsapp-action" onClick={shareInvoiceOnWhatsApp}>
-                <MessageCircle size={16} /> Share via WhatsApp
+              <button type="button" className="secondary nkj-whatsapp-action" onClick={shareInvoiceOnWhatsApp} disabled={sharePreparing || sharingInvoice || !preparedShareFile}>
+                <MessageCircle size={16} /> {sharingInvoice ? "Sharing..." : sharePreparing ? "Preparing PDF..." : "Share via WhatsApp"}
               </button>
               <button type="button" className="primary" onClick={copySelectedInvoice}>
                 <Copy size={16} /> Copy Invoice
