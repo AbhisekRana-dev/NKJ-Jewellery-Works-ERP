@@ -2582,10 +2582,10 @@ async function createInvoiceSharePdfFile(invoice) {
   const clone = source.cloneNode(true);
   clone.classList.add("nkj-pdf-export-root");
   [
-    ["display", "block"], ["position", "relative"], ["width", "291mm"],
-    ["min-width", "291mm"], ["max-width", "291mm"], ["height", "auto"],
+    ["display", "block"], ["position", "relative"], ["width", "270mm"],
+    ["min-width", "270mm"], ["max-width", "270mm"], ["height", "auto"],
     ["min-height", "0"], ["max-height", "none"], ["margin", "0"],
-    ["padding", "2mm"], ["box-sizing", "border-box"], ["zoom", "0.6666667"],
+    ["padding", "2mm"], ["box-sizing", "border-box"], ["zoom", "1"],
     ["transform", "none"], ["box-shadow", "none"],
     ["border", "0.35mm solid #c98a2a"], ["overflow", "visible"], ["background", "#fff"],
   ].forEach(([property, value]) => clone.style.setProperty(property, value, "important"));
@@ -2647,15 +2647,15 @@ async function createInvoiceSharePdfFile(invoice) {
     const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
     const blob = await html2pdf()
       .set({
-        margin: [8,8,8,8],
+        margin: [3,13.5,3,13.5],
         filename: fileName,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
-          scale: 2.5, useCORS: true, allowTaint: false,
+          scale: 3, useCORS: true, allowTaint: false,
           backgroundColor: "#ffffff", logging: false,
           windowWidth: 1200, scrollX: 0, scrollY: 0,
         },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "landscape", compress: true },
         pagebreak: {
           mode: ["css","legacy"],
           avoid: [".inv-head",".inv-two",".description-panel",".words-panel",".thankyou",".items-table tr"],
