@@ -1007,16 +1007,13 @@ export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [reloadResetPending, setReloadResetPending] = useState(() => isUnconsumedInvoiceReload());
-  const editingInvoice = !reloadResetPending && location.state?.editInvoice
-    ? parseInvoiceDetails(location.state.editInvoice)
-    : null;
+  // Saved invoices are immutable. Only Copy Invoice may prefill a new draft.
+  const editingInvoice = null;
   const copiedInvoice = !reloadResetPending && location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
   const invoiceSeed = editingInvoice || copiedInvoice;
-  const [isEditingSavedInvoice] = useState(() =>
-    Boolean(location.state?.editInvoice?.id) && !isUnconsumedInvoiceReload()
-  );
+  const [isEditingSavedInvoice] = useState(false);
   const startingNewInvoice = location.state?.startNewInvoice === true;
   const [initialDraft] = useState(() =>
     reloadResetPending || invoiceSeed || startingNewInvoice ? null : readInvoiceDraft()
@@ -2855,20 +2852,7 @@ export function SavedInvoices() {
       (searchPhone.length > 0 && customerPhone.includes(searchPhone));
   });
 
-  const editSelectedInvoice = () => {
-    if (!selectedInvoice?.id) {
-      setDetailError("This saved invoice cannot be edited because its database ID is missing.");
-      return;
-    }
-    if (!hasInvoiceLineItems(selectedInvoice)) {
-      setDetailError("This older saved record has no ornament line items, so it cannot be edited as a complete invoice.");
-      return;
-    }
-    const invoice = selectedInvoice;
-    setSelectedInvoice(null);
-    setShowPrintPin(false);
-    navigate("/invoice", { state: { editInvoice: invoice } });
-  };
+
 
   const copySelectedInvoice = () => {
     if (!selectedInvoice) return;
@@ -3086,9 +3070,6 @@ export function SavedInvoices() {
             aria-labelledby="invoice-detail-title"
           >
             <div className="nkj-invoice-detail-actions no-print">
-              <button type="button" className="secondary" onClick={editSelectedInvoice}>
-                <Pencil size={16} /> Edit Invoice
-              </button>
               <button type="button" className="secondary" onClick={() => setShowPrintPin(true)}>
                 <Printer size={16} /> Print / Save PDF
               </button>
