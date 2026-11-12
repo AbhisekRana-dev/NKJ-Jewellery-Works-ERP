@@ -2753,7 +2753,7 @@ async function createInvoiceSharePdfFile(invoice) {
 
     // Do not let a portrait PDF escape: it would shrink the 291mm invoice
     // into a narrow column and recreate the exact WhatsApp problem.
-    const mediaBox = pdfHeader.match(/\\/MediaBox\\s*\\[\\s*([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s*\\]/);
+    const mediaBox = pdfHeader.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
     if (!mediaBox) {
       throw new Error("Could not verify the PDF page dimensions. Nothing was shared.");
     }
