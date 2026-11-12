@@ -207,83 +207,6 @@ function hasInvoiceLineItems(invoice) {
   );
 }
 
-function makeInvoiceShareMessage(invoice) {
-  const data = parseInvoiceDetails(invoice);
-  const newItems = invoiceRows(data.newItems).filter((row) =>
-    rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]),
-  );
-  const oldItems = invoiceRows(data.oldItems).filter((row) =>
-    rowHasAnyInput(row, ["description", "purity", "pureWeight", "rate"]),
-  );
-  const lines = [
-    "NANDIKISHOR JEWELLERY WORKS",
-    "Sasra, Gopiballavpur, Jhargram, West Bengal - 721506",
-    "Contact: 99322770722 | 8116022248",
-    "",
-    `INVOICE: ${data.invoiceNo || "—"}`,
-    `Date: ${data.invoiceDate || "—"}${data.invoiceTime ? ` ${data.invoiceTime}` : ""}`,
-    `Customer: ${data.customerName || "—"}`,
-    `Mobile: ${data.mobile || "—"}`,
-    `Address: ${data.address || "—"}`,
-    `Payment: ${data.paymentMode || "—"}`,
-    `Reference: ${data.referenceNo || "—"}`,
-    "",
-    "NEW ORNAMENTS:",
-  ];
-
-  if (newItems.length) {
-    newItems.forEach((row, index) => {
-      const amount =
-        row.amount !== undefined && row.amount !== null
-          ? Number(row.amount)
-          : Math.max(
-              0,
-              (Number(row.netWeight) || 0) * (Number(row.rate) || 0) +
-                (Number(row.makingCharge) || 0) +
-                (Number(row.stampCharge) || 0) +
-                (Number(row.extraCharge) || 0),
-            );
-      lines.push(
-        `${index + 1}. ${row.description || "Ornament"} | Purity: ${row.purity || "—"} | Weight: ${row.netWeight || "0"} gm | Rate: ₹${money(row.rate)} | Making: ₹${money(row.makingCharge)} | Stamp: ₹${money(row.stampCharge)} | Extra: ₹${money(row.extraCharge)} | Amount: ₹${money(amount)}`,
-      );
-    });
-  } else {
-    lines.push("No new ornaments.");
-  }
-
-  lines.push("", "OLD / EXCHANGE ORNAMENTS:");
-  if (oldItems.length) {
-    oldItems.forEach((row, index) => {
-      const amount =
-        row.amount !== undefined && row.amount !== null
-          ? Number(row.amount)
-          : (Number(row.pureWeight) || 0) * (Number(row.rate) || 0);
-      lines.push(
-        `${index + 1}. ${row.description || "Ornament"} | Purity: ${row.purity || "—"} | Weight: ${row.pureWeight || "0"} gm | Rate: ₹${money(row.rate)} | Amount: ₹${money(amount)}`,
-      );
-    });
-  } else {
-    lines.push("No old/exchange ornaments.");
-  }
-
-  lines.push(
-    "",
-    `New Ornaments Total: ₹${money(data.newTotal ?? data.subTotal)}`,
-    `Old Exchange: - ₹${money(data.oldTotal)}`,
-    `GST (${Number(data.gstPercent) || 0}%): ₹${money(data.gstAmount)}`,
-    `Discount: - ₹${money(data.discount)}`,
-    `GRAND TOTAL: ₹${money(data.grandTotal)}`,
-    `Amount in Words: ${amountInWords(Number(data.grandTotal) || 0)}`,
-  );
-
-  if (data.description) {
-    lines.push("", `Additional Description: ${data.description}`);
-  }
-
-  lines.push("", "Thank you for shopping with Nandikishor Jewellery Works.");
-  return lines.join("\n");
-}
-
 const blankNew = () => ({
   description: "",
 
@@ -2598,6 +2521,365 @@ function SavedInvoicePrintSheet({ invoice }) {
   );
 }
 
+let html2pdfLibraryPromise = null;
+
+function loadHtml2PdfLibrary() {
+  if (typeof window !== "undefined" && typeof window.html2pdf === "function") return Promise.resolve(window.html2pdf);
+  if (html2pdfLibraryPromise) return html2pdfLibraryPromise;
+  html2pdfLibraryPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+    script.integrity = "sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==";
+    script.crossOrigin = "anonymous";
+    script.referrerPolicy = "no-referrer";
+    script.async = true;
+    script.onload = () => typeof window.html2pdf === "function"
+      ? resolve(window.html2pdf)
+      : reject(new Error("The PDF library could not be initialized."));
+    script.onerror = () => reject(new Error("Could not load the PDF generator. Check your internet connection and try again."));
+    document.head.appendChild(script);
+  }).catch((error) => {
+    html2pdfLibraryPromise = null;
+    throw error;
+  });
+  return html2pdfLibraryPromise;
+}
+
+function downloadInvoicePdfFile(file) {
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = file.name;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/** Export the existing SavedInvoicePrintSheet as a PDF file. */
+function collectInvoicePrintStyles() {
+  const collected = [];
+  const relevantSelector = /#invoice-print|\.invoice-sheet|\.inv-|\.form-grid|\.items-table|\.totals|\.row-end|\.second-reference-totals|\.new-items-table|\.old-items-table|\.invoice-logo-image|\.words-sign|\.amount-words|\.signatures|\.thankyou|\.description-panel/;
+
+  const visit = (rules, insidePrint = false) => {
+    Array.from(rules || []).forEach((rule) => {
+      if (rule.type === 4) {
+        const mediaText = rule.conditionText || rule.media?.mediaText || "";
+        const isPrint = insidePrint || /(^|,\s*)print(\s*,|$)/i.test(mediaText.trim());
+        visit(rule.cssRules, isPrint);
+        return;
+      }
+      if (rule.type === 3 && rule.styleSheet) {
+        try { visit(rule.styleSheet.cssRules, insidePrint); } catch { /* Ignore cross-origin imports. */ }
+        return;
+      }
+      if (rule.type !== 1 || !insidePrint || !rule.selectorText || !relevantSelector.test(rule.selectorText)) return;
+
+      // Keep invoice-scoped print rules, but never copy page-level body:has()
+      // rules into the html2canvas export document. Those rules hide the ERP
+      // shell and rely on :has() selector handling; in a cloned export tree
+      // they can make html2canvas capture an entirely white page.
+      const selectors = rule.selectorText.split(",")
+        .map((selector) => selector.trim())
+        .filter((selector) => !/^body\s*:has\(/i.test(selector))
+        .map((trimmed) => trimmed.includes("#invoice-print")
+          ? trimmed.replaceAll("#invoice-print", "#invoice-print.nkj-pdf-export-root")
+          : "#invoice-print.nkj-pdf-export-root " + trimmed);
+      if (selectors.length) {
+        collected.push(selectors.join(",") + "{" + rule.style.cssText + "}");
+      }
+    });
+  };
+
+  Array.from(document.styleSheets).forEach((sheet) => {
+    try { visit(sheet.cssRules); } catch { /* Ignore inaccessible stylesheets. */ }
+  });
+  return collected.join("\n");
+}
+
+/**
+ * Render the saved invoice using the exact @media print CSS already used by
+ * the website. The cloned invoice takes over #invoice-print while rendering,
+ * so print selectors target the clone, never the visible source invoice.
+ */
+async function createInvoiceSharePdfFile(invoice) {
+  if (!invoice?.id || !invoice?.invoiceNo) {
+    throw new Error("Only a saved invoice can be shared as a PDF.");
+  }
+  const source = document.getElementById("invoice-print");
+  if (!source) throw new Error("Open the saved invoice details before sharing.");
+
+  const displayedInvoiceNo = source.querySelector(".inv-meta span strong")?.textContent?.trim();
+  if (!displayedInvoiceNo || displayedInvoiceNo !== String(invoice.invoiceNo).trim()) {
+    throw new Error("The displayed invoice does not match the selected saved invoice. Close and reopen it before sharing.");
+  }
+
+  const html2pdf = await loadHtml2PdfLibrary();
+  if (document.fonts?.ready) {
+    await Promise.race([
+      document.fonts.ready.catch(() => {}),
+      new Promise((resolve) => window.setTimeout(resolve, 1800)),
+    ]);
+  }
+
+  const printStyles = collectInvoicePrintStyles();
+  if (!printStyles || !printStyles.includes("31mm 3mm")) {
+    throw new Error("The website's original invoice print styles could not be loaded. PDF sharing was stopped to avoid a broken invoice.");
+  }
+
+  const originalId = source.id;
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText = [
+    "position:fixed", "left:0", "top:0", "width:291mm", "height:auto",
+    "overflow:visible", "pointer-events:none", "z-index:2147482999",
+    "background:#fff",
+  ].join(";");
+
+  const clone = source.cloneNode(true);
+  clone.id = originalId;
+  clone.classList.add("nkj-pdf-export-root");
+  [
+    ["display", "block"],
+    ["position", "relative"],
+    ["inset", "auto"],
+    ["width", "291mm"],
+    ["min-width", "291mm"],
+    ["max-width", "291mm"],
+    ["height", "auto"],
+    ["min-height", "0"],
+    ["max-height", "none"],
+    ["margin", "0"],
+    ["padding", "2mm"],
+    ["box-sizing", "border-box"],
+    ["zoom", "1"],
+    ["transform", "none"],
+    ["rotate", "none"],
+    ["translate", "none"],
+    ["box-shadow", "none"],
+    ["border", "0.35mm solid #c98a2a"],
+    ["border-radius", "0"],
+    ["overflow", "visible"],
+    ["background", "#fff"],
+    ["break-inside", "avoid"],
+    ["page-break-inside", "avoid"],
+  ].forEach(([property, value]) => clone.style.setProperty(property, value, "important"));
+
+  const style = document.createElement("style");
+  style.textContent = printStyles + `
+    #invoice-print.nkj-pdf-export-root {
+      display: block !important;
+      position: relative !important;
+      inset: auto !important;
+      width: 291mm !important;
+      min-width: 291mm !important;
+      max-width: 291mm !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 2mm !important;
+      overflow: visible !important;
+      visibility: visible !important;
+      background: #fff !important;
+    }
+    #invoice-print.nkj-pdf-export-root,
+    #invoice-print.nkj-pdf-export-root * {
+      visibility: visible !important;
+    }
+
+    /* Rebuild the invoice's original three-column layout inside the isolated
+       export clone. The live page's responsive/legacy print rules must not
+       shift the first grid column outside the PDF page. */
+    #invoice-print.nkj-pdf-export-root .inv-head {
+      display: grid !important;
+      grid-template-columns: 30mm minmax(0, 1fr) 68mm !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin-left: 0 !important;
+      padding-left: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-logo-wrap,
+    #invoice-print.nkj-pdf-export-root .inv-shop,
+    #invoice-print.nkj-pdf-export-root .inv-meta,
+    #invoice-print.nkj-pdf-export-root .inv-two > *,
+    #invoice-print.nkj-pdf-export-root .inv-main > *,
+    #invoice-print.nkj-pdf-export-root .inv-bottom > * {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-logo-wrap {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: visible !important;
+    }
+    #invoice-print.nkj-pdf-export-root .invoice-logo-image {
+      display: block !important;
+      width: 27mm !important;
+      max-width: 27mm !important;
+      height: 27mm !important;
+      object-fit: contain !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-two {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin-left: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-main {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) 68mm !important;
+      gap: 2mm !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin-left: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-bottom {
+      display: grid !important;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin-left: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .form-grid label {
+      display: grid !important;
+      grid-template-columns: 31mm 3mm minmax(0, 1fr) !important;
+      min-width: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .table-wrap {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: visible !important;
+      margin-left: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .items-table {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+    }
+  `;
+  host.appendChild(style);
+  host.appendChild(clone);
+
+  const originalIdAttribute = source.getAttribute("id");
+  source.removeAttribute("id");
+  document.body.appendChild(host);
+
+  try {
+    const originalControls = source.querySelectorAll("input,textarea,select");
+    const clonedControls = clone.querySelectorAll("input,textarea,select");
+    originalControls.forEach((control, index) => {
+      const target = clonedControls[index];
+      if (!target) return;
+      if (control instanceof HTMLInputElement && target instanceof HTMLInputElement) {
+        target.value = control.value;
+        target.setAttribute("value", control.value);
+        target.checked = control.checked;
+      } else if (control instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) {
+        target.value = control.value;
+        target.textContent = control.value;
+      } else if (control instanceof HTMLSelectElement && target instanceof HTMLSelectElement) {
+        target.value = control.value;
+        Array.from(target.options).forEach((option, optionIndex) => {
+          if (control.options[optionIndex]?.selected) option.setAttribute("selected", "selected");
+          else option.removeAttribute("selected");
+        });
+      }
+    });
+
+    await Promise.all(Array.from(clone.querySelectorAll("img")).map((image) => {
+      if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => reject(new Error("An invoice image did not load; PDF generation was stopped.")), 5000);
+        image.addEventListener("load", () => { window.clearTimeout(timer); resolve(); }, { once: true });
+        image.addEventListener("error", () => { window.clearTimeout(timer); reject(new Error("An invoice image could not be loaded; PDF generation was stopped.")); }, { once: true });
+      });
+    }));
+
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+
+    const label = clone.querySelector(".form-grid label");
+    const labelChildren = label ? Array.from(label.children) : [];
+    const labelRects = labelChildren.map((element) => element.getBoundingClientRect());
+    if (
+      labelChildren.length !== 3 ||
+      labelRects.length !== 3 ||
+      !(labelRects[0].left < labelRects[1].left && labelRects[1].left < labelRects[2].left) ||
+      labelRects.some((rect) => rect.width <= 0 || rect.height <= 0)
+    ) {
+      throw new Error("Invoice customer/payment fields failed the print-layout check. Nothing was shared.");
+    }
+
+    const invoiceRect = clone.getBoundingClientRect();
+    const printableHeight = 204 * 96 / 25.4;
+    if (invoiceRect.width < 1060 || invoiceRect.width > 1130 || invoiceRect.height > printableHeight) {
+      throw new Error("The invoice does not fit on one A4 page with the website's print layout. PDF sharing was stopped.");
+    }
+
+    const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
+    const blob = await html2pdf().set({
+      margin: [3, 3, 3, 3],
+      filename: fileName,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: {
+        scale: 3,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: "#ffffff",
+        logging: false,
+        windowWidth: Math.max(1200, Math.ceil(clone.getBoundingClientRect().width)),
+        width: Math.ceil(clone.getBoundingClientRect().width),
+        height: Math.ceil(clone.getBoundingClientRect().height),
+        x: 0,
+        y: 0,
+        scrollX: 0,
+        scrollY: 0,
+      },
+      jsPDF: { unit: "mm", format: [297, 210], orientation: "landscape", compress: true },
+      pagebreak: {
+        mode: ["css", "legacy"],
+        avoid: ["#invoice-print", ".inv-head", ".inv-two", ".inv-main", ".inv-bottom", ".thankyou", ".items-table tr"],
+      },
+    }).from(clone).outputPdf("blob");
+
+    if (!(blob instanceof Blob) || blob.size < 1000) {
+      throw new Error("The generated invoice PDF is empty or invalid.");
+    }
+    const pdfBytes = new Uint8Array(await blob.slice(0, Math.min(blob.size, 200000)).arrayBuffer());
+    const pdfHeader = new TextDecoder("ascii").decode(pdfBytes);
+    if (!pdfHeader.startsWith("%PDF-")) {
+      throw new Error("The generated file is not a valid PDF. Nothing was shared.");
+    }
+
+    // Do not let a portrait PDF escape: it would shrink the 291mm invoice
+    // into a narrow column and recreate the exact WhatsApp problem.
+    const mediaBox = pdfHeader.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
+    if (!mediaBox) {
+      throw new Error("Could not verify the PDF page dimensions. Nothing was shared.");
+    }
+    const pageWidth = Number(mediaBox[3]) - Number(mediaBox[1]);
+    const pageHeight = Number(mediaBox[4]) - Number(mediaBox[2]);
+    if (!(pageWidth > pageHeight && pageWidth >= 840 && pageHeight >= 590)) {
+      throw new Error("PDF was not generated in full A4 landscape. Nothing was shared; please update the app and try again.");
+    }
+
+    return new File([blob], fileName, { type: "application/pdf" });
+  } finally {
+    host.remove();
+    if (originalIdAttribute !== null) source.setAttribute("id", originalIdAttribute);
+  }
+}
+
 export function SavedInvoices() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -2610,6 +2892,11 @@ export function SavedInvoices() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [showPrintPin, setShowPrintPin] = useState(false);
+  const [verifiedInvoiceId, setVerifiedInvoiceId] = useState(null);
+  const [sharePdfFile, setSharePdfFile] = useState(null);
+  const [sharePreparing, setSharePreparing] = useState(false);
+  const [sharingInvoice, setSharingInvoice] = useState(false);
+  const shareInProgressRef = useRef(false);
 
   // Disable Ctrl+P / Cmd+P only while a saved invoice detail is open.
   useEffect(() => {
@@ -2652,19 +2939,53 @@ export function SavedInvoices() {
 
   useRealtimeRefresh(load, ["invoices", "installments", "payments", "transactions", "cashbook", "dashboard", "reports", "customers"]);
 
+  // Prepare the PDF before the user presses Share so Web Share API still has
+  // the direct user-activation required to open the native file share sheet.
+  useEffect(() => {
+    let active = true;
+    setSharePdfFile(null);
+    if (
+      !selectedInvoice?.id ||
+      verifiedInvoiceId !== String(selectedInvoice.id) ||
+      !hasInvoiceLineItems(selectedInvoice)
+    ) {
+      setSharePreparing(false);
+      return () => { active = false; };
+    }
+
+    setSharePreparing(true);
+    createInvoiceSharePdfFile(selectedInvoice)
+      .then((file) => {
+        if (active) setSharePdfFile(file);
+      })
+      .catch((error) => {
+        if (active) setDetailError(error.message || "Could not prepare the invoice PDF.");
+      })
+      .finally(() => {
+        if (active) setSharePreparing(false);
+      });
+
+    return () => { active = false; };
+  }, [selectedInvoice, verifiedInvoiceId]);
+
   const openInvoiceDetails = async (invoice) => {
     setDetailLoading(true);
     setDetailError("");
+    setSelectedInvoice(null);
+    setVerifiedInvoiceId(null);
+    setSharePdfFile(null);
     try {
-      const fullRecord = invoice.id
-        ? await request(`/invoices/${invoice.id}`)
-        : invoice;
+      if (!invoice?.id) throw new Error("This invoice has no saved database ID.");
+      const fullRecord = await request(`/invoices/${invoice.id}`);
+      if (!fullRecord?.id || String(fullRecord.id) !== String(invoice.id) || !fullRecord.invoiceNo) {
+        throw new Error("The server did not return the complete saved invoice.");
+      }
       setSelectedInvoice(parseInvoiceDetails(fullRecord));
+      setVerifiedInvoiceId(String(fullRecord.id));
     } catch (error) {
-      setSelectedInvoice(parseInvoiceDetails(invoice));
-      setDetailError(
-        error.message || "Could not load the complete invoice record. Showing available saved data.",
-      );
+      const message = error.message || "Could not verify the saved invoice. Please reload and try again.";
+      setDetailError(message);
+      setErr(message);
     } finally {
       setDetailLoading(false);
     }
@@ -2723,6 +3044,8 @@ export function SavedInvoices() {
 
   const closeInvoiceDetails = () => {
     setSelectedInvoice(null);
+    setVerifiedInvoiceId(null);
+    setSharePdfFile(null);
     setDetailError("");
     if (location.search) navigate("/saved-invoices", { replace: true });
   };
@@ -2795,18 +3118,76 @@ export function SavedInvoices() {
     }, 120);
   };
 
-  const shareInvoiceOnWhatsApp = () => {
-    if (!selectedInvoice) return;
-    const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
-    const normalizedDigits =
-      digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
-    const phone =
-      normalizedDigits.length === 10 ? `91${normalizedDigits}` : normalizedDigits;
-    const text = encodeURIComponent(makeInvoiceShareMessage(selectedInvoice));
-    const url = phone
-      ? `https://wa.me/${phone}?text=${text}`
-      : `https://wa.me/?text=${text}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+  const shareInvoiceOnWhatsApp = async () => {
+    if (
+      !selectedInvoice?.id ||
+      !selectedInvoice?.invoiceNo ||
+      verifiedInvoiceId !== String(selectedInvoice.id)
+    ) {
+      setDetailError("Open a saved invoice and wait for it to finish loading before sharing.");
+      return;
+    }
+    if (!sharePdfFile) {
+      setDetailError(
+        sharePreparing
+          ? "Preparing the invoice PDF. Please try again in a moment."
+          : "The invoice PDF is not ready. Close and reopen this saved invoice, then try again.",
+      );
+      return;
+    }
+    if (shareInProgressRef.current) return;
+
+    const file = sharePdfFile;
+    if (!(file instanceof File) || file.type !== "application/pdf" || file.size < 1000) {
+      setDetailError("The invoice PDF is invalid. Nothing was shared.");
+      return;
+    }
+
+    shareInProgressRef.current = true;
+    setSharingInvoice(true);
+    setDetailError("");
+
+    let canSharePdf = false;
+    try {
+      canSharePdf =
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] });
+    } catch {
+      canSharePdf = false;
+    }
+
+    if (canSharePdf) {
+      try {
+        // PDF only: deliberately do not send invoice text, captions, or wa.me links.
+        await navigator.share({ files: [file] });
+        setDetailError("The PDF was handed to the device share sheet. Choose WhatsApp and send the document there.");
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          setDetailError("PDF sharing was cancelled. No document was sent.");
+          return;
+        }
+        console.warn("Native PDF sharing is unavailable:", error);
+        downloadInvoicePdfFile(file);
+        setDetailError("This browser could not share files directly. The invoice PDF was downloaded; attach it in WhatsApp using Attach > Document.");
+      } finally {
+        shareInProgressRef.current = false;
+        setSharingInvoice(false);
+      }
+      return;
+    }
+
+    // Desktop/unsupported-browser fallback: download only the PDF. Do not
+    // populate WhatsApp with a text invoice or pretend a chat URL attaches it.
+    try {
+      downloadInvoicePdfFile(file);
+      setDetailError("The invoice PDF was downloaded. Open WhatsApp, choose the customer, and attach this file using Attach > Document.");
+    } catch (error) {
+      setDetailError(error.message || "Could not download the invoice PDF.");
+    } finally {
+      shareInProgressRef.current = false;
+      setSharingInvoice(false);
+    }
   };
 
   return (
@@ -2904,8 +3285,20 @@ export function SavedInvoices() {
               <button type="button" className="secondary" onClick={() => setShowPrintPin(true)}>
                 <Printer size={16} /> Print / Save PDF
               </button>
-              <button type="button" className="secondary nkj-whatsapp-action" onClick={shareInvoiceOnWhatsApp}>
-                <MessageCircle size={16} /> Share via WhatsApp
+              <button
+                type="button"
+                className="secondary nkj-whatsapp-action"
+                onClick={shareInvoiceOnWhatsApp}
+                disabled={
+                  !selectedInvoice?.id ||
+                  verifiedInvoiceId !== String(selectedInvoice.id) ||
+                  sharePreparing ||
+                  sharingInvoice ||
+                  !sharePdfFile
+                }
+              >
+                <MessageCircle size={16} />
+                {sharingInvoice ? "Sharing PDF..." : sharePreparing ? "Preparing PDF..." : "Share PDF via WhatsApp"}
               </button>
               <button type="button" className="primary" onClick={copySelectedInvoice}>
                 <Copy size={16} /> Copy Invoice

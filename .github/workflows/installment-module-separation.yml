@@ -32,6 +32,32 @@ jobs:
           customer = config.split("  customers: {", 1)[1].split("  suppliers: {", 1)[0]
           assert '"email"' not in customer and '"Email"' not in customer, "Customer Management still defines an email field or column."
           PY
+      - name: Verify WhatsApp shares PDF only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/invoices/InvoicePages.jsx").read_text()
+          styles = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/invoices/InvoicePages.css").read_text()
+          assert "async function createInvoiceSharePdfFile(invoice)" in source
+          assert "function collectInvoicePrintStyles()" in source
+          assert "document.styleSheets" in source
+          assert 'rule.conditionText || rule.media?.mediaText' in source
+          assert '31mm 3mm' in source and 'grid-template-columns: 31mm 3mm minmax(0, 1fr)' in styles
+          assert '["width", "291mm"]' in source
+          assert 'margin: [3, 3, 3, 3]' in source
+          assert 'orientation: "landscape"' in source
+          assert '["zoom", "1"]' in source
+          assert 'source.removeAttribute("id")' in source
+          assert 'clone.id = originalId' in source
+          assert 'await navigator.share({ files: [file] });' in source
+          assert 'new File([blob], fileName, { type: "application/pdf" })' in source
+          assert "makeInvoiceShareMessage" not in source
+          assert "wa.me/" not in source
+          assert "downloadInvoicePdfFile(file);" in source
+          print("WhatsApp PDF-only sharing and exact website print stylesheet checks passed.")
+          PY
+
       - name: Verify owner sidebar navigation and double-click behavior
         run: |
           python3 - <<'PY'
