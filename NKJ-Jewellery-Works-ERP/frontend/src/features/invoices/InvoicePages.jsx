@@ -2562,7 +2562,6 @@ async function createInvoiceSharePdfFile(invoice) {
   if (!invoice?.id || !invoice?.invoiceNo) throw new Error("Only a saved invoice can be shared as a PDF.");
   const source = document.getElementById("invoice-print");
   if (!source) throw new Error("Open the saved invoice details before sharing.");
-
   const displayedInvoiceNo = source.querySelector(".inv-meta span strong")?.textContent?.trim();
   if (!displayedInvoiceNo || displayedInvoiceNo !== String(invoice.invoiceNo).trim()) {
     throw new Error("The displayed invoice does not match the selected saved invoice. Close and reopen it before sharing.");
@@ -2570,104 +2569,128 @@ async function createInvoiceSharePdfFile(invoice) {
 
   const html2pdf = await loadHtml2PdfLibrary();
   if (document.fonts?.ready) {
-    await Promise.race([
-      document.fonts.ready.catch(() => {}),
-      new Promise((resolve) => window.setTimeout(resolve, 1800)),
-    ]);
+    await Promise.race([document.fonts.ready.catch(() => {}), new Promise((resolve) => window.setTimeout(resolve, 1800))]);
   }
 
+  // Reuse the website's existing print geometry: 291mm invoice at 2/3 zoom
+  // inside the 194mm A4 portrait printable area.
   const host = document.createElement("div");
   host.setAttribute("aria-hidden", "true");
-  host.style.cssText = "position:fixed;left:0;top:0;width:1200px;height:auto;overflow:visible;pointer-events:none;z-index:2147482999;background:#fff;";
+  host.style.cssText = "position:fixed;left:0;top:0;width:194mm;height:auto;overflow:visible;pointer-events:none;z-index:2147482999;background:#fff;";
   const clone = source.cloneNode(true);
   clone.classList.add("nkj-pdf-export-root");
   [
-    ["display", "block"], ["position", "relative"], ["width", "270mm"],
-    ["min-width", "270mm"], ["max-width", "270mm"], ["height", "auto"],
-    ["min-height", "0"], ["max-height", "none"], ["margin", "0"],
-    ["padding", "2mm"], ["box-sizing", "border-box"], ["zoom", "1"],
-    ["transform", "none"], ["box-shadow", "none"],
-    ["border", "0.35mm solid #c98a2a"], ["overflow", "visible"], ["background", "#fff"],
-  ].forEach(([property, value]) => clone.style.setProperty(property, value, "important"));
+    ["display","block"],["position","relative"],["inset","auto"],
+    ["width","291mm"],["min-width","291mm"],["max-width","291mm"],
+    ["height","auto"],["min-height","0"],["max-height","none"],
+    ["margin","0"],["padding","2mm"],["box-sizing","border-box"],
+    ["zoom","0.6666667"],["transform","none"],["rotate","none"],["translate","none"],
+    ["box-shadow","none"],["border","0.35mm solid #c98a2a"],["border-radius","0"],
+    ["overflow","visible"],["background","#fff"],["break-inside","auto"],["page-break-inside","auto"],
+  ].forEach(([property,value]) => clone.style.setProperty(property,value,"important"));
 
-  const exportStyle = document.createElement("style");
-  exportStyle.textContent = `
-    .nkj-pdf-export-root .inv-head { grid-template-columns:30mm minmax(0,1fr) 68mm !important; }
-    .nkj-pdf-export-root .inv-two { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; }
-    .nkj-pdf-export-root .inv-main { grid-template-columns:minmax(0,1fr) 68mm !important; gap:2mm !important; }
-    .nkj-pdf-export-root .inv-bottom { grid-template-columns:40% minmax(0,1fr) !important; }
-    .nkj-pdf-export-root .words-sign { grid-template-columns:minmax(0,1fr) 75mm !important; }
-    .nkj-pdf-export-root .table-wrap { width:100% !important; max-width:100% !important; overflow:visible !important; }
-    .nkj-pdf-export-root table,.nkj-pdf-export-root .items-table { width:100% !important; min-width:0 !important; max-width:100% !important; table-layout:fixed !important; }
-    .nkj-pdf-export-root .no-print,.nkj-pdf-export-root button,.nkj-pdf-export-root .icon-btn { display:none !important; }
-    .nkj-pdf-export-root .items-table tr,.nkj-pdf-export-root .inv-head,.nkj-pdf-export-root .inv-two,
-    .nkj-pdf-export-root .description-panel,.nkj-pdf-export-root .words-panel,.nkj-pdf-export-root .thankyou {
-      break-inside:avoid !important; page-break-inside:avoid !important;
-    }
-    .nkj-pdf-export-root img { max-width:100% !important; object-fit:contain !important; }
-    .nkj-pdf-export-root,.nkj-pdf-export-root * {
-      -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;
-    }
-  `;
-  host.appendChild(exportStyle);
+  // html2canvas uses screen media, so apply the same compact rules as the
+  // existing @media print stylesheet directly to this export-only clone.
+  const style = document.createElement("style");
+  style.textContent = \`
+    .nkj-pdf-export-root .inv-head{grid-template-columns:30mm minmax(0,1fr) 68mm!important;gap:2mm!important;padding-bottom:2mm!important}
+    .nkj-pdf-export-root .inv-logo{width:25mm!important;height:25mm!important}
+    .nkj-pdf-export-root .inv-shop h1{font-size:19pt!important;white-space:nowrap!important}
+    .nkj-pdf-export-root .inv-shop h3{font-size:12pt!important}
+    .nkj-pdf-export-root .inv-shop>b{font-size:10pt!important}
+    .nkj-pdf-export-root .inv-shop p{font-size:9pt!important}
+    .nkj-pdf-export-root .inv-shop strong{font-size:11pt!important}
+    .nkj-pdf-export-root .inv-meta>b{font-size:13pt!important;padding:2mm!important}
+    .nkj-pdf-export-root .inv-meta span{font-size:9pt!important;padding:1.5mm 2mm!important}
+    .nkj-pdf-export-root .inv-two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:2mm!important;margin:2mm 0!important}
+    .nkj-pdf-export-root .inv-panel{padding:1.5mm 2mm!important;margin-bottom:1.5mm!important}
+    .nkj-pdf-export-root .inv-panel h3{font-size:11pt!important;margin-bottom:1mm!important}
+    .nkj-pdf-export-root .form-grid{gap:1mm!important}
+    .nkj-pdf-export-root .form-grid label{grid-template-columns:34mm minmax(0,1fr)!important;gap:1mm!important;font-size:10pt!important}
+    .nkj-pdf-export-root .form-grid input,.nkj-pdf-export-root .form-grid select{height:7mm!important;min-width:0!important;padding:1mm 2mm!important;font-size:9pt!important;box-sizing:border-box!important}
+    .nkj-pdf-export-root .inv-main{grid-template-columns:minmax(0,1fr) 68mm!important;gap:2mm!important;align-items:stretch!important}
+    .nkj-pdf-export-root .inv-left{min-width:0!important}
+    .nkj-pdf-export-root .table-wrap{width:100%!important;max-width:100%!important;overflow:visible!important}
+    .nkj-pdf-export-root table,.nkj-pdf-export-root .items-table{width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;border-collapse:collapse!important}
+    .nkj-pdf-export-root .items-table{font-size:8pt!important}
+    .nkj-pdf-export-root .items-table th{font-size:7.5pt!important;padding:1.5mm .5mm!important}
+    .nkj-pdf-export-root .items-table td{height:7mm!important;padding:1mm .5mm!important}
+    .nkj-pdf-export-root .items-table input,.nkj-pdf-export-root .items-table select{min-width:0!important;width:100%!important;font-size:7.5pt!important;padding:.5mm!important;border:0!important;background:transparent!important;box-sizing:border-box!important}
+    .nkj-pdf-export-root .totals{min-width:0!important;max-width:68mm!important;overflow:hidden!important}
+    .nkj-pdf-export-root .totals h3{font-size:11pt!important;padding:2mm!important}
+    .nkj-pdf-export-root .totals .total-row{font-size:8pt!important;min-height:8mm!important;padding:1.5mm 2mm!important}
+    .nkj-pdf-export-root .totals .total-row b{font-size:9pt!important}
+    .nkj-pdf-export-root .total-edit{display:none!important}
+    .nkj-pdf-export-root .totals .grand{font-size:12pt!important;padding:3mm 2mm!important}
+    .nkj-pdf-export-root .totals .grand b{font-size:12pt!important}
+    .nkj-pdf-export-root .inv-bottom{grid-template-columns:40% minmax(0,60%)!important;gap:2mm!important;margin-top:0!important}
+    .nkj-pdf-export-root .description-panel,.nkj-pdf-export-root .words-panel{min-height:22mm!important;padding:1.5mm 2mm!important}
+    .nkj-pdf-export-root .description-panel h3,.nkj-pdf-export-root .words-panel h3{font-size:10pt!important}
+    .nkj-pdf-export-root .description-panel textarea{width:100%!important;height:13mm!important;min-width:0!important;box-sizing:border-box!important}
+    .nkj-pdf-export-root .words-sign{grid-template-columns:minmax(0,1fr) 75mm!important;gap:2mm!important}
+    .nkj-pdf-export-root .amount-words{min-height:13mm!important;font-size:8.5pt!important;padding:1.5mm!important}
+    .nkj-pdf-export-root .signatures{gap:2mm!important;padding:1mm 0!important}
+    .nkj-pdf-export-root .signatures span{font-size:8pt!important;padding:1.5mm 1mm 0!important}
+    .nkj-pdf-export-root .thankyou{padding:1mm 0 0!important;gap:5mm!important}
+    .nkj-pdf-export-root .thankyou i{font-size:22pt!important}
+    .nkj-pdf-export-root .thankyou b{font-size:12pt!important}
+    .nkj-pdf-export-root .thankyou .flourish{font-size:34pt!important}
+    .nkj-pdf-export-root .no-print,.nkj-pdf-export-root button,.nkj-pdf-export-root .icon-btn{display:none!important}
+    .nkj-pdf-export-root .items-table thead{display:table-header-group!important}
+    .nkj-pdf-export-root .items-table tr{break-inside:avoid!important;page-break-inside:avoid!important}
+    .nkj-pdf-export-root .ornament-panel{break-inside:auto!important;page-break-inside:auto!important}
+    .nkj-pdf-export-root img{max-width:100%!important;object-fit:contain!important}
+    .nkj-pdf-export-root,.nkj-pdf-export-root *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  \`;
+  host.appendChild(style);
   host.appendChild(clone);
   document.body.appendChild(host);
 
   try {
     const originalControls = source.querySelectorAll("input,textarea,select");
     const clonedControls = clone.querySelectorAll("input,textarea,select");
-    originalControls.forEach((control, index) => {
+    originalControls.forEach((control,index) => {
       const target = clonedControls[index];
       if (!target) return;
       if (control instanceof HTMLInputElement && target instanceof HTMLInputElement) {
-        target.value = control.value;
-        target.setAttribute("value", control.value);
-        target.checked = control.checked;
+        target.value=control.value; target.setAttribute("value",control.value); target.checked=control.checked;
       } else if (control instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) {
-        target.value = control.value;
-        target.textContent = control.value;
+        target.value=control.value; target.textContent=control.value;
       } else if (control instanceof HTMLSelectElement && target instanceof HTMLSelectElement) {
-        target.value = control.value;
-        Array.from(target.options).forEach((option, optionIndex) => {
-          if (control.options[optionIndex]?.selected) option.setAttribute("selected", "selected");
+        target.value=control.value;
+        Array.from(target.options).forEach((option,optionIndex) => {
+          if (control.options[optionIndex]?.selected) option.setAttribute("selected","selected");
           else option.removeAttribute("selected");
         });
       }
     });
 
     await Promise.all(Array.from(clone.querySelectorAll("img")).map((image) => {
-      if (image.complete && image.naturalWidth > 0) return Promise.resolve();
-      return new Promise((resolve, reject) => {
-        const timer = window.setTimeout(() => reject(new Error("An invoice logo or artwork image did not load. PDF sharing was stopped to avoid an incomplete invoice.")), 5000);
-        image.addEventListener("load", () => { window.clearTimeout(timer); resolve(); }, { once: true });
-        image.addEventListener("error", () => { window.clearTimeout(timer); reject(new Error("An invoice logo or artwork image could not be loaded. PDF sharing was stopped.")); }, { once: true });
+      if (image.complete && image.naturalWidth>0) return Promise.resolve();
+      return new Promise((resolve,reject) => {
+        const timer=window.setTimeout(() => reject(new Error("An invoice image did not load; PDF generation was stopped.")),5000);
+        image.addEventListener("load",() => {window.clearTimeout(timer);resolve();},{once:true});
+        image.addEventListener("error",() => {window.clearTimeout(timer);reject(new Error("An invoice image could not be loaded; PDF generation was stopped."));},{once:true});
       });
     }));
 
-    const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
-    const blob = await html2pdf()
-      .set({
-        margin: [3,13.5,3,13.5],
-        filename: fileName,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 3, useCORS: true, allowTaint: false,
-          backgroundColor: "#ffffff", logging: false,
-          windowWidth: 1200, scrollX: 0, scrollY: 0,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "landscape", compress: true },
-        pagebreak: {
-          mode: ["css","legacy"],
-          avoid: [".inv-head",".inv-two",".description-panel",".words-panel",".thankyou",".items-table tr"],
-        },
-      })
-      .from(clone)
-      .outputPdf("blob");
+    const fileName=String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
+    const blob=await html2pdf().set({
+      margin:[8,8,8,8],
+      filename:fileName,
+      image:{type:"jpeg",quality:0.98},
+      html2canvas:{
+        scale:3,useCORS:true,allowTaint:false,backgroundColor:"#ffffff",
+        logging:false,windowWidth:1200,scrollX:0,scrollY:0,
+      },
+      jsPDF:{unit:"mm",format:"a4",orientation:"portrait",compress:true},
+      pagebreak:{mode:["css","legacy"],avoid:[".inv-head",".inv-two",".description-panel",".words-panel",".thankyou",".items-table tr"]},
+    }).from(clone).outputPdf("blob");
 
-    if (!(blob instanceof Blob) || blob.size < 1000) throw new Error("The generated invoice PDF is empty or invalid.");
-    const signature = new TextDecoder("ascii").decode(new Uint8Array(await blob.slice(0,8).arrayBuffer()));
+    if (!(blob instanceof Blob)||blob.size<1000) throw new Error("The generated invoice PDF is empty or invalid.");
+    const signature=new TextDecoder("ascii").decode(new Uint8Array(await blob.slice(0,8).arrayBuffer()));
     if (!signature.startsWith("%PDF-")) throw new Error("The generated file is not a valid PDF. Nothing was shared.");
-    return new File([blob], fileName, { type: "application/pdf" });
+    return new File([blob],fileName,{type:"application/pdf"});
   } finally {
     host.remove();
   }
