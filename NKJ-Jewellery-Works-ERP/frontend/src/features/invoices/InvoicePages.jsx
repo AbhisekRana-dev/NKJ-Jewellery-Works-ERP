@@ -2939,7 +2939,7 @@ export function SavedInvoices() {
     // Desktop browsers generally cannot attach local files through wa.me.
     // Download the exact PDF first, then open the chat; the user must attach
     // the downloaded document in WhatsApp before pressing Send.
-    const digits = String(selectedInvoice.mobile || "").replace(/\\D/g, "");
+    const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
     const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
     const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
     const message = "Invoice " + selectedInvoice.invoiceNo +
