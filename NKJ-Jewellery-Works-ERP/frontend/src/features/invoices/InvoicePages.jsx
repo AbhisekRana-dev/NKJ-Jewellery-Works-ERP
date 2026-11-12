@@ -854,297 +854,18 @@ function createInvoiceDraftKey() {
  * blank pages before the invoice. An iframe removes the shell from the print
  * document entirely while reusing the existing invoice markup and CSS.
  */
-async function printInvoiceAsPdf({ onAfterPrint } = {}) {
-  const source = document.getElementById("invoice-print");
-  if (!source) {
-    throw new Error("The invoice is not available for printing. Open the invoice and try again.");
+async function printInvoiceAsPdf({ invoice, onAfterPrint } = {}) {
+  if (!invoice?.id || !invoice?.invoiceNo) {
+    throw new Error("Only a saved invoice can be downloaded as a final PDF.");
   }
-
-  const frame = document.createElement("iframe");
-  frame.title = "Invoice PDF print";
-  frame.setAttribute("aria-hidden", "true");
-  frame.setAttribute("tabindex", "-1");
-  Object.assign(frame.style, {
-    position: "fixed",
-    right: "0",
-    bottom: "0",
-    width: "1px",
-    height: "1px",
-    border: "0",
-    opacity: "0",
-    pointerEvents: "none",
-  });
-  document.body.appendChild(frame);
-
-  const printWindow = frame.contentWindow;
-  const printDocument = frame.contentDocument;
-  if (!printWindow || !printDocument) {
-    frame.remove();
-    throw new Error("The browser could not prepare the invoice print document.");
-  }
-
-  let cleanupTimer = null;
-  let cleanedUp = false;
-  const cleanup = () => {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    window.removeEventListener("afterprint", cleanup);
-    printWindow.removeEventListener("afterprint", cleanup);
-    if (cleanupTimer !== null) window.clearTimeout(cleanupTimer);
-    frame.remove();
-    onAfterPrint?.();
-  };
-
-  try {
-    printDocument.open();
-    printDocument.write("<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Invoice</title></head><body></body></html>");
-    printDocument.close();
-
-    const base = printDocument.createElement("base");
-    base.href = document.baseURI;
-    printDocument.head.prepend(base);
-
-    // Copy the app's existing stylesheets; no PDF library or duplicate invoice
-    // template is required.
-    const stylesheetLoads = [];
-    document.querySelectorAll('link[rel="stylesheet"]').forEach((originalLink) => {
-      const link = originalLink.cloneNode(true);
-      link.href = new URL(originalLink.getAttribute("href") || originalLink.href, document.baseURI).href;
-      stylesheetLoads.push(new Promise((resolve) => {
-        let settled = false;
-        const finish = () => {
-          if (settled) return;
-          settled = true;
-          resolve();
-        };
-        link.addEventListener("load", finish, { once: true });
-        link.addEventListener("error", finish, { once: true });
-        printDocument.head.appendChild(link);
-        if (link.sheet) finish();
-        window.setTimeout(finish, 4000);
-      }));
-    });
-
-    document.querySelectorAll("style").forEach((style) => {
-      printDocument.head.appendChild(style.cloneNode(true));
-    });
-
-    const invoiceClone = source.cloneNode(true);
-    printDocument.body.appendChild(invoiceClone);
-
-    const invoiceNumber = source.querySelector(".inv-meta span strong")?.textContent?.trim() || "Invoice";
-    const itemTables = Array.from(invoiceClone.querySelectorAll(".items-table"));
-    const itemRowCount = itemTables.reduce(
-      (total, table) => total + table.querySelectorAll("tbody tr").length,
-      0,
-    );
-
-    // Repeated table headers identify the invoice on every printed page.
-    itemTables.forEach((table) => {
-      const header = table.tHead;
-      if (!header) return;
-      const columnCount = header.querySelectorAll("tr:last-child th").length || 1;
-      const continuationRow = printDocument.createElement("tr");
-      continuationRow.className = "nkj-pdf-repeat-header";
-      const continuationCell = printDocument.createElement("th");
-      continuationCell.colSpan = columnCount;
-      continuationCell.textContent = `INVOICE ${invoiceNumber}  •  ITEM DETAILS`;
-      continuationRow.appendChild(continuationCell);
-      header.insertBefore(continuationRow, header.firstChild);
-    });
-
-    // Very long item lists use a continuous vertical flow so the table can
-    // paginate naturally instead of forcing a tall CSS grid onto one sheet.
-    if (itemRowCount > 8) {
-      invoiceClone.classList.add("nkj-pdf-long-invoice");
-    }
-
-    // cloneNode does not copy current DOM properties for form controls.
-    const originalControls = source.querySelectorAll("input, textarea, select");
-    const clonedControls = invoiceClone.querySelectorAll("input, textarea, select");
-    originalControls.forEach((control, index) => {
-      const clone = clonedControls[index];
-      if (!clone) return;
-      if (control instanceof HTMLInputElement) {
-        clone.value = control.value;
-        clone.checked = control.checked;
-      } else if (control instanceof HTMLTextAreaElement) {
-        clone.value = control.value;
-      } else if (control instanceof HTMLSelectElement) {
-        clone.value = control.value;
-      }
-    });
-
-    const printStyle = printDocument.createElement("style");
-    printStyle.textContent = `
-      @page {
-        size: A4 portrait;
-        margin: 8mm;
-      }
-
-      @media print {
-        html,
-        body {
-          width: 194mm !important;
-          min-width: 0 !important;
-          max-width: 194mm !important;
-          height: auto !important;
-          min-height: 0 !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          overflow: visible !important;
-          background: #fff !important;
-        }
-
-        body:has(#invoice-print) #invoice-print {
-          display: block !important;
-          position: relative !important;
-          inset: auto !important;
-          width: 291mm !important;
-          min-width: 291mm !important;
-          max-width: 291mm !important;
-          height: auto !important;
-          min-height: 0 !important;
-          max-height: none !important;
-          margin: 0 !important;
-          padding: 2mm !important;
-          box-sizing: border-box !important;
-          zoom: 0.6666667 !important;
-          transform: none !important;
-          rotate: none !important;
-          translate: none !important;
-          overflow: visible !important;
-          background: #fff !important;
-          border: 0.35mm solid #c98a2a !important;
-          border-radius: 0 !important;
-          box-shadow: none !important;
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print .invoice-actions,
-        #invoice-print .nkj-invoice-detail-actions,
-        #invoice-print .no-print,
-        #invoice-print button,
-        #invoice-print .icon-btn {
-          display: none !important;
-        }
-
-        #invoice-print .table-wrap {
-          width: 100% !important;
-          max-width: 100% !important;
-          overflow: visible !important;
-        }
-
-        #invoice-print table,
-        #invoice-print .items-table,
-        #invoice-print .new-items-table,
-        #invoice-print .old-items-table {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          table-layout: fixed !important;
-        }
-
-        #invoice-print .items-table thead {
-          display: table-header-group !important;
-        }
-
-        #invoice-print .items-table tbody {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print .items-table tr {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-
-        #invoice-print .ornament-panel {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print .items-table .nkj-pdf-repeat-header th {
-          display: table-cell !important;
-          padding: 0.7mm 1mm !important;
-          background: #fff7e8 !important;
-          color: #7a1029 !important;
-          font: 700 7pt/1.1 Georgia, "Times New Roman", serif !important;
-          text-align: left !important;
-          letter-spacing: 0.2px !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .inv-main {
-          display: block !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .inv-left {
-          width: 100% !important;
-          max-width: 100% !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .totals {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          margin-top: 2mm !important;
-        }
-
-        #invoice-print img {
-          max-width: 100% !important;
-          object-fit: contain !important;
-        }
-
-        #invoice-print .total-paid-row,
-        #invoice-print .due-amount-row,
-        #invoice-print .inv-head,
-        #invoice-print .inv-two,
-        #invoice-print .description-panel,
-        #invoice-print .words-panel {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-
-        /* Let ornament sections flow across pages while each table row stays intact. */
-        #invoice-print .ornament-panel {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-    `;
-    printDocument.head.appendChild(printStyle);
-
-    await Promise.all(stylesheetLoads);
-    if (printDocument.fonts?.ready) {
-      await Promise.race([
-        printDocument.fonts.ready.catch(() => {}),
-        new Promise((resolve) => window.setTimeout(resolve, 1500)),
-      ]);
-    }
-    await Promise.all(Array.from(invoiceClone.querySelectorAll("img")).map((image) => {
-      if (image.complete) return Promise.resolve();
-      return new Promise((resolve) => {
-        image.addEventListener("load", resolve, { once: true });
-        image.addEventListener("error", resolve, { once: true });
-        window.setTimeout(resolve, 2500);
-      });
-    }));
-
-    window.addEventListener("afterprint", cleanup, { once: true });
-    printWindow.addEventListener("afterprint", cleanup, { once: true });
-    cleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
-    printWindow.focus();
-    printWindow.print();
-  } catch (error) {
-    cleanup();
-    throw error;
-  }
+  const blob = await createSavedInvoicePdf(invoice);
+  const file = new File(
+    [blob],
+    String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf",
+    { type: "application/pdf" },
+  );
+  downloadInvoicePdf(file);
+  onAfterPrint?.();
 }
 
 export function InvoicePage() {
@@ -1810,7 +1531,10 @@ export function InvoicePage() {
       });
       setShowInvoicePin(false);
       window.setTimeout(() => {
-        printInvoiceAsPdf({ onAfterPrint: () => setIsPrintPreparing(false) }).catch((error) => {
+        printInvoiceAsPdf({
+          invoice: { ...buildInvoicePayload(), id: invoiceId, invoiceNo },
+          onAfterPrint: () => setIsPrintPreparing(false),
+        }).catch((error) => {
           setIsPrintPreparing(false);
           setError(error.message || "Could not prepare the invoice PDF.");
         });
@@ -2908,9 +2632,36 @@ export function SavedInvoices() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [preparedShareFile, setPreparedShareFile] = useState(null);
+  const [sharePreparing, setSharePreparing] = useState(false);
+  const [sharingInvoice, setSharingInvoice] = useState(false);
+  const sharingInvoiceRef = useRef(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [showPrintPin, setShowPrintPin] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setPreparedShareFile(null);
+    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo) {
+      setSharePreparing(false);
+      return undefined;
+    }
+    setSharePreparing(true);
+    createSavedInvoicePdf(selectedInvoice)
+      .then((blob) => {
+        if (!active) return;
+        const filename = String(selectedInvoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
+        setPreparedShareFile(new File([blob], filename, { type: "application/pdf" }));
+      })
+      .catch((error) => {
+        if (active) setDetailError(error.message || "Could not prepare the invoice PDF.");
+      })
+      .finally(() => {
+        if (active) setSharePreparing(false);
+      });
+    return () => { active = false; };
+  }, [selectedInvoice]);
 
   // Disable Ctrl+P / Cmd+P only while a saved invoice detail is open.
   useEffect(() => {
@@ -3077,51 +2828,78 @@ export function SavedInvoices() {
     });
     setShowPrintPin(false);
     window.setTimeout(() => {
-      printInvoiceAsPdf().catch((error) => {
+      printInvoiceAsPdf({ invoice: selectedInvoice }).catch((error) => {
         setErr(error.message || "Could not prepare the invoice PDF.");
       });
     }, 120);
   };
 
   const shareInvoiceOnWhatsApp = async () => {
-    if (!selectedInvoice?.id) return;
-    try {
-      const invoiceNo = String(selectedInvoice.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
-      const file = new File(
-        [await createSavedInvoicePdf()],
-        invoiceNo + ".pdf",
-        { type: "application/pdf" },
-      );
+    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo) {
+      setDetailError("Only a saved invoice can be shared.");
+      return;
+    }
+    if (sharingInvoiceRef.current) return;
+    if (!preparedShareFile) {
+      setDetailError("The invoice PDF is still being prepared. Please try again in a moment.");
+      return;
+    }
 
-      // Native file sharing attaches the original invoice PDF on supported devices.
+    // Open a tab synchronously so desktop popup blockers do not block WhatsApp
+    // after the secure link has been created asynchronously.
+    const whatsappWindow = window.open("about:blank", "_blank");
+    sharingInvoiceRef.current = true;
+    setSharingInvoice(true);
+    setDetailError("");
+
+    try {
+      const file = preparedShareFile;
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: "Invoice " + (selectedInvoice.invoiceNo || "") });
+          if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
+          await navigator.share({
+            files: [file],
+            title: "Invoice " + selectedInvoice.invoiceNo,
+            text: "Nandikishor Jewellery Works invoice " + selectedInvoice.invoiceNo,
+          });
           return;
         } catch (error) {
           if (error?.name === "AbortError") return;
-          console.error("Native PDF sharing failed:", error);
+          console.warn("Native PDF sharing unavailable; using secure link:", error);
         }
       }
 
-      // Desktop browsers without file-sharing support download the original PDF.
-      const objectUrl = URL.createObjectURL(file);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = file.name;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+      const form = new FormData();
+      form.append("file", file, file.name);
+      const result = await request("/invoices/" + selectedInvoice.id + "/share-link", {
+        method: "POST",
+        body: form,
+      });
+      const downloadUrl = result.downloadUrl;
+      if (!downloadUrl) throw new Error("The server did not return a secure invoice download link.");
 
       const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
       const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
       const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
-      window.open(phone ? "https://wa.me/" + phone : "https://wa.me/", "_blank", "noopener,noreferrer");
-      window.alert("Your original invoice PDF has been downloaded. In WhatsApp, open the chat and attach the PDF document.");
+      const message = "Your invoice " + selectedInvoice.invoiceNo +
+        " from Nandikishor Jewellery Works is ready. Download the original PDF: " + downloadUrl +
+        (result.expiresAt ? " (link expires " + result.expiresAt + ")" : "");
+      const whatsappUrl = phone
+        ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(message)
+        : "https://wa.me/?text=" + encodeURIComponent(message);
+
+      if (whatsappWindow && !whatsappWindow.closed) {
+        whatsappWindow.location.href = whatsappUrl;
+      } else {
+        await navigator.clipboard?.writeText(downloadUrl);
+        setDetailError("Secure invoice link copied. Paste it into the customer's WhatsApp chat.");
+      }
     } catch (error) {
-      console.error("Could not create the original invoice PDF:", error);
-      setErr(error?.message || "Could not create the invoice PDF. Please try again.");
+      if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
+      setDetailError(error.message || "Could not share the invoice. Please try again.");
+    } finally {
+      sharingInvoiceRef.current = false;
+      setSharingInvoice(false);
     }
   };
 
@@ -3217,8 +2995,8 @@ export function SavedInvoices() {
               <button type="button" className="secondary" onClick={() => setShowPrintPin(true)}>
                 <Printer size={16} /> Print / Save PDF
               </button>
-              <button type="button" className="secondary nkj-whatsapp-action" onClick={shareInvoiceOnWhatsApp}>
-                <MessageCircle size={16} /> Share via WhatsApp
+              <button type="button" className="secondary nkj-whatsapp-action" onClick={shareInvoiceOnWhatsApp} disabled={sharePreparing || sharingInvoice || !preparedShareFile}>
+                <MessageCircle size={16} /> {sharingInvoice ? "Sharing..." : sharePreparing ? "Preparing PDF..." : "Share via WhatsApp"}
               </button>
               <button type="button" className="primary" onClick={copySelectedInvoice}>
                 <Copy size={16} /> Copy Invoice
