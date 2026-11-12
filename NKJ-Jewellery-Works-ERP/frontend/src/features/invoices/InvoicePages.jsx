@@ -2545,6 +2545,20 @@ function loadHtml2PdfLibrary() {
   return html2pdfLibraryPromise;
 }
 
+function normalizeWhatsAppPhone(value) {
+  let digits = String(value ?? "").replace(/\\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+
+  // Customer records normally store the Indian 10-digit mobile number.
+  if (digits.length === 10) return `91${digits}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+  if (digits.length === 12 && digits.startsWith("91")) return digits;
+
+  // Preserve a valid international country-code number if one is already stored.
+  if (digits.length >= 11 && digits.length <= 15 && !digits.startsWith("0")) return digits;
+  throw new Error("This invoice does not contain a valid customer mobile number. Update the saved customer number before sharing.");
+}
+
 function downloadInvoicePdfFile(file) {
   const url = URL.createObjectURL(file);
   const anchor = document.createElement("a");
@@ -3143,47 +3157,44 @@ export function SavedInvoices() {
       return;
     }
 
+    let whatsappPhone;
+    try {
+      whatsappPhone = normalizeWhatsAppPhone(selectedInvoice.mobile);
+    } catch (error) {
+      setDetailError(error.message || "The customer mobile number is invalid.");
+      return;
+    }
+
     shareInProgressRef.current = true;
     setSharingInvoice(true);
     setDetailError("");
 
-    let canSharePdf = false;
     try {
-      canSharePdf =
-        typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function" &&
-        navigator.canShare({ files: [file] });
-    } catch {
-      canSharePdf = false;
-    }
+      // wa.me opens the chat for the saved invoice's customer number.
+      // A normal WhatsApp account does not allow websites to pre-attach files
+      // to a specific chat; the verified PDF is therefore downloaded here
+      // for the user to attach as a Document in that already-open chat.
+      const customerName = String(selectedInvoice.customerName || "Customer").trim();
+      const invoiceNo = String(selectedInvoice.invoiceNo).trim();
+      const message = `Hello ${customerName}, please find invoice ${invoiceNo} attached.`;
+      const chatUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+      const chatWindow = window.open(chatUrl, "_blank");
 
-    if (canSharePdf) {
-      try {
-        // PDF only: deliberately do not send invoice text, captions, or wa.me links.
-        await navigator.share({ files: [file] });
-        setDetailError("The PDF was handed to the device share sheet. Choose WhatsApp and send the document there.");
-      } catch (error) {
-        if (error?.name === "AbortError") {
-          setDetailError("PDF sharing was cancelled. No document was sent.");
-          return;
-        }
-        console.warn("Native PDF sharing is unavailable:", error);
-        downloadInvoicePdfFile(file);
-        setDetailError("This browser could not share files directly. The invoice PDF was downloaded; attach it in WhatsApp using Attach > Document.");
-      } finally {
-        shareInProgressRef.current = false;
-        setSharingInvoice(false);
+      if (!chatWindow) {
+        throw new Error("Your browser blocked the WhatsApp tab. Allow pop-ups for this website and click Share via WhatsApp again.");
       }
-      return;
-    }
+      try {
+        chatWindow.opener = null;
+      } catch {
+        // Some browsers expose a read-only opener property.
+      }
 
-    // Desktop/unsupported-browser fallback: download only the PDF. Do not
-    // populate WhatsApp with a text invoice or pretend a chat URL attaches it.
-    try {
       downloadInvoicePdfFile(file);
-      setDetailError("The invoice PDF was downloaded. Open WhatsApp, choose the customer, and attach this file using Attach > Document.");
+      setDetailError(
+        `WhatsApp chat opened for ${customerName} (+${whatsappPhone}). The original invoice PDF (${file.name}) was downloaded. In the open chat, choose Attach > Document, select the downloaded PDF, and press Send.`,
+      );
     } catch (error) {
-      setDetailError(error.message || "Could not download the invoice PDF.");
+      setDetailError(error.message || "Could not open the customer's WhatsApp chat or download the invoice PDF.");
     } finally {
       shareInProgressRef.current = false;
       setSharingInvoice(false);
