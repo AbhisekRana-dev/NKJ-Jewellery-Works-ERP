@@ -244,12 +244,12 @@ export default function InstallmentManagementPage() {
     }
   };
 
-  const searchEligibleInvoices = async () => {
+  const searchEligibleInvoices = async (searchTerm = invoiceSearch) => {
     setLoading(true);
     setError("");
     try {
       const params = new URLSearchParams();
-      if (invoiceSearch.trim()) params.set("search", invoiceSearch.trim());
+      if (searchTerm.trim()) params.set("search", searchTerm.trim());
       const result = await request(`/admin/installments/eligible-invoices${params.toString() ? `?${params.toString()}` : ""}`);
       setEligibleInvoices(Array.isArray(result) ? result : []);
       setInvoiceId("");
@@ -658,7 +658,15 @@ export default function InstallmentManagementPage() {
                   <input
                     type="search"
                     value={invoiceSearch}
-                    onChange={(event) => setInvoiceSearch(event.target.value)}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setInvoiceSearch(value);
+                      // Clearing a manual search must restore the backend's
+                      // default last-three-calendar-days invoice list.
+                      if (!value.trim() && invoiceSearch.trim()) {
+                        searchEligibleInvoices("");
+                      }
+                    }}
                     onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); searchEligibleInvoices(); } }}
                     placeholder="Invoice number, customer name or mobile"
                   />
@@ -667,7 +675,7 @@ export default function InstallmentManagementPage() {
                   <button type="button" className="secondary" onClick={searchEligibleInvoices} disabled={loading}>
                     <Search size={15}/> Search invoices
                   </button>
-                  <small>Default list shows the last 3 calendar days. Search includes older eligible invoices.</small>
+                  <small>Default list: today and the previous 2 calendar days (Asia/Kolkata). Search by invoice number, customer name or mobile to find older eligible invoices. Clear the search to return to the 3-day list.</small>
                 </div>
                 <label>
                   <span>Select eligible saved invoice *</span>
