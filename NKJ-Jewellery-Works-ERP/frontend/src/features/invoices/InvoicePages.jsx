@@ -2688,6 +2688,85 @@ async function createInvoiceSharePdfFile(invoice) {
     #invoice-print.nkj-pdf-export-root * {
       visibility: visible !important;
     }
+
+    /* Rebuild the invoice's original three-column layout inside the isolated
+       export clone. The live page's responsive/legacy print rules must not
+       shift the first grid column outside the PDF page. */
+    #invoice-print.nkj-pdf-export-root .inv-head {
+      display: grid !important;
+      grid-template-columns: 30mm minmax(0, 1fr) 68mm !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin-left: 0 !important;
+      padding-left: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-logo-wrap,
+    #invoice-print.nkj-pdf-export-root .inv-shop,
+    #invoice-print.nkj-pdf-export-root .inv-meta,
+    #invoice-print.nkj-pdf-export-root .inv-two > *,
+    #invoice-print.nkj-pdf-export-root .inv-main > *,
+    #invoice-print.nkj-pdf-export-root .inv-bottom > * {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-logo-wrap {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: visible !important;
+    }
+    #invoice-print.nkj-pdf-export-root .invoice-logo-image {
+      display: block !important;
+      width: 27mm !important;
+      max-width: 27mm !important;
+      height: 27mm !important;
+      object-fit: contain !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-two {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin-left: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-main {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) 68mm !important;
+      gap: 2mm !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin-left: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-bottom {
+      display: grid !important;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      margin-left: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .form-grid label {
+      display: grid !important;
+      grid-template-columns: 31mm 3mm minmax(0, 1fr) !important;
+      min-width: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .table-wrap {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: visible !important;
+      margin-left: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .items-table {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+    }
   `;
   host.appendChild(style);
   host.appendChild(clone);
@@ -2758,7 +2837,11 @@ async function createInvoiceSharePdfFile(invoice) {
         allowTaint: false,
         backgroundColor: "#ffffff",
         logging: false,
-        windowWidth: 1200,
+        windowWidth: Math.max(1200, Math.ceil(clone.getBoundingClientRect().width)),
+        width: Math.ceil(clone.getBoundingClientRect().width),
+        height: Math.ceil(clone.getBoundingClientRect().height),
+        x: 0,
+        y: 0,
         scrollX: 0,
         scrollY: 0,
       },
