@@ -286,121 +286,276 @@ function makeInvoiceShareMessage(invoice) {
 
 
 /**
- * Export the actual saved invoice DOM as a PDF. This preserves the website's
- * original invoice design, logo, fonts, colors, table layout and exact values.
- * It captures the rendered invoice instead of recreating it in a second template.
+ * Canonical vector PDF generator for saved invoices.
+ * Both Print/Save PDF and WhatsApp sharing use these exact PDF bytes.
+ * It draws invoice text, tables and totals as PDF objects (not a screenshot).
  */
-async function createSavedInvoicePdf() {
-  const source = document.getElementById("invoice-print");
-  if (!source) throw new Error("Open the saved invoice before sharing it.");
-
-  const rect = source.getBoundingClientRect();
-  const width = Math.ceil(Math.max(source.scrollWidth, rect.width, 700));
-  const height = Math.ceil(Math.max(source.scrollHeight, rect.height));
-  const clone = source.cloneNode(true);
-  clone.style.width = width + "px";
-  clone.style.maxWidth = "none";
-  clone.style.minWidth = "0";
-  clone.style.height = "auto";
-  clone.style.maxHeight = "none";
-  clone.style.margin = "0";
-  clone.style.boxSizing = "border-box";
-  clone.style.overflow = "visible";
-
-  // Inline the computed styles so the SVG capture retains the original app CSS.
-  const originals = [source, ...source.querySelectorAll("*")];
-  const clones = [clone, ...clone.querySelectorAll("*")];
-  originals.forEach((original, index) => {
-    const copy = clones[index];
-    if (!copy) return;
-    if (original instanceof HTMLImageElement && copy instanceof HTMLImageElement) {
-      copy.src = original.currentSrc || new URL(original.getAttribute("src") || original.src, document.baseURI).href;
-    }
-    const computed = window.getComputedStyle(original);
-    let css = "";
-    for (let i = 0; i < computed.length; i += 1) {
-      const property = computed[i];
-      css += property + ":" + computed.getPropertyValue(property) + ";";
-    }
-    copy.setAttribute("style", css + (copy.getAttribute("style") || ""));
-    if (original instanceof HTMLInputElement && copy instanceof HTMLInputElement) {
-      copy.value = original.value;
-      copy.setAttribute("value", original.value);
-      if (original.checked) copy.setAttribute("checked", "checked");
-    } else if (original instanceof HTMLTextAreaElement && copy instanceof HTMLTextAreaElement) {
-      copy.textContent = original.value;
-    } else if (original instanceof HTMLSelectElement && copy instanceof HTMLSelectElement) {
-      copy.value = original.value;
-      Array.from(copy.options).forEach((option, i) => {
-        if (original.options[i]?.selected) option.setAttribute("selected", "selected");
-        else option.removeAttribute("selected");
-      });
-    }
-  });
-
-  // Remove controls that are not part of the customer-facing invoice copy.
-  clone.querySelectorAll(".no-print, .invoice-actions, .nkj-invoice-detail-actions").forEach((node) => node.remove());
-
-  // Wait for logo and ornament images before rasterizing the original design.
-  await Promise.all(Array.from(clone.querySelectorAll("img")).map((img) => {
-    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-    return new Promise((resolve) => {
-      img.onload = resolve;
-      img.onerror = resolve;
-      window.setTimeout(resolve, 3000);
-    });
-  }));
-
-  const markup = new XMLSerializer().serializeToString(clone);
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml" width="' + width + '" height="' + height + '"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">' + markup + '</div></foreignObject></svg>';
-  const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-  const svgUrl = URL.createObjectURL(svgBlob);
-
-  let fullCanvas;
-  try {
-    const image = new Image();
-    image.src = svgUrl;
-    await new Promise((resolve, reject) => {
-      image.onload = resolve;
-      image.onerror = () => reject(new Error("Could not render the original invoice design. Please try again or use Print / Save as PDF."));
-    });
-    const scale = Math.min(2, 3200 / width);
-    fullCanvas = document.createElement("canvas");
-    fullCanvas.width = Math.ceil(width * scale);
-    fullCanvas.height = Math.ceil(height * scale);
-    const context = fullCanvas.getContext("2d");
-    if (!context) throw new Error("Your browser could not prepare the invoice PDF.");
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
-    context.scale(scale, scale);
-    context.drawImage(image, 0, 0, width, height);
-  } finally {
-    URL.revokeObjectURL(svgUrl);
+async function createSavedInvoicePdf(invoice) {
+  if (!invoice?.id || !invoice?.invoiceNo) {
+    throw new Error("Only a saved invoice with an invoice number can be exported.");
   }
+  const data = parseInvoiceDetails(invoice);
+  const newRows = invoiceRows(data.newItems);
+  const oldRows = invoiceRows(data.oldItems);
+  const showGstin = data.showGstin !== false;
+  const newTotal = Number(data.newTotal ?? data.subTotal ?? newRows.reduce((sum, row) => sum + newAmt(row), 0)) || 0;
+  const oldTotal = Number(data.oldTotal ?? oldRows.reduce((sum, row) => sum + oldAmt(row), 0)) || 0;
+  const gstPercent = Number(data.gstPercent) || 0;
+  const gstAmount = showGstin ? (Number(data.gstAmount ?? (newTotal * gstPercent) / 100) || 0) : 0;
+  const discount = Number(data.discount) || 0;
+  const grandTotal = Number(data.grandTotal ?? (newTotal + gstAmount - discount - oldTotal)) || 0;
+  const totalPaid = Math.max(0, Number(data.totalPaid ?? data.paymentAmount ?? 0) || 0);
+  const dueAmount = Math.max(0, Number(data.dueAmount ?? (grandTotal - totalPaid)) || 0);
+  const pageW = 842, pageH = 595, left = 34, right = 808, contentW = right - left;
+  const maroon = "0.53 0.04 0.15", gold = "0.78 0.42 0.10", cream = "0.99 0.96 0.90";
+  const ink = "0.12 0.10 0.10", muted = "0.35 0.31 0.29", pale = "0.97 0.91 0.82";
+  const safe = (value) => String(value ?? "")
+    .replace(/₹/g, "Rs. ").replace(/[–—]/g, "-").replace(/[•·]/g, "-")
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/[^\x20-\x7E]/g, "");
+  const esc = (value) => safe(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  const fmt = (value) => Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const short = (value, max) => {
+    const valueText = safe(value);
+    return valueText.length > max ? valueText.slice(0, Math.max(0, max - 1)) + "…" : valueText;
+  };
+  const pages = [];
+  let ops = [];
+  let y = 0;
 
-  // Paginate the captured original invoice onto A4 portrait pages.
-  const pageWidth = 1240;
-  const pageHeight = 1754;
-  const sourcePageHeight = fullCanvas.width * (842 / 595);
-  const pageImages = [];
-  for (let top = 0; top < fullCanvas.height; top += sourcePageHeight) {
-    const sliceHeight = Math.min(sourcePageHeight, fullCanvas.height - top);
-    const pageCanvas = document.createElement("canvas");
-    pageCanvas.width = pageWidth;
-    pageCanvas.height = pageHeight;
-    const ctx = pageCanvas.getContext("2d");
-    if (!ctx) throw new Error("Your browser could not prepare the invoice PDF.");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, pageWidth, pageHeight);
-    ctx.drawImage(fullCanvas, 0, top, fullCanvas.width, sliceHeight, 0, 0, pageWidth, pageHeight * (sliceHeight / sourcePageHeight));
-    const dataUrl = pageCanvas.toDataURL("image/jpeg", 0.94);
-    const binary = atob(dataUrl.split(",")[1]);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-    pageImages.push(bytes);
+  const textAt = (value, x, top, size = 8, bold = false, color = ink, align = "left") => {
+    const label = safe(value);
+    const estimatedWidth = label.length * size * (bold ? 0.29 : 0.255);
+    const actualX = align === "center" ? x - estimatedWidth / 2 : align === "right" ? x - estimatedWidth : x;
+    ops.push(color + " rg BT /" + (bold ? "F2" : "F1") + " " + size + " Tf 1 0 0 1 " +
+      actualX.toFixed(2) + " " + (pageH - top - size).toFixed(2) + " Tm (" + esc(label) + ") Tj ET");
+  };
+  const line = (x1, top1, x2, top2, color = gold, width = 0.7) => {
+    ops.push(color + " RG " + width + " w " + x1 + " " + (pageH - top1) + " m " +
+      x2 + " " + (pageH - top2) + " l S");
+  };
+  const rect = (x, top, width, height, fill = "1 1 1", stroke = pale, lineWidth = 0.7) => {
+    ops.push(fill + " rg " + stroke + " RG " + lineWidth + " w " + x + " " +
+      (pageH - top - height) + " " + width + " " + height + " re B");
+  };
+  const wrap = (value, maxChars) => {
+    const words = safe(value).split(/\s+/).filter(Boolean);
+    const result = [];
+    let current = "";
+    words.forEach((word) => {
+      const next = current ? current + " " + word : word;
+      if (next.length > maxChars && current) { result.push(current); current = word; }
+      else current = next;
+    });
+    if (current) result.push(current);
+    return result.length ? result : ["-"];
+  };
+  const logoBytes = await (async () => {
+    try {
+      const response = await fetch("/nkj-logo-reference.png", { credentials: "same-origin" });
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      try {
+        const image = new Image();
+        image.src = imageUrl;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = 240; canvas.height = 240;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 240, 240);
+        ctx.drawImage(image, 0, 0, 240, 240);
+        const binary = atob(canvas.toDataURL("image/jpeg", 0.9).split(",")[1]);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+      } finally { URL.revokeObjectURL(imageUrl); }
+    } catch { return null; }
+  })();
+
+  const drawHeader = (continuation = false) => {
+    if (logoBytes && logoObjectId) {
+      ops.push("q 58 0 0 58 35 " + (pageH - 22 - 58) + " cm /NKJLogo Do Q");
+    } else {
+      ops.push(gold + " RG 2 w 63 " + (pageH - 77) + " 54 54 re S");
+      textAt("NKJ", 90, 48, 19, true, maroon, "center");
+    }
+    textAt("NANDIKISHOR JEWELLERY WORKS", 405, 29, continuation ? 16 : 18, true, maroon, "center");
+    textAt("Owner : Bhuteswar Rana", 405, 52, 9, true, maroon, "center");
+    textAt("Contact No. : 99322770722 | 8116022248", 405, 66, 8.5, true, ink, "center");
+    textAt("Sasra, Gopiballavpur, Jhargram, Pin - 721506", 405, 79, 8, true, ink, "center");
+    textAt("Gold & Silver Ornaments", 405, 92, 9, true, maroon, "center");
+    if (showGstin) textAt("GSTIN No: 19ABCDE1234F1Z5", 405, 105, 7, true, maroon, "center");
+    rect(650, 20, 158, 78, "1 0.99 0.97", gold);
+    rect(650, 20, 158, 21, maroon, maroon);
+    textAt("INVOICE", 729, 24, 11, true, "1 1 1", "center");
+    textAt("Invoice No.", 658, 48, 7.5, false, ink);
+    textAt(data.invoiceNo || "-", 723, 48, 7.5, true, ink);
+    textAt("Date", 658, 65, 7.5, false, ink);
+    textAt(displaySavedInvoiceDate(data.invoiceDate || data.date), 723, 65, 7.5, true, ink);
+    textAt("Time", 658, 82, 7.5, false, ink);
+    textAt(displaySavedInvoiceTime(data.invoiceTime || data.time), 723, 82, 7.5, true, ink);
+    line(left, 113, right, 113, gold, 1.2);
+    y = 125;
+  };
+  const beginPage = (continuation = false) => {
+    ops = [];
+    drawHeader(continuation);
+    if (continuation) textAt("INVOICE CONTINUED - " + data.invoiceNo, left, y + 1, 8, true, maroon);
+    pages.push(null);
+  };
+  const finishPage = () => { pages[pages.length - 1] = ops.join("\n"); };
+  const ensureSpace = (needed, continuationLabel) => {
+    if (y + needed > pageH - 38) {
+      finishPage();
+      beginPage(true);
+      y += 13;
+      if (continuationLabel) textAt(continuationLabel, left, y, 8, true, maroon);
+      y += continuationLabel ? 14 : 0;
+    }
+  };
+  const section = (label) => {
+    rect(left, y, contentW, 18, cream, gold);
+    textAt(label, left + 7, y + 4, 9, true, maroon);
+    y += 23;
+  };
+  const tableHeader = (columns) => {
+    rect(left, y, contentW, 20, maroon, maroon);
+    let x = left;
+    columns.forEach((column) => {
+      textAt(column.label, x + column.width / 2, y + 6, 7, true, "1 1 1", "center");
+      x += column.width;
+    });
+    y += 20;
+  };
+  const tableRow = (values, columns) => {
+    ensureSpace(20, "ITEM DETAILS (CONTINUED)");
+    rect(left, y, contentW, 20, "1 1 1", pale, 0.55);
+    let x = left;
+    values.forEach((value, index) => {
+      if (index > 0) line(x, y, x, y + 20, pale, 0.45);
+      const maxChars = Math.max(5, Math.floor((columns[index].width - 8) / 4.1));
+      textAt(short(value, maxChars), x + 4, y + 6, 7, false, ink);
+      x += columns[index].width;
+    });
+    y += 20;
+  };
+  const totalLine = (label, value, fill = "1 1 1", color = ink, bold = true) => {
+    rect(545, y, 263, 18, fill, pale, 0.6);
+    textAt(label, 553, y + 5, 7.5, bold, color);
+    textAt(value, 800, y + 5, 7.5, bold, color, "right");
+    y += 18;
+  };
+
+  const logoObjectId = logoBytes ? 5 : null;
+  beginPage(false);
+
+  const half = (contentW - 10) / 2;
+  rect(left, y, half, 65, "1 1 1", pale);
+  rect(left + half + 10, y, half, 65, "1 1 1", pale);
+  textAt("CUSTOMER DETAILS", left + 8, y + 8, 8, true, maroon);
+  textAt("Name: " + (data.customerName || data.name || "-"), left + 8, y + 25, 7.5);
+  textAt("Mobile: " + (data.mobile || "-"), left + 8, y + 40, 7.5);
+  textAt("Address: " + short(data.address || "-", 85), left + 8, y + 54, 7);
+  const payX = left + half + 18;
+  textAt("PAYMENT DETAILS", payX, y + 8, 8, true, maroon);
+  textAt("Payment Mode: " + (data.paymentMode || "Cash"), payX, y + 28, 7.5);
+  textAt("Reference No.: " + (data.referenceNo || "-"), payX, y + 44, 7.5);
+  y += 77;
+
+  const newCols = [
+    { label: "Sl. No.", width: 34 }, { label: "Description", width: 150 },
+    { label: "Purity", width: 92 }, { label: "Net Wt. (gm)", width: 62 },
+    { label: "Rate / GM (Rs.)", width: 78 }, { label: "Making (Rs.)", width: 72 },
+    { label: "Stamp (Rs.)", width: 65 }, { label: "Extra (Rs.)", width: 65 },
+    { label: "Amount (Rs.)", width: 156 },
+  ];
+  section("NEW ORNAMENTS DETAILS");
+  tableHeader(newCols);
+  if (!newRows.length) tableRow(["-", "No new ornaments", "-", "-", "-", "-", "-", "-", "0.00"], newCols);
+  newRows.forEach((row, index) => tableRow([
+    index + 1, row.description || "Ornament", row.purity || "-",
+    row.netWeight || "0", fmt(row.rate), fmt(row.makingCharge),
+    fmt(row.stampCharge), fmt(row.extraCharge), fmt(row.amount ?? newAmt(row)),
+  ], newCols));
+  ensureSpace(22, null);
+  textAt("Total New Ornaments Amount: Rs. " + fmt(newTotal), right - 4, y + 4, 8.5, true, maroon, "right");
+  y += 22;
+
+  const oldCols = [
+    { label: "Sl. No.", width: 34 }, { label: "Description", width: 190 },
+    { label: "Purity", width: 130 }, { label: "Wt. (gm)", width: 100 },
+    { label: "Rate / GM (Rs.)", width: 110 }, { label: "Amount (Rs.)", width: 210 },
+  ];
+  section("OLD / EXCHANGE ORNAMENTS DETAILS");
+  tableHeader(oldCols);
+  if (!oldRows.length) tableRow(["-", "No old/exchange ornaments", "-", "-", "-", "0.00"], oldCols);
+  oldRows.forEach((row, index) => tableRow([
+    index + 1, row.description || "Ornament", row.purity || "-",
+    row.pureWeight || "0", fmt(row.rate), fmt(row.amount ?? oldAmt(row)),
+  ], oldCols));
+  ensureSpace(170, null);
+  textAt("Total Old Exchange: Rs. " + fmt(oldTotal), right - 4, y + 4, 8.5, true, maroon, "right");
+  y += 21;
+
+  const totals = [
+    ["SUB TOTAL", fmt(newTotal)],
+  ];
+  if (showGstin) totals.push(["GST (" + gstPercent + "%)", fmt(gstAmount)]);
+  totals.push(
+    ["DISCOUNT", "- " + fmt(discount)],
+    ["OLD EXCHANGE", "- " + fmt(oldTotal)],
+    ["TOTAL PAID", fmt(totalPaid)],
+    ["DUE AMOUNT", fmt(dueAmount)],
+  );
+  totals.forEach(([label, value]) => totalLine(label, value));
+  rect(545, y, 263, 24, maroon, maroon);
+  textAt("GRAND TOTAL", 553, y + 7, 9, true, "1 1 1");
+  textAt("Rs. " + fmt(grandTotal), 800, y + 7, 9, true, "1 1 1", "right");
+  y += 32;
+
+  const description = data.description || data.additionalDescription || "";
+  if (description) {
+    const lines = wrap(description, 105);
+    ensureSpace(lines.length * 11 + 14, null);
+    textAt("Additional Description:", left, y, 8, true, maroon);
+    y += 12;
+    lines.slice(0, 4).forEach((lineText) => { textAt(lineText, left, y, 7.5); y += 10; });
   }
+  ensureSpace(65, null);
+  textAt("Amount in Words: " + amountInWords(grandTotal), left, y + 2, 8, true, ink);
+  y += 23;
+  line(left, y, right, y, gold, 0.8);
+  textAt("Customer Signature", 160, y + 18, 8, false, ink, "center");
+  textAt("Authorised Signature", 690, y + 18, 8, false, ink, "center");
+  textAt("Thank you for shopping with Nandikishor Jewellery Works.", 421, pageH - 23, 8.5, true, maroon, "center");
+  finishPage();
 
+  // Assemble a standards-compliant PDF with selectable vector text and tables.
   const encoder = new TextEncoder();
+  const objects = [];
+  const add = (parts) => { objects.push(parts); return objects.length; };
+  const catalogId = add([]);
+  const pagesId = add([]);
+  const regularId = add(["<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>"]);
+  const boldId = add(["<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>"]);
+  let logoId = null;
+  if (logoBytes) logoId = add([
+    "<< /Type /XObject /Subtype /Image /Width 240 /Height 240 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + logoBytes.length + " >>\nstream\n",
+    logoBytes, "\nendstream",
+  ]);
+  const pageIds = [];
+  pages.forEach((stream) => {
+    const contentId = add(["<< /Length " + encoder.encode(stream + "\n").length + " >>\nstream\n", stream + "\n", "endstream"]);
+    const resources = "<< /Font << /F1 " + regularId + " 0 R /F2 " + boldId + " 0 R >>" +
+      (logoId ? " /XObject << /NKJLogo " + logoId + " 0 R >>" : "") + " >>";
+    pageIds.push(add(["<< /Type /Page /Parent " + pagesId + " 0 R /MediaBox [0 0 " + pageW + " " + pageH +
+      "] /Resources " + resources + " /Contents " + contentId + " 0 R >>"]));
+  });
+  objects[catalogId - 1] = ["<< /Type /Catalog /Pages " + pagesId + " 0 R >>"];
+  objects[pagesId - 1] = ["<< /Type /Pages /Kids [" + pageIds.map((id) => id + " 0 R").join(" ") + "] /Count " + pageIds.length + " >>"];
+
   const chunks = [];
   const offsets = [0];
   let byteLength = 0;
@@ -409,40 +564,29 @@ async function createSavedInvoicePdf() {
     chunks.push(bytes);
     byteLength += bytes.length;
   };
-  const addObject = (id, parts) => {
-    offsets[id] = byteLength;
-    push(id + " 0 obj\n");
+  push("%PDF-1.4\n");
+  objects.forEach((parts, index) => {
+    offsets.push(byteLength);
+    push((index + 1) + " 0 obj\n");
     parts.forEach(push);
     push("\nendobj\n");
-  };
-
-  push("%PDF-1.4\n");
-  const pageCount = pageImages.length;
-  addObject(1, ["<< /Type /Catalog /Pages 2 0 R >>"]);
-  addObject(2, ["<< /Type /Pages /Kids [" + pageImages.map((_, i) => (3 + i * 3) + " 0 R").join(" ") + "] /Count " + pageCount + " >>"]);
-
-  pageImages.forEach((jpeg, index) => {
-    const pageId = 3 + index * 3;
-    const contentId = pageId + 1;
-    const imageId = pageId + 2;
-    const stream = "q\n595 0 0 842 0 0 cm\n/InvoiceImage Do\nQ\n";
-    addObject(pageId, ["<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /InvoiceImage " + imageId + " 0 R >> >> /Contents " + contentId + " 0 R >>"]);
-    addObject(contentId, ["<< /Length " + encoder.encode(stream).length + " >>\nstream\n", stream, "endstream"]);
-    addObject(imageId, [
-      "<< /Type /XObject /Subtype /Image /Width " + pageWidth + " /Height " + pageHeight +
-      " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + jpeg.length + " >>\nstream\n",
-      jpeg,
-      "\nendstream"
-    ]);
   });
-
   const xrefOffset = byteLength;
-  push("xref\n0 " + (offsets.length) + "\n0000000000 65535 f \n");
-  for (let id = 1; id < offsets.length; id += 1) {
-    push(String(offsets[id]).padStart(10, "0") + " 00000 n \n");
-  }
-  push("trailer\n<< /Size " + offsets.length + " /Root 1 0 R >>\nstartxref\n" + xrefOffset + "\n%%EOF");
+  push("xref\n0 " + (objects.length + 1) + "\n0000000000 65535 f \n");
+  offsets.slice(1).forEach((offset) => push(String(offset).padStart(10, "0") + " 00000 n \n"));
+  push("trailer\n<< /Size " + (objects.length + 1) + " /Root " + catalogId + " 0 R >>\nstartxref\n" + xrefOffset + "\n%%EOF");
   return new Blob(chunks, { type: "application/pdf" });
+}
+
+function downloadInvoicePdf(file) {
+  const objectUrl = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = file.name;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
 }
 const blankNew = () => ({
   description: "",
