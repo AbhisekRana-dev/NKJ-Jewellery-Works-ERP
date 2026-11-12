@@ -225,74 +225,17 @@ public class InvoiceController {
     }
 
     /**
-     * Update an existing saved invoice without changing its invoice number,
-     * business date, creation timestamp, or recorded payments.
+     * Saved invoices are immutable. Corrections must be recorded separately.
      */
     @PutMapping("/{id}")
-    @Transactional
-    public Map<String, Object> update(@PathVariable Long id,
-                                      @RequestBody Map<String, Object> body,
-                                      HttpServletRequest servletRequest) throws Exception {
-        validateInvoiceBody(body);
-        validateMobileNumber(body);
-
-        Invoice invoice = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Invoice not found."));
-        boolean previousShowGstin = invoice.isShowGstin();
-        LocalDate requestedDate = requestedInvoiceDate(body);
-        if (invoice.getInvoiceDate() == null || !invoice.getInvoiceDate().equals(requestedDate)) {
-            throw new IllegalArgumentException(
-                    "The invoice date cannot be changed while editing a saved invoice. Its invoice number and history date must remain unchanged."
-            );
+    public Map<String, Object> update(@PathVariable Long id) {
+        if (!repo.existsById(id)) {
+            throw new IllegalArgumentException("Invoice not found.");
         }
-
-        String customerName = clean(body.get("customerName"));
-        if (customerName.isEmpty()) {
-            throw new IllegalArgumentException("Customer name is required.");
-        }
-
-        invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
-        invoice.setCustomerName(customerName);
-        invoice.setMobile(customerService.normalizePhone(clean(body.get("mobile"))));
-        invoice.setAddress(clean(body.get("address")));
-        invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
-        invoice.setReferenceNo(clean(body.get("referenceNo")));
-        invoice.setPayloadJson(sanitizedInvoicePayload(body));
-
-        invoice.setNewTotal(number(body, "newTotal"));
-        invoice.setOldTotal(number(body, "oldTotal"));
-        invoice.setMakingCharge(number(body, "makingCharge"));
-        invoice.setExtraCharge(number(body, "extraCharge"));
-        invoice.setDiscount(number(body, "discount"));
-        invoice.setSubTotal(number(body, "subTotal"));
-        invoice.setGstPercent(number(body, "gstPercent"));
-        invoice.setGstAmount(number(body, "gstAmount"));
-        invoice.setOtherCharge(number(body, "otherCharge"));
-        invoice.setGrandTotal(number(body, "grandTotal"));
-
-        repo.saveAndFlush(invoice);
-
-        // Replace the saved line-item snapshots atomically with the edited form.
-        jdbc.update("DELETE FROM invoice_items WHERE invoice_id = ?", invoice.getId());
-        persistInvoiceItems(invoice.getId(), body.get("newItems"), "NEW");
-        persistInvoiceItems(invoice.getId(), body.get("oldItems"), "OLD_EXCHANGE");
-
-        syncInvoiceCustomer(invoice);
-
-        jdbc.update(
-                "INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
-                        + "VALUES ('OWNER','INVOICE_UPDATED','INVOICES',?,CAST(? AS JSONB),CAST(? AS JSONB),?)",
-                String.valueOf(invoice.getId()),
-                mapper.writeValueAsString(Map.of("showGstin", previousShowGstin)),
-                mapper.writeValueAsString(Map.of(
-                        "invoiceNo", invoice.getInvoiceNo(),
-                        "showGstin", invoice.isShowGstin(),
-                        "grandTotal", invoice.getGrandTotal()
-                )),
-                servletRequest.getRemoteAddr()
+        throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "Saved invoices cannot be edited. Create a new invoice or use Copy Invoice."
         );
-
-        return view(invoice);
     }
 
     /**
