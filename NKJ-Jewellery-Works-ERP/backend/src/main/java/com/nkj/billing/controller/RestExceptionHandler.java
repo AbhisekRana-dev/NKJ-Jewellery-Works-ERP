@@ -38,6 +38,14 @@ public class RestExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "This change conflicts with existing records. Check required fields, duplicate IDs and linked records."));
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<Map<String,String>> responseStatus(
+            org.springframework.web.server.ResponseStatusException e) {
+        String message = e.getReason() == null || e.getReason().isBlank()
+                ? "The request could not be completed." : e.getReason();
+        return ResponseEntity.status(e.getStatusCode()).body(Map.of("message", message));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String,String>> internal(Exception e, HttpServletRequest request) {
         Throwable root = e;
