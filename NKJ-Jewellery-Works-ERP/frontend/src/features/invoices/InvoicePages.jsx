@@ -2546,7 +2546,7 @@ function loadHtml2PdfLibrary() {
 }
 
 function normalizeWhatsAppPhone(value) {
-  let digits = String(value ?? "").replace(/\\D/g, "");
+  let digits = String(value ?? "").replace(/\D/g, "");
   if (digits.startsWith("00")) digits = digits.slice(2);
 
   // Customer records normally store the Indian 10-digit mobile number.
