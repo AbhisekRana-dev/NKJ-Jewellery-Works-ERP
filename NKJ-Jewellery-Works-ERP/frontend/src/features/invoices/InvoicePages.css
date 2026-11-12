@@ -1990,3 +1990,235 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     visibility: hidden !important;
   }
 }
+
+
+/* ==========================================================
+   SAVED INVOICE SCREEN FIX
+   Scope: read-only invoice opened from Invoice History.
+   Keep New Invoice editor and A4 print/PDF rules unchanged.
+========================================================== */
+@media screen {
+  body:has(.nkj-invoice-detail-overlay) {
+    overflow: hidden;
+  }
+
+  .nkj-invoice-detail-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483000 !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .nkj-invoice-detail-sheet.nkj-full-invoice-modal {
+    width: min(1320px, 100%) !important;
+    max-width: 1320px !important;
+    max-height: calc(100dvh - 32px) !important;
+    margin: 0 auto !important;
+    padding: 18px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .nkj-full-invoice-modal .nkj-saved-invoice-sheet {
+    width: 100% !important;
+    max-width: 1200px !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+    padding: 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Prevent the shop title from colliding with the invoice metadata. */
+  .nkj-saved-invoice-sheet .inv-head {
+    grid-template-columns: minmax(72px, 112px) minmax(0, 1fr) minmax(205px, 270px) !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+  }
+
+  .nkj-saved-invoice-sheet .inv-logo-wrap,
+  .nkj-saved-invoice-sheet .inv-shop,
+  .nkj-saved-invoice-sheet .inv-meta {
+    min-width: 0 !important;
+  }
+
+  .nkj-saved-invoice-sheet .invoice-logo-image {
+    display: block;
+    width: 100%;
+    max-width: 108px;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .nkj-saved-invoice-sheet .inv-shop h1 {
+    font-size: clamp(18px, 2.45vw, 30px) !important;
+    line-height: 1.12 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .nkj-saved-invoice-sheet .inv-shop h3,
+  .nkj-saved-invoice-sheet .inv-shop b,
+  .nkj-saved-invoice-sheet .inv-shop p,
+  .nkj-saved-invoice-sheet .inv-shop strong {
+    overflow-wrap: anywhere;
+  }
+
+  .nkj-saved-invoice-sheet .inv-meta span {
+    min-width: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .nkj-saved-invoice-sheet .inv-meta span strong {
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  /* The read-only tables must fit the invoice card, not create scrollbars. */
+  .nkj-saved-invoice-sheet .table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-saved-invoice-sheet .items-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    font-size: 11px !important;
+  }
+
+  .nkj-saved-invoice-sheet .items-table th {
+    padding: 6px 3px !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+  }
+
+  .nkj-saved-invoice-sheet .items-table td {
+    min-width: 0 !important;
+    padding: 4px 3px !important;
+    overflow: hidden;
+  }
+
+  .nkj-saved-invoice-sheet .items-table td:nth-child(2) {
+    min-width: 0 !important;
+  }
+
+  .nkj-saved-invoice-sheet .items-table input,
+  .nkj-saved-invoice-sheet .items-table select {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 4px 3px !important;
+    box-sizing: border-box !important;
+    font-size: 10px !important;
+    text-overflow: ellipsis;
+  }
+
+  .nkj-saved-invoice-sheet .inv-main {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 285px) !important;
+    gap: 9px !important;
+  }
+
+  .nkj-saved-invoice-sheet .inv-left,
+  .nkj-saved-invoice-sheet .totals,
+  .nkj-saved-invoice-sheet .inv-panel {
+    min-width: 0 !important;
+  }
+
+  .nkj-saved-invoice-sheet .inv-bottom {
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) !important;
+  }
+
+  .nkj-saved-invoice-sheet textarea {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  .nkj-invoice-detail-actions {
+    position: sticky;
+    top: -18px;
+    z-index: 2;
+    padding: 4px 0 12px;
+    background: #fff;
+  }
+}
+
+@media screen and (max-width: 900px) {
+  .nkj-saved-invoice-sheet .inv-head {
+    grid-template-columns: 76px minmax(0, 1fr) !important;
+  }
+
+  .nkj-saved-invoice-sheet .inv-meta {
+    grid-column: 1 / -1;
+  }
+
+  .nkj-saved-invoice-sheet .inv-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .nkj-saved-invoice-sheet .inv-bottom {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .nkj-saved-invoice-sheet .totals {
+    width: 100%;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .nkj-invoice-detail-overlay {
+    padding: 6px !important;
+  }
+
+  .nkj-invoice-detail-sheet.nkj-full-invoice-modal {
+    max-height: calc(100dvh - 12px) !important;
+    padding: 8px !important;
+  }
+
+  .nkj-full-invoice-modal .nkj-saved-invoice-sheet {
+    padding: 8px !important;
+  }
+
+  .nkj-saved-invoice-sheet .inv-head {
+    grid-template-columns: 56px minmax(0, 1fr) !important;
+  }
+
+  .nkj-saved-invoice-sheet .invoice-logo-image {
+    max-width: 54px;
+  }
+
+  .nkj-saved-invoice-sheet .inv-shop h1 {
+    font-size: 18px !important;
+  }
+
+  .nkj-saved-invoice-sheet .items-table {
+    font-size: 9px !important;
+  }
+
+  .nkj-saved-invoice-sheet .items-table th {
+    font-size: 8px !important;
+    padding: 4px 2px !important;
+  }
+
+  .nkj-saved-invoice-sheet .items-table td {
+    padding: 3px 2px !important;
+  }
+
+  .nkj-invoice-detail-actions {
+    top: -8px;
+    gap: 6px;
+  }
+}
