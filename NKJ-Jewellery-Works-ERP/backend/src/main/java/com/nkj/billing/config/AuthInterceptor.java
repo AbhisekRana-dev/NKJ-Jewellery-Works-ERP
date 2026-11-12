@@ -62,11 +62,6 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        if ("GET".equalsIgnoreCase(req.getMethod()) && requestPath.startsWith("/api/invoices/shared/")) {
-            // Public access is granted only by the unguessable, expiring share token.
-            return true;
-        }
-
         if (("GET".equalsIgnoreCase(req.getMethod()) && "/api/invoices/date-support".equals(requestPath))
                 || ("POST".equalsIgnoreCase(req.getMethod()) &&
                 ("/api/invoices".equals(requestPath) || "/api/invoices/verify-pin".equals(requestPath) || "/api/invoices/consume-print-ticket".equals(requestPath)))) {
