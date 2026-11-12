@@ -2905,9 +2905,14 @@ export function SavedInvoices() {
 
     // Do not await network work before navigator.share: browsers require the
     // file-share call to run directly inside the user's click activation.
-    const canShareFile = typeof navigator.share === "function" &&
-      typeof navigator.canShare === "function" &&
-      navigator.canShare({ files: [file] });
+    let canShareFile = false;
+    try {
+      canShareFile = typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] });
+    } catch {
+      canShareFile = false;
+    }
 
     if (canShareFile) {
       try {
@@ -2917,25 +2922,24 @@ export function SavedInvoices() {
           text: "Nandikishor Jewellery Works invoice " + selectedInvoice.invoiceNo,
         });
         setDetailError("The native share sheet has closed. Confirm the PDF was sent in WhatsApp; this website cannot verify delivery.");
+        sharingInvoiceRef.current = false;
+        setSharingInvoice(false);
+        return;
       } catch (error) {
         if (error?.name === "AbortError") {
           setDetailError("Sharing was cancelled. No message was sent.");
-        } else {
-          console.warn("Native PDF file sharing is unavailable:", error);
-          setDetailError("This browser could not open native PDF sharing. The original PDF will be downloaded for manual attachment.");
-          downloadInvoicePdf(file);
+          sharingInvoiceRef.current = false;
+          setSharingInvoice(false);
+          return;
         }
-      } finally {
-        sharingInvoiceRef.current = false;
-        setSharingInvoice(false);
+        console.warn("Native PDF file sharing is unavailable; switching to manual attachment:", error);
       }
-      return;
     }
 
     // Desktop browsers generally cannot attach local files through wa.me.
     // Download the exact PDF first, then open the chat; the user must attach
     // the downloaded document in WhatsApp before pressing Send.
-    const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
+    const digits = String(selectedInvoice.mobile || "").replace(/\\D/g, "");
     const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
     const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
     const message = "Invoice " + selectedInvoice.invoiceNo +
