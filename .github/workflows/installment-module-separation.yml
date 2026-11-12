@@ -824,6 +824,27 @@ jobs:
               "Repeated invoice save created duplicate invoice rows."
           )
 
+          # A new browser draft gets a fresh idempotency key. An exact repeat
+          # of the same sale on the same business date must still be blocked.
+          try:
+              request_json(
+                  "/api/invoices", "POST", retry_payload,
+                  {"Idempotency-Key": "CI-CUSTOMER-DUPLICATE-NEW-KEY-001"}
+              )
+              raise AssertionError("An exact duplicate invoice was accepted with a fresh save key.")
+          except urllib.error.HTTPError as error:
+              duplicate_body = error.read().decode("utf-8", errors="replace")
+              assert error.code == 409, f"Exact duplicate invoice should return HTTP 409, got {error.code}: {duplicate_body}"
+              assert "duplicate invoice blocked" in duplicate_body.lower(), (
+                  f"Duplicate invoice response did not explain the block: {duplicate_body}"
+              )
+              assert retry_one["invoiceNo"] in duplicate_body, (
+                  "Duplicate invoice response did not identify the already-saved invoice."
+              )
+          assert sql("SELECT COUNT(*) FROM invoices WHERE mobile='9876543214'") == "1", (
+              "A fresh idempotency key bypassed exact duplicate invoice protection."
+          )
+
           # 7. Simultaneous first invoices for the same phone must resolve to one
           # customer under the PostgreSQL unique index/ON CONFLICT upsert.
           def concurrent_save(index):
