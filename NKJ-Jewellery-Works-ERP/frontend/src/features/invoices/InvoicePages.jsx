@@ -2862,8 +2862,11 @@ export function SavedInvoices() {
   if (!isAdmin) return null;
 
   const printSavedInvoice = async (ticket) => {
-    if (!selectedInvoice?.id) {
-      throw new Error("Open a saved invoice before printing.");
+    if (!selectedInvoice?.id || verifiedInvoiceId !== String(selectedInvoice.id)) {
+      throw new Error("Open and verify a saved invoice before printing.");
+    }
+    if (hasInvoiceLineItems(selectedInvoice) && !preparedShareFile) {
+      throw new Error("The original invoice PDF is still being prepared. Please try again.");
     }
     await request("/invoices/consume-print-ticket", {
       method: "POST",
@@ -3053,7 +3056,7 @@ export function SavedInvoices() {
             aria-labelledby="invoice-detail-title"
           >
             <div className="nkj-invoice-detail-actions no-print">
-              <button type="button" className="secondary" onClick={() => setShowPrintPin(true)}>
+              <button type="button" className="secondary" onClick={() => setShowPrintPin(true)} disabled={verifiedInvoiceId !== String(selectedInvoice?.id) || (hasInvoiceLineItems(selectedInvoice) && (sharePreparing || !preparedShareFile))}>
                 <Printer size={16} /> Print / Save PDF
               </button>
               <button type="button" className="secondary nkj-whatsapp-action" onClick={shareInvoiceOnWhatsApp} disabled={verifiedInvoiceId !== String(selectedInvoice?.id) || sharePreparing || sharingInvoice || !preparedShareFile}>
