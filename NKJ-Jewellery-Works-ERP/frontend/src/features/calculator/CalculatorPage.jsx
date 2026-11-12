@@ -265,9 +265,10 @@ function OrnamentCalculator({ mode, active }) {
     ? (Math.max(0, Number(weight) || 0) * Math.max(0, purityPercent)) / 100
     : Math.max(0, Number(weight) || 0);
   const metalValue = pureWeight * Math.max(0, Number(rate) || 0);
-  const makingInputValue = Math.max(0, Number(making) || 0);
+  const makingNumber = Number(making);
+  const makingInputValue = Number.isFinite(makingNumber) ? Math.max(0, makingNumber) : 0;
   const isMakingValid = isOld || makingMode !== "percentage" || making === ""
-    || (Number.isFinite(Number(making)) && Number(making) >= 0 && Number(making) <= 100);
+    || (Number.isFinite(makingNumber) && makingNumber >= 0 && makingNumber <= 100);
   const makingChargeRupees = makingMode === "percentage"
     ? (metalValue * makingInputValue) / 100
     : makingInputValue;
@@ -323,8 +324,9 @@ function OrnamentCalculator({ mode, active }) {
               <select
                 value={makingMode}
                 onChange={(event) => {
+                  // Keep the entered charge when switching modes. The value is
+                  // reinterpreted as rupees or percentage without clearing it.
                   updateDraftField("makingMode", event.target.value);
-                  updateDraftField("making", "");
                 }}
                 aria-label="Making charge type"
               >
@@ -334,20 +336,20 @@ function OrnamentCalculator({ mode, active }) {
             </label>
             <label>
               Making Charge ({makingMode === "percentage" ? "%" : "₹"})
-              {makingMode === "percentage"
-                ? <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={making}
-                    onChange={(event) => setMaking(event.target.value)}
-                    placeholder="Enter percentage (e.g. 12)"
-                    aria-label="Making charge percentage"
-                    aria-invalid={!isMakingValid}
-                  />
-                : <input {...numberInput(making, (value) => updateDraftField("making", value))} placeholder="Enter making charge in rupees" />}
+              <input
+                type="number"
+                min="0"
+                max={makingMode === "percentage" ? 100 : undefined}
+                step="0.01"
+                inputMode="decimal"
+                value={making ?? ""}
+                onChange={(event) => updateDraftField("making", event.currentTarget.value)}
+                placeholder={makingMode === "percentage"
+                  ? "Enter percentage (e.g. 12)"
+                  : "Enter making charge in rupees"}
+                aria-label={makingMode === "percentage" ? "Making charge percentage" : "Making charge in rupees"}
+                aria-invalid={makingMode === "percentage" && !isMakingValid}
+              />
               {!isMakingValid && <small className="nkj-calc-error">Making charge percentage must be between 0 and 100%.</small>}
             </label>
             <label>Stamp Charge (₹)<input {...numberInput(stamp, (value) => updateDraftField("stamp", value))} placeholder="0.00" /></label>
