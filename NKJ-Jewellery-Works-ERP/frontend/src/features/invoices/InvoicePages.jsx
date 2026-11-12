@@ -2635,6 +2635,7 @@ export function SavedInvoices() {
   const [sharePreparing, setSharePreparing] = useState(false);
   const [sharingInvoice, setSharingInvoice] = useState(false);
   const sharingInvoiceRef = useRef(false);
+  const preparedPdfCacheRef = useRef(new Map());
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [showPrintPin, setShowPrintPin] = useState(false);
@@ -2642,18 +2643,32 @@ export function SavedInvoices() {
   useEffect(() => {
     let active = true;
     setPreparedShareFile(null);
-    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo) {
+    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo || !hasInvoiceLineItems(selectedInvoice)) {
       setSharePreparing(false);
       return undefined;
     }
+    const cacheKey = [
+      selectedInvoice.id,
+      selectedInvoice.invoiceNo,
+      selectedInvoice.totalPaid,
+      selectedInvoice.grandTotal,
+      JSON.stringify(selectedInvoice.newItems || []),
+      JSON.stringify(selectedInvoice.oldItems || []),
+    ].join("|");
+    let pdfPromise = preparedPdfCacheRef.current.get(cacheKey);
+    if (!pdfPromise) {
+      pdfPromise = createSavedInvoicePdf(selectedInvoice);
+      preparedPdfCacheRef.current.set(cacheKey, pdfPromise);
+    }
     setSharePreparing(true);
-    createSavedInvoicePdf(selectedInvoice)
+    pdfPromise
       .then((blob) => {
         if (!active) return;
         const filename = String(selectedInvoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
         setPreparedShareFile(new File([blob], filename, { type: "application/pdf" }));
       })
       .catch((error) => {
+        preparedPdfCacheRef.current.delete(cacheKey);
         if (active) setDetailError(error.message || "Could not prepare the invoice PDF.");
       })
       .finally(() => {
