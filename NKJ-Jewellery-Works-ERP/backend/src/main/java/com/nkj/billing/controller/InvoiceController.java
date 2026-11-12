@@ -32,6 +32,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nkj.billing.model.Invoice;
 import com.nkj.billing.repo.InvoiceRepository;
 import com.nkj.billing.service.AuthService;
+import com.nkj.billing.service.CustomerService;
+import com.nkj.billing.service.CashFlowService;
+import com.nkj.billing.model.Customer;
 
 @RestController
 @RequestMapping("/api/invoices")
@@ -41,13 +44,17 @@ public class InvoiceController {
     private final ObjectMapper mapper;
     private final AuthService auth;
     private final JdbcTemplate jdbc;
+    private final CustomerService customerService;
+    private final CashFlowService cashFlow;
 
     public InvoiceController(InvoiceRepository repo, ObjectMapper mapper, AuthService auth,
-                             JdbcTemplate jdbc) {
+                             JdbcTemplate jdbc, CustomerService customerService, CashFlowService cashFlow) {
         this.repo = repo;
         this.mapper = mapper;
         this.auth = auth;
         this.jdbc = jdbc;
+        this.customerService = customerService;
+        this.cashFlow = cashFlow;
     }
 
     /**
@@ -107,14 +114,18 @@ public class InvoiceController {
                 existingInvoice.setInvoiceDate(invoiceDate);
                 existingInvoice.setShowGstin(booleanValue(body.get("showGstin"), true));
                 existingInvoice.setInvoiceNo(correctedInvoiceNo);
-                existingInvoice.setPayloadJson(mapper.writeValueAsString(body));
+                existingInvoice.setPayloadJson(sanitizedInvoicePayload(body));
                 repo.saveAndFlush(existingInvoice);
 
                 // Keep denormalized invoice-number references consistent.
                 jdbc.update("UPDATE payments SET invoice_no=? WHERE invoice_id=?",
                         correctedInvoiceNo, existingInvoice.getId());
-                jdbc.update("UPDATE bookings SET invoice_no=? WHERE invoice_no=?",
+                jdbc.update("UPDATE pre_booking_bills SET invoice_no=? WHERE invoice_no=?",
                         correctedInvoiceNo, previousInvoiceNo);
+                // Invoice number corrections update the EMI's denormalized reference
+                // directly by invoice_id, never through a Pre-Booking record.
+                jdbc.update("UPDATE installment_accounts SET invoice_no=? WHERE invoice_id=?",
+                        correctedInvoiceNo, existingInvoice.getId());
 
                 jdbc.update("INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
                                 + "VALUES ('PUBLIC','INVOICE_BUSINESS_DATE_CORRECTED','INVOICES',?,CAST(? AS JSONB),CAST(? AS JSONB),?)",
@@ -130,6 +141,7 @@ public class InvoiceController {
                         )),
                         servletRequest.getRemoteAddr());
             }
+            syncInvoiceCustomer(existingInvoice);
             return view(existingInvoice);
         }
 
@@ -146,11 +158,11 @@ public class InvoiceController {
         invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
 
         invoice.setCustomerName(customerName);
-        invoice.setMobile(clean(body.get("mobile")));
+        invoice.setMobile(customerService.normalizePhone(clean(body.get("mobile"))));
         invoice.setAddress(clean(body.get("address")));
         invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
         invoice.setReferenceNo(clean(body.get("referenceNo")));
-        invoice.setPayloadJson(mapper.writeValueAsString(body));
+        invoice.setPayloadJson(sanitizedInvoicePayload(body));
 
         invoice.setNewTotal(number(body, "newTotal"));
         invoice.setOldTotal(number(body, "oldTotal"));
@@ -176,9 +188,29 @@ public class InvoiceController {
         persistInvoiceItems(invoice.getId(), body.get("oldItems"), "OLD_EXCHANGE");
         Object paymentAmount = body.get("paymentAmount");
         if (paymentAmount != null && decimalValue(paymentAmount).compareTo(BigDecimal.ZERO) > 0) {
-            jdbc.update("INSERT INTO payments(invoice_id, invoice_no, customer_name, payment_date, amount, payment_method, reference_no, notes) VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?)",
-                    invoice.getId(), invoice.getInvoiceNo(), invoice.getCustomerName(), decimalValue(paymentAmount), invoice.getPaymentMode(), invoice.getReferenceNo(), "Initial invoice payment");
+            BigDecimal received = decimalValue(paymentAmount).setScale(2, java.math.RoundingMode.HALF_UP);
+            LocalDate receivedDate = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+            Long paymentId = jdbc.queryForObject("""
+                INSERT INTO payments(
+                    invoice_id, invoice_no, customer_name, payment_date, amount,
+                    payment_method, reference_no, notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING id
+                """, Long.class,
+                    invoice.getId(), invoice.getInvoiceNo(), invoice.getCustomerName(),
+                    Date.valueOf(receivedDate), received, invoice.getPaymentMode(),
+                    invoice.getReferenceNo(), "Initial invoice payment");
+            cashFlow.recordMovement("INVOICE", "INITIAL_COLLECTION", paymentId,
+                    "PAYMENT:" + paymentId, receivedDate, received,
+                    invoice.getCustomerName(), "Initial invoice collection",
+                    invoice.getPaymentMode(), invoice.getReferenceNo(),
+                    invoice.getInvoiceNo(), "INVOICE-INITIAL:" + invoice.getId(), null);
         }
+        // Customer registration is part of this invoice transaction. A failure
+        // rolls back the invoice, its items and its initial payment as well.
+        syncInvoiceCustomer(invoice);
+
         jdbc.update("INSERT INTO audit_logs(actor_identity,action,module,record_id,new_value,ip_address) VALUES ('PUBLIC','INVOICE_CREATED','INVOICES',?,CAST(? AS JSONB),?)",
                 String.valueOf(invoice.getId()),
                 mapper.writeValueAsString(Map.of(
@@ -221,11 +253,11 @@ public class InvoiceController {
 
         invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
         invoice.setCustomerName(customerName);
-        invoice.setMobile(clean(body.get("mobile")));
+        invoice.setMobile(customerService.normalizePhone(clean(body.get("mobile"))));
         invoice.setAddress(clean(body.get("address")));
         invoice.setPaymentMode(defaultValue(clean(body.get("paymentMode")), "Cash"));
         invoice.setReferenceNo(clean(body.get("referenceNo")));
-        invoice.setPayloadJson(mapper.writeValueAsString(body));
+        invoice.setPayloadJson(sanitizedInvoicePayload(body));
 
         invoice.setNewTotal(number(body, "newTotal"));
         invoice.setOldTotal(number(body, "oldTotal"));
@@ -244,6 +276,8 @@ public class InvoiceController {
         jdbc.update("DELETE FROM invoice_items WHERE invoice_id = ?", invoice.getId());
         persistInvoiceItems(invoice.getId(), body.get("newItems"), "NEW");
         persistInvoiceItems(invoice.getId(), body.get("oldItems"), "OLD_EXCHANGE");
+
+        syncInvoiceCustomer(invoice);
 
         jdbc.update(
                 "INSERT INTO audit_logs(actor_identity,action,module,record_id,previous_value,new_value,ip_address) "
@@ -533,10 +567,19 @@ public class InvoiceController {
 
 
     private void validateMobileNumber(Map<String, Object> body) {
-        String mobile = clean(body.get("mobile"));
-        if (!mobile.isEmpty() && !mobile.matches("[0-9]{10}")) {
-            throw new IllegalArgumentException("Mobile number must contain exactly 10 digits (0-9 only).");
-        }
+        // Accept spaces, hyphens, parentheses and an optional Indian +91/0
+        // prefix; the customer service stores/compares the canonical 10 digits.
+        customerService.normalizePhone(clean(body.get("mobile")));
+    }
+
+    private void syncInvoiceCustomer(Invoice invoice) {
+        Customer customer = customerService.registerOrReuseFromInvoice(
+                invoice.getCustomerName(),
+                invoice.getMobile(),
+                null,
+                invoice.getAddress());
+        invoice.setCustomerId(customer == null ? null : customer.getId());
+        repo.saveAndFlush(invoice);
     }
 
     private void validateNonNegativeDecimal(Object value, String field) {
@@ -579,6 +622,13 @@ public class InvoiceController {
         return value == null ? "" : String.valueOf(value).trim();
     }
 
+    private String sanitizedInvoicePayload(Map<String, Object> body) throws Exception {
+        Map<String,Object> safe = new LinkedHashMap<>(body);
+        safe.remove("customerEmail");
+        safe.remove("email");
+        return mapper.writeValueAsString(safe);
+    }
+
     private String defaultValue(String value, String fallback) {
         return value.isBlank() ? fallback : value;
     }
@@ -592,6 +642,7 @@ public class InvoiceController {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", invoice.getId());
         response.put("invoiceNo", invoice.getInvoiceNo());
+        response.put("customerId", invoice.getCustomerId());
         response.put("customerName", invoice.getCustomerName());
         response.put("mobile", invoice.getMobile());
         response.put("address", invoice.getAddress());
@@ -636,6 +687,12 @@ public class InvoiceController {
             details = Collections.emptyMap();
         }
 
+        // Older invoices may have customerEmail/email keys in payload_json.
+        // Keep that historical source unchanged, but never expose email in
+        // invoice preview/detail/print responses.
+        details = new LinkedHashMap<>(details);
+        details.remove("customerEmail");
+        details.remove("email");
         Map<String, Object> response = new LinkedHashMap<>(details);
         response.putAll(summary(invoice));
         response.put("details", details);

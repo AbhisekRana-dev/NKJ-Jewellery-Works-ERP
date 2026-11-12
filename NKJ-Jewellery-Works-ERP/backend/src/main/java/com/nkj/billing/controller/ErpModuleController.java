@@ -17,16 +17,19 @@ public class ErpModuleController {
     private final JdbcTemplate jdbc;
     private final DataSource dataSource;
     private final com.nkj.billing.service.SalesAccountingService salesAccounting;
+    private final com.nkj.billing.service.CashFlowService cashFlow;
 
     public ErpModuleController(
             ErpModuleService modules,
             JdbcTemplate jdbc,
             DataSource dataSource,
-            com.nkj.billing.service.SalesAccountingService salesAccounting) {
+            com.nkj.billing.service.SalesAccountingService salesAccounting,
+            com.nkj.billing.service.CashFlowService cashFlow) {
         this.modules = modules;
         this.jdbc = jdbc;
         this.dataSource = dataSource;
         this.salesAccounting = salesAccounting;
+        this.cashFlow = cashFlow;
     }
 
     @GetMapping("/modules/{module}")
@@ -51,17 +54,18 @@ public class ErpModuleController {
         return modules.createInstallmentPlan(body, idempotencyKey, request.getRemoteAddr());
     }
 
-    @GetMapping("/installments/plans/{bookingId}")
-    public Map<String,Object> installmentPlanDetails(@PathVariable long bookingId) {
-        return modules.getInstallmentPlanDetails(bookingId);
+    @GetMapping("/installments/plans/{accountId}")
+    public Map<String,Object> installmentPlanDetails(@PathVariable long accountId) {
+        return modules.getInstallmentPlanDetails(accountId);
     }
 
     @PostMapping("/installments/payments")
     public Map<String,Object> collectInstallmentPayment(
             @RequestBody Map<String,Object> body,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader("X-Admin-Password") String adminPassword,
             jakarta.servlet.http.HttpServletRequest request) throws Exception {
-        return modules.collectInstallmentPayment(body, idempotencyKey, request.getRemoteAddr());
+        return modules.collectInstallmentPayment(body, idempotencyKey, adminPassword, request.getRemoteAddr());
     }
 
     @PutMapping("/installments/schedules/{installmentId}/due-date")
@@ -81,10 +85,36 @@ public class ErpModuleController {
         return modules.reverseInstallmentPayment(paymentId, body, idempotencyKey, request.getRemoteAddr());
     }
 
+    @GetMapping("/transactions")
+    public Object transactions(
+            @RequestParam(name = "direction", required = false) String direction,
+            @RequestParam(name = "search", required = false) String search) {
+        return cashFlow.list(direction, search);
+    }
+
+    @GetMapping("/transactions/summary")
+    public Map<String,Object> transactionSummary() {
+        return cashFlow.summary();
+    }
+
+    @GetMapping("/transactions/refundable")
+    public Object refundableTransactions() {
+        return cashFlow.refundableTransactions();
+    }
+
+    @PostMapping("/transactions/refunds")
+    public Map<String,Object> createRefund(
+            @RequestBody Map<String,Object> body,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            jakarta.servlet.http.HttpServletRequest request) {
+        return cashFlow.createRefund(body, idempotencyKey, request.getRemoteAddr());
+    }
+
     @PostMapping("/modules/{module}")
     public Map<String,Object> create(@PathVariable String module, @RequestBody Map<String,Object> body,
+                                     @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                      jakarta.servlet.http.HttpServletRequest request) {
-        return modules.create(module, body, request.getRemoteAddr());
+        return modules.create(module, body, request.getRemoteAddr(), idempotencyKey);
     }
 
     @PutMapping("/modules/{module}/{id}")
@@ -118,14 +148,20 @@ public class ErpModuleController {
         result.put("staffCount", jdbc.queryForObject("SELECT COUNT(*) FROM staff WHERE status='ACTIVE'", Long.class));
         result.put("presentToday", jdbc.queryForObject("SELECT COUNT(*) FROM staff_attendance WHERE attendance_date=CURRENT_DATE AND status='PRESENT'", Long.class));
         result.put("absentToday", jdbc.queryForObject("SELECT COUNT(*) FROM staff_attendance WHERE attendance_date=CURRENT_DATE AND status='ABSENT'", Long.class));
-        result.put("openBookings", jdbc.queryForObject("SELECT COUNT(*) FROM bookings WHERE status IN ('OPEN','IN_PROGRESS')", Long.class));
+        result.put("openBookings", jdbc.queryForObject("""
+            SELECT COUNT(*) FROM pre_booking_bills b
+             WHERE b.status IN ('OPEN','IN_PROGRESS')
+            """, Long.class));
         result.put("monthlySalaryExpense", jdbc.queryForObject("SELECT COALESCE(SUM(net_salary),0) FROM staff_salary WHERE payroll_month=to_char(CURRENT_DATE,'YYYY-MM')", BigDecimal.class));
         result.put("pendingSalary", jdbc.queryForObject("SELECT COALESCE(SUM(remaining_salary),0) FROM staff_salary WHERE payment_status<>'PAID'", BigDecimal.class));
         result.put("goldStockQuantity", jdbc.queryForObject("SELECT COALESCE(SUM(stock_quantity),0) FROM products WHERE UPPER(COALESCE(metal_type,''))='GOLD'", BigDecimal.class));
         result.put("silverStockQuantity", jdbc.queryForObject("SELECT COALESCE(SUM(stock_quantity),0) FROM products WHERE UPPER(COALESCE(metal_type,''))='SILVER'", BigDecimal.class));
         result.put("lowStockCount", jdbc.queryForObject("SELECT COUNT(*) FROM products WHERE stock_quantity>0 AND stock_quantity<=2 AND status='IN_STOCK'", Long.class));
         result.put("supplierOutstanding", jdbc.queryForObject("SELECT COALESCE(SUM(balance),0) FROM purchases", BigDecimal.class));
-        result.put("bookingOutstanding", jdbc.queryForObject("SELECT COALESCE(SUM(remaining_amount),0) FROM bookings WHERE status IN ('OPEN','IN_PROGRESS')", BigDecimal.class));
+        result.put("bookingOutstanding", jdbc.queryForObject("""
+            SELECT COALESCE(SUM(b.remaining_amount),0) FROM pre_booking_bills b
+             WHERE b.status IN ('OPEN','IN_PROGRESS')
+            """, BigDecimal.class));
         // This is deliberately labelled operating result, not net profit: purchases/COGS are not yet reconciled.
         result.put("operatingResultBeforeCogs", ((BigDecimal) result.get("monthSales")).subtract((BigDecimal) result.get("monthExpenses")));
         return result;

@@ -1,5 +1,6 @@
 import "./OwnerShell.css";
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
@@ -11,6 +12,32 @@ import { useAuth } from "../../core/auth/AuthProvider";
 
 const SIDEBAR_STORAGE_KEY = "nkj-owner-sidebar-collapsed";
 const SIDEBAR_SCROLL_KEY = "nkj-owner-sidebar-scroll";
+const SIDEBAR_DOUBLE_CLICK_MS = 500;
+const SIDEBAR_DOUBLE_CLICK_DISTANCE = 18;
+
+// Retains the first click across React Router replacing the current Page/Nav
+// DOM after navigation. This is a timestamp comparison, not a timer/debounce.
+let previousSidebarClick = null;
+
+function isSecondSidebarClick(event, zone) {
+  const previous = previousSidebarClick;
+  const elapsed = previous ? event.timeStamp - previous.timeStamp : Infinity;
+  const distance = previous
+    ? Math.hypot(event.clientX - previous.x, event.clientY - previous.y)
+    : Infinity;
+  const secondClick = Boolean(
+    previous
+      && previous.zone === zone
+      && elapsed >= 0
+      && elapsed <= SIDEBAR_DOUBLE_CLICK_MS
+      && distance <= SIDEBAR_DOUBLE_CLICK_DISTANCE
+  );
+
+  previousSidebarClick = secondClick
+    ? null
+    : { zone, timeStamp: event.timeStamp, x: event.clientX, y: event.clientY };
+  return secondClick;
+}
 
 function initialSidebarState() {
   try {
@@ -21,6 +48,38 @@ function initialSidebarState() {
     return false;
   }
 }
+
+const compactNavigationLabels = {
+  dashboard: "Dash",
+  invoice: "New",
+  saved: "Bills",
+  bookings: "Book",
+  installments: "EMI",
+  "old-gold": "Old",
+  inventory: "Stock",
+  purchases: "Buy",
+  "stock-movements": "Moves",
+  rates: "Rates",
+  customers: "Client",
+  suppliers: "Supp",
+  expenses: "Exp.",
+  transactions: "Trans",
+  payments: "Pay",
+  reports: "Rpt.",
+  "reports-sales": "Sales",
+  "reports-profit": "P&L",
+  "reports-expenses": "ExRpt",
+  staff: "Staff",
+  attendance: "Attnd",
+  leaves: "Leave",
+  salary: "Salary",
+  "salary-payments": "Pay",
+  karigars: "Kari",
+  repairs: "Repair",
+  database: "Data",
+  "audit-logs": "Logs",
+  profile: "Prof",
+};
 
 const ownerNavigation = [
   { title: "OVERVIEW", items: [
@@ -45,6 +104,7 @@ const ownerNavigation = [
   ]},
   { title: "FINANCE & REPORTS", items: [
     ["expenses", "Expenses", "/expenses", Wallet],
+    ["transactions", "Transactions", "/transactions", ArrowLeftRight],
     ["payments", "Payments", "/payments", Receipt],
     ["reports", "Reports Overview", "/reports", ChartNoAxesColumn],
     ["reports-sales", "Sales Report", "/reports/sales", ChartNoAxesColumn],
@@ -70,6 +130,8 @@ const ownerNavigation = [
 export function Nav({ active = "home" }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
+  const sidebarCollapsedRef = useRef(sidebarCollapsed);
+  sidebarCollapsedRef.current = sidebarCollapsed;
   const sidebarNavRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
 
@@ -96,6 +158,119 @@ export function Nav({ active = "home" }) {
     } catch {
       // The navigation still works if session storage is disabled.
     }
+  }, [ownerWorkspace]);
+
+  useLayoutEffect(() => {
+    if (!ownerWorkspace) {
+      previousSidebarClick = null;
+      return undefined;
+    }
+
+    const elementFromTarget = (target) => (
+      target instanceof Element ? target : target?.parentElement
+    );
+
+    const commitSidebarState = (nextCollapsed) => {
+      sidebarCollapsedRef.current = nextCollapsed;
+      flushSync(() => setSidebarCollapsed(nextCollapsed));
+    };
+
+    const handleClickCapture = (event) => {
+      const target = elementFromTarget(event.target);
+      if (!target) return;
+
+      const collapsed = sidebarCollapsedRef.current;
+
+      if (collapsed) {
+        // A collapsed menu item must open the sidebar on its second click.
+        // The first click may navigate and replace the Nav DOM, so click memory
+        // is retained at module scope and matched again by the next Nav instance.
+        const collapsedMenuLink = target.closest(
+          ".nkj-owner-nav a, .nkj-owner-sidebar-bottom a"
+        );
+        if (collapsedMenuLink) {
+          const label = (
+            collapsedMenuLink.getAttribute("aria-label")
+            || collapsedMenuLink.textContent
+            || ""
+          ).trim().replace(/\s+/g, " ");
+          const isSecondMenuClick = event.detail === 2
+            || isSecondSidebarClick(event, `collapsed-sidebar-icon:${label}`);
+          if (!isSecondMenuClick) return;
+
+          previousSidebarClick = null;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          commitSidebarState(false);
+          return;
+        }
+
+        const pageContent = target.closest(".app-content main");
+        if (!pageContent) {
+          previousSidebarClick = null;
+          return;
+        }
+
+        // Works for a stable element (click.detail) and after React Router
+        // remounts the page/sidebar between the first and second clicks.
+        const isSecondClick = event.detail === 2
+          || isSecondSidebarClick(event, "page-content");
+        if (!isSecondClick) return;
+        previousSidebarClick = null;
+
+        const repeatedContentAction = target.closest(
+          ".app-content main a, .app-content main button, .app-content main input[type='button'], .app-content main input[type='submit']"
+        );
+        if (repeatedContentAction) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+
+        commitSidebarState(false);
+        return;
+      }
+
+      // Only menu text closes the expanded sidebar; icons/arrows do not.
+      const sidebarText = target.closest(
+        ".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span"
+      );
+      if (sidebarText) {
+        const label = (sidebarText.textContent || "").trim().replace(/\s+/g, " ");
+        const isSecondClick = event.detail === 2
+          || isSecondSidebarClick(event, `sidebar-text:${label}`);
+        if (!isSecondClick) return;
+        previousSidebarClick = null;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        commitSidebarState(true);
+        return;
+      }
+
+      // Icon double-clicks do not toggle, but the second click must not
+      // activate the same navigation link twice.
+      const sidebarLink = target.closest(".nkj-owner-sidebar a");
+      if (sidebarLink) {
+        const label = sidebarLink.getAttribute("aria-label") || sidebarLink.textContent.trim();
+        const isSecondClick = event.detail === 2
+          || isSecondSidebarClick(event, `sidebar-icon:${label}`);
+        if (isSecondClick) {
+          previousSidebarClick = null;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+        return;
+      }
+
+      previousSidebarClick = null;
+    };
+
+    document.addEventListener("click", handleClickCapture, true);
+    return () => {
+      document.removeEventListener("click", handleClickCapture, true);
+      // Keep the first-click record while an owner route is replaced.
+      // The next Nav instance consumes it if the second click arrives.
+    };
   }, [ownerWorkspace]);
 
   if (ownerWorkspace) {
@@ -150,7 +325,10 @@ export function Nav({ active = "home" }) {
                       aria-current={selected ? "page" : undefined}
                     >
                       <Icon size={18} aria-hidden="true" />
-                      <span>{label}</span>
+                      <span className="nkj-owner-nav-label">{label}</span>
+                      <small className="nkj-owner-compact-label" aria-hidden="true">
+                        {compactNavigationLabels[key] || label}
+                      </small>
                       <ChevronRight className="nkj-owner-nav-arrow" size={14} aria-hidden="true" />
                     </Link>
                   );
@@ -161,10 +339,10 @@ export function Nav({ active = "home" }) {
 
           <div className="nkj-owner-sidebar-bottom">
             <Link to="/" className="nkj-owner-public-link" title={sidebarCollapsed ? "Public Home" : undefined}>
-              <HomeIcon size={18} /><span>Public Home</span>
+              <HomeIcon size={18} /><span>Home</span>
             </Link>
             <button type="button" onClick={logout} title={sidebarCollapsed ? "Logout" : undefined}>
-              <LogOut size={18} /><span>Logout</span>
+              <LogOut size={18} /><span>Exit</span>
             </button>
           </div>
         </aside>

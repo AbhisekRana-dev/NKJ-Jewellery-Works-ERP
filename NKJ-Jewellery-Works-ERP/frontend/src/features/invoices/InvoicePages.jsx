@@ -772,6 +772,9 @@ export function InvoicePage() {
       gstAmount: tax,
       otherCharge: 0,
       grandTotal: grand,
+      // This invoice screen records a full-payment invoice (payment mode is selected above).
+      // The backend uses this amount to create the matching Incoming cash transaction.
+      paymentAmount: grand,
     };
   }
 
@@ -917,6 +920,9 @@ export function InvoicePage() {
       setDraftRestored(false);
       setShowInvoicePin(false);
       setSuccessMessage(`Invoice ${result.invoiceNo} ${isEditingSavedInvoice ? "updated" : "saved"} successfully. It is now available in Invoice History.`);
+      // Customer Management reloads immediately if it is mounted; otherwise
+      // its normal page load fetches the newly committed customer row.
+      window.dispatchEvent(new Event("nkj:customers-updated"));
       return result;
     } catch (e) {
       setError(e.message || "Could not save the invoice. Printing and PDF download have been stopped; your draft is still available.");

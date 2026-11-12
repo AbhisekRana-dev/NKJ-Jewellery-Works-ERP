@@ -1,0 +1,1212 @@
+name: Verify Jewellery ERP build and installment separation
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: NKJ-Jewellery-Works-ERP/frontend/package-lock.json
+      - run: npm ci
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
+      - run: npm run build
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
+      - name: Verify customer email fields are absent from invoice and customer UI
+        run: |
+          ! grep -Eq 'Email Address|customerEmail|customer\.email' NKJ-Jewellery-Works-ERP/frontend/src/features/invoices/InvoicePages.jsx
+          python3 - <<'PY'
+          from pathlib import Path
+          config = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/admin/moduleConfig.js").read_text()
+          customer = config.split("  customers: {", 1)[1].split("  suppliers: {", 1)[0]
+          assert '"email"' not in customer and '"Email"' not in customer, "Customer Management still defines an email field or column."
+          PY
+      - name: Verify sidebar double-click behavior in both states
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          shell = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.jsx").read_text()
+          nav_start = shell.index("const ownerNavigation = [")
+          nav_end = shell.index(chr(10) + "];", nav_start)
+          nav_items = shell[nav_start:nav_end].count('["')
+          assert nav_items == 29, f"Expected all 29 owner sidebar menu items, found {nav_items}."
+          assert "group.items.map(([key, label, to, Icon])" in shell
+
+          # First click must survive route navigation replacing the DOM.
+          assert "let previousSidebarClick = null;" in shell
+          helper_start = shell.index("function isSecondSidebarClick(event, zone) {")
+          helper_end = shell.index(chr(10) + "}", helper_start)
+          helper = shell[helper_start:helper_end]
+          assert "event.timeStamp - previous.timeStamp" in helper
+          assert "Math.hypot(event.clientX - previous.x, event.clientY - previous.y)" in helper
+          assert "SIDEBAR_DOUBLE_CLICK_MS" in helper
+          assert "setTimeout(" not in helper
+
+          effect_start = shell.index("const handleClickCapture = (event) => {")
+          effect_end = shell.index('document.addEventListener("click", handleClickCapture, true)', effect_start)
+          handlers = shell[effect_start:effect_end]
+          assert "sidebarCollapsedRef.current" in handlers
+          assert 'target.closest(".app-content main")' in handlers
+          assert 'isSecondSidebarClick(event, "page-content")' in handlers
+          assert "commitSidebarState(false)" in handlers
+          assert '".nkj-owner-nav a span, .nkj-owner-sidebar-bottom a span"' in handlers
+          assert "sidebar-text:" in handlers
+          assert "commitSidebarState(true)" in handlers
+          assert "event.preventDefault()" in handlers and "event.stopImmediatePropagation()" in handlers
+          assert "const repeatedContentAction = target.closest(" in handlers
+          collapsed_icon_start = handlers.index("const collapsedMenuLink = target.closest(")
+          page_content_start = handlers.index('const pageContent = target.closest(".app-content main")')
+          assert collapsed_icon_start < page_content_start, "Collapsed menu icon handling must run before page-content handling."
+          assert 'collapsed-sidebar-icon:' in handlers, "Collapsed menu icons are not tracked across route remounts."
+          assert "commitSidebarState(false)" in handlers[collapsed_icon_start:page_content_start], "Double-clicking a collapsed menu icon does not expand the sidebar."
+          assert 'target.closest(".nkj-owner-sidebar a")' in handlers
+          label_start = shell.index("const compactNavigationLabels = {")
+          label_end = shell.index("};", label_start)
+          compact_labels = re.findall(r'^\s*(?:"[^"]+"|[a-z-]+):\s*"[^"]+"', shell[label_start:label_end], re.MULTILINE)
+          assert len(compact_labels) == 29, f"Expected 29 compact menu labels, found {len(compact_labels)}."
+          assert '<small className="nkj-owner-compact-label" aria-hidden="true">' in shell, "Dedicated compact labels are missing from each navigation link."
+          assert "flushSync(() => setSidebarCollapsed(nextCollapsed))" in shell
+          assert 'document.addEventListener("click", handleClickCapture, true)' in shell
+          assert 'document.addEventListener("dblclick"' not in shell
+          assert "}, [ownerWorkspace]);" in shell
+
+          # The cleanup removes the listener but retains click memory while
+          # React Router swaps one Page/Nav for another.
+          cleanup_start = shell.index("return () => {", effect_end)
+          cleanup_end = shell.index("}, [ownerWorkspace]);", cleanup_start)
+          assert "previousSidebarClick = null" not in shell[cleanup_start:cleanup_end]
+
+          app = Path("NKJ-Jewellery-Works-ERP/frontend/src/app/App.jsx").read_text()
+          assert '<div className="app-content">' in app
+          assert "<Nav active={active} />" in shell
+          assert '<main className={active === "invoice"' in shell
+          css = Path("NKJ-Jewellery-Works-ERP/frontend/src/shared/layouts/OwnerShell.css").read_text()
+          assert ":root {" in css and "--nkj-owner-expanded-width: 250px;" in css
+          assert "--nkj-owner-collapsed-width: 75px;" in css
+          assert "min-width: 250px !important;" in css and "max-width: 250px !important;" in css
+          assert "min-width: 75px !important;" in css and "max-width: 75px !important;" in css
+          assert "flex: 0 0 250px !important;" in css and "flex: 0 0 75px !important;" in css
+          assert "width: calc(100% - var(--nkj-owner-sidebar-width)) !important;" in css
+          assert "margin-left: var(--nkj-owner-sidebar-width) !important;" in css
+          assert "white-space: nowrap;" in css and "text-overflow: ellipsis;" in css
+          assert "margin-top: auto !important;" in css, "Home and Exit must remain anchored at the sidebar bottom."
+          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {" in css
+          profile_css = Path("NKJ-Jewellery-Works-ERP/frontend/src/features/profile/Profile.css").read_text()
+          assert "var(--nkj-owner-sidebar-width" in profile_css, "Profile must follow the same shared sidebar width."
+          assert "pointer-events: none" not in css
+          assert ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {" in css
+          collapsed_label_selector = ".nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > small.nkj-owner-compact-label {"
+          collapsed_label_start = css.rfind(collapsed_label_selector)
+          assert collapsed_label_start >= 0, "Collapsed compact labels are missing."
+          collapsed_label_css = css[collapsed_label_start + len(collapsed_label_selector):].split("}", 1)[0]
+          assert "display: block !important" in collapsed_label_css and "font-size: 11px" in collapsed_label_css
+          assert "white-space: nowrap !important;" in collapsed_label_css and "overflow: hidden !important;" in collapsed_label_css
+          assert "Collapsed sidebar icon and label sizing" in css
+          compact_ui_start = css.rfind("/* Collapsed sidebar icon and label sizing")
+          compact_ui = css[compact_ui_start:]
+          assert "width: 28px !important;" in compact_ui and "height: 28px !important;" in compact_ui
+          assert "font-size: 11px !important;" in compact_ui
+          assert "flex: 0 0 72px !important;" in compact_ui and "min-height: 72px !important;" in compact_ui
+          assert "overflow-y: auto !important;" in compact_ui and "min-height: 0 !important;" in compact_ui
+          assert "margin-top: auto !important;" in compact_ui, "Home and Exit must remain fixed below the scrolling navigation."
+          assert "background: #f3d892 !important;" in compact_ui and "color: #5a0a20 !important;" in compact_ui
+          assert "@media (max-width: 1100px)" in css
+          assert ".nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav a span" in css
+          assert "@media (max-width: 760px)" in css and "--nkj-owner-sidebar-width: var(--nkj-owner-collapsed-width);" in css
+          assert "setTimeout(" not in handlers and "debounce" not in handlers.lower()
+          print("Route-safe instant sidebar checks passed for both states and all 28 menu items.")
+          PY
+
+      - name: Verify source-aware cash flow classification and history
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path("NKJ-Jewellery-Works-ERP")
+          cash = (root / "backend/src/main/java/com/nkj/billing/service/CashFlowService.java").read_text()
+          modules = (root / "backend/src/main/java/com/nkj/billing/service/ErpModuleService.java").read_text()
+          invoice = (root / "backend/src/main/java/com/nkj/billing/controller/InvoiceController.java").read_text()
+          migration = (root / "backend/src/main/resources/db/migration/V23__cash_flow_transaction_ledger.sql").read_text()
+          page = (root / "frontend/src/features/transactions/TransactionsPage.jsx").read_text()
+          styles = (root / "frontend/src/features/transactions/TransactionsPage.css").read_text()
+
+          for key in (
+              "INVOICE:INITIAL_COLLECTION",
+              "PAYMENTS:CUSTOMER_RECEIPT",
+              "PRE_BOOKINGS:ADVANCE_RECEIPT",
+              "INSTALLMENTS:DOWN_PAYMENT",
+              "INSTALLMENTS:INSTALLMENT_RECEIPT",
+          ):
+              assert key in cash, f"Missing Incoming source rule: {key}"
+          for key in (
+              "EXPENSES:EXPENSE_PAYMENT",
+              "PURCHASES:SUPPLIER_PAYMENT",
+              "SALARY:INITIAL_SALARY_PAYMENT",
+              "SALARY_PAYMENTS:SALARY_PAYMENT",
+              "REFUNDS:CUSTOMER_REFUND",
+          ):
+              assert key in cash, f"Missing Outgoing source rule: {key}"
+
+          for operation in (
+              '"PRE_BOOKINGS", "ADVANCE_RECEIPT"',
+              '"PAYMENTS", "CUSTOMER_RECEIPT"',
+              '"EXPENSES", "EXPENSE_PAYMENT"',
+              '"PURCHASES", "SUPPLIER_PAYMENT"',
+              '"SALARY", "INITIAL_SALARY_PAYMENT"',
+              '"SALARY_PAYMENTS", "SALARY_PAYMENT"',
+              '"INSTALLMENTS", "DOWN_PAYMENT"',
+              '"INSTALLMENTS", "INSTALLMENT_RECEIPT"',
+          ):
+              assert operation in modules, f"Missing actual-payment source hook: {operation}"
+          assert '"INVOICE", "INITIAL_COLLECTION"' in invoice
+
+          assert "ON CONFLICT DO NOTHING" in cash, "Cash movements must be idempotent across every unique key."
+          assert "verifySameMovement(" in cash, "A reused source event key must be checked against the original movement."
+          assert "This Idempotency-Key has already been used for a different cash transaction." in cash
+          assert "LIMIT 2000" not in cash, "The Cashbook API must not truncate older transaction history."
+          assert "status='POSTED'" in cash and "netCashFlow" in cash
+          assert "uq_cash_transactions_source_event" in migration
+          assert "uq_cash_transactions_idempotency" in migration
+
+          assert 'row.direction === "INCOMING"' in page, "Rows must be classified using the source-derived direction."
+          assert '["INCOMING", "Incoming"]' in page and '["OUTGOING", "Outgoing"]' in page
+          assert 'incoming ? "+" : "−"' in page
+          assert "is-incoming" in styles and "is-outgoing" in styles
+          assert "#16834a" in styles and "#bd3030" in styles
+          assert "Only recorded payments and receipts appear here" in page
+
+          assert 'module.equals("payments")' in modules
+          assert "A customer receipt must contain an amount greater than zero." in modules
+          assert '? "PENDING" :' in modules and "paymentStatus" in modules
+          assert 'cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT"' in modules
+          assert 'cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT"' in modules
+          expense_hook = modules.split('cashFlow.recordMovement("EXPENSES", "EXPENSE_PAYMENT"', 1)[1].split(");", 1)[0]
+          purchase_hook = modules.split('cashFlow.recordMovement("PURCHASES", "SUPPLIER_PAYMENT"', 1)[1].split(");", 1)[0]
+          assert "shopToday()" in expense_hook, "Initial expense cash should be dated when it is actually posted."
+          assert "shopToday()" in purchase_hook, "Initial supplier cash should be dated when it is actually paid."
+          print("Source-aware cash flow rules, signs, filters, idempotency and full-history checks passed.")
+          PY
+
+  backend-build-and-migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nkj_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nkj_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: mvn -B -DskipTests package
+        working-directory: NKJ-Jewellery-Works-ERP/backend
+
+      # Apply the historical schema first, so the V20 migration is exercised
+      # against real legacy booking/schedule/payment rows rather than an empty DB.
+      - name: Start backend at schema version 19
+        working-directory: NKJ-Jewellery-Works-ERP/backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/nkj_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          ADMIN_USERNAME: ci-owner
+          ADMIN_PASSWORD: ci-only-password
+          TOTP_SECRET: JBSWY3DPEHPK3PXP
+        run: |
+          java -jar target/nkj-billing-1.0.0.jar --spring.flyway.target=19 > /tmp/nkj-v19.log 2>&1 &
+          echo $! > /tmp/nkj-backend.pid
+          for attempt in $(seq 1 90); do
+            if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='19' AND success=true" 2>/dev/null | grep -q '^1$'; then
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/nkj-backend.pid)" 2>/dev/null; then
+              cat /tmp/nkj-v19.log
+              exit 1
+            fi
+            sleep 2
+          done
+          cat /tmp/nkj-v19.log
+          exit 1
+
+      - name: Seed one legacy EMI and one genuine Pre-Booking
+        run: |
+          psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          INSERT INTO invoices(invoice_no, invoice_date, customer_name, mobile, address, grand_total)
+          VALUES ('NKJ-CI-EMI-001', CURRENT_DATE, 'EMI Migration Customer', '9000000001', 'EMI address', 1000.00);
+
+          INSERT INTO bookings(
+              booking_no, invoice_no, invoice_id, customer_name, mobile, booking_date,
+              description, metal_type, purity, estimated_weight, estimated_rate,
+              estimated_value, making_estimate, advance_amount, remaining_amount,
+              delivery_date, status, is_installment_plan, total_installments,
+              payment_frequency, down_payment_date, down_payment_method,
+              down_payment_reference_no, down_payment_recorded_by, converted_at
+          )
+          SELECT 'NKJ-CI-LEGACY-EMI', i.invoice_no, i.id, i.customer_name, i.mobile,
+                 CURRENT_DATE, 'Legacy EMI fixture', 'GOLD', '22K', 0, 0,
+                 i.grand_total, 0, 500, 400, CURRENT_DATE, 'OPEN', TRUE, 2,
+                 'MONTHLY', CURRENT_DATE, 'UPI', 'CI-DOWNPAY', 'CI', NOW()
+            FROM invoices i WHERE i.invoice_no='NKJ-CI-EMI-001';
+
+          INSERT INTO installments(booking_id, installment_no, due_date, amount_due, amount_paid, remaining_amount, payment_status)
+          SELECT b.id, 1, CURRENT_DATE + 30, 250, 100, 150, 'PARTIAL'
+            FROM bookings b WHERE b.booking_no='NKJ-CI-LEGACY-EMI';
+          INSERT INTO installments(booking_id, installment_no, due_date, amount_due, amount_paid, remaining_amount, payment_status)
+          SELECT b.id, 2, CURRENT_DATE + 60, 250, 0, 250, 'PENDING'
+            FROM bookings b WHERE b.booking_no='NKJ-CI-LEGACY-EMI';
+
+          INSERT INTO installment_payments(
+              installment_id, booking_id, entry_type, payment_date, amount,
+              payment_method, reference_no, idempotency_key, recorded_by
+          )
+          SELECT s.id, s.booking_id, 'INSTALLMENT', CURRENT_DATE, 100,
+                 'UPI', 'CI-INSTALLMENT-RECEIPT', 'CI-EMI-PAY-1', 'CI'
+            FROM installments s JOIN bookings b ON b.id=s.booking_id
+           WHERE b.booking_no='NKJ-CI-LEGACY-EMI' AND s.installment_no=1;
+
+          INSERT INTO installment_payments(
+              installment_id, booking_id, entry_type, payment_date, amount,
+              payment_method, reference_no, idempotency_key, recorded_by
+          )
+          SELECT NULL, b.id, 'DOWN_PAYMENT', CURRENT_DATE, 500,
+                 'UPI', 'CI-DOWNPAY', 'CI-EMI-DOWNPAY-1', 'CI'
+            FROM bookings b WHERE b.booking_no='NKJ-CI-LEGACY-EMI';
+
+          INSERT INTO installment_payment_reversals(
+              payment_id, reversal_date, amount, reason, idempotency_key, recorded_by
+          )
+          SELECT p.id, CURRENT_DATE, 10, 'CI fixture reversal', 'CI-EMI-REV-1', 'CI'
+            FROM installment_payments p WHERE p.idempotency_key='CI-EMI-PAY-1';
+
+          INSERT INTO bookings(
+              booking_no, customer_name, mobile, booking_date, description,
+              metal_type, purity, estimated_value, making_estimate,
+              advance_amount, remaining_amount, status, is_installment_plan
+          )
+          VALUES (
+              'NKJ-CI-GENUINE-BOOKING', 'Pre-Booking Customer', '9000000002',
+              CURRENT_DATE, 'Genuine pre-booking fixture', 'GOLD', '22K',
+              2000, 0, 200, 1800, 'OPEN', FALSE
+          );
+
+          INSERT INTO installments(booking_id, installment_no, due_date, amount_due, amount_paid, remaining_amount, payment_status)
+          SELECT b.id, 1, CURRENT_DATE + 20, 1000, 0, 1000, 'PENDING'
+            FROM bookings b WHERE b.booking_no='NKJ-CI-GENUINE-BOOKING';
+
+          -- Existing duplicate phone rows are deliberately retained by V22.
+          INSERT INTO customers(customer_code, name, phone, email, address)
+          VALUES
+            ('NKJ-CI-CUSTOMER-DUP-01', 'Legacy Customer Primary', '+91 98765-00000', 'primary@example.test', 'Primary saved address'),
+            ('NKJ-CI-CUSTOMER-DUP-02', 'Legacy Customer Duplicate', '9876500000', 'duplicate@example.test', 'Duplicate saved address');
+          COMMIT;
+          SQL
+
+      - name: Apply V20 and verify module separation
+        working-directory: NKJ-Jewellery-Works-ERP/backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/nkj_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          ADMIN_USERNAME: ci-owner
+          ADMIN_PASSWORD: ci-only-password
+          TOTP_SECRET: JBSWY3DPEHPK3PXP
+        run: |
+          kill "$(cat /tmp/nkj-backend.pid)"
+          for attempt in $(seq 1 30); do
+            kill -0 "$(cat /tmp/nkj-backend.pid)" 2>/dev/null || break
+            sleep 1
+          done
+          java -jar target/nkj-billing-1.0.0.jar > /tmp/nkj-v20.log 2>&1 &
+          echo $! > /tmp/nkj-backend.pid
+          for attempt in $(seq 1 90); do
+            if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='23' AND success=true" 2>/dev/null | grep -q '^1$'; then
+              break
+            fi
+            if ! kill -0 "$(cat /tmp/nkj-backend.pid)" 2>/dev/null; then
+              cat /tmp/nkj-v20.log
+              exit 1
+            fi
+            sleep 2
+          done
+          psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE n BIGINT;
+          BEGIN
+            SELECT COUNT(*) INTO n
+              FROM installment_accounts a
+              JOIN invoices i ON i.id=a.invoice_id
+             WHERE i.invoice_no='NKJ-CI-EMI-001';
+            IF n <> 1 THEN RAISE EXCEPTION 'Expected exactly one migrated EMI account, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM installment_schedules s
+              JOIN installment_accounts a ON a.id=s.account_id
+             WHERE a.invoice_no='NKJ-CI-EMI-001';
+            IF n <> 2 THEN RAISE EXCEPTION 'Expected 2 migrated EMI schedules, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM installment_transactions p
+              JOIN installment_accounts a ON a.id=p.account_id
+             WHERE a.invoice_no='NKJ-CI-EMI-001';
+            IF n <> 2 THEN RAISE EXCEPTION 'Expected down-payment and installment transactions, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM installment_transaction_reversals r
+              JOIN installment_transactions p ON p.id=r.transaction_id
+              JOIN installment_accounts a ON a.id=p.account_id
+             WHERE a.invoice_no='NKJ-CI-EMI-001';
+            IF n <> 1 THEN RAISE EXCEPTION 'Expected 1 migrated payment reversal, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM pre_booking_bills;
+            IF n <> 1 THEN RAISE EXCEPTION 'Expected only the genuine Pre-Booking in the Pre-Booking filter, found %', n; END IF;
+
+            SELECT COUNT(*) INTO n FROM legacy_booking_records
+             WHERE booking_no='NKJ-CI-LEGACY-EMI';
+            IF n <> 1 THEN RAISE EXCEPTION 'Legacy EMI booking was not preserved in archive'; END IF;
+
+            SELECT COUNT(*) INTO n FROM legacy_installments
+             WHERE booking_id=(SELECT id FROM legacy_booking_records WHERE booking_no='NKJ-CI-LEGACY-EMI');
+            IF n <> 2 THEN RAISE EXCEPTION 'Legacy EMI schedules were not preserved in archive'; END IF;
+
+            SELECT COUNT(*) INTO n FROM legacy_installment_payments
+             WHERE booking_id=(SELECT id FROM legacy_booking_records WHERE booking_no='NKJ-CI-LEGACY-EMI');
+            IF n <> 2 THEN RAISE EXCEPTION 'Legacy EMI receipts were not preserved in archive'; END IF;
+
+            IF to_regclass('public.bookings') IS NOT NULL
+               OR to_regclass('public.installments') IS NOT NULL
+               OR to_regclass('public.installment_payments') IS NOT NULL THEN
+              RAISE EXCEPTION 'Old shared tables are still exposed under active names';
+            END IF;
+
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public'
+                   AND table_name='pre_booking_bills'
+                   AND column_name IN ('is_installment_plan','total_installments','payment_frequency','plan_idempotency_key','down_payment_date')
+            ) THEN
+              RAISE EXCEPTION 'Dedicated Pre-Booking table contains EMI-only columns';
+            END IF;
+
+            SELECT COUNT(*) INTO n
+              FROM installment_schedules s
+              JOIN installment_accounts a ON a.id=s.account_id
+             WHERE a.invoice_no IS NULL;
+            IF n <> 0 THEN RAISE EXCEPTION 'A genuine Pre-Booking schedule leaked into EMI schedules'; END IF;
+
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public'
+                   AND table_name IN ('installment_accounts','installment_schedules','installment_transactions')
+                   AND column_name IN ('booking_id','legacy_booking_id')
+            ) THEN
+              RAISE EXCEPTION 'An active EMI table still has a Pre-Booking/booking relationship';
+            END IF;
+
+            SELECT COUNT(*) INTO n FROM invoices WHERE invoice_no='NKJ-CI-EMI-001';
+            IF n <> 1 THEN RAISE EXCEPTION 'The original invoice was not preserved'; END IF;
+
+            SELECT COUNT(*) INTO n FROM customers
+             WHERE customer_code IN ('NKJ-CI-CUSTOMER-DUP-01','NKJ-CI-CUSTOMER-DUP-02');
+            IF n <> 2 THEN RAISE EXCEPTION 'V22 removed one of the existing duplicate-phone customer rows'; END IF;
+
+            SELECT COUNT(*) INTO n FROM customers
+             WHERE normalized_phone='9876500000';
+            IF n <> 1 THEN RAISE EXCEPTION 'V22 did not select exactly one canonical normalized phone'; END IF;
+
+            SELECT COUNT(*) INTO n FROM customers
+             WHERE customer_code IN ('NKJ-CI-CUSTOMER-DUP-01','NKJ-CI-CUSTOMER-DUP-02')
+               AND email IS NOT NULL AND address IS NOT NULL;
+            IF n <> 2 THEN RAISE EXCEPTION 'V22 failed to preserve customer email/address on legacy duplicate rows'; END IF;
+
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public' AND table_name='invoices' AND column_name='customer_email'
+            ) THEN
+              RAISE EXCEPTION 'V22 did not add customer email to saved invoices';
+            END IF;
+
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_indexes
+                 WHERE schemaname='public' AND tablename='customers'
+                   AND indexname='uq_customers_normalized_phone'
+            ) THEN
+              RAISE EXCEPTION 'V22 did not create the normalized-phone unique index';
+            END IF;
+          END $$;
+          SQL
+      - name: Verify live Pre-Booking and EMI API independence
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/nkj_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+        run: |
+          set -euo pipefail
+          DB="postgresql://postgres:postgres@localhost:5432/nkj_test"
+
+          # Seed a second saved invoice that can be converted by the real API.
+          psql "$DB" -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO invoices(invoice_no, invoice_date, customer_name, mobile, address, grand_total)
+          VALUES ('NKJ-CI-NEW-EMI-002',
+                  (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE,
+                  'New EMI API Customer', '9000000003', 'API EMI address', 900.00);
+          SQL
+
+          # Wait until the migrated backend has finished starting.
+          for attempt in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8086/api/auth/session || true)
+            if [ "$code" != "000" ]; then break; fi
+            sleep 2
+          done
+          if [ "${code:-000}" = "000" ]; then
+            echo "Backend did not become reachable."
+            cat /tmp/nkj-v20.log
+            exit 1
+          fi
+
+          CHALLENGE_JSON=$(curl -fsS -X POST http://localhost:8086/api/auth/login \
+            -H 'Content-Type: application/json' \
+            --data '{"username":"ci-owner","password":"ci-only-password"}')
+          CHALLENGE_ID=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["challengeId"])' <<< "$CHALLENGE_JSON")
+          OTP=$(python3 - <<'PY'
+          import base64, hashlib, hmac, struct, time
+          secret = "JBSWY3DPEHPK3PXP"
+          key = base64.b32decode(secret + "=" * ((8 - len(secret) % 8) % 8))
+          counter = int(time.time() // 30)
+          digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+          offset = digest[-1] & 0x0F
+          binary = int.from_bytes(digest[offset:offset + 4], "big") & 0x7FFFFFFF
+          print(f"{binary % 1000000:06d}")
+          PY
+          )
+          VERIFY_JSON=$(curl -fsS -X POST http://localhost:8086/api/auth/verify \
+            -H 'Content-Type: application/json' \
+            --data "{\"challengeId\":\"$CHALLENGE_ID\",\"code\":\"$OTP\"}")
+          TOKEN=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<< "$VERIFY_JSON")
+          AUTH=(-H "Authorization: Bearer $TOKEN")
+
+          TODAY=$(psql "$DB" -tAc "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE")
+          FIRST_DUE=$(date -u -d "$TODAY + 7 days" +%F)
+          DUE_DAY=$(date -u -d "$FIRST_DUE" +%d)
+          INVOICE_ID=$(psql "$DB" -tAc "SELECT id FROM invoices WHERE invoice_no='NKJ-CI-NEW-EMI-002'")
+          PREBOOKINGS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM pre_booking_bills")
+          ACCOUNTS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")
+          SCHEDULES_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_schedules")
+          TRANSACTIONS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")
+
+          PLAN_JSON=$(curl -fsS -X POST http://localhost:8086/api/admin/installments/plans \
+            "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PLAN-002' \
+            --data "{\"invoiceId\":$INVOICE_ID,\"downPayment\":100,\"installmentCount\":2,\"paymentFrequency\":\"MONTHLY\",\"firstDueDate\":\"$FIRST_DUE\",\"downPaymentDate\":\"$TODAY\",\"dueDay\":$DUE_DAY,\"downPaymentMethod\":\"Cash\",\"downPaymentReferenceNo\":\"CI-EMI-DP\"}")
+          ACCOUNT_ID=$(python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["success"] is True; print(x["accountId"])' <<< "$PLAN_JSON")
+
+          # Invoice conversion creates only EMI rows. It must not create or mutate a Pre-Booking.
+          PREBOOKINGS_AFTER_PLAN=$(psql "$DB" -tAc "SELECT COUNT(*) FROM pre_booking_bills")
+          ACCOUNTS_AFTER_PLAN=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")
+          if [ "$PREBOOKINGS_AFTER_PLAN" != "$PREBOOKINGS_BEFORE" ]; then
+            echo "EMI plan creation unexpectedly changed Pre-Booking rows."
+            exit 1
+          fi
+          if [ "$ACCOUNTS_AFTER_PLAN" -ne "$((ACCOUNTS_BEFORE + 1))" ]; then
+            echo "EMI plan creation did not create exactly one independent EMI account."
+            exit 1
+          fi
+
+          # All Invoices remains independent and must continue to show the converted invoice.
+          curl -fsS http://localhost:8086/api/invoices "${AUTH[@]}" > /tmp/nkj-invoices.json
+          python3 - <<'PY'
+          import json
+          rows = json.load(open("/tmp/nkj-invoices.json"))
+          assert any(row.get("invoiceNo") == "NKJ-CI-NEW-EMI-002" for row in rows), "Converted invoice disappeared from All Invoices."
+          PY
+
+          # A payment is written to the EMI ledger only.
+          DETAILS_JSON=$(curl -fsS http://localhost:8086/api/admin/installments/plans/$ACCOUNT_ID "${AUTH[@]}")
+          SCHEDULE_ID=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["schedule"][0]["id"])' <<< "$DETAILS_JSON")
+          # Invalid admin password must reject the receipt without writing any ledger row.
+          TRANSACTIONS_BEFORE_BAD_PASSWORD=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")
+          BAD_PASSWORD_HTTP=$(curl -sS -o /tmp/nkj-payment-bad-password.json -w '%{http_code}' -X POST http://localhost:8086/api/admin/installments/payments \
+            "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PAYMENT-BAD-PASSWORD-002' \
+            -H 'X-Admin-Password: definitely-wrong-password' \
+            --data "{\"installmentId\":$SCHEDULE_ID,\"paymentDate\":\"$TODAY\",\"amount\":50,\"paymentMethod\":\"UPI\",\"referenceNo\":\"CI-EMI-PAYMENT-BAD-PASSWORD\"}")
+          if [ "$BAD_PASSWORD_HTTP" -lt 400 ] || [ "$BAD_PASSWORD_HTTP" -ge 500 ]; then
+            echo "Wrong administrator password was not rejected with a client error (HTTP $BAD_PASSWORD_HTTP)."
+            cat /tmp/nkj-payment-bad-password.json
+            exit 1
+          fi
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")" != "$TRANSACTIONS_BEFORE_BAD_PASSWORD" ]; then
+            echo "A receipt was written even though the administrator password was incorrect."
+            exit 1
+          fi
+
+          # Correct password permits the receipt and the EMI ledger update.
+          PAYMENT_HTTP=$(curl -sS -o /tmp/nkj-payment.json -w '%{http_code}' -X POST http://localhost:8086/api/admin/installments/payments \
+            "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PAYMENT-002' \
+            -H 'X-Admin-Password: ci-only-password' \
+            --data "{\"installmentId\":$SCHEDULE_ID,\"paymentDate\":\"$TODAY\",\"amount\":50,\"paymentMethod\":\"UPI\",\"referenceNo\":\"CI-EMI-PAYMENT\"}")
+          if [ "$PAYMENT_HTTP" -lt 200 ] || [ "$PAYMENT_HTTP" -ge 300 ]; then
+            echo "Installment payment API returned HTTP $PAYMENT_HTTP:"
+            cat /tmp/nkj-payment.json
+            cat /tmp/nkj-v20.log
+            exit 1
+          fi
+          PREBOOKINGS_AFTER_PAYMENT=$(psql "$DB" -tAc "SELECT COUNT(*) FROM pre_booking_bills")
+          if [ "$PREBOOKINGS_AFTER_PAYMENT" != "$PREBOOKINGS_BEFORE" ]; then
+            echo "EMI payment unexpectedly changed Pre-Booking rows."
+            exit 1
+          fi
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")" -ne "$((TRANSACTIONS_BEFORE + 2))" ]; then
+            echo "Expected one down-payment and one installment payment in the independent EMI ledger."
+            exit 1
+          fi
+
+          # Editing a genuine Pre-Booking with legacy booking-owned history must not
+          # be blocked by an EMI-module guard and must not mutate that history.
+          PREBOOK_ID=$(psql "$DB" -tAc "SELECT id FROM pre_booking_bills WHERE booking_no='NKJ-CI-GENUINE-BOOKING'")
+          curl -fsS -X PUT http://localhost:8086/api/admin/modules/pre-bookings/$PREBOOK_ID \
+            "${AUTH[@]}" -H 'Content-Type: application/json' \
+            --data '{"description":"Edited genuine Pre-Booking fixture"}' > /tmp/nkj-prebooking-update.json
+          psql "$DB" -v ON_ERROR_STOP=1 <<SQL
+          DO \$\$
+          DECLARE n BIGINT;
+          BEGIN
+            SELECT COUNT(*) INTO n FROM pre_booking_bills
+             WHERE id=$PREBOOK_ID AND description='Edited genuine Pre-Booking fixture';
+            IF n <> 1 THEN RAISE EXCEPTION 'Genuine Pre-Booking update was not saved'; END IF;
+            SELECT COUNT(*) INTO n FROM legacy_installments
+             WHERE booking_id=$PREBOOK_ID AND installment_no=1 AND amount_due=1000 AND remaining_amount=1000;
+            IF n <> 1 THEN RAISE EXCEPTION 'Pre-Booking edit unexpectedly changed its legacy schedule history'; END IF;
+          END
+          \$\$;
+          SQL
+
+          # Creating a genuine Pre-Booking must not create or update any EMI data.
+          curl -fsS -X POST http://localhost:8086/api/admin/modules/pre-bookings \
+            "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-PREBOOK-ADVANCE-001' \
+            --data "{\"bookingNo\":\"NKJ-CI-NEW-PREBOOKING\",\"customerName\":\"New Pre-Booking API Customer\",\"mobile\":\"9000000004\",\"bookingDate\":\"$TODAY\",\"description\":\"Independent Pre-Booking API fixture\",\"metalType\":\"GOLD\",\"purity\":\"22K\",\"estimatedWeight\":1,\"estimatedRate\":5000,\"estimatedValue\":5000,\"makingEstimate\":0,\"advanceAmount\":1000,\"remainingAmount\":4000,\"deliveryDate\":\"$FIRST_DUE\",\"status\":\"OPEN\"}" \
+            > /tmp/nkj-prebooking-create.json
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")" != "$ACCOUNTS_AFTER_PLAN" ]; then
+            echo "Pre-Booking creation unexpectedly changed EMI account rows."
+            exit 1
+          fi
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_schedules")" -ne "$((SCHEDULES_BEFORE + 2))" ]; then
+            echo "Pre-Booking creation unexpectedly changed EMI schedules."
+            exit 1
+          fi
+          if [ "$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")" -ne "$((TRANSACTIONS_BEFORE + 2))" ]; then
+            echo "Pre-Booking creation unexpectedly changed EMI transactions."
+            exit 1
+          fi
+          PREBOOK_JSON=$(curl -fsS http://localhost:8086/api/admin/modules/pre-bookings "${AUTH[@]}")
+          export PREBOOK_JSON
+          python3 - <<'PY'
+          import json, os
+          rows = json.loads(os.environ["PREBOOK_JSON"])
+          labels = {row.get("bookingNo") for row in rows}
+          assert "NKJ-CI-LEGACY-EMI" not in labels, "Archived EMI booking leaked into Pre-Booking."
+          assert "NKJ-CI-GENUINE-BOOKING" in labels, "Genuine Pre-Booking is missing."
+          assert "NKJ-CI-NEW-PREBOOKING" in labels, "New Pre-Booking is missing."
+          PY
+
+          # Exercise the real public invoice-save endpoint and the protected Customer Management API.
+          export NKJ_CI_DB="$DB"
+          export NKJ_CI_TOKEN="$TOKEN"
+          python3 - <<'PY'
+          import concurrent.futures
+          import datetime
+          import json
+          import os
+          import subprocess
+          import urllib.error
+          import urllib.request
+
+          BASE = "http://localhost:8086"
+          DB = os.environ["NKJ_CI_DB"]
+          TOKEN = os.environ["NKJ_CI_TOKEN"]
+          TODAY = subprocess.check_output(
+              ["psql", DB, "-tAc", "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE"],
+              text=True
+          ).strip()
+
+          def sql(query):
+              return subprocess.check_output(["psql", DB, "-tAc", query], text=True).strip()
+
+          def invoice_payload(name, phone, email="", address=""):
+              return {
+                  "invoiceDate": TODAY,
+                  "showGstin": True,
+                  "customerName": name,
+                  "mobile": phone,
+                  "address": address,
+                  "paymentMode": "Cash",
+                  "referenceNo": "",
+                  "description": "CI customer synchronization test",
+                  "newItems": [{
+                      "description": "CI gold ring",
+                      "purity": "22K",
+                      "netWeight": 1,
+                      "rate": 1000,
+                      "makingCharge": 0,
+                      "stampCharge": 0,
+                      "extraCharge": 0
+                  }],
+                  "oldItems": [],
+                  "newTotal": 1000,
+                  "oldTotal": 0,
+                  "makingCharge": 0,
+                  "extraCharge": 0,
+                  "discount": 0,
+                  "subTotal": 1000,
+                  "gstPercent": 0,
+                  "gstAmount": 0,
+                  "otherCharge": 0,
+                  "grandTotal": 1000,
+                  "paymentAmount": 0
+              }
+
+          def request_json(path, method="GET", payload=None, headers=None):
+              request_headers = {"Accept": "application/json"}
+              if payload is not None:
+                  request_headers["Content-Type"] = "application/json"
+              if headers:
+                  request_headers.update(headers)
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(
+                  BASE + path, data=data, headers=request_headers, method=method
+              )
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  body = response.read()
+                  return json.loads(body) if body else {}
+
+          def save_invoice(name, phone, email="", address="", key=None):
+              return request_json(
+                  "/api/invoices",
+                  method="POST",
+                  payload={
+                      **invoice_payload(name, phone, email, address),
+                      **({"customerEmail": email} if email else {})
+                  },
+                  headers={"Idempotency-Key": key or ("CI-CUSTOMER-" + name.replace(" ", "-"))}
+              )
+
+          # 1. First invoice creates one customer; a later invoice with the same
+          # phone reuses its ID and fills only blank address fields.
+          first = save_invoice(
+              "CI Customer Alpha", "9876543210", "", "",
+              "CI-CUSTOMER-FIRST-001"
+          )
+          assert first.get("id") and first.get("customerId"), "First invoice did not create/link a customer."
+          assert "customerEmail" not in first and "email" not in first, "Invoice save response exposed customer email."
+          assert "customerEmail" not in first.get("details", {}) and "email" not in first.get("details", {}), "Invoice detail payload exposed customer email."
+          first_customer_id = first["customerId"]
+
+          second = save_invoice(
+              "CI Different Display Name", "9876543210",
+              "alpha@example.test", "Customer address from second invoice",
+              "CI-CUSTOMER-SECOND-001"
+          )
+          assert second.get("customerId") == first_customer_id, "Same phone created a second customer."
+          assert "customerEmail" not in second and "email" not in second, "Invoice response exposed a supplied legacy email field."
+          assert "customerEmail" not in second.get("details", {}) and "email" not in second.get("details", {}), "Invoice details exposed a supplied legacy email field."
+          preserved = sql(
+              "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
+              f"FROM customers WHERE id={first_customer_id}"
+          )
+          assert preserved == (
+              "CI Customer Alpha||Customer address from second invoice"
+          ), "Invoice customer sync should preserve existing master data and must not store invoice email."
+
+          third = save_invoice(
+              "CI Later Different Name", "9876543210",
+              "replacement@example.test", "Replacement address",
+              "CI-CUSTOMER-THIRD-001"
+          )
+          assert third.get("customerId") == first_customer_id, "A different name with an existing phone did not reuse the customer."
+          preserved_again = sql(
+              "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
+              f"FROM customers WHERE id={first_customer_id}"
+          )
+          assert preserved_again == preserved, "A later invoice replaced existing non-empty customer details."
+
+          # Editing an already saved invoice must keep the same Customer ID and
+          # must not overwrite non-empty customer master details with new values.
+          edit_payload = invoice_payload(
+              "CI Edited Invoice Customer", "9876543210",
+              "edited@example.test", "Edited invoice address"
+          )
+          updated_invoice = request_json(
+              f"/api/invoices/{first['id']}", "PUT", edit_payload,
+              {"Authorization": "Bearer " + TOKEN}
+          )
+          assert updated_invoice.get("customerId") == first_customer_id, (
+              "Editing an invoice did not retain/reuse the phone-matched Customer ID."
+          )
+          assert "customerEmail" not in updated_invoice and "email" not in updated_invoice, "Updated invoice response exposed email."
+          after_edit = sql(
+              "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
+              f"FROM customers WHERE id={first_customer_id}"
+          )
+          assert after_edit == preserved, "Invoice editing overwrote existing non-empty customer details."
+
+          # 2. The same name with different phone numbers creates separate customers.
+          same_name_a = save_invoice(
+              "CI Same Name", "9876543211", "same-a@example.test", "Address A",
+              "CI-SAME-NAME-A-001"
+          )
+          same_name_b = save_invoice(
+              "CI Same Name", "9876543212", "same-b@example.test", "Address B",
+              "CI-SAME-NAME-B-001"
+          )
+          assert same_name_a.get("customerId") != same_name_b.get("customerId"), (
+              "Customer name was incorrectly used as the duplicate key."
+          )
+
+          # 3. A different name with an existing phone, including +91 and
+          # formatting characters, resolves to the same normalized 10 digits.
+          different_name_same_phone = save_invoice(
+              "CI Other Person", "9876543211", "other@example.test", "Other address",
+              "CI-DIFF-NAME-SAME-PHONE-001"
+          )
+          formatted_phone = save_invoice(
+              "CI Formatted Phone", "+91 98765-43211", "",
+              "", "CI-FORMATTED-PHONE-001"
+          )
+          assert different_name_same_phone.get("customerId") == same_name_a.get("customerId"), (
+              "Different customer name with an existing phone created a duplicate."
+          )
+          assert formatted_phone.get("customerId") == same_name_a.get("customerId"), (
+              "Formatted +91 phone was not normalized to the existing customer."
+          )
+
+          # 4. No phone means no customer registration and no customer_id link.
+          no_phone = save_invoice(
+              "CI Customer Without Phone", "", "no-phone@example.test",
+              "No phone address", "CI-NO-PHONE-001"
+          )
+          assert no_phone.get("id") and no_phone.get("customerId") is None, (
+              "An invoice without a phone must save without creating an unidentifiable customer."
+          )
+
+          # 5. Failed invoice validation must roll back before customer creation.
+          bad_payload = invoice_payload(
+              "CI Failed Invoice Customer", "9876543213",
+              "failed@example.test", "Must not be registered"
+          )
+          bad_payload["newItems"] = []
+          failed_req = urllib.request.Request(
+              BASE + "/api/invoices",
+              data=json.dumps(bad_payload).encode(),
+              headers={
+                  "Content-Type": "application/json",
+                  "Idempotency-Key": "CI-CUSTOMER-FAILED-001"
+              },
+              method="POST"
+          )
+          try:
+              urllib.request.urlopen(failed_req, timeout=30)
+              raise AssertionError("Invalid invoice unexpectedly saved.")
+          except urllib.error.HTTPError as error:
+              assert 400 <= error.code < 500, f"Expected invoice validation error, got HTTP {error.code}."
+          assert sql("SELECT COUNT(*) FROM customers WHERE normalized_phone='9876543213'") == "0", (
+              "Failed invoice created a customer."
+          )
+          assert sql("SELECT COUNT(*) FROM invoices WHERE mobile='9876543213'") == "0", (
+              "Failed invoice left an invoice row behind."
+          )
+
+          # 6. Repeating the same save key returns the same invoice/customer;
+          # it must not create another invoice or customer.
+          retry_payload = invoice_payload(
+              "CI Idempotent Customer", "9876543214",
+              "retry@example.test", "Retry address"
+          )
+          retry_key = "CI-CUSTOMER-IDEMPOTENT-001"
+          retry_one = request_json(
+              "/api/invoices", "POST", retry_payload,
+              {"Idempotency-Key": retry_key}
+          )
+          retry_two = request_json(
+              "/api/invoices", "POST", retry_payload,
+              {"Idempotency-Key": retry_key}
+          )
+          assert retry_one.get("id") == retry_two.get("id"), "Repeated invoice save created a second invoice."
+          assert retry_one.get("customerId") == retry_two.get("customerId"), "Repeated invoice save changed Customer ID."
+          assert sql("SELECT COUNT(*) FROM customers WHERE normalized_phone='9876543214'") == "1", (
+              "Repeated invoice save created duplicate customers."
+          )
+          assert sql("SELECT COUNT(*) FROM invoices WHERE idempotency_key='CI-CUSTOMER-IDEMPOTENT-001'") == "1", (
+              "Repeated invoice save created duplicate invoice rows."
+          )
+
+          # 7. Simultaneous first invoices for the same phone must resolve to one
+          # customer under the PostgreSQL unique index/ON CONFLICT upsert.
+          def concurrent_save(index):
+              return save_invoice(
+                  f"CI Concurrent Customer {index}", "9876543215",
+                  f"concurrent{index}@example.test", f"Concurrent address {index}",
+                  f"CI-CUSTOMER-CONCURRENT-{index}-001"
+              )
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+              concurrent_results = list(pool.map(concurrent_save, [1, 2]))
+          concurrent_ids = {row.get("customerId") for row in concurrent_results}
+          assert len(concurrent_ids) == 1 and None not in concurrent_ids, (
+              "Concurrent invoice saves created multiple customers for one phone."
+          )
+          assert sql("SELECT COUNT(*) FROM customers WHERE normalized_phone='9876543215'") == "1", (
+              "Concurrent phone upsert produced duplicate customer rows."
+          )
+
+          # 8. Customer Management endpoint returns all retained and newly
+          # registered customers, including the automatic invoice-created rows.
+          customer_rows = request_json(
+              "/api/admin/modules/customers",
+              headers={"Authorization": "Bearer " + TOKEN}
+          )
+          customer_by_id = {int(row["id"]): row for row in customer_rows}
+          assert first_customer_id in customer_by_id, "Customer Management is missing the automatically registered customer."
+          assert "email" not in customer_by_id[first_customer_id], "Customer Management API exposed the removed email field."
+          assert customer_by_id[first_customer_id].get("customerCode"), "Automatic customer ID/code was not generated."
+          assert any(row.get("customerCode") == "NKJ-CI-CUSTOMER-DUP-01" for row in customer_rows), (
+              "Customer Management is missing the first preserved legacy duplicate."
+          )
+          assert any(row.get("customerCode") == "NKJ-CI-CUSTOMER-DUP-02" for row in customer_rows), (
+              "Customer Management is missing the second preserved legacy duplicate."
+          )
+
+          # The existing Customer Management Add Record API also reuses a
+          # customer by phone instead of inserting another row.
+          manual_one = request_json(
+              "/api/admin/modules/customers", "POST",
+              {
+                  "name": "CI Manual Customer",
+                  "phone": "9876543216",
+                  "email": "manual@example.test",
+                  "address": "Manual saved address"
+              },
+              {"Authorization": "Bearer " + TOKEN}
+          )
+          manual_two = request_json(
+              "/api/admin/modules/customers", "POST",
+              {
+                  "name": "CI Manual Different Name",
+                  "phone": "+91 98765-43216",
+                  "email": "manual-new@example.test",
+                  "address": "Manual replacement address"
+              },
+              {"Authorization": "Bearer " + TOKEN}
+          )
+          assert manual_one.get("id") == manual_two.get("id"), (
+              "Customer Management Add Record created a duplicate phone record."
+          )
+          assert sql("SELECT COUNT(*) FROM customers WHERE normalized_phone='9876543216'") == "1", (
+              "Manual Customer Management create bypassed phone uniqueness."
+          )
+
+          customer_rows = request_json(
+              "/api/admin/modules/customers",
+              headers={"Authorization": "Bearer " + TOKEN}
+          )
+          assert all("email" not in row for row in customer_rows), "Customer Management returned email data after the field was removed."
+          assert len(customer_rows) == int(sql("SELECT COUNT(*) FROM customers")), (
+              "Customer Management did not return the full customer table."
+          )
+
+          print("Invoice-to-customer synchronization tests passed.")
+          PY
+
+          # Verify actual cash events across every supported source module.
+          export NKJ_CI_TODAY="$TODAY"
+          export NKJ_CI_ACCOUNT_ID="$ACCOUNT_ID"
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import urllib.error
+          import urllib.request
+          from decimal import Decimal
+
+          BASE = "http://localhost:8086"
+          DB = os.environ["NKJ_CI_DB"]
+          TOKEN = os.environ["NKJ_CI_TOKEN"]
+          TODAY = os.environ["NKJ_CI_TODAY"]
+          ACCOUNT_ID = int(os.environ["NKJ_CI_ACCOUNT_ID"])
+
+          def sql(query):
+              return subprocess.check_output(["psql", DB, "-tAc", query], text=True).strip()
+
+          def api(path, method="GET", payload=None, idempotency_key=None):
+              headers = {"Accept": "application/json", "Authorization": "Bearer " + TOKEN}
+              if payload is not None:
+                  headers["Content-Type"] = "application/json"
+              if idempotency_key:
+                  headers["Idempotency-Key"] = idempotency_key
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(BASE + path, data=data, headers=headers, method=method)
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  body = response.read()
+                  return json.loads(body) if body else {}
+
+          def cash_row(source_key):
+              rows = sql(
+                  "SELECT id || '|' || direction || '|' || amount::TEXT || '|' || source_module "
+                  f"FROM cash_transactions WHERE source_event_key='{source_key}'"
+              )
+              assert rows, f"Missing cash movement for source event {source_key}."
+              return rows.split("|")
+
+          # Customer advance/receipt: one source request must produce one Incoming row,
+          # and a same-key retry must return that same source record.
+          receipt_payload = {
+              "customerName": "CI Cash Flow Advance Customer",
+              "paymentDate": TODAY,
+              "amount": 125,
+              "paymentMethod": "Cash",
+              "referenceNo": "CI-CASH-ADVANCE-001",
+              "notes": "Customer advance cash-flow regression"
+          }
+          receipt = api(
+              "/api/admin/modules/payments", "POST", receipt_payload,
+              "CI-CASH-RECEIPT-001"
+          )
+          receipt_retry = api(
+              "/api/admin/modules/payments", "POST", receipt_payload,
+              "CI-CASH-RECEIPT-001"
+          )
+          assert receipt["id"] == receipt_retry["id"] and receipt_retry.get("duplicate") is True, (
+              "Retrying a customer receipt created a second payment record."
+          )
+          receipt_txn = cash_row("PAYMENT:" + str(receipt["id"]))
+          assert receipt_txn[1] == "INCOMING" and Decimal(receipt_txn[2]) == Decimal("125.00"), (
+              "Customer advance was not classified as Incoming for the amount actually received."
+          )
+          assert receipt_txn[3] == "PAYMENTS"
+          assert sql(f"SELECT COUNT(*) FROM cash_transactions WHERE source_event_key='PAYMENT:{receipt['id']}'") == "1", (
+              "Customer receipt retry created a duplicate cash transaction."
+          )
+
+          # A zero-value receipt is not an actual payment and must be rejected.
+          payments_before_zero = sql("SELECT COUNT(*) FROM payments")
+          zero_request = urllib.request.Request(
+              BASE + "/api/admin/modules/payments",
+              data=json.dumps({
+                  "customerName": "CI Zero Receipt Customer",
+                  "paymentDate": TODAY,
+                  "amount": 0,
+                  "paymentMethod": "Cash"
+              }).encode(),
+              headers={
+                  "Authorization": "Bearer " + TOKEN,
+                  "Content-Type": "application/json",
+                  "Idempotency-Key": "CI-CASH-ZERO-RECEIPT-001"
+              },
+              method="POST"
+          )
+          try:
+              urllib.request.urlopen(zero_request, timeout=30)
+              raise AssertionError("A zero-value customer receipt was accepted.")
+          except urllib.error.HTTPError as error:
+              assert 400 <= error.code < 500, f"Expected zero receipt rejection, got HTTP {error.code}."
+          assert sql("SELECT COUNT(*) FROM payments") == payments_before_zero, (
+              "A zero-value receipt left a payment row behind."
+          )
+
+          # Pre-Booking advance is Incoming; the estimated remaining booking value is not.
+          booking = api(
+              "/api/admin/modules/pre-bookings", "POST",
+              {
+                  "bookingNo": "NKJ-CI-CASH-BOOKING-001",
+                  "customerName": "CI Cash Flow Booking Customer",
+                  "mobile": "9000000201",
+                  "bookingDate": TODAY,
+                  "description": "Cash-flow regression booking",
+                  "metalType": "GOLD",
+                  "purity": "22K",
+                  "estimatedWeight": 1,
+                  "estimatedRate": 500,
+                  "estimatedValue": 500,
+                  "makingEstimate": 0,
+                  "advanceAmount": 120,
+                  "remainingAmount": 380,
+                  "deliveryDate": TODAY,
+                  "status": "OPEN"
+              },
+              "CI-CASH-BOOKING-001"
+          )
+          booking_txn = cash_row("PREBOOK-ADVANCE:" + str(booking["id"]))
+          assert booking_txn[1] == "INCOMING" and Decimal(booking_txn[2]) == Decimal("120.00")
+          assert booking_txn[3] == "PRE_BOOKINGS"
+
+          # Pending expenses create no Outgoing row. Only each newly-paid delta does.
+          pending_expense = api(
+              "/api/admin/modules/expenses", "POST",
+              {
+                  "expenseDate": TODAY,
+                  "category": "Other",
+                  "description": "CI pending expense must not hit cashbook",
+                  "amount": 250,
+                  "paidAmount": 0,
+                  "paymentStatus": "PENDING",
+                  "paymentMethod": "Cash"
+              },
+              "CI-CASH-PENDING-EXPENSE-001"
+          )
+          expense_id = pending_expense["id"]
+          assert sql(
+              f"SELECT COUNT(*) FROM cash_transactions WHERE source_module='EXPENSES' AND source_record_id={expense_id}"
+          ) == "0", "Pending expense was incorrectly recorded as Outgoing cash."
+          api("/api/admin/modules/expenses/" + str(expense_id), "PUT", {"paidAmount": 100})
+          api("/api/admin/modules/expenses/" + str(expense_id), "PUT", {"paidAmount": 160})
+          api("/api/admin/modules/expenses/" + str(expense_id), "PUT", {"paidAmount": 160})
+          expense_totals = sql(
+              "SELECT COUNT(*) || '|' || COALESCE(SUM(amount),0)::TEXT FROM cash_transactions "
+              f"WHERE source_module='EXPENSES' AND source_record_id={expense_id} AND status='POSTED'"
+          )
+          assert expense_totals == "2|160.00", (
+              "Expense cash flow did not record only the two actual paid deltas, or a repeated edit duplicated one."
+          )
+
+          # Unpaid supplier purchases create no cash entry. Later paid amounts record
+          # only the incremental supplier payments, not the purchase balance.
+          purchase = api(
+              "/api/admin/modules/purchases", "POST",
+              {
+                  "supplierName": "CI Cash Flow Supplier",
+                  "purchaseDate": TODAY,
+                  "invoiceNo": "CI-CASH-PURCHASE-001",
+                  "totalAmount": 1000,
+                  "paidAmount": 0
+              },
+              "CI-CASH-PURCHASE-001"
+          )
+          purchase_id = purchase["id"]
+          assert sql(
+              f"SELECT COUNT(*) FROM cash_transactions WHERE source_module='PURCHASES' AND source_record_id={purchase_id}"
+          ) == "0", "An unpaid supplier purchase was incorrectly recorded as Outgoing cash."
+          api("/api/admin/modules/purchases/" + str(purchase_id), "PUT", {"paidAmount": 300})
+          api("/api/admin/modules/purchases/" + str(purchase_id), "PUT", {"paidAmount": 700})
+          api("/api/admin/modules/purchases/" + str(purchase_id), "PUT", {"paidAmount": 700})
+          purchase_totals = sql(
+              "SELECT COUNT(*) || '|' || COALESCE(SUM(amount),0)::TEXT FROM cash_transactions "
+              f"WHERE source_module='PURCHASES' AND source_record_id={purchase_id} AND status='POSTED'"
+          )
+          assert purchase_totals == "2|700.00", (
+              "Supplier cash flow counted the unpaid balance or duplicated a cumulative payment update."
+          )
+          purchase_rows = sql(
+              "SELECT COUNT(*) FROM cash_transactions WHERE source_module='PURCHASES' "
+              f"AND source_record_id={purchase_id} AND direction='OUTGOING'"
+          )
+          assert purchase_rows == "2"
+
+          # Monthly salary creation with zero paid amount is not cash. Actual
+          # Salary Payments records an Outgoing movement.
+          staff = api(
+              "/api/admin/modules/staff", "POST",
+              {"fullName": "CI Cash Flow Salary Staff", "monthlySalary": 500, "status": "ACTIVE"}
+          )
+          salary = api(
+              "/api/admin/modules/salary", "POST",
+              {
+                  "staffId": staff["id"],
+                  "payrollMonth": TODAY[:7],
+                  "basicSalary": 500,
+                  "amountPaid": 0
+              },
+              "CI-CASH-SALARY-RECORD-001"
+          )
+          assert sql(
+              f"SELECT COUNT(*) FROM cash_transactions WHERE source_module='SALARY' AND source_record_id={salary['id']}"
+          ) == "0", "An unpaid salary record was incorrectly recorded as Outgoing cash."
+          salary_payment = api(
+              "/api/admin/modules/salary-payments", "POST",
+              {
+                  "salaryId": salary["id"],
+                  "paymentDate": TODAY,
+                  "amount": 150,
+                  "paymentMethod": "Cash",
+                  "referenceNo": "CI-CASH-SALARY-001"
+              },
+              "CI-CASH-SALARY-PAYMENT-001"
+          )
+          salary_txn = cash_row("SALARY-PAYMENT:" + str(salary_payment["id"]))
+          assert salary_txn[1] == "OUTGOING" and Decimal(salary_txn[2]) == Decimal("150.00")
+          assert salary_txn[3] == "SALARY_PAYMENTS"
+
+          # An actual refund creates a linked Outgoing movement, preserving its
+          # original Incoming receipt and source reference.
+          original_txn_id = int(receipt_txn[0])
+          refund = api(
+              "/api/admin/transactions/refunds", "POST",
+              {
+                  "originalTransactionId": original_txn_id,
+                  "refundDate": TODAY,
+                  "amount": 40,
+                  "paymentMethod": "Cash",
+                  "referenceNo": "CI-CASH-REFUND-001",
+                  "notes": "Cash-flow regression refund"
+              },
+              "CI-CASH-REFUND-001"
+          )
+          refund_txn = cash_row("REFUND:" + str(refund["refundId"]))
+          assert refund_txn[1] == "OUTGOING" and Decimal(refund_txn[2]) == Decimal("40.00")
+          assert int(sql(
+              f"SELECT original_transaction_id FROM cash_transactions WHERE id={refund_txn[0]}"
+          )) == original_txn_id
+
+          # The existing EMI scenario must post one down payment and one actual
+          # installment receipt, but never the future scheduled balances.
+          emi_cash = sql(
+              "SELECT COUNT(*) || '|' || COALESCE(SUM(c.amount),0)::TEXT "
+              "FROM cash_transactions c JOIN installment_transactions p ON p.id=c.source_record_id "
+              f"WHERE p.account_id={ACCOUNT_ID} AND c.source_module='INSTALLMENTS' "
+              "AND c.direction='INCOMING' AND c.status='POSTED'"
+          )
+          assert emi_cash == "2|150.00", (
+              "The EMI Cashbook must include only the down payment and received installment, not pending schedules."
+          )
+
+          # Cashbook filters and summary must agree with the posted ledger totals.
+          incoming_rows = api("/api/admin/transactions?direction=INCOMING")
+          outgoing_rows = api("/api/admin/transactions?direction=OUTGOING")
+          assert incoming_rows and all(row["direction"] == "INCOMING" for row in incoming_rows)
+          assert outgoing_rows and all(row["direction"] == "OUTGOING" for row in outgoing_rows)
+          summary = api("/api/admin/transactions/summary")
+          incoming_total = Decimal(sql(
+              "SELECT COALESCE(SUM(amount),0)::TEXT FROM cash_transactions "
+              "WHERE direction='INCOMING' AND status='POSTED'"
+          ))
+          outgoing_total = Decimal(sql(
+              "SELECT COALESCE(SUM(amount),0)::TEXT FROM cash_transactions "
+              "WHERE direction='OUTGOING' AND status='POSTED'"
+          ))
+          assert Decimal(str(summary["totalIncoming"])) == incoming_total
+          assert Decimal(str(summary["totalOutgoing"])) == outgoing_total
+          assert Decimal(str(summary["netCashFlow"])) == incoming_total - outgoing_total
+          print("Incoming/Outgoing cash flow API regression scenarios passed.")
+          PY
