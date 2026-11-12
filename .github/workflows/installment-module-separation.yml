@@ -697,19 +697,21 @@ jobs:
               "CI Edited Invoice Customer", "9876543210",
               "edited@example.test", "Edited invoice address"
           )
-          updated_invoice = request_json(
-              f"/api/invoices/{first['id']}", "PUT", edit_payload,
-              {"Authorization": "Bearer " + TOKEN}
-          )
-          assert updated_invoice.get("customerId") == first_customer_id, (
-              "Editing an invoice did not retain/reuse the phone-matched Customer ID."
-          )
-          assert "customerEmail" not in updated_invoice and "email" not in updated_invoice, "Updated invoice response exposed email."
+          try:
+              request_json(
+                  f"/api/invoices/{first['id']}", "PUT", edit_payload,
+                  {"Authorization": "Bearer " + TOKEN}
+              )
+              raise AssertionError("A saved invoice edit was accepted; saved invoices must remain immutable.")
+          except urllib.error.HTTPError as exc:
+              error_body = exc.read().decode("utf-8", errors="replace")
+              assert exc.code == 409, f"Saved invoice edit should return HTTP 409, got {exc.code}: {error_body}"
+              assert "cannot be edited" in error_body.lower(), f"Unexpected saved-invoice rejection: {error_body}"
           after_edit = sql(
               "SELECT name || '|' || COALESCE(email,'') || '|' || COALESCE(address,'') "
               f"FROM customers WHERE id={first_customer_id}"
           )
-          assert after_edit == preserved, "Invoice editing overwrote existing non-empty customer details."
+          assert after_edit == preserved, "A rejected invoice edit changed existing customer details."
 
           # 2. The same name with different phone numbers creates separate customers.
           same_name_a = save_invoice(
@@ -1148,3 +1150,13 @@ jobs:
           assert Decimal(str(summary["netCashFlow"])) == incoming_total - outgoing_total
           print("Incoming/Outgoing cash flow API regression scenarios passed.")
           PY
+
+      - name: Print backend diagnostics when live API regression fails
+        if: failure()
+        run: |
+          echo "===== Backend startup and request diagnostics ====="
+          if [ -f /tmp/nkj-v20.log ]; then
+            tail -n 350 /tmp/nkj-v20.log
+          else
+            echo "Backend log /tmp/nkj-v20.log was not found."
+          fi
