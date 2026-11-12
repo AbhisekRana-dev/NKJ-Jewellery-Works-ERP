@@ -284,6 +284,133 @@ function makeInvoiceShareMessage(invoice) {
   return lines.join("\n");
 }
 
+
+/** Generate a shareable PDF from a saved invoice without opening the Print dialog. */
+function createSavedInvoicePdf(invoice) {
+  const data = parseInvoiceDetails(invoice);
+  const newRows = invoiceRows(data.newItems);
+  const oldRows = invoiceRows(data.oldItems);
+  const showGstin = data.showGstin !== false;
+  const newTotal = Number(data.newTotal ?? data.subTotal ?? newRows.reduce((sum, row) => sum + newAmt(row), 0)) || 0;
+  const oldTotal = Number(data.oldTotal ?? oldRows.reduce((sum, row) => sum + oldAmt(row), 0)) || 0;
+  const gstPercent = Number(data.gstPercent) || 0;
+  const gstAmount = showGstin ? (Number(data.gstAmount ?? (newTotal * gstPercent) / 100) || 0) : 0;
+  const discount = Number(data.discount) || 0;
+  const grandTotal = Number(data.grandTotal ?? (newTotal + gstAmount - discount - oldTotal)) || 0;
+  const totalPaid = Math.max(0, Number(data.totalPaid ?? data.paymentAmount ?? 0) || 0);
+  const dueAmount = Math.max(0, grandTotal - totalPaid);
+  const W = 842, H = 595, M = 34;
+  const pages = [];
+  let ops = [], y = 32;
+
+  const safe = (v) => String(v ?? "").replace(/₹/g, "Rs. ").replace(/[–—]/g, "-").replace(/[•·]/g, "-").replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[^\x20-\x7E]/g, "");
+  const esc = (v) => safe(v).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  const fmt = (v) => Number(v || 0).toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const addPage = () => { if (ops.length) pages.push(ops.join("\n")); ops = []; y = 32; };
+  const txt = (v,x,t,size=8,bold=false,color="0.12 0.12 0.12") => {
+    ops.push(color + " rg BT /" + (bold ? "F2" : "F1") + " " + size + " Tf 1 0 0 1 " + x + " " + (H-t-size) + " Tm (" + esc(v) + ") Tj ET");
+  };
+  const rule = (x1,t1,x2,t2,color="0.78 0.65 0.48",width=0.7) => {
+    ops.push(color + " RG " + width + " w " + x1 + " " + (H-t1) + " m " + x2 + " " + (H-t2) + " l S");
+  };
+  const box = (x,t,w,h,fill="1 1 1",stroke="0.86 0.75 0.65") => {
+    ops.push(fill + " rg " + stroke + " RG 0.7 w " + x + " " + (H-t-h) + " " + w + " " + h + " re B");
+  };
+  const section = (label) => {
+    box(M,y,W-2*M,19,"0.98 0.95 0.90");
+    txt(label,M+7,y+4,9,true,"0.48 0.08 0.16");
+    y += 25;
+  };
+  const drawTableHead = (label, cols) => {
+    section(label);
+    box(M,y,W-2*M,19,"0.53 0.04 0.14","0.53 0.04 0.14");
+    let x=M;
+    cols.forEach((c) => { txt(c[0],x+4,y+5,7,true,"1 1 1"); x+=c[1]; });
+    y+=19;
+  };
+  const row = (values, cols) => {
+    if (y > H-55) { addPage(); drawTableHead("ITEM DETAILS (CONTINUED)",cols); }
+    box(M,y,W-2*M,20);
+    let x=M;
+    values.forEach((v,i) => {
+      txt(safe(v).slice(0,Math.max(7,Math.floor(cols[i][1]/4.2))),x+4,y+5,7.2);
+      if(i) rule(x,y,x,y+20,"0.86 0.86 0.86",0.4);
+      x+=cols[i][1];
+    });
+    y+=20;
+  };
+
+  txt("NANDIKISHOR JEWELLERY WORKS",M,y,19,true,"0.55 0.03 0.14");
+  txt("Sasra, Gopiballavpur, Jhargram, West Bengal - 721506",M,y+22,8.5);
+  txt("Contact: 99322770722 | 8116022248",M,y+36,8.5);
+  if(showGstin) txt("GSTIN: 19ABCDE1234F1Z5",M,y+50,8);
+  box(615,y-2,193,67,"1 0.98 0.95","0.78 0.20 0.25");
+  txt("TAX INVOICE",675,y+5,11,true,"0.55 0.03 0.14");
+  txt("Invoice No.: " + (data.invoiceNo || "-"),625,y+24,8,true);
+  txt("Date: " + displaySavedInvoiceDate(data.invoiceDate || data.date),625,y+38,8);
+  txt("Time: " + displaySavedInvoiceTime(data.invoiceTime || data.time),625,y+51,8);
+  y+=78; rule(M,y,W-M,y,"0.65 0.35 0.12",1.2); y+=12;
+
+  const half=(W-2*M-10)/2;
+  box(M,y,half,67); box(M+half+10,y,half,67);
+  txt("CUSTOMER DETAILS",M+8,y+8,8,true,"0.55 0.03 0.14");
+  txt("Name: " + (data.customerName || data.name || "-"),M+8,y+24,8);
+  txt("Mobile: " + (data.mobile || "-"),M+8,y+38,8);
+  txt("Address: " + (data.address || "-"),M+8,y+52,7.5);
+  const px=M+half+18;
+  txt("PAYMENT DETAILS",px,y+8,8,true,"0.55 0.03 0.14");
+  txt("Payment mode: " + (data.paymentMode || "Cash"),px,y+26,8);
+  txt("Reference: " + (data.referenceNo || "-"),px,y+42,8);
+  y+=79;
+
+  const newCols=[["No.",34],["Description",150],["Purity",105],["Net Wt.",62],["Rate/GM",78],["Making",70],["Stamp",60],["Extra",60],["Amount (Rs.)",155]];
+  drawTableHead("NEW ORNAMENTS",newCols);
+  if(!newRows.length) row(["-","No new ornaments","","","","","","","0.00"],newCols);
+  newRows.forEach((r,i)=>row([i+1,r.description||"Ornament",r.purity||"-",r.netWeight||"0",fmt(r.rate),fmt(r.makingCharge),fmt(r.stampCharge),fmt(r.extraCharge),fmt(r.amount??newAmt(r))],newCols));
+  txt("Total New Ornaments: Rs. "+fmt(newTotal),W-M-205,y+5,8.5,true,"0.55 0.03 0.14"); y+=23;
+
+  const oldCols=[["No.",34],["Description",190],["Purity",135],["Weight (gm)",100],["Rate/GM",115],["Amount (Rs.)",200]];
+  drawTableHead("OLD / EXCHANGE ORNAMENTS",oldCols);
+  if(!oldRows.length) row(["-","No old/exchange ornaments","","","", "0.00"],oldCols);
+  oldRows.forEach((r,i)=>row([i+1,r.description||"Ornament",r.purity||"-",r.pureWeight||"0",fmt(r.rate),fmt(r.amount??oldAmt(r))],oldCols));
+  txt("Total Old Exchange: Rs. "+fmt(oldTotal),W-M-205,y+5,8.5,true,"0.55 0.03 0.14"); y+=24;
+
+  if(y>H-145) addPage();
+  const tx=535,tw=273;
+  const totals=[["SUB TOTAL",fmt(newTotal)]].concat(showGstin?[["GST ("+gstPercent+"%)",fmt(gstAmount)]]:[]).concat([["DISCOUNT","- "+fmt(discount)],["OLD EXCHANGE","- "+fmt(oldTotal)],["TOTAL PAID",fmt(totalPaid)],["DUE AMOUNT",fmt(dueAmount)]]);
+  totals.forEach(([label,value])=>{box(tx,y,tw,17);txt(label,tx+8,y+4,7.5,true);txt(value,tx+180,y+4,7.5,true);y+=17;});
+  box(tx,y,tw,23,"0.53 0.04 0.14","0.53 0.04 0.14");
+  txt("GRAND TOTAL",tx+8,y+6,9,true,"1 1 1");txt("Rs. "+fmt(grandTotal),tx+180,y+6,9,true,"1 1 1");y+=31;
+
+  if(data.description){txt("Additional Description: "+data.description,M,y,8);y+=13;}
+  if(y>H-55) addPage();
+  txt("Amount in Words: "+amountInWords(grandTotal),M,y,8,true);y+=20;
+  rule(M,y,W-M,y);txt("Customer Signature",M+80,y+18,8);txt("Authorised Signature",W-M-155,y+18,8);
+  txt("Thank you for shopping with Nandikishor Jewellery Works.",245,H-24,8,true,"0.55 0.03 0.14");
+  if(ops.length) pages.push(ops.join("\n"));
+
+  const objects=[];
+  const add=(v)=>{objects.push(v);return objects.length;};
+  const catalog=add(""), pagesObj=add("");
+  const regular=add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+  const bold=add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  const pageIds=[];
+  pages.forEach((stream)=>{
+    const streamData=stream+"\n";
+    const contentId=add("<< /Length "+streamData.length+" >>\nstream\n"+streamData+"endstream");
+    pageIds.push(add("<< /Type /Page /Parent "+pagesObj+" 0 R /MediaBox [0 0 "+W+" "+H+"] /Resources << /Font << /F1 "+regular+" 0 R /F2 "+bold+" 0 R >> >> /Contents "+contentId+" 0 R >>"));
+  });
+  objects[catalog-1]="<< /Type /Catalog /Pages "+pagesObj+" 0 R >>";
+  objects[pagesObj-1]="<< /Type /Pages /Kids ["+pageIds.map(id=>id+" 0 R").join(" ")+"] /Count "+pageIds.length+" >>";
+  let pdf="%PDF-1.4\n";const offsets=[0];
+  objects.forEach((obj,i)=>{offsets.push(pdf.length);pdf+=(i+1)+" 0 obj\n"+obj+"\nendobj\n";});
+  const xref=pdf.length;
+  pdf+="xref\n0 "+(objects.length+1)+"\n0000000000 65535 f \n";
+  offsets.slice(1).forEach((off)=>{pdf+=String(off).padStart(10,"0")+" 00000 n \n";});
+  pdf+="trailer\n<< /Size "+(objects.length+1)+" /Root "+catalog+" 0 R >>\nstartxref\n"+xref+"\n%%EOF";
+  return new Blob([pdf],{type:"application/pdf"});
+}
+
 const blankNew = () => ({
   description: "",
 
@@ -2795,18 +2922,41 @@ export function SavedInvoices() {
     }, 120);
   };
 
-  const shareInvoiceOnWhatsApp = () => {
-    if (!selectedInvoice) return;
+  const shareInvoiceOnWhatsApp = async () => {
+    if (!selectedInvoice?.id) return;
+    const invoiceNo = String(selectedInvoice.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const file = new File(
+      [createSavedInvoicePdf(selectedInvoice)],
+      invoiceNo + ".pdf",
+      { type: "application/pdf" },
+    );
+
+    // Native file sharing attaches the actual PDF to WhatsApp on supported devices.
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "Invoice " + (selectedInvoice.invoiceNo || "") });
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+        console.error("Native PDF sharing failed:", error);
+      }
+    }
+
+    // Browsers without file-sharing support download the PDF for manual attachment.
+    const objectUrl = URL.createObjectURL(file);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = file.name;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+
     const digits = String(selectedInvoice.mobile || "").replace(/\D/g, "");
-    const normalizedDigits =
-      digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
-    const phone =
-      normalizedDigits.length === 10 ? `91${normalizedDigits}` : normalizedDigits;
-    const text = encodeURIComponent(makeInvoiceShareMessage(selectedInvoice));
-    const url = phone
-      ? `https://wa.me/${phone}?text=${text}`
-      : `https://wa.me/?text=${text}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const normalizedDigits = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
+    const phone = normalizedDigits.length === 10 ? "91" + normalizedDigits : normalizedDigits;
+    window.open(phone ? "https://wa.me/" + phone : "https://wa.me/", "_blank", "noopener,noreferrer");
+    window.alert("Your invoice PDF has been downloaded. In WhatsApp, open the chat and attach the downloaded PDF document.");
   };
 
   return (
