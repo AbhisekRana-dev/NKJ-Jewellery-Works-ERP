@@ -2838,6 +2838,10 @@ export function SavedInvoices() {
       setDetailError("Only a saved invoice can be shared.");
       return;
     }
+    if (!hasInvoiceLineItems(selectedInvoice)) {
+      setDetailError("The complete saved ornament details are unavailable. Reload the invoice before sharing it.");
+      return;
+    }
     if (sharingInvoiceRef.current) return;
     if (!preparedShareFile) {
       setDetailError("The invoice PDF is still being prepared. Please try again in a moment.");
@@ -2855,15 +2859,18 @@ export function SavedInvoices() {
       const file = preparedShareFile;
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         try {
-          if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
           await navigator.share({
             files: [file],
             title: "Invoice " + selectedInvoice.invoiceNo,
             text: "Nandikishor Jewellery Works invoice " + selectedInvoice.invoiceNo,
           });
+          if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
           return;
         } catch (error) {
-          if (error?.name === "AbortError") return;
+          if (error?.name === "AbortError") {
+            if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
+            return;
+          }
           console.warn("Native PDF sharing unavailable; using secure link:", error);
         }
       }
