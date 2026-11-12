@@ -2598,6 +2598,158 @@ function SavedInvoicePrintSheet({ invoice }) {
   );
 }
 
+let html2pdfLibraryPromise = null;
+
+function loadHtml2PdfLibrary() {
+  if (typeof window !== "undefined" && typeof window.html2pdf === "function") return Promise.resolve(window.html2pdf);
+  if (html2pdfLibraryPromise) return html2pdfLibraryPromise;
+  html2pdfLibraryPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+    script.integrity = "sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==";
+    script.crossOrigin = "anonymous";
+    script.referrerPolicy = "no-referrer";
+    script.async = true;
+    script.onload = () => typeof window.html2pdf === "function"
+      ? resolve(window.html2pdf)
+      : reject(new Error("The PDF library could not be initialized."));
+    script.onerror = () => reject(new Error("Could not load the PDF generator. Check your internet connection and try again."));
+    document.head.appendChild(script);
+  }).catch((error) => {
+    html2pdfLibraryPromise = null;
+    throw error;
+  });
+  return html2pdfLibraryPromise;
+}
+
+function downloadInvoicePdfFile(file) {
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = file.name;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/** Export the existing SavedInvoicePrintSheet as a PDF file. */
+async function createInvoiceSharePdfFile(invoice) {
+  if (!invoice?.id || !invoice?.invoiceNo) throw new Error("Only a saved invoice can be shared as a PDF.");
+  const source = document.getElementById("invoice-print");
+  if (!source) throw new Error("Open the saved invoice details before sharing.");
+
+  const displayedInvoiceNo = source.querySelector(".inv-meta span strong")?.textContent?.trim();
+  if (!displayedInvoiceNo || displayedInvoiceNo !== String(invoice.invoiceNo).trim()) {
+    throw new Error("The displayed invoice does not match the selected saved invoice. Close and reopen it before sharing.");
+  }
+
+  const html2pdf = await loadHtml2PdfLibrary();
+  if (document.fonts?.ready) {
+    await Promise.race([
+      document.fonts.ready.catch(() => {}),
+      new Promise((resolve) => window.setTimeout(resolve, 1800)),
+    ]);
+  }
+
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText = "position:fixed;left:0;top:0;width:1200px;height:auto;overflow:visible;pointer-events:none;z-index:2147482999;background:#fff;";
+  const clone = source.cloneNode(true);
+  clone.classList.add("nkj-pdf-export-root");
+  [
+    ["display", "block"], ["position", "relative"], ["width", "291mm"],
+    ["min-width", "291mm"], ["max-width", "291mm"], ["height", "auto"],
+    ["min-height", "0"], ["max-height", "none"], ["margin", "0"],
+    ["padding", "2mm"], ["box-sizing", "border-box"], ["zoom", "0.6666667"],
+    ["transform", "none"], ["box-shadow", "none"],
+    ["border", "0.35mm solid #c98a2a"], ["overflow", "visible"], ["background", "#fff"],
+  ].forEach(([property, value]) => clone.style.setProperty(property, value, "important"));
+
+  const exportStyle = document.createElement("style");
+  exportStyle.textContent = \`
+    .nkj-pdf-export-root .inv-head { grid-template-columns:30mm minmax(0,1fr) 68mm !important; }
+    .nkj-pdf-export-root .inv-two { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; }
+    .nkj-pdf-export-root .inv-main { grid-template-columns:minmax(0,1fr) 68mm !important; gap:2mm !important; }
+    .nkj-pdf-export-root .inv-bottom { grid-template-columns:40% minmax(0,1fr) !important; }
+    .nkj-pdf-export-root .words-sign { grid-template-columns:minmax(0,1fr) 75mm !important; }
+    .nkj-pdf-export-root .table-wrap { width:100% !important; max-width:100% !important; overflow:visible !important; }
+    .nkj-pdf-export-root table,.nkj-pdf-export-root .items-table { width:100% !important; min-width:0 !important; max-width:100% !important; table-layout:fixed !important; }
+    .nkj-pdf-export-root .no-print,.nkj-pdf-export-root button,.nkj-pdf-export-root .icon-btn { display:none !important; }
+    .nkj-pdf-export-root .items-table tr,.nkj-pdf-export-root .inv-head,.nkj-pdf-export-root .inv-two,
+    .nkj-pdf-export-root .description-panel,.nkj-pdf-export-root .words-panel,.nkj-pdf-export-root .thankyou {
+      break-inside:avoid !important; page-break-inside:avoid !important;
+    }
+    .nkj-pdf-export-root img { max-width:100% !important; object-fit:contain !important; }
+    .nkj-pdf-export-root,.nkj-pdf-export-root * {
+      -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;
+    }
+  \`;
+  host.appendChild(exportStyle);
+  host.appendChild(clone);
+  document.body.appendChild(host);
+
+  try {
+    const originalControls = source.querySelectorAll("input,textarea,select");
+    const clonedControls = clone.querySelectorAll("input,textarea,select");
+    originalControls.forEach((control, index) => {
+      const target = clonedControls[index];
+      if (!target) return;
+      if (control instanceof HTMLInputElement && target instanceof HTMLInputElement) {
+        target.value = control.value;
+        target.setAttribute("value", control.value);
+        target.checked = control.checked;
+      } else if (control instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) {
+        target.value = control.value;
+        target.textContent = control.value;
+      } else if (control instanceof HTMLSelectElement && target instanceof HTMLSelectElement) {
+        target.value = control.value;
+        Array.from(target.options).forEach((option, optionIndex) => {
+          if (control.options[optionIndex]?.selected) option.setAttribute("selected", "selected");
+          else option.removeAttribute("selected");
+        });
+      }
+    });
+
+    await Promise.all(Array.from(clone.querySelectorAll("img")).map((image) => {
+      if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => reject(new Error("An invoice logo or artwork image did not load. PDF sharing was stopped to avoid an incomplete invoice.")), 5000);
+        image.addEventListener("load", () => { window.clearTimeout(timer); resolve(); }, { once: true });
+        image.addEventListener("error", () => { window.clearTimeout(timer); reject(new Error("An invoice logo or artwork image could not be loaded. PDF sharing was stopped.")); }, { once: true });
+      });
+    }));
+
+    const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
+    const blob = await html2pdf()
+      .set({
+        margin: [8,8,8,8],
+        filename: fileName,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2.5, useCORS: true, allowTaint: false,
+          backgroundColor: "#ffffff", logging: false,
+          windowWidth: 1200, scrollX: 0, scrollY: 0,
+        },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+        pagebreak: {
+          mode: ["css","legacy"],
+          avoid: [".inv-head",".inv-two",".description-panel",".words-panel",".thankyou",".items-table tr"],
+        },
+      })
+      .from(clone)
+      .outputPdf("blob");
+
+    if (!(blob instanceof Blob) || blob.size < 1000) throw new Error("The generated invoice PDF is empty or invalid.");
+    const signature = new TextDecoder("ascii").decode(new Uint8Array(await blob.slice(0,8).arrayBuffer()));
+    if (!signature.startsWith("%PDF-")) throw new Error("The generated file is not a valid PDF. Nothing was shared.");
+    return new File([blob], fileName, { type: "application/pdf" });
+  } finally {
+    host.remove();
+  }
+}
+
 export function SavedInvoices() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
