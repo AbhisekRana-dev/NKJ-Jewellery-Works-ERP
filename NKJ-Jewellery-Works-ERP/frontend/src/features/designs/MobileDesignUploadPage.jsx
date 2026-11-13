@@ -52,6 +52,7 @@ export default function MobileDesignUploadPage() {
   const saveInFlightRef = useRef(false);
   const previewUrlsRef = useRef([]);
 
+  const updatingExistingDesign = session?.uploadMode === "UPDATE_DESIGN_IMAGES";
   const metalCategories = useMemo(
     () => categories.filter((category) => category.metalType === metal && category.isActive !== false),
     [categories, metal],
@@ -171,6 +172,12 @@ export default function MobileDesignUploadPage() {
   }, [token, session?.status, saving]);
 
   useEffect(() => {
+    if (updatingExistingDesign) {
+      setReservedDesignId("EXISTING");
+      setDesignIdLoading(false);
+      setDesignIdError("");
+      return undefined;
+    }
     if (!token || !session || !categoryId || !["WAITING", "SCANNED"].includes(session.status)) {
       setReservedDesignId("");
       return undefined;
@@ -194,7 +201,7 @@ export default function MobileDesignUploadPage() {
         if (active) setDesignIdLoading(false);
       });
     return () => { active = false; };
-  }, [token, session?.status, categoryId]);
+  }, [token, session?.status, session?.uploadMode, categoryId]);
 
   useEffect(() => {
     if (!cameraOpen) return undefined;
@@ -329,7 +336,7 @@ export default function MobileDesignUploadPage() {
       setError("This upload session is no longer active. Ask the owner to generate a new QR code.");
       return;
     }
-    if (!categoryId || !designName.trim()) {
+    if (!updatingExistingDesign && (!categoryId || !designName.trim())) {
       setError("Choose a subcategory and enter a design name.");
       return;
     }
@@ -337,7 +344,7 @@ export default function MobileDesignUploadPage() {
       setError("Select at least one jewellery photograph.");
       return;
     }
-    if (!reservedDesignId || designIdLoading) {
+    if (!updatingExistingDesign && (!reservedDesignId || designIdLoading)) {
       setError(designIdError || "The server is generating your Design ID. Please wait a moment.");
       return;
     }
@@ -352,15 +359,17 @@ export default function MobileDesignUploadPage() {
       ...photos.filter((photo) => photo.id !== primaryPhotoId),
     ];
     const data = new FormData();
-    data.append("categoryId", categoryId);
-    data.append("designName", designName.trim());
-    data.append("description", description);
-    data.append("styleLabel", "Shop photograph");
-    data.append("keywords", designName.trim());
-    data.append("purity", purity);
-    data.append("weightGrams", weightGrams);
-    data.append("isActive", String(isActive));
-    data.append("isFeatured", "false");
+    if (!updatingExistingDesign) {
+      data.append("categoryId", categoryId);
+      data.append("designName", designName.trim());
+      data.append("description", description);
+      data.append("styleLabel", "Shop photograph");
+      data.append("keywords", designName.trim());
+      data.append("purity", purity);
+      data.append("weightGrams", weightGrams);
+      data.append("isActive", String(isActive));
+      data.append("isFeatured", "false");
+    }
     orderedPhotos.forEach((photo) => {
       data.append("files", photo.file, photo.file.name);
       data.append("rotations", String(photo.rotation));
@@ -450,7 +459,7 @@ export default function MobileDesignUploadPage() {
         <div className="nkj-mobile-expiry"><Clock3 size={14} />
           <span>Secure upload link</span>
           <b>{Math.floor(sessionSeconds / 60)}:{String(sessionSeconds % 60).padStart(2, "0")} remaining</b>
-          <small>One design per QR</small>
+          <small>{updatingExistingDesign ? "Existing design · one-time upload" : "One design per QR"}</small>
         </div>
       </section>
 
@@ -513,7 +522,7 @@ export default function MobileDesignUploadPage() {
           )}
         </section>
 
-        <section className="nkj-mobile-details-section">
+        {!updatingExistingDesign && <section className="nkj-mobile-details-section">
           <div className="nkj-mobile-section-title"><div><span>02</span><b>Design information</b></div></div>
           <label>Main Category
             <select value={metal} onChange={(event) => {
@@ -550,7 +559,7 @@ export default function MobileDesignUploadPage() {
             <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} />
             <span><b>Active / Publish design</b><small>When enabled, the design appears in the public jewellery catalogue after saving.</small></span>
           </label>
-        </section>
+        </section>}
 
         {error && <div className="nkj-mobile-form-error" role="alert"><AlertTriangle size={17} /> {error}</div>}
         {saving && (
@@ -562,9 +571,11 @@ export default function MobileDesignUploadPage() {
 
         <button type="submit" className="nkj-mobile-save" disabled={saving || designIdLoading || !reservedDesignId || !["WAITING", "SCANNED"].includes(session.status) || !photos.length}>
           {saving ? <LoaderCircle className="spin" size={18} /> : <CheckCircle2 size={18} />}
-          {saving ? "Saving Design…" : "Save Design"}
+          {saving ? "Uploading…" : updatingExistingDesign ? "Save Photographs" : "Save Design"}
         </button>
-        <p className="nkj-mobile-save-note">The original photographs and optimized display copies are stored on the Jewellery ERP server.</p>
+        <p className="nkj-mobile-save-note">{updatingExistingDesign
+          ? "The photos will be permanently saved to this existing design. Its Design ID and saved details will remain unchanged."
+          : "The original photographs and optimized display copies are stored on the Jewellery ERP server."}</p>
       </form>
       <footer className="nkj-mobile-upload-footer">Nandikishor Jewellery Works · Secure owner upload</footer>
 
@@ -573,10 +584,12 @@ export default function MobileDesignUploadPage() {
           <section role="dialog" aria-modal="true" className="nkj-mobile-success-card">
             <CheckCircle2 size={43} />
             <span>UPLOAD COMPLETED</span>
-            <h2>Design saved successfully</h2>
+            <h2>{savedDesign.uploadMode === "UPDATE_DESIGN_IMAGES" || updatingExistingDesign ? "Photographs added successfully" : "Design saved successfully"}</h2>
             <b className="nkj-mobile-generated-id">{savedDesign.designId}</b>
             <p>{savedDesign.designName}</p>
-            <small>Your design is now saved in PostgreSQL and the desktop catalogue has been notified.</small>
+            <small>{updatingExistingDesign
+              ? "Your existing design now has these additional photos. The desktop catalogue has been notified."
+              : "Your design is now saved in PostgreSQL and the desktop catalogue has been notified."}</small>
             <button type="button" onClick={() => setSavedDesign(null)}>Done</button>
           </section>
         </div>
