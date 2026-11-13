@@ -1630,12 +1630,20 @@ jobs:
 
           status = ok(f"/api/admin/design-upload-sessions/{session_id}")
           assert status["status"] == "UPLOADED"
-          reject(
-              f"/api/mobile-design-upload/{token}/design",
-              "POST",
-              token=None,
-              extra_headers={"Content-Type": "multipart/form-data; boundary=" + boundary}
+          duplicate_req = urllib.request.Request(
+              BASE + f"/api/mobile-design-upload/{token}/design",
+              data=body,
+              headers={
+                  "Accept": "application/json",
+                  "Content-Type": "multipart/form-data; boundary=" + boundary
+              },
+              method="POST"
           )
+          try:
+              with urllib.request.urlopen(duplicate_req, timeout=60):
+                  raise AssertionError("The same one-time QR upload token accepted a second photograph upload.")
+          except urllib.error.HTTPError as error:
+              assert 400 <= error.code < 500, f"Consumed QR token should return a client error, got HTTP {error.code}."
 
           # A second active QR is revoked immediately when the owner logs out.
           second_qr = ok(
