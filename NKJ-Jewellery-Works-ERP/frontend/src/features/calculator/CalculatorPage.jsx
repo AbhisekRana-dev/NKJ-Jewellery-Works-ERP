@@ -185,6 +185,7 @@ function evaluateExpression(source) {
 
 function ManualCalculator({ active }) {
   const [draft, setDraft] = usePersistentDraft("nkj_manual_calculator_draft", INITIAL_MANUAL_DRAFT);
+  const [history, addHistory, clearHistory] = usePersistentHistory("nkj_manual_calculation_history", 15);
   const { expression, result, error } = draft;
   const calculateGuardRef = useRef({ inFlight: false, lastAcceptedAt: 0, lastExpression: "" });
 
@@ -222,12 +223,13 @@ function ManualCalculator({ active }) {
       guard.lastExpression = source;
       guard.lastAcceptedAt = now;
       setDraft((current) => ({ ...current, result: formatted, calculated: true, error: "" }));
+      addHistory({ expression: source, result: Number(rounded).toLocaleString("en-IN", { maximumFractionDigits: 8 }) });
     } catch (err) {
       setDraft((current) => ({ ...current, error: err.message || "Invalid calculation." }));
     } finally {
       guard.inFlight = false;
     }
-  }, [expression, setDraft]);
+  }, [expression, setDraft, addHistory]);
 
   const clear = useCallback(() => {
     setDraft({ ...INITIAL_MANUAL_DRAFT });
@@ -370,6 +372,7 @@ function ManualCalculator({ active }) {
         </div>
         <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets</p>
       </section>
+      <CalculationHistory title="Calculation History" items={history} onClear={clearHistory} emptyText="Your manual calculations will appear here." />
     </div>
   );
 }
