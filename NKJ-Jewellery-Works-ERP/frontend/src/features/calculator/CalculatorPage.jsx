@@ -46,6 +46,8 @@ const numberInput = (value, setter) => ({
   step: "0.01",
   value,
   onChange: (event) => setter(event.target.value),
+  // Prevent the mouse wheel from accidentally incrementing/decrementing values.
+  onWheel: (event) => event.currentTarget.blur(),
 });
 
 function usePersistentHistory(storageKey, limit = 15) {
@@ -425,6 +427,7 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
               inputMode="decimal"
               value={purity}
               onChange={(event) => updateDraftField("purity", event.target.value)}
+              onWheel={(event) => event.currentTarget.blur()}
               placeholder="Enter purity percentage"
               aria-label="Purity percentage"
               aria-invalid={!isPurityValid}
@@ -463,6 +466,7 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
                 inputMode="decimal"
                 value={making ?? ""}
                 onChange={(event) => updateDraftField("making", event.currentTarget.value)}
+                onWheel={(event) => event.currentTarget.blur()}
                 placeholder={makingMode === "percentage"
                   ? "Enter percentage (e.g. 12)"
                   : "Enter making charge in rupees"}
