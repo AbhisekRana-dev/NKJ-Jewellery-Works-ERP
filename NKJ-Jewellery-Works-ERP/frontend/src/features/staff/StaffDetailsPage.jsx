@@ -1,5 +1,5 @@
 import "./StaffDetailsPage.css";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   UserRound, Plus, Save, NotebookPen, X, Search, ShieldCheck, UserX,
   CalendarDays, Phone, Mail, BriefcaseBusiness, MapPin, Pencil,
@@ -36,6 +36,7 @@ export default function StaffDetailsPage() {
   const [searchParams] = useSearchParams();
   const [staff, setStaff] = useState([]);
   const [notes, setNotes] = useState([]);
+  const noteLoadVersion = useRef(0);
   const [selectedId, setSelectedId] = useState("");
   const [form, setForm] = useState(blank);
   const [noteForm, setNoteForm] = useState({ noteDate: localToday(), noteType: "GENERAL", description: "" });
@@ -73,20 +74,28 @@ export default function StaffDetailsPage() {
   }, [searchParams]);
 
   const loadNotes = useCallback(async () => {
-    if (!selectedId) {
+    const requestVersion = ++noteLoadVersion.current;
+    const staffId = selectedId;
+    if (!staffId) {
       setNotes([]);
+      setNotesLoading(false);
       return;
     }
     setNotesLoading(true);
     try {
-      const data = await request(`/admin/modules/staff/${encodeURIComponent(selectedId)}/notes`);
-      setNotes(Array.isArray(data) ? data : []);
-      setExpandedNotes(new Set());
+      const data = await request(`/admin/modules/staff/${encodeURIComponent(staffId)}/notes`);
+      // Ignore stale responses when the owner switches staff before a request finishes.
+      if (requestVersion === noteLoadVersion.current) {
+        setNotes(Array.isArray(data) ? data : []);
+        setExpandedNotes(new Set());
+      }
     } catch (loadError) {
-      setError(loadError.message || "Could not load this staff member's notes.");
-      setNotes([]);
+      if (requestVersion === noteLoadVersion.current) {
+        setError(loadError.message || "Could not load this staff member's notes.");
+        setNotes([]);
+      }
     } finally {
-      setNotesLoading(false);
+      if (requestVersion === noteLoadVersion.current) setNotesLoading(false);
     }
   }, [selectedId]);
 
