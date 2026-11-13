@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw, History, Copy, Trash2 } from "lucide-react";
+import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw, History, Copy, Trash2, Save as SaveIcon } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import "./CalculatorPage.css";
 
@@ -7,7 +7,7 @@ const INITIAL_ORNAMENT_DRAFT = Object.freeze({
   weight: "", purity: "", rate: "", making: "",
   makingMode: "rupees", stamp: "", extra: "",
 });
-const INITIAL_MANUAL_DRAFT = Object.freeze({ expression: "0", result: "0", error: "" });
+const INITIAL_MANUAL_DRAFT = Object.freeze({ expression: "0", result: "0", error: "", calculated: false });
 
 function usePersistentDraft(storageKey, initialValue) {
   const [draft, setDraft] = useState(() => {
@@ -188,11 +188,21 @@ function ManualCalculator({ active }) {
   const { expression, result, error } = draft;
 
   const append = useCallback((value) => {
-    setDraft((current) => ({
-      ...current,
-      error: "",
-      expression: current.expression === "0" && /\d/.test(value) ? value : current.expression + value,
-    }));
+    setDraft((current) => {
+      const isOperator = ["+", "-", "*", "/", "%"].includes(value);
+      const baseExpression = current.calculated
+        ? (isOperator ? current.result : "0")
+        : current.expression;
+      return {
+        ...current,
+        error: "",
+        calculated: false,
+        result: current.calculated ? "0" : current.result,
+        expression: baseExpression === "0" && /\d/.test(value)
+          ? value
+          : baseExpression + value,
+      };
+    });
   }, [setDraft]);
 
   const calculate = useCallback(() => {
@@ -201,7 +211,7 @@ function ManualCalculator({ active }) {
       const value = evaluateExpression(source);
       const rounded = Number(value.toFixed(8));
       const formatted = String(rounded);
-      setDraft((current) => ({ ...current, result: formatted, expression: formatted, error: "" }));
+      setDraft((current) => ({ ...current, result: formatted, calculated: true, error: "" }));
     } catch (err) {
       setDraft((current) => ({ ...current, error: err.message || "Invalid calculation." }));
     }
@@ -215,11 +225,16 @@ function ManualCalculator({ active }) {
   const resetManualCalculator = clear;
 
   const backspace = useCallback(() => {
-    setDraft((current) => ({
-      ...current,
-      error: "",
-      expression: current.expression.length <= 1 ? "0" : current.expression.slice(0, -1),
-    }));
+    setDraft((current) => {
+      const source = current.calculated ? current.result : current.expression;
+      return {
+        ...current,
+        error: "",
+        calculated: false,
+        result: current.calculated ? "0" : current.result,
+        expression: source.length <= 1 ? "0" : source.slice(0, -1),
+      };
+    });
   }, [setDraft]);
 
   // Capture keyboard input while this calculator is mounted. Capture mode
@@ -293,43 +308,55 @@ function ManualCalculator({ active }) {
   }, [active, append, calculate, backspace]);
 
   const keys = [
-    ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
-    ["7", "7"], ["8", "8"], ["9", "9"], ["×", "*"],
-    ["4", "4"], ["5", "5"], ["6", "6"], ["−", "-"],
-    ["1", "1"], ["2", "2"], ["3", "3"], ["+", "+"],
-    ["%", "%"], ["0", "0"], [".", "."], ["=", "equal"],
+    ["AC", "clear"], ["(", "("], [")", ")"], ["%", "%"],
+    ["7", "7"], ["8", "8"], ["9", "9"], ["÷", "/"],
+    ["4", "4"], ["5", "5"], ["6", "6"], ["×", "*"],
+    ["1", "1"], ["2", "2"], ["3", "3"], ["−", "-"],
+    ["DEL", "delete"], ["0", "0"], [".", "."], ["+", "+"],
   ];
 
   return (
     <div className="nkj-calc-manual-only">
       <section className="nkj-calc-manual">
         <div className="nkj-calc-display">
-          <span>MANUAL CALCULATOR</span>
           <div className="nkj-calc-expression" aria-live="polite">{expression}</div>
-          <div className="nkj-calc-result">= {result}</div>
+          <div className="nkj-calc-display-result">= {Number(result || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           {error && <small className="nkj-calc-error">{error}</small>}
         </div>
-        <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
-          {keys.map(([label, value]) => (
-            <button
-              type="button"
-              key={label}
-              className={value === "clear" ? "utility" : value === "equal" ? "equal" : ["+", "-", "*", "/", "%"].includes(value) ? "operator" : ""}
-              onClick={() => value === "clear" ? resetManualCalculator() : value === "equal" ? calculate() : append(value)}
-            >
-              {label}
+
+        <div className="nkj-calc-manual-keypad-area">
+          <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
+            {keys.map(([label, value]) => (
+              <button
+                type="button"
+                key={label}
+                className={
+                  value === "clear" ? "utility"
+                    : value === "delete" ? "delete"
+                      : ["+", "-", "*", "/", "%"].includes(value) ? "operator"
+                        : ""
+                }
+                onClick={() => {
+                  if (value === "clear") resetManualCalculator();
+                  else if (value === "delete") backspace();
+                  else append(value);
+                }}
+              >
+                {value === "delete" ? <><Delete size={19} /> DEL</> : label}
+              </button>
+            ))}
+          </div>
+
+          <div className="nkj-calc-manual-side-actions">
+            <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
+              <RotateCcw size={20} /> Reset
             </button>
-          ))}
+            <button type="button" className="nkj-calc-manual-save" onClick={calculate}>
+              <SaveIcon size={20} /> Save
+            </button>
+          </div>
         </div>
-        <div className="nkj-calc-manual-actions">
-          <button type="button" className="nkj-calc-backspace" onClick={backspace} aria-label="Delete last character">
-            <Delete size={17} /> DEL
-          </button>
-          <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
-            <RotateCcw size={15} /> Reset
-          </button>
-        </div>
-        <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets</p>
+        <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to save result · Backspace to delete · Esc resets</p>
       </section>
     </div>
   );
