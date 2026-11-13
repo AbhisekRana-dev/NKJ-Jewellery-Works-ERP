@@ -5091,3 +5091,43 @@
   .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-details-card > .nkj-calc-fields { grid-template-columns: minmax(0,1fr) !important; }
   .nkj-calc-manual-only .nkj-calc-manual-side-actions { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
 }
+
+
+/* Calculator page uses the full content width without changing the ERP navbar. */
+main.container:has(.nkj-calculator-page) {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 12px clamp(10px, 1.6vw, 28px) 18px !important;
+}
+.nkj-calc-ornament-layout .nkj-calc-rate-field-old {
+  grid-column: 1 / -1 !important;
+}
+.nkj-calc-manual-only .nkj-calc-display {
+  display: grid !important;
+  grid-template-columns: minmax(0,1fr) !important;
+  grid-template-rows: auto auto auto !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+.nkj-calc-manual-only .nkj-calc-display > span {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  justify-self: start !important;
+}
+.nkj-calc-manual-only .nkj-calc-expression {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  width: 100% !important;
+  text-align: right !important;
+}
+.nkj-calc-manual-only .nkj-calc-result {
+  grid-column: 1 !important;
+  grid-row: 3 !important;
+  width: 100% !important;
+  padding-top: 7px !important;
+  border-top: 1px solid rgba(240,196,103,.38) !important;
+  text-align: right !important;
+}
+@media (max-width: 700px) {
+  main.container:has(.nkj-calculator-page) { padding: 8px !important; }
+}
