@@ -1079,20 +1079,46 @@ public class JewelleryDesignController {
     }
 
     private List<Map<String, Object>> categoryList(boolean includeInactive) {
-        String sql = """
+        // Read category rows separately from design aggregates. This keeps the
+        // category endpoint independent of a grouped category/design join and
+        // makes a missing/empty design group harmless (it simply counts as 0).
+        List<Map<String, Object>> categories = jdbc.queryForList("""
                 SELECT c.id, c.metal_type AS "metalType",
                        c.subcategory_name AS "subcategoryName", c.slug,
-                       c.display_order AS "displayOrder", c.is_active AS "isActive",
-                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE) AS "activeDesignCount",
-                       COUNT(d.id) AS "totalDesignCount"
+                       c.display_order AS "displayOrder", c.is_active AS "isActive"
                   FROM public.jewellery_design_categories c
-                  LEFT JOIN public.jewellery_designs d ON d.category_id = c.id AND d.is_deleted = FALSE
                  WHERE (? = TRUE OR c.is_active = TRUE)
-                 GROUP BY c.id
                  ORDER BY CASE c.metal_type WHEN 'GOLD' THEN 1 WHEN 'SILVER' THEN 2 ELSE 3 END,
                           c.display_order, c.subcategory_name
-                """;
-        return jdbc.queryForList(sql, includeInactive, includeInactive);
+                """, includeInactive);
+        if (categories.isEmpty()) {
+            return categories;
+        }
+
+        Map<Long, Map<String, Object>> countsByCategory = new HashMap<>();
+        List<Map<String, Object>> countRows = jdbc.queryForList("""
+                SELECT d.category_id AS "categoryId",
+                       COUNT(*) AS "totalDesignCount",
+                       SUM(CASE WHEN d.is_active = TRUE THEN 1 ELSE 0 END) AS "activeDesignCount"
+                  FROM public.jewellery_designs d
+                 WHERE d.is_deleted = FALSE
+                 GROUP BY d.category_id
+                """);
+        for (Map<String, Object> countRow : countRows) {
+            Object rawId = countRow.get("categoryId");
+            if (rawId instanceof Number number) {
+                countsByCategory.put(number.longValue(), countRow);
+            }
+        }
+
+        for (Map<String, Object> category : categories) {
+            Object rawId = category.get("id");
+            long categoryId = rawId instanceof Number number ? number.longValue() : -1L;
+            Map<String, Object> counts = countsByCategory.get(categoryId);
+            category.put("activeDesignCount", counts == null ? 0L : counts.get("activeDesignCount"));
+            category.put("totalDesignCount", counts == null ? 0L : counts.get("totalDesignCount"));
+        }
+        return categories;
     }
 
     private Map<String, Object> listDesigns(
@@ -1176,21 +1202,33 @@ public class JewelleryDesignController {
                        c.metal_type AS "metalType", c.subcategory_name AS "subcategoryName",
                        c.subcategory_name AS "jewelleryType", c.slug AS "subcategorySlug",
                        CASE WHEN d.image_status = 'READY' THEN img.thumbnail_url END AS "thumbnailUrl",
+                       CASE WHEN d.image_status = 'READY' THEN img.display_url END AS "displayUrl",
                        CASE WHEN d.image_status = 'READY' THEN img.original_url END AS "originalUrl",
                        CASE WHEN d.image_status = 'READY' THEN COALESCE(img.image_count, 0) ELSE 0 END AS "imageCount"
                 """ + categoryJoin + """
                 LEFT JOIN LATERAL (
-                    SELECT COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''), NULLIF(BTRIM(di.original_url), '')) AS thumbnail_url,
-                           COALESCE(NULLIF(BTRIM(di.original_url), ''), NULLIF(BTRIM(di.thumbnail_url), '')) AS original_url,
+                    SELECT COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''),
+                                    NULLIF(BTRIM(di.display_url), ''),
+                                    NULLIF(BTRIM(di.original_url), '')) AS thumbnail_url,
+                           COALESCE(NULLIF(BTRIM(di.display_url), ''),
+                                    NULLIF(BTRIM(di.original_url), ''),
+                                    NULLIF(BTRIM(di.thumbnail_url), '')) AS display_url,
+                           COALESCE(NULLIF(BTRIM(di.original_url), ''),
+                                    NULLIF(BTRIM(di.display_url), ''),
+                                    NULLIF(BTRIM(di.thumbnail_url), '')) AS original_url,
                            (SELECT COUNT(*) FROM public.jewellery_design_images all_images
                              WHERE all_images.design_id=d.id
-                               AND COALESCE(NULLIF(BTRIM(all_images.thumbnail_url), ''), NULLIF(BTRIM(all_images.original_url), '')) IS NOT NULL
+                               AND COALESCE(NULLIF(BTRIM(all_images.thumbnail_url), ''),
+                                            NULLIF(BTRIM(all_images.display_url), ''),
+                                            NULLIF(BTRIM(all_images.original_url), '')) IS NOT NULL
                                AND (all_images.original_url LIKE '/api/uploads/designs/%'
                                     OR all_images.display_url LIKE '/api/uploads/designs/%'
                                     OR all_images.thumbnail_url LIKE '/api/uploads/designs/%')) AS image_count
                       FROM public.jewellery_design_images di
                      WHERE di.design_id = d.id
-                       AND COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''), NULLIF(BTRIM(di.original_url), '')) IS NOT NULL
+                       AND COALESCE(NULLIF(BTRIM(di.thumbnail_url), ''),
+                                    NULLIF(BTRIM(di.display_url), ''),
+                                    NULLIF(BTRIM(di.original_url), '')) IS NOT NULL
                        AND (di.original_url LIKE '/api/uploads/designs/%'
                             OR di.display_url LIKE '/api/uploads/designs/%'
                             OR di.thumbnail_url LIKE '/api/uploads/designs/%')
