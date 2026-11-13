@@ -651,54 +651,6 @@ export default function JewelleryDesignsPage() {
   };
 
 
-    const file = event.target.files?.[0];
-    if (!file || !selected || !isAdmin) return;
-
-    setReplacingPhoto(true);
-    setReplacePhotoError("");
-    const formData = new FormData();
-    formData.append("file", file);
-    const token = window.localStorage.getItem("nkj_token");
-
-    try {
-      const response = await fetch(
-        `${API_BASE}/admin/designs/${selected.id}/images/replace-primary`,
-        {
-          method: "POST",
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            "X-NKJ-Client-Id": getRealtimeClientId(),
-          },
-          body: formData,
-        },
-      );
-      const raw = await response.text();
-      let result = {};
-      if (raw) {
-        try { result = JSON.parse(raw); } catch { result = { message: raw }; }
-      }
-      if (response.status === 401) {
-        window.localStorage.removeItem("nkj_token");
-        window.localStorage.removeItem("nkj_user");
-        window.dispatchEvent(new Event("nkj:session-expired"));
-      }
-      if (!response.ok) {
-        throw new Error(result.message || `Photograph replacement failed (${response.status}).`);
-      }
-
-      const updated = await request(`/designs/${selected.id}`, { publicRequest: true });
-      setSelected(updated);
-      setActiveImageIndex(0);
-      setZoomed(false);
-      await refreshCatalogue();
-    } catch (error) {
-      setReplacePhotoError(error.message || "Could not replace the design photograph.");
-    } finally {
-      setReplacingPhoto(false);
-      event.target.value = "";
-    }
-  };
-
   return (
     <Page active="designs">
       <div className="nkj-designs-page">
