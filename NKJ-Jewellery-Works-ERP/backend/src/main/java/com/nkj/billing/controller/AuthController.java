@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.nkj.billing.service.AuthService;
 
@@ -17,7 +18,11 @@ import com.nkj.billing.service.AuthService;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService auth;
-    public AuthController(AuthService auth) { this.auth = auth; }
+    private final JdbcTemplate jdbc;
+    public AuthController(AuthService auth, JdbcTemplate jdbc) {
+        this.auth = auth;
+        this.jdbc = jdbc;
+    }
 
     record Login(String username, String password) {}
     record Verify(String challengeId, String code) {}
@@ -34,7 +39,22 @@ public class AuthController {
     }
     @PostMapping("/logout")
     public Map<String,Object> logout(@RequestHeader(value="Authorization", required=false) String h) {
-        if (h != null && h.startsWith("Bearer ")) auth.logout(h.substring(7));
+        if (h != null && h.startsWith("Bearer ")) {
+            String token = h.substring(7);
+            if (auth.valid(token)) {
+                // A QR capability must not remain usable after the owner explicitly
+                // signs out. In-flight mobile pages immediately become revoked.
+                jdbc.update("""
+                    UPDATE public.jewellery_design_upload_sessions
+                       SET revoked_at=NOW()
+                     WHERE created_by=?
+                       AND consumed_at IS NULL
+                       AND revoked_at IS NULL
+                       AND expires_at > NOW()
+                    """, auth.getUsername());
+            }
+            auth.logout(token);
+        }
         return Map.of("success", true);
     }
 
