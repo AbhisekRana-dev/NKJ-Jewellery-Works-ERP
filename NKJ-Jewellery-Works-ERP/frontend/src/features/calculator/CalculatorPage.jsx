@@ -60,20 +60,31 @@ function usePersistentHistory(storageKey, limit = 15) {
       return [];
     }
   });
+  const itemsRef = useRef(items);
 
-  useEffect(() => {
+  // Persistence happens only inside an explicit add/clear action, never in an effect.
+  const commitItems = useCallback((update) => {
+    const current = itemsRef.current;
+    const next = typeof update === "function" ? update(current) : update;
+    const limited = next.slice(0, limit);
+    itemsRef.current = limited;
+
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(items.slice(0, limit)));
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(storageKey, JSON.stringify(limited));
+      }
     } catch {
-      // History is optional; calculator functions remain available without storage.
+      // Keep the in-memory history usable when browser storage is unavailable.
     }
-  }, [storageKey, items, limit]);
+
+    setItems(limited);
+  }, [storageKey, limit]);
 
   const addItem = useCallback((item) => {
-    setItems((current) => [{ ...item, createdAt: Date.now() }, ...current].slice(0, limit));
-  }, [limit]);
+    commitItems((current) => [{ ...item, createdAt: Date.now() }, ...current]);
+  }, [commitItems]);
 
-  const clearItems = useCallback(() => setItems([]), []);
+  const clearItems = useCallback(() => commitItems([]), [commitItems]);
   return [items, addItem, clearItems];
 }
 
@@ -329,7 +340,11 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
   const draftKey = isOld ? "nkj_old_ornament_draft" : "nkj_new_ornament_draft";
   const [draft, setDraft] = usePersistentDraft(draftKey, INITIAL_ORNAMENT_DRAFT);
   const { weight, purity, rate, making, makingMode, stamp, extra } = draft;
+  const [calculationFeedback, setCalculationFeedback] = useState("");
+  const calculateGuardRef = useRef({ inFlight: false, lastAcceptedAt: 0 });
+
   const updateDraftField = useCallback((field, value) => {
+    setCalculationFeedback("");
     setDraft((current) => ({ ...current, [field]: value }));
   }, [setDraft]);
   const purityPercent = purity.trim() === "" ? 100 : Number(purity);
@@ -381,25 +396,56 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
     return () => window.removeEventListener("keydown", handleEscape, true);
   }, [active, reset]);
 
-  const draftHistorySnapshot = JSON.stringify(draft);
-  const previousHistorySnapshot = useRef(draftHistorySnapshot);
-  useEffect(() => {
-    if (draftHistorySnapshot === previousHistorySnapshot.current) return undefined;
-    previousHistorySnapshot.current = draftHistorySnapshot;
+  // Add exactly one record only after a valid, deliberate Calculate action.
+  // A short click guard blocks duplicate events from rapid double-clicks while
+  // still allowing the same calculation to be recorded again as a later action.
+  const handleCalculate = useCallback(() => {
+    const guard = calculateGuardRef.current;
+    const now = Date.now();
+    if (guard.inFlight || now - guard.lastAcceptedAt < 650) return;
 
-    if (!active || !(Number(weight) > 0) || !(Number(rate) > 0) || !isPurityValid || !isMakingValid) {
-      return undefined;
+    if (!(Number(weight) > 0) || !(Number(rate) > 0)) {
+      setCalculationFeedback("Enter a weight and rate greater than zero before calculating.");
+      return;
+    }
+    if (!isPurityValid) {
+      setCalculationFeedback("Enter a valid purity percentage from 0 to 100.");
+      return;
+    }
+    if (!isMakingValid) {
+      setCalculationFeedback("Enter a making charge percentage from 0 to 100.");
+      return;
     }
 
-    const timeout = window.setTimeout(() => {
+    guard.inFlight = true;
+    guard.lastAcceptedAt = now;
+    try {
+      const formatNumber = (value) => Number(value || 0).toLocaleString("en-IN", {
+        maximumFractionDigits: 2,
+      });
       const expressionText = isOld
-        ? `${Number(weight).toLocaleString("en-IN", { maximumFractionDigits: 2 })} gm × ${purityPercent}% × ₹${Number(rate).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`
-        : `${Number(weight).toLocaleString("en-IN", { maximumFractionDigits: 2 })} gm × ₹${Number(rate).toLocaleString("en-IN", { maximumFractionDigits: 2 })} + MC ${makingMode === "percentage" ? `${makingInputValue}%` : `₹${Number(making || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}${Number(stamp) > 0 ? ` + SC ₹${Number(stamp).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}${Number(extra) > 0 ? ` + EC ₹${Number(extra).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}`;
-      addHistory({ expression: expressionText, result: `₹ ${money(total)}` });
-    }, 800);
+        ? `${formatNumber(weight)} gm × ${formatNumber(purityPercent)}% × ₹${formatNumber(rate)}`
+        : [
+            `${formatNumber(weight)} gm × ₹${formatNumber(rate)}`,
+            makingMode === "percentage"
+              ? `MC ${formatNumber(makingInputValue)}% (₹${money(makingChargeRupees)})`
+              : `MC ₹${money(makingChargeRupees)}`,
+            ...(Number(stamp) > 0 ? [`SC ₹${money(stamp)}`] : []),
+            ...(Number(extra) > 0 ? [`EC ₹${money(extra)}`] : []),
+          ].join(" + ");
 
-    return () => window.clearTimeout(timeout);
-  }, [draftHistorySnapshot, active, weight, purity, rate, making, makingMode, stamp, extra, isOld, purityPercent, makingInputValue, total, isPurityValid, isMakingValid, addHistory]);
+      addHistory({
+        expression: expressionText,
+        result: `₹ ${money(total)}`,
+      });
+      setCalculationFeedback("Calculation added to Recent Calculations.");
+    } finally {
+      guard.inFlight = false;
+    }
+  }, [
+    weight, rate, isPurityValid, purityPercent, isMakingValid, isOld,
+    makingMode, makingInputValue, makingChargeRupees, stamp, extra, total, addHistory,
+  ]);
 
   return (
     <div className="nkj-calc-with-history nkj-calc-ornament-layout">
@@ -496,9 +542,17 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
               </>}
           <small className="nkj-calc-reset-hint">Press Esc or click Reset to clear this calculator immediately.</small>
         </div>
-        <button type="button" className="nkj-calc-reset" onClick={reset}>
-          <RotateCcw size={15} /> Reset
-        </button>
+        <div className="nkj-calc-result-actions">
+          {calculationFeedback && <small className="nkj-calc-calculation-feedback" role="status">{calculationFeedback}</small>}
+          <div>
+            <button type="button" className="nkj-calc-calculate" onClick={handleCalculate}>
+              <CalculatorIcon size={15} /> Calculate
+            </button>
+            <button type="button" className="nkj-calc-reset" onClick={reset}>
+              <RotateCcw size={15} /> Reset
+            </button>
+          </div>
+        </div>
       </div>
       </section>
       <CalculationHistory title="Recent Calculations (Last 15)" items={history} onClear={clearHistory} />
