@@ -639,7 +639,7 @@ export default function CalculatorPage() {
 
           <section className="nkj-calculator-workspace">
             <div className="nkj-calculator-workspace-title">
-              <Coins size={20} />
+              {mode === "manual" ? <CalculatorIcon size={48} /> : <Coins size={20} />}
               <h2>{options.find((option) => option.id === mode)?.label}</h2>
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "new"}>
