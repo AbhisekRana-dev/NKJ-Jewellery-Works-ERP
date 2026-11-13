@@ -62,6 +62,7 @@ export function AuthProvider({ children }) {
         // A 401 is handled centrally by the shared API client.
       });
     };
+    // A short heartbeat bounds idle-tab expiry detection to 15 seconds.
     const timer = window.setInterval(validateSession, 15_000);
     const onFocus = () => validateSession();
     const onVisibilityChange = () => {
