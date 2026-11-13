@@ -132,6 +132,10 @@ export default function ErpModulePage({ module }) {
 
   const save = async (event) => {
     event.preventDefault();
+    if (module === "leaves" && form.fromDate && form.toDate && form.fromDate > form.toDate) {
+      setError("Leave From Date cannot be after To Date.");
+      return;
+    }
     setSaving(true);
     setError("");
     setMessage("");
@@ -180,6 +184,31 @@ export default function ErpModulePage({ module }) {
       await load();
     } catch (e) {
       setError(e.message || "Could not delete record.");
+    }
+  };
+
+  const updateLeaveStatus = async (row, status) => {
+    const confirmation = status === "APPROVED"
+      ? "Approve this leave? All covered dates will automatically become locked ABSENT attendance."
+      : status === "CANCELLED"
+        ? "Cancel this leave? System-generated attendance will be removed and previous manual attendance restored."
+        : "Reject this leave request?";
+    if (!window.confirm(confirmation)) return;
+    setError("");
+    setMessage("");
+    try {
+      await request(`/admin/modules/leaves/${row.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status })
+      });
+      setMessage(status === "APPROVED"
+        ? "Leave approved. Covered attendance dates are now locked ABSENT."
+        : status === "CANCELLED"
+          ? "Leave cancelled and attendance reconciled."
+          : "Leave request rejected.");
+      await load();
+    } catch (statusError) {
+      setError(statusError.message || "Could not update leave status.");
     }
   };
 
@@ -310,7 +339,12 @@ export default function ErpModulePage({ module }) {
                       {(field[4] || []).map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}
                     </select>
                   ) : (
-                    <input required={!!field[3]} type={field[2]} min={field[2] === "number" ? "0" : undefined} step={field[2] === "number" ? "0.001" : undefined} value={form[field[0]]} onChange={(event) => setForm({ ...form, [field[0]]: event.target.value })} />
+                    <input required={!!field[3]} type={field[2]}
+                      min={field[2] === "number" ? "0" : module === "leaves" && field[0] === "toDate" ? (form.fromDate || undefined) : undefined}
+                      max={module === "leaves" && field[0] === "fromDate" ? (form.toDate || undefined) : undefined}
+                      step={field[2] === "number" ? "0.001" : undefined}
+                      value={form[field[0]]}
+                      onChange={(event) => setForm((current) => ({ ...current, [field[0]]: event.target.value }))} />
                   )}
                 </label>
               ))}
@@ -339,9 +373,20 @@ export default function ErpModulePage({ module }) {
                     {config.columns.map(([key]) => <td key={key}>
                       {key === "staffName" && row.staffId
                         ? <Link className="nkj-module-staff-link" to={`/staff?staffId=${row.staffId}`}>{row[key] || "Staff member"}</Link>
-                        : businessCodeFields.has(key) && row[key] ? <span className="nkj-business-code">{row[key]}</span> : display(key, row[key])}
+                        : module === "leaves" && key === "status"
+                          ? <span className={`nkj-status-pill ${String(row.status || "").toLowerCase()}`}>{String(row.status || "PENDING").replaceAll("_", " ")}</span>
+                          : businessCodeFields.has(key) && row[key] ? <span className="nkj-business-code">{row[key]}</span> : display(key, row[key])}
                     </td>)}
-                    {showActions && <td><div className="nkj-row-actions">{!auditDeleteOnly && !config.readOnly && !config.appendOnly && <button className="small-action" onClick={() => startEdit(row)}><Pencil size={14} /> Edit</button>}{module === "bookings" && <button className="small-action" onClick={() => printBooking(row)}><Printer size={14}/> Print</button>}{(auditDeleteOnly || (!config.readOnly && !config.appendOnly)) && <button className="small-action nkj-delete-action" onClick={() => remove(row)}><Trash2 size={14} /> Delete</button>}</div></td>}
+                    {showActions && <td><div className="nkj-row-actions">
+                      {!auditDeleteOnly && !config.readOnly && !config.appendOnly && <button className="small-action" onClick={() => startEdit(row)}><Pencil size={14} /> Edit</button>}
+                      {module === "leaves" && String(row.status).toUpperCase() === "PENDING" && <>
+                        <button className="small-action nkj-leave-approve-action" onClick={() => updateLeaveStatus(row, "APPROVED")}>Approve</button>
+                        <button className="small-action nkj-leave-reject-action" onClick={() => updateLeaveStatus(row, "REJECTED")}>Reject</button>
+                      </>}
+                      {module === "leaves" && String(row.status).toUpperCase() === "APPROVED" && <button className="small-action nkj-leave-reject-action" onClick={() => updateLeaveStatus(row, "CANCELLED")}>Cancel Leave</button>}
+                      {module === "bookings" && <button className="small-action" onClick={() => printBooking(row)}><Printer size={14}/> Print</button>}
+                      {(auditDeleteOnly || (!config.readOnly && !config.appendOnly)) && <button className="small-action nkj-delete-action" onClick={() => remove(row)}><Trash2 size={14} /> Delete</button>}
+                    </div></td>}
                   </tr>
                 ))}
                 {!loading && !filtered.length && <tr><td colSpan={columnCount} className="empty">No records found.</td></tr>}
