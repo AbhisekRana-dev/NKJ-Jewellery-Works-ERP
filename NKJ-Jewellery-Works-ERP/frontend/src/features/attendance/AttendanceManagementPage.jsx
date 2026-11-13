@@ -375,7 +375,7 @@ export default function AttendanceManagementPage() {
         <div className="nkj-attendance-table-toolbar">
           <label><Search size={16} /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search staff name or Staff ID…" /></label>
           <div className="nkj-attendance-toolbar-right">
-            {staffFilter && <span className="nkj-attendance-staff-filter">Filtered by Staff ID <b>{staff.find((person) => String(person.id) === String(staffFilter))?.staffCode || staffFilter}</b><button type="button" onClick={() => { const next = new URLSearchParams(searchParams); next.delete("staffId"); setSearchParams(next, { replace: true }); }}>Clear</button></span>}
+            {staffFilter && <span className="nkj-attendance-staff-filter">Filtered by Staff ID <b>{staff.find((person) => String(person.id) === String(staffFilter))?.staffCode || staffFilter}</b><Link to={`/staff?staffId=${staffFilter}`}>Staff Profile</Link><button type="button" onClick={() => { const next = new URLSearchParams(searchParams); next.delete("staffId"); setSearchParams(next, { replace: true }); }}>Clear</button></span>}
             <span>{filteredStaff.length} active staff</span>
           </div>
         </div>
