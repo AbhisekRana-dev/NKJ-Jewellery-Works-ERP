@@ -237,8 +237,37 @@ public class ErpModuleService {
         if (module.equals("leaves")) {
             return jdbc.queryForList("SELECT l.id, l.staff_id AS \"staffId\", s.staff_code AS \"staffCode\", s.full_name AS \"staffName\", l.from_date AS \"fromDate\", l.to_date AS \"toDate\", l.leave_type AS \"leaveType\", l.reason, l.status FROM staff_leaves l JOIN staff s ON s.id=l.staff_id ORDER BY l.from_date DESC, l.id DESC LIMIT 500");
         }
+        if (module.equals("salary-payments")) {
+            return jdbc.queryForList("""
+                SELECT p.id, p.salary_id AS "salaryId", ss.staff_id AS "staffId",
+                       st.staff_code AS "staffCode", st.full_name AS "staffName",
+                       ss.payroll_month AS "payrollMonth", ss.net_salary AS "netSalary",
+                       ss.amount_paid AS "amountPaid", ss.remaining_salary AS "remainingSalary",
+                       p.payment_date AS "paymentDate", p.amount,
+                       p.payment_method AS "paymentMethod", p.reference_no AS "referenceNo"
+                  FROM staff_salary_payments p
+                  JOIN staff_salary ss ON ss.id = p.salary_id
+                  JOIN staff st ON st.id = ss.staff_id
+                 ORDER BY p.payment_date DESC, p.id DESC
+                 LIMIT 500
+                """);
+        }
         if (module.equals("audit-logs")) return jdbc.queryForList("SELECT id, actor_identity AS \"actor\", action, module, record_id AS \"recordId\", ip_address AS \"ipAddress\", occurred_at AS \"occurredAt\" FROM audit_logs ORDER BY occurred_at DESC LIMIT 500");
         return jdbc.queryForList("SELECT " + select + " FROM " + d.table() + " ORDER BY id DESC LIMIT 500");
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String,Object>> listStaffNotes(long staffId) {
+        return jdbc.queryForList("""
+            SELECT n.id, n.staff_id AS "staffId", s.staff_code AS "staffCode",
+                   s.full_name AS "staffName", n.note_date AS "noteDate",
+                   n.note_type AS "noteType", n.description,
+                   n.created_by AS "createdBy", n.created_at AS "createdAt"
+              FROM staff_notes n
+              JOIN staff s ON s.id = n.staff_id
+             WHERE n.staff_id = ?
+             ORDER BY n.note_date DESC, n.created_at DESC, n.id DESC
+            """, staffId);
     }
 
     @Transactional
@@ -1532,6 +1561,28 @@ public class ErpModuleService {
         }
         audit("UPDATE", module, id, before, applied, ip);
         return Map.of("success", true, "message", "Record updated successfully.");
+    }
+
+    @Transactional
+    public Map<String,Object> deleteStaffNote(long staffId, long noteId, String ip) {
+        List<Map<String,Object>> matches = jdbc.queryForList("""
+            SELECT id, staff_id AS "staffId", note_date AS "noteDate",
+                   note_type AS "noteType", description,
+                   created_by AS "createdBy", created_at AS "createdAt"
+              FROM staff_notes
+             WHERE id = ? AND staff_id = ?
+             FOR UPDATE
+            """, noteId, staffId);
+        if (matches.isEmpty()) {
+            throw new IllegalArgumentException("This note does not belong to the selected staff member or no longer exists.");
+        }
+        Map<String,Object> before = matches.get(0);
+        int removed = jdbc.update("DELETE FROM staff_notes WHERE id = ? AND staff_id = ?", noteId, staffId);
+        if (removed != 1) {
+            throw new IllegalStateException("The selected staff note could not be deleted.");
+        }
+        audit("DELETE", "staff-notes", noteId, before, null, ip);
+        return Map.of("success", true, "message", "Staff note deleted successfully.", "noteId", noteId, "staffId", staffId);
     }
 
     @Transactional
