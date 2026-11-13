@@ -599,7 +599,7 @@ export default function CalculatorPage() {
 
   return (
     <Page active="calculator">
-      <div className="nkj-calculator-page">
+      <div className={`nkj-calculator-page nkj-calculator-page--${mode}`} >
         <header className="nkj-calculator-heading">
           <span>JEWELLERY TOOLS</span>
           <h1><CalculatorIcon size={25} /> Calculator</h1>
