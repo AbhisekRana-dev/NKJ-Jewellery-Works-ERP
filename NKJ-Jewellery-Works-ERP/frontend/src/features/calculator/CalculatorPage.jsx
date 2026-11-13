@@ -409,8 +409,6 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
 
     const handleActiveOrnamentReset = (event) => {
       if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
-      const target = event.target;
-
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
