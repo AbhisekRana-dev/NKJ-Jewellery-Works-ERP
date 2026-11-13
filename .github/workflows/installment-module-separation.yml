@@ -301,6 +301,7 @@ jobs:
           ADMIN_USERNAME: ci-owner
           ADMIN_PASSWORD: ci-only-password
           TOTP_SECRET: JBSWY3DPEHPK3PXP
+          DESIGNS_MOBILE_UPLOAD_BASE_URL: https://nkj-ci.example
         run: |
           kill "$(cat /tmp/nkj-backend.pid)"
           for attempt in $(seq 1 30); do
