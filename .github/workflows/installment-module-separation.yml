@@ -201,6 +201,7 @@ jobs:
           ADMIN_USERNAME: ci-owner
           ADMIN_PASSWORD: ci-only-password
           TOTP_SECRET: JBSWY3DPEHPK3PXP
+          DESIGNS_MOBILE_UPLOAD_BASE_URL: https://nkj-ci.example
         run: |
           java -jar target/nkj-billing-1.0.0.jar --spring.flyway.target=19 > /tmp/nkj-v19.log 2>&1 &
           echo $! > /tmp/nkj-backend.pid
@@ -1571,7 +1572,7 @@ jobs:
               f"/api/admin/design-upload-sessions?designId={design_pk}",
               "POST",
               token=TOKEN,
-              extra_headers={"Origin": "https://nkj-ci.example"}
+              extra_headers={"Origin": "http://localhost:5173"}
           )
           assert qr["uploadMode"] == "UPDATE_DESIGN_IMAGES"
           assert int(qr["targetDesignId"]) == design_pk
@@ -1640,7 +1641,7 @@ jobs:
               f"/api/admin/design-upload-sessions?designId={design_pk}",
               "POST",
               token=TOKEN,
-              extra_headers={"Origin": "https://nkj-ci.example"}
+              extra_headers={"Origin": "http://localhost:5173"}
           )
           second_token = second_qr["uploadUrl"].rsplit("/", 1)[-1]
           ok("/api/auth/logout", "POST", token=TOKEN)
