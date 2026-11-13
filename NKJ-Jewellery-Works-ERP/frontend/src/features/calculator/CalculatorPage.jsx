@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw, History, Copy, Trash2, Save as SaveIcon } from "lucide-react";
+import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw, History, Copy, Trash2, Tag, Wrench, Stamp, CirclePlus, BadgeCheck } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import "./CalculatorPage.css";
 
@@ -493,12 +493,12 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
           </header>
           <div className="nkj-calc-fields">
             <label>
-              {isOld ? "Weight (gm)" : "Net Weight (gm)"}
+              <span className="nkj-calc-field-label"><Scale size={17} />{isOld ? "Weight (gm)" : "Net Weight (gm)"} <b>*</b></span>
               <input {...numberInput(weight, (value) => updateDraftField("weight", value))} placeholder="Enter weight" />
             </label>
             {isOld && (
               <label>
-                Purity (%)
+                <span className="nkj-calc-field-label"><BadgeCheck size={17} />Purity (%) <b>*</b></span>
                 <input
                   type="number"
                   min="0"
@@ -516,13 +516,13 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
               </label>
             )}
             <label className={isOld ? "nkj-calc-rate-field nkj-calc-rate-field-old" : "nkj-calc-rate-field"}>
-              Rate / GM (₹)
+              <span className="nkj-calc-field-label"><Coins size={17} />Rate / GM (₹) <b>*</b></span>
               <input {...numberInput(rate, (value) => updateDraftField("rate", value))} placeholder="Enter rate per gram" />
             </label>
             {!isOld && (
               <>
                 <label className="nkj-calc-making-mode-field">
-                  Making Charge Type
+                  <span className="nkj-calc-field-label"><Tag size={17} />Making Charge Type</span>
                   <select
                     value={makingMode}
                     onChange={(event) => updateDraftField("makingMode", event.target.value)}
@@ -533,7 +533,7 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
                   </select>
                 </label>
                 <label>
-                  Making Charge ({makingMode === "percentage" ? "%" : "₹"})
+                  <span className="nkj-calc-field-label"><Wrench size={17} />Making Charge ({makingMode === "percentage" ? "%" : "₹"})</span>
                   <input
                     type="number"
                     min="0"
@@ -549,8 +549,8 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
                   />
                   {!isMakingValid && <small className="nkj-calc-error">Making charge percentage must be between 0 and 100%.</small>}
                 </label>
-                <label>Stamp Charge (₹)<input {...numberInput(stamp, (value) => updateDraftField("stamp", value))} placeholder="0.00" /></label>
-                <label>Extra Charge (₹)<input {...numberInput(extra, (value) => updateDraftField("extra", value))} placeholder="0.00" /></label>
+                <label><span className="nkj-calc-field-label"><Stamp size={17} />Stamp Charge (₹)</span><input {...numberInput(stamp, (value) => updateDraftField("stamp", value))} placeholder="0.00" /></label>
+                <label><span className="nkj-calc-field-label"><CirclePlus size={17} />Extra Charge (₹)</span><input {...numberInput(extra, (value) => updateDraftField("extra", value))} placeholder="0.00" /></label>
               </>
             )}
           </div>
@@ -564,23 +564,23 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
           <div className="nkj-calc-breakdown">
             {isOld ? (
               <>
-                <div className="nkj-calc-breakdown-row"><span>Gross Weight</span><strong>{money(weight)} gm</strong></div>
-                <div className="nkj-calc-breakdown-row"><span>Purity</span><strong>{money(purityPercent)}%</strong></div>
-                <div className="nkj-calc-breakdown-row"><span>Pure Weight</span><strong>{money(pureWeight)} gm</strong></div>
-                <div className="nkj-calc-breakdown-row"><span>Rate per Gram</span><strong>₹ {money(rate)}</strong></div>
-                <div className="nkj-calc-breakdown-row"><span>Calculation ({money(pureWeight)} × {money(rate)})</span><strong>₹ {money(metalValue)}</strong></div>
+                <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Scale size={18} />Gross Weight</span><strong>{money(weight)} gm</strong></div>
+                <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><BadgeCheck size={18} />Purity</span><strong>{money(purityPercent)}%</strong></div>
+                <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Gem size={18} />Pure Weight</span><strong>{money(pureWeight)} gm</strong></div>
+                <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Coins size={18} />Rate per Gram</span><strong>₹ {money(rate)}</strong></div>
+                <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><CalculatorIcon size={18} />Calculation ({money(pureWeight)} × {money(rate)})</span><strong>₹ {money(metalValue)}</strong></div>
                 {!isPurityValid && <small className="nkj-calc-error">Enter a purity percentage from 0 to 100.</small>}
                 <div className="nkj-calc-total-row"><span>Old Ornament Value</span><strong>₹ {money(total)}</strong></div>
               </>
             ) : (
               <>
-                <div className="nkj-calc-breakdown-row"><span>Metal Value ({money(weight)} × {money(rate)})</span><strong>₹ {money(metalValue)}</strong></div>
+                <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Coins size={18} />Metal Value ({money(weight)} × {money(rate)})</span><strong>₹ {money(metalValue)}</strong></div>
                 <div className="nkj-calc-breakdown-row">
-                  <span>Making Charge{makingMode === "percentage" ? ` (${makingInputValue}%)` : ""}</span>
+                  <span className="nkj-calc-breakdown-label"><Wrench size={18} />Making Charge{makingMode === "percentage" ? ` (${makingInputValue}%)` : ""}</span>
                   <strong>₹ {money(isMakingValid ? makingChargeRupees : 0)}</strong>
                 </div>
-                <div className="nkj-calc-breakdown-row"><span>Stamp Charge</span><strong>₹ {money(stamp)}</strong></div>
-                <div className="nkj-calc-breakdown-row"><span>Extra Charge</span><strong>₹ {money(extra)}</strong></div>
+                <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Stamp size={18} />Stamp Charge</span><strong>₹ {money(stamp)}</strong></div>
+                <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><CirclePlus size={18} />Extra Charge</span><strong>₹ {money(extra)}</strong></div>
                 {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
                 <div className="nkj-calc-total-row"><span>Total Amount</span><strong>₹ {money(total)}</strong></div>
               </>
