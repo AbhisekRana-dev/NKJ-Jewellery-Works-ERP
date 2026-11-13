@@ -533,7 +533,7 @@ function OrnamentCalculator({ mode, history, addHistory, clearHistory }) {
           </div>
         </section>
 
-        <section className="nkj-calc-result-card">
+        <section className={`nkj-calc-result-card ${isOld ? "is-old" : "is-new"}`}>
           <header className="nkj-calc-result-hero">
             <span>{isOld ? "OLD ORNAMENT VALUE" : "NEW ORNAMENT TOTAL"}</span>
             <strong>₹ {money(total)}</strong>
