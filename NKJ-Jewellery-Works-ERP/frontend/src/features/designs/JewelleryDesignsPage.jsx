@@ -1,18 +1,48 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
   Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird, QrCode,
-  LayoutGrid, List,
+  LayoutGrid, List, Pencil, Trash2, Save, UploadCloud, Smartphone, CheckCircle2, Lock,
+  RotateCcw, Plus,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
 import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
 import { useAuth } from "../../core/auth/AuthProvider";
+import { QRCodeSVG } from "qrcode.react";
 import "./JewelleryDesignsPage.css";
 
 const PAGE_SIZE = 24;
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+
+async function uploadAdminMultipart(path, formData) {
+  const token = window.localStorage.getItem("nkj_token");
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "X-NKJ-Client-Id": getRealtimeClientId(),
+      Accept: "application/json",
+    },
+    body: formData,
+  });
+  const raw = await response.text();
+  let result = {};
+  if (raw) {
+    try { result = JSON.parse(raw); }
+    catch { result = { message: raw }; }
+  }
+  if (response.status === 401) {
+    window.localStorage.removeItem("nkj_token");
+    window.localStorage.removeItem("nkj_user");
+    window.dispatchEvent(new Event("nkj:session-expired"));
+  }
+  if (!response.ok) {
+    throw new Error(result.message || `Image upload failed (${response.status}).`);
+  }
+  return result;
+}
 const API_ORIGIN = API_BASE.endsWith("/api") ? API_BASE.slice(0, -4) : API_BASE;
 const assetUrl = (path) => {
   if (!path) return "";
@@ -152,7 +182,7 @@ function DesignImage({ design }) {
 }
 
 export default function JewelleryDesignsPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, authReady } = useAuth();
   const [categories, setCategories] = useState([]);
   const [metal, setMetal] = useState("GOLD");
   const [subcategory, setSubcategory] = useState("");
@@ -171,6 +201,17 @@ export default function JewelleryDesignsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [replacingPhoto, setReplacingPhoto] = useState(false);
   const [replacePhotoError, setReplacePhotoError] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [adminActionError, setAdminActionError] = useState("");
+  const [adminActionMessage, setAdminActionMessage] = useState("");
+  const [pendingImages, setPendingImages] = useState([]);
+  const pendingImagesRef = useRef([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [qrSession, setQrSession] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState("");
   const [favorites, setFavorites] = useState(loadFavorites);
 
   const metalCategories = useMemo(
@@ -274,11 +315,20 @@ export default function JewelleryDesignsPage() {
     setActiveImageIndex(0);
     setZoomed(false);
     setDetailLoading(true);
+    setEditMode(false);
+    setQrSession(null);
+    setQrError("");
+    setAdminActionError("");
+    setAdminActionMessage("");
+    clearPendingImages();
     try {
-      const detail = await request(`/designs/${design.id}`, { publicRequest: true });
+      const detail = await request(
+        isAdmin ? `/admin/designs/${design.id}` : `/designs/${design.id}`,
+        { publicRequest: !isAdmin },
+      );
       setSelected(detail);
-    } catch {
-      // The card remains available in the dialog when details cannot be fetched.
+    } catch (error) {
+      setAdminActionError(error.message || "The complete design details could not be loaded.");
     } finally {
       setDetailLoading(false);
     }
@@ -323,7 +373,274 @@ export default function JewelleryDesignsPage() {
     ? (activeImage?.thumbnailUrl || selected?.thumbnailUrl || "")
     : "";
 
+  const clearPendingImages = () => {
+    pendingImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    pendingImagesRef.current = [];
+    setPendingImages([]);
+  };
+
+  useEffect(() => {
+    pendingImagesRef.current = pendingImages;
+  }, [pendingImages]);
+
+  useEffect(() => () => {
+    pendingImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) return;
+    setEditMode(false);
+    setQrSession(null);
+    setQrError("");
+    clearPendingImages();
+  }, [isAdmin]);
+
+  const loadSelectedDetails = async (designId) => {
+    const updated = await request(
+      isAdmin ? `/admin/designs/${designId}` : `/designs/${designId}`,
+      { publicRequest: !isAdmin },
+    );
+    setSelected(updated);
+    setActiveImageIndex(0);
+    setZoomed(false);
+    return updated;
+  };
+
+  const closeSelectedModal = () => {
+    const activeSessionId = qrSession?.sessionId;
+    if (isAdmin && activeSessionId && ["WAITING", "SCANNED"].includes(qrSession.status)) {
+      request(`/admin/design-upload-sessions/${activeSessionId}`, { method: "DELETE" }).catch(() => {});
+    }
+    clearPendingImages();
+    setQrSession(null);
+    setSelected(null);
+    setEditMode(false);
+    setZoomed(false);
+  };
+
+  const beginEditingDetails = () => {
+    if (!isAdmin || !selected) return;
+    setAdminActionError("");
+    setAdminActionMessage("");
+    setEditForm({
+      designName: selected.designName || "",
+      description: selected.description || "",
+      styleLabel: selected.styleLabel || "",
+      keywords: selected.keywords || "",
+      purity: selected.purity || "",
+      regionalInspiration: selected.regionalInspiration || "",
+      materialLabel: selected.materialLabel || "",
+      weightGrams: selected.weightGrams == null ? "" : String(selected.weightGrams),
+      priceInr: selected.priceInr == null ? "" : String(selected.priceInr),
+      isActive: selected.isActive !== false,
+      isFeatured: Boolean(selected.isFeatured),
+    });
+    setEditMode(true);
+  };
+
+  const saveDesignDetails = async (event) => {
+    event.preventDefault();
+    if (!isAdmin || !selected || savingDetails) return;
+    if (!editForm.designName.trim()) {
+      setAdminActionError("Design name is required.");
+      return;
+    }
+    setSavingDetails(true);
+    setAdminActionError("");
+    setAdminActionMessage("");
+    try {
+      const payload = {
+        categoryId: selected.categoryId,
+        designName: editForm.designName.trim(),
+        description: editForm.description,
+        styleLabel: editForm.styleLabel,
+        keywords: editForm.keywords,
+        purity: editForm.purity,
+        regionalInspiration: editForm.regionalInspiration,
+        materialLabel: editForm.materialLabel,
+        weightGrams: editForm.weightGrams === "" ? null : Number(editForm.weightGrams),
+        priceInr: editForm.priceInr === "" ? null : Number(editForm.priceInr),
+        isActive: Boolean(editForm.isActive),
+        isFeatured: Boolean(editForm.isFeatured),
+      };
+      const updated = await request(`/admin/designs/${selected.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      setSelected(updated);
+      setEditMode(false);
+      setAdminActionMessage("Design details saved successfully.");
+      await refreshCatalogue();
+    } catch (error) {
+      setAdminActionError(error.message || "Could not save design details.");
+    } finally {
+      setSavingDetails(false);
+    }
+  };
+
+  const archiveSelectedDesign = async () => {
+    if (!isAdmin || !selected) return;
+    const confirmed = window.confirm(
+      `Archive design ${selected.designId || selected.designCode}? It will disappear from the public catalogue, but its record, Design ID and photo history will be retained.`,
+    );
+    if (!confirmed) return;
+    try {
+      await request(`/admin/designs/${selected.id}`, { method: "DELETE" });
+      closeSelectedModal();
+      await refreshCatalogue();
+    } catch (error) {
+      setAdminActionError(error.message || "Could not archive this design.");
+    }
+  };
+
+  const selectDesktopImages = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    const existingCount = pendingImages.length;
+    const accepted = [];
+    const errors = [];
+    selectedFiles.forEach((file) => {
+      const mime = String(file.type || "").toLowerCase();
+      const extensionOk = /\.(jpe?g|png|webp)$/i.test(file.name || "");
+      const mimeOk = ["image/jpeg", "image/png", "image/webp"].includes(mime);
+      if (!(mimeOk || extensionOk)) errors.push(`${file.name}: unsupported format`);
+      else if (file.size > 10 * 1024 * 1024) errors.push(`${file.name}: larger than 10 MB`);
+      else if (existingCount + accepted.length >= 20) errors.push("A maximum of 20 images can be uploaded at once.");
+      else accepted.push({ id: `${Date.now()}-${Math.random()}`, file, previewUrl: URL.createObjectURL(file) });
+    });
+    if (accepted.length) {
+      setPendingImages((current) => [...current, ...accepted]);
+      setAdminActionError("");
+    }
+    if (errors.length) setAdminActionError(errors.join(". "));
+    event.target.value = "";
+  };
+
+  const removePendingImage = (imageId) => {
+    const item = pendingImages.find((entry) => entry.id === imageId);
+    if (item) URL.revokeObjectURL(item.previewUrl);
+    setPendingImages((current) => current.filter((entry) => entry.id !== imageId));
+  };
+
+  const uploadSelectedImages = async () => {
+    if (!isAdmin || !selected || !pendingImages.length || uploadingImages) return;
+    setUploadingImages(true);
+    setAdminActionError("");
+    setAdminActionMessage("");
+    const data = new FormData();
+    pendingImages.forEach((item) => data.append("files", item.file, item.file.name));
+    try {
+      const updated = await uploadAdminMultipart(`/admin/designs/${selected.id}/images`, data);
+      setSelected(updated);
+      setActiveImageIndex(0);
+      clearPendingImages();
+      setAdminActionMessage("Photographs uploaded and saved permanently.");
+      await refreshCatalogue();
+    } catch (error) {
+      setAdminActionError(error.message || "Could not upload the selected photographs.");
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const setPrimaryImage = async (imageId) => {
+    if (!isAdmin || !selected) return;
+    try {
+      const updated = await request(`/admin/designs/${selected.id}/images/${imageId}/primary`, { method: "PUT" });
+      setSelected(updated);
+      setActiveImageIndex(0);
+      setAdminActionMessage("Primary photograph updated.");
+      await refreshCatalogue();
+    } catch (error) {
+      setAdminActionError(error.message || "Could not change the primary photograph.");
+    }
+  };
+
+  const deleteDesignImage = async (imageId) => {
+    if (!isAdmin || !selected) return;
+    if (!window.confirm("Delete this photograph from the selected design?")) return;
+    try {
+      const updated = await request(`/admin/designs/${selected.id}/images/${imageId}`, { method: "DELETE" });
+      setSelected(updated);
+      setActiveImageIndex(0);
+      setAdminActionMessage("Photograph removed.");
+      await refreshCatalogue();
+    } catch (error) {
+      setAdminActionError(error.message || "Could not remove this photograph.");
+    }
+  };
+
+  const generateMobileUploadQr = async () => {
+    if (!isAdmin || !selected || qrLoading) return;
+    setQrLoading(true);
+    setQrError("");
+    setQrSession(null);
+    try {
+      const result = await request(`/admin/design-upload-sessions?designId=${encodeURIComponent(selected.id)}`, { method: "POST" });
+      setQrSession(result);
+    } catch (error) {
+      setQrError(error.message || "Could not create a secure mobile upload QR code.");
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin || !selected?.id || !qrSession?.sessionId || !["WAITING", "SCANNED"].includes(qrSession.status)) {
+      return undefined;
+    }
+    let active = true;
+    const pollStatus = async () => {
+      try {
+        const status = await request(`/admin/design-upload-sessions/${qrSession.sessionId}`);
+        if (!active) return;
+        setQrSession((current) => current?.sessionId === status.sessionId ? { ...current, ...status } : current);
+        if (status.status === "UPLOADED") {
+          const updated = await request(`/admin/designs/${selected.id}`);
+          if (!active) return;
+          setSelected(updated);
+          setActiveImageIndex(0);
+          setZoomed(false);
+          setAdminActionMessage("Mobile photographs uploaded successfully. The catalogue is updated.");
+          await refreshCatalogue();
+        }
+      } catch (error) {
+        if (active) setQrError(error.message || "Could not check the mobile upload status.");
+      }
+    };
+    pollStatus();
+    const timer = window.setInterval(pollStatus, 1800);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [isAdmin, selected?.id, qrSession?.sessionId, qrSession?.status, refreshCatalogue]);
+
   const replaceSelectedPhoto = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !selected || !isAdmin) return;
+
+    setReplacingPhoto(true);
+    setReplacePhotoError("");
+    setAdminActionError("");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const updated = await uploadAdminMultipart(`/admin/designs/${selected.id}/images/replace-primary`, formData);
+      setSelected(updated);
+      setActiveImageIndex(0);
+      setZoomed(false);
+      setAdminActionMessage("Primary photograph replaced successfully.");
+      await refreshCatalogue();
+    } catch (error) {
+      setReplacePhotoError(error.message || "Could not replace the design photograph.");
+    } finally {
+      setReplacingPhoto(false);
+      event.target.value = "";
+    }
+  };
+
+
     const file = event.target.files?.[0];
     if (!file || !selected || !isAdmin) return;
 
