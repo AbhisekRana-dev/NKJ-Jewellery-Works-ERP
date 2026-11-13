@@ -1174,3 +1174,242 @@ jobs:
           assert Decimal(str(summary["netCashFlow"])) == incoming_total - outgoing_total
           print("Incoming/Outgoing cash flow API regression scenarios passed.")
           PY
+      - name: Verify approved leave attendance synchronization and locks
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/nkj_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          ADMIN_USERNAME: ci-owner
+          ADMIN_PASSWORD: ci-only-password
+          TOTP_SECRET: JBSWY3DPEHPK3PXP
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import datetime
+          import hashlib
+          import hmac
+          import json
+          import os
+          import struct
+          import subprocess
+          import time
+          import urllib.error
+          import urllib.request
+
+          BASE = "http://localhost:8086"
+          DB = "postgresql://postgres:postgres@localhost:5432/nkj_test"
+          def sql(query):
+              return subprocess.check_output(["psql", DB, "-tAc", query], text=True).strip()
+
+          def post_auth(path, body):
+              data = json.dumps(body).encode()
+              req = urllib.request.Request(BASE + path, data=data,
+                  headers={"Content-Type": "application/json"}, method="POST")
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  raw = response.read()
+                  return json.loads(raw) if raw else {}
+
+          challenge = post_auth("/api/auth/login", {
+              "username": os.environ["ADMIN_USERNAME"],
+              "password": os.environ["ADMIN_PASSWORD"]
+          })
+          secret = os.environ["TOTP_SECRET"]
+          key = base64.b32decode(secret + "=" * ((8 - len(secret) % 8) % 8))
+          counter = int(time.time() // 30)
+          digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+          offset = digest[-1] & 0x0F
+          binary = int.from_bytes(digest[offset:offset + 4], "big") & 0x7fffffff
+          otp = f"{binary % 1000000:06d}"
+          verified = post_auth("/api/auth/verify", {
+              "challengeId": challenge["challengeId"],
+              "code": otp
+          })
+          TOKEN = verified["token"]
+
+          def api(path, method="GET", payload=None):
+              headers = {"Accept": "application/json", "Authorization": "Bearer " + TOKEN}
+              if payload is not None:
+                  headers["Content-Type"] = "application/json"
+              body = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(BASE + path, data=body, headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      raw = response.read()
+                      return response.status, (json.loads(raw) if raw else {})
+              except urllib.error.HTTPError as error:
+                  raw = error.read()
+                  try:
+                      result = json.loads(raw) if raw else {}
+                  except Exception:
+                      result = {"message": raw.decode(errors="replace")}
+                  return error.code, result
+
+          def ok(path, method="GET", payload=None):
+              status, result = api(path, method, payload)
+              assert 200 <= status < 300, f"{method} {path} returned HTTP {status}: {result}"
+              return result
+
+          def rejected(path, method="POST", payload=None):
+              status, result = api(path, method, payload)
+              assert 400 <= status < 500, f"{method} {path} should be rejected, got HTTP {status}: {result}"
+              return result
+
+          today = datetime.date.fromisoformat(sql(
+              "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE"
+          ))
+          start = today
+          middle = today + datetime.timedelta(days=1)
+          end = today + datetime.timedelta(days=2)
+          pending_start = today + datetime.timedelta(days=5)
+          pending_end = today + datetime.timedelta(days=6)
+          fmt = lambda d: d.isoformat()
+
+          # New staff profile provides an isolated Staff ID for this test. The
+          # fixture does not modify any pre-existing employee or attendance row.
+          staff = ok("/api/admin/modules/staff", "POST", {
+              "fullName": "CI Approved Leave Attendance Staff",
+              "monthlySalary": 25000,
+              "status": "ACTIVE"
+          })
+          staff_id = int(staff["id"])
+
+          # Record a real manual PRESENT entry before leave approval. It must be
+          # snapshotted and restored when the leave is cancelled.
+          manual = ok("/api/admin/modules/attendance", "POST", {
+              "staffId": staff_id,
+              "attendanceDate": fmt(start),
+              "status": "PRESENT",
+              "checkIn": "09:00",
+              "remarks": "Manual attendance before approved leave"
+          })
+          manual_id = int(manual["id"])
+
+          leave = ok("/api/admin/modules/leaves", "POST", {
+              "staffId": staff_id,
+              "fromDate": fmt(start),
+              "toDate": fmt(end),
+              "leaveType": "UNPAID_LEAVE",
+              "reason": "CI leave approval/reconciliation test",
+              "status": "PENDING"
+          })
+          leave_id = int(leave["id"])
+          assert sql(
+              f"SELECT COUNT(*) FROM staff_attendance WHERE staff_id={staff_id} "
+              f"AND attendance_date BETWEEN '{fmt(start)}' AND '{fmt(end)}'"
+          ) == "1", "Pending leave must not create attendance absences."
+
+          # Approval must reconcile the existing manual row and generate all
+          # remaining inclusive dates as locked, system-generated ABSENT rows.
+          ok(f"/api/admin/modules/leaves/{leave_id}", "PUT", {"status": "APPROVED"})
+          covered = sql(
+              "SELECT COUNT(*) FROM staff_attendance "
+              f"WHERE staff_id={staff_id} AND attendance_date BETWEEN '{fmt(start)}' AND '{fmt(end)}' "
+              "AND status='ABSENT' AND attendance_source='APPROVED_LEAVE' "
+              "AND leave_id=" + str(leave_id) + " AND is_system_generated=TRUE AND is_locked=TRUE"
+          )
+          assert covered == "3", f"Approval should create 3 locked inclusive ABSENT dates, found {covered}."
+          previous = sql(
+              f"SELECT previous_status || '|' || previous_check_in::TEXT FROM staff_attendance WHERE id={manual_id}"
+          )
+          assert previous == "PRESENT|09:00:00", f"Manual attendance snapshot was not preserved: {previous}"
+
+          # Attendance dashboard must expose leave source/lock metadata and count
+          # the approved leave absence in today's live summary.
+          dashboard = ok(f"/api/admin/attendance/dashboard?year={today.year}&month={today.month}")
+          assert any(
+              int(row["staffId"]) == staff_id and row.get("locked") is True
+              and row.get("attendanceSource") == "APPROVED_LEAVE"
+              for row in dashboard["records"]
+          ), "Attendance dashboard did not return approved leave lock/source metadata."
+          assert int(dashboard["summary"]["todayAbsent"]) >= 1, (
+              "Today Absent summary did not include the approved-leave absence."
+          )
+
+          # Both direct API update and delete are rejected; a direct create on a
+          # covered date is rejected by the same server-side leave validation.
+          rejected(f"/api/admin/modules/attendance/{manual_id}", "PUT", {"status": "PRESENT"})
+          rejected(f"/api/admin/modules/attendance/{manual_id}", "DELETE")
+          rejected("/api/admin/modules/attendance", "POST", {
+              "staffId": staff_id,
+              "attendanceDate": fmt(middle),
+              "status": "PRESENT"
+          })
+
+          # A second pending leave is not allowed to overlap another active leave.
+          pending = ok("/api/admin/modules/leaves", "POST", {
+              "staffId": staff_id,
+              "fromDate": fmt(pending_start),
+              "toDate": fmt(pending_end),
+              "leaveType": "CASUAL_LEAVE",
+              "reason": "Pending leave must not affect attendance",
+              "status": "PENDING"
+          })
+          pending_id = int(pending["id"])
+          assert sql(
+              f"SELECT COUNT(*) FROM staff_attendance WHERE staff_id={staff_id} "
+              f"AND attendance_date BETWEEN '{fmt(pending_start)}' AND '{fmt(pending_end)}'"
+          ) == "0", "Pending leave unexpectedly generated ABSENT attendance."
+          rejected("/api/admin/modules/leaves", "POST", {
+              "staffId": staff_id,
+              "fromDate": fmt(pending_end),
+              "toDate": fmt(pending_end + datetime.timedelta(days=1)),
+              "leaveType": "CASUAL_LEAVE",
+              "reason": "Intentional overlapping leave",
+              "status": "PENDING"
+          })
+          ok(f"/api/admin/modules/leaves/{pending_id}", "PUT", {"status": "REJECTED"})
+          assert sql(
+              f"SELECT COUNT(*) FROM staff_attendance WHERE staff_id={staff_id} "
+              f"AND attendance_date BETWEEN '{fmt(pending_start)}' AND '{fmt(pending_end)}'"
+          ) == "0", "Rejected leave must not generate attendance absences."
+
+          # Cancellation removes only the two generated rows and restores the
+          # original PRESENT record and check-in time with its manual source.
+          ok(f"/api/admin/modules/leaves/{leave_id}", "PUT", {"status": "CANCELLED"})
+          restored = sql(
+              f"SELECT status || '|' || check_in::TEXT || '|' || attendance_source || '|' || is_locked::TEXT "
+              f"FROM staff_attendance WHERE id={manual_id}"
+          )
+          assert restored == "PRESENT|09:00:00|MANUAL|false", f"Manual attendance was not restored: {restored}"
+          remaining = sql(
+              f"SELECT COUNT(*) FROM staff_attendance WHERE staff_id={staff_id} "
+              f"AND attendance_date BETWEEN '{fmt(start)}' AND '{fmt(end)}'"
+          )
+          assert remaining == "1", f"Cancellation should remove generated dates but retain the manual row; found {remaining}."
+
+          # Once the leave is cancelled, a previously generated date is editable.
+          ok("/api/admin/modules/attendance", "POST", {
+              "staffId": staff_id,
+              "attendanceDate": fmt(middle),
+              "status": "HALF_DAY"
+          })
+          assert sql(
+              f"SELECT status FROM staff_attendance WHERE staff_id={staff_id} "
+              f"AND attendance_date='{fmt(middle)}'"
+          ) == "HALF_DAY", "Attendance remained locked after leave cancellation."
+
+          # A rejected leave can be recorded without generating or locking dates.
+          rejected_leave = ok("/api/admin/modules/leaves", "POST", {
+              "staffId": staff_id,
+              "fromDate": fmt(pending_start),
+              "toDate": fmt(pending_end),
+              "leaveType": "SICK_LEAVE",
+              "reason": "Rejected leave state regression",
+              "status": "REJECTED"
+          })
+          assert sql(
+              f"SELECT COUNT(*) FROM staff_attendance WHERE staff_id={staff_id} "
+              f"AND attendance_date BETWEEN '{fmt(pending_start)}' AND '{fmt(pending_end)}' "
+              "AND attendance_source='APPROVED_LEAVE'"
+          ) == "0", "Rejected leave unexpectedly generated locked absences."
+
+          audit_count = sql(
+              "SELECT COUNT(*) FROM audit_logs WHERE module='attendance' "
+              "AND action LIKE 'APPROVED_LEAVE_ATTENDANCE_%' "
+              f"AND record_id IN (SELECT id::TEXT FROM staff_attendance WHERE staff_id={staff_id})"
+          )
+          assert int(audit_count) >= 5, "Approved leave reconciliation did not preserve attendance audit events."
+
+          print("Approved leave attendance reconciliation, server-side locks, cancellation restore, and overlap checks passed.")
+          PY
