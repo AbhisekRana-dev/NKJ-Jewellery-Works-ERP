@@ -5,6 +5,7 @@ import {
   X, UploadCloud, Smartphone, ShieldCheck, AlertTriangle, Star,
 } from "lucide-react";
 import { request } from "../../core/api/client";
+import { getRealtimeClientId } from "../../core/realtime/realtime";
 import "./MobileDesignUploadPage.css";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -381,6 +382,7 @@ export default function MobileDesignUploadPage() {
         const xhr = new XMLHttpRequest();
         xhr.open("POST", `${API}/mobile-design-upload/${encodeURIComponent(token)}/design`);
         xhr.setRequestHeader("Accept", "application/json");
+        xhr.setRequestHeader("X-NKJ-Client-Id", getRealtimeClientId());
         xhr.timeout = 180000;
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) setProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)));
