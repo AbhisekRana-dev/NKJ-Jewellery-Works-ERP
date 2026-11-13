@@ -58,14 +58,20 @@ public class RestExceptionHandler {
                 && request.getRequestURI() != null
                 && request.getRequestURI().matches("/api/admin/designs/[0-9]+/images/replace-primary");
 
-        if (qrSessionRequest || replacePhotoRequest) {
+        boolean designImageUploadRequest = "POST".equalsIgnoreCase(request.getMethod())
+                && request.getRequestURI() != null
+                && request.getRequestURI().matches("/api/admin/designs/[0-9]+/images");
+
+        if (qrSessionRequest || replacePhotoRequest || designImageUploadRequest) {
             String detail = root.getClass().getSimpleName();
             if (!rootMessage.isBlank()) {
                 detail += ": " + rootMessage.substring(0, Math.min(rootMessage.length(), 320));
             }
             String operation = replacePhotoRequest
                     ? "Primary photograph replacement failed"
-                    : "QR upload session creation failed";
+                    : designImageUploadRequest
+                        ? "Design image upload failed"
+                        : "QR upload session creation failed";
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                     "message", operation + ". " + detail
                             + ". Check the backend console for the full stack trace."
