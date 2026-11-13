@@ -1139,3 +1139,47 @@
   .nkj-calc-history-row strong { font-size: 12px; }
   .nkj-calc-history-heading h3 { font-size: 15px; }
 }
+
+
+/* Keep the desktop calculator within the visible workspace; history scrolls inside its own panel. */
+@media (min-width: 1101px) {
+  .nkj-calculator-workspace {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 292px);
+    min-height: 430px;
+    max-height: 650px;
+  }
+  .nkj-calculator-workspace-title { flex: 0 0 auto; }
+  .nkj-calculator-panel {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .nkj-calc-with-history {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+  }
+  .nkj-calc-history {
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+  }
+  .nkj-calc-history-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+  .nkj-calc-manual-layout .nkj-calc-manual {
+    height: 100%;
+    min-height: 0;
+    justify-content: center;
+  }
+  .nkj-calc-ornament-layout .nkj-calc-ornament {
+    height: 100%;
+    min-height: 0;
+    align-content: center;
+  }
+}
