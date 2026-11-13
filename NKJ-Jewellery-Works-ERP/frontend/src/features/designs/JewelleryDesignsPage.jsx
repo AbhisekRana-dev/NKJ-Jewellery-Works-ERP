@@ -77,11 +77,31 @@ function SampleArtwork({ design }) {
 }
 
 function DesignImage({ design }) {
-  const [loadState, setLoadState] = useState("loading");
+  const rawSources = design.imageStatus === "READY"
+    ? [design.thumbnailUrl, design.displayUrl, design.originalUrl]
+    : [];
+  const sources = Array.from(new Set(rawSources.map(assetUrl).filter(Boolean)));
+  const sourceKey = sources.join("|");
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const [loadState, setLoadState] = useState(sources.length ? "loading" : "missing");
   const [retry, setRetry] = useState(0);
-  const source = design.imageStatus === "READY" ? assetUrl(design.thumbnailUrl) : "";
 
-  if (!source) {
+  useEffect(() => {
+    setSourceIndex(0);
+    setLoadState(sources.length ? "loading" : "missing");
+    setRetry(0);
+  }, [design.id, sourceKey]);
+
+  const retryImage = () => {
+    setSourceIndex(0);
+    setLoadState("loading");
+    setRetry((value) => value + 1);
+  };
+
+  if (!sources.length) {
+    // Sample records are inspiration concepts, not live stock. Use the
+    // existing clearly-labelled sample artwork instead of an empty photo box.
+    if (design.isSample) return <SampleArtwork design={design} />;
     return (
       <div className="nkj-design-photo-missing" role="img" aria-label="No jewellery photograph uploaded">
         <ImagePlus size={25} />
@@ -90,34 +110,43 @@ function DesignImage({ design }) {
     );
   }
 
+  const source = sources[sourceIndex] || "";
   const imageSource = retry > 0
     ? `${source}${source.includes("?") ? "&" : "?"}retry=${retry}`
     : source;
+
+  if (loadState === "error") {
+    if (design.isSample) return <SampleArtwork design={design} />;
+    return (
+      <div className="nkj-design-photo-missing" role="img" aria-label="Jewellery photograph unavailable">
+        <ImagePlus size={25} />
+        <span>Photograph unavailable</span>
+        <button type="button" onClick={retryImage}>Retry image</button>
+      </div>
+    );
+  }
 
   return (
     <div className="nkj-design-photo">
       <img
         key={imageSource}
         src={imageSource}
-        alt={design.images?.[0]?.altText || design.designName}
+        alt={design.designName}
         loading="lazy"
         decoding="async"
         onLoad={() => setLoadState("loaded")}
         onError={() => {
-          console.error("Jewellery catalogue image failed to load:", imageSource);
-          setLoadState("error");
+          if (sourceIndex + 1 < sources.length) {
+            setSourceIndex((current) => current + 1);
+            setLoadState("loading");
+          } else {
+            console.error("All jewellery catalogue image URLs failed:", sources);
+            setLoadState("error");
+          }
         }}
         style={{ objectFit: "contain" }}
       />
       {loadState === "loading" && <span className="nkj-design-photo-status">Loading photograph…</span>}
-      {loadState === "error" && (
-        <div className="nkj-design-photo-error" role="alert">
-          <b>Photograph unavailable</b>
-          <button type="button" onClick={() => { setLoadState("loading"); setRetry((value) => value + 1); }}>
-            Retry image
-          </button>
-        </div>
-      )}
       {!design.isSample && <span className="nkj-design-photo-label">SHOP PHOTO</span>}
     </div>
   );
