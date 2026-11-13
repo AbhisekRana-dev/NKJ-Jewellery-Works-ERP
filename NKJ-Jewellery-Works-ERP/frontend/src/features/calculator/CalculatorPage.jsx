@@ -146,22 +146,24 @@ function evaluateExpression(source) {
       throw new Error("Enter a valid number.");
     }
     take();
-    return Number(token);
+    let value = Number(token);
+    // A trailing percent is a postfix percentage (10% = 0.1), not modulo.
+    while (peek() === "%") {
+      take();
+      value /= 100;
+    }
+    return value;
   };
 
   const term = () => {
     let value = factor();
-    while (["*", "/", "%"].includes(peek())) {
+    while (["*", "/"].includes(peek())) {
       const operator = take();
       const right = factor();
-      if ((operator === "/" || operator === "%") && right === 0) {
+      if (operator === "/" && right === 0) {
         throw new Error("Cannot divide by zero.");
       }
-      value = operator === "*"
-        ? value * right
-        : operator === "/"
-          ? value / right
-          : value % right;
+      value = operator === "*" ? value * right : value / right;
     }
     return value;
   };
@@ -193,14 +195,15 @@ function ManualCalculator({ active }) {
       const baseExpression = current.calculated
         ? (isOperator ? current.result : "0")
         : current.expression;
+      const nextExpression = baseExpression === "0"
+        ? value === "(" ? "(" : value === "." ? "0." : /\d/.test(value) ? value : baseExpression + value
+        : baseExpression + value;
       return {
         ...current,
         error: "",
         calculated: false,
         result: current.calculated ? "0" : current.result,
-        expression: baseExpression === "0" && /\d/.test(value)
-          ? value
-          : baseExpression + value,
+        expression: nextExpression,
       };
     });
   }, [setDraft]);
@@ -482,110 +485,118 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
   return (
     <div className="nkj-calc-with-history nkj-calc-ornament-layout">
       <section className="nkj-calc-ornament">
-      <div className="nkj-calc-fields">
-        <label>
-          {isOld ? "Weight (gm)" : "Net Weight (gm)"}
-          <input {...numberInput(weight, (value) => updateDraftField("weight", value))} placeholder="Enter weight" />
-        </label>
-        {isOld && (
-          <label>
-            Purity (%)
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              inputMode="decimal"
-              value={purity}
-              onChange={(event) => updateDraftField("purity", event.target.value)}
-              onWheel={(event) => event.currentTarget.blur()}
-              placeholder="Enter purity percentage"
-              aria-label="Purity percentage"
-              aria-invalid={!isPurityValid}
-            />
-            {!isPurityValid && <small className="nkj-calc-error">Purity must be between 0 and 100%.</small>}
-          </label>
-        )}
-        <label>
-          Rate / GM (₹)
-          <input {...numberInput(rate, (value) => updateDraftField("rate", value))} placeholder="Enter rate per gram" />
-        </label>
-        {!isOld && (
-          <>
-            <label className="nkj-calc-making-mode-field">
-              Making Charge Type
-              <select
-                value={makingMode}
-                onChange={(event) => {
-                  // Keep the entered charge when switching modes. The value is
-                  // reinterpreted as rupees or percentage without clearing it.
-                  updateDraftField("makingMode", event.target.value);
-                }}
-                aria-label="Making charge type"
-              >
-                <option value="rupees">Rupees (₹)</option>
-                <option value="percentage">Percentage (%)</option>
-              </select>
-            </label>
+        <section className="nkj-calc-details-card">
+          <header className="nkj-calc-section-heading">
+            <Scale size={22} />
+            <h3>{isOld ? "Old Ornament Details" : "Ornament Details"}</h3>
+          </header>
+          <div className="nkj-calc-fields">
             <label>
-              Making Charge ({makingMode === "percentage" ? "%" : "₹"})
-              <input
-                type="number"
-                min="0"
-                max={makingMode === "percentage" ? 100 : undefined}
-                step="0.01"
-                inputMode="decimal"
-                value={making ?? ""}
-                onChange={(event) => updateDraftField("making", event.currentTarget.value)}
-                onWheel={(event) => event.currentTarget.blur()}
-                placeholder={makingMode === "percentage"
-                  ? "Enter percentage (e.g. 12)"
-                  : "Enter making charge in rupees"}
-                aria-label={makingMode === "percentage" ? "Making charge percentage" : "Making charge in rupees"}
-                aria-invalid={makingMode === "percentage" && !isMakingValid}
-              />
-              {!isMakingValid && <small className="nkj-calc-error">Making charge percentage must be between 0 and 100%.</small>}
+              {isOld ? "Weight (gm)" : "Net Weight (gm)"}
+              <input {...numberInput(weight, (value) => updateDraftField("weight", value))} placeholder="Enter weight" />
             </label>
-            <label>Stamp Charge (₹)<input {...numberInput(stamp, (value) => updateDraftField("stamp", value))} placeholder="0.00" /></label>
-            <label>Extra Charge (₹)<input {...numberInput(extra, (value) => updateDraftField("extra", value))} placeholder="0.00" /></label>
-          </>
-        )}
-      </div>
-      <div className="nkj-calc-result-card">
-        <div>
-          <span>{isOld ? "OLD ORNAMENT VALUE" : "NEW ORNAMENT TOTAL"}</span>
-          <strong>₹ {money(total)}</strong>
-          {isOld
-            ? <>
-                <small>Pure weight: {money(pureWeight)} gm ({weight || "0"} gm × {purity.trim() === "" ? "100% default" : purity + "%"})</small>
-                <small>{purity.trim() === "" ? "Value = weight × rate per gram (100% purity assumed)" : "Value = weight × purity ÷ 100 × rate per gram"}</small>
-                {!isPurityValid && <small className="nkj-calc-error">Enter a purity percentage from 0 to 100.</small>}
+            {isOld && (
+              <label>
+                Purity (%)
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={purity}
+                  onChange={(event) => updateDraftField("purity", event.target.value)}
+                  onWheel={(event) => event.currentTarget.blur()}
+                  placeholder="Enter purity percentage"
+                  aria-label="Purity percentage"
+                  aria-invalid={!isPurityValid}
+                />
+                {!isPurityValid && <small className="nkj-calc-error">Purity must be between 0 and 100%.</small>}
+              </label>
+            )}
+            <label>
+              Rate / GM (₹)
+              <input {...numberInput(rate, (value) => updateDraftField("rate", value))} placeholder="Enter rate per gram" />
+            </label>
+            {!isOld && (
+              <>
+                <label className="nkj-calc-making-mode-field">
+                  Making Charge Type
+                  <select
+                    value={makingMode}
+                    onChange={(event) => updateDraftField("makingMode", event.target.value)}
+                    aria-label="Making charge type"
+                  >
+                    <option value="rupees">Rupees (₹)</option>
+                    <option value="percentage">Percentage (%)</option>
+                  </select>
+                </label>
+                <label>
+                  Making Charge ({makingMode === "percentage" ? "%" : "₹"})
+                  <input
+                    type="number"
+                    min="0"
+                    max={makingMode === "percentage" ? 100 : undefined}
+                    step="0.01"
+                    inputMode="decimal"
+                    value={making ?? ""}
+                    onChange={(event) => updateDraftField("making", event.currentTarget.value)}
+                    onWheel={(event) => event.currentTarget.blur()}
+                    placeholder={makingMode === "percentage" ? "Enter percentage (e.g. 12)" : "Enter making charge in rupees"}
+                    aria-label={makingMode === "percentage" ? "Making charge percentage" : "Making charge in rupees"}
+                    aria-invalid={makingMode === "percentage" && !isMakingValid}
+                  />
+                  {!isMakingValid && <small className="nkj-calc-error">Making charge percentage must be between 0 and 100%.</small>}
+                </label>
+                <label>Stamp Charge (₹)<input {...numberInput(stamp, (value) => updateDraftField("stamp", value))} placeholder="0.00" /></label>
+                <label>Extra Charge (₹)<input {...numberInput(extra, (value) => updateDraftField("extra", value))} placeholder="0.00" /></label>
               </>
-            : <>
-                <small>Metal value: ₹ {money(metalValue)}</small>
-                <small>Making charge{makingMode === "percentage" ? ` (${makingInputValue}% of metal value)` : ""}: ₹ {money(isMakingValid ? makingChargeRupees : 0)}</small>
-                {makingMode === "percentage" && (
-                  <small>
-                    Calculation: ₹ {money(metalValue)} × {makingInputValue}% ÷ 100 = ₹ {money(isMakingValid ? makingChargeRupees : 0)}
-                  </small>
-                )}
-                <small>Stamp + extra charges: ₹ {money(Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0))}</small>
-                {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
-              </>}
-          <small className="nkj-calc-reset-hint">Press Esc or click Reset to clear this calculator immediately.</small>
-        </div>
-        <div className="nkj-calc-result-actions">
-          {calculationFeedback && <small className="nkj-calc-calculation-feedback" role="status">{calculationFeedback}</small>}
-          <div>
-            <button type="button" className="nkj-calc-calculate" onClick={handleCalculate}>
-              <CalculatorIcon size={15} /> Calculate
-            </button>
-            <button type="button" className="nkj-calc-reset" onClick={reset}>
-              <RotateCcw size={15} /> Reset
-            </button>
+            )}
           </div>
-        </div>
-      </div>
+        </section>
+
+        <section className="nkj-calc-result-card">
+          <header className="nkj-calc-result-hero">
+            <span>{isOld ? "OLD ORNAMENT VALUE" : "NEW ORNAMENT TOTAL"}</span>
+            <strong>₹ {money(total)}</strong>
+          </header>
+          <div className="nkj-calc-breakdown">
+            {isOld ? (
+              <>
+                <div className="nkj-calc-breakdown-row"><span>Gross Weight</span><strong>{money(weight)} gm</strong></div>
+                <div className="nkj-calc-breakdown-row"><span>Purity</span><strong>{money(purityPercent)}%</strong></div>
+                <div className="nkj-calc-breakdown-row"><span>Pure Weight</span><strong>{money(pureWeight)} gm</strong></div>
+                <div className="nkj-calc-breakdown-row"><span>Rate per Gram</span><strong>₹ {money(rate)}</strong></div>
+                <div className="nkj-calc-breakdown-row"><span>Calculation ({money(pureWeight)} × {money(rate)})</span><strong>₹ {money(metalValue)}</strong></div>
+                {!isPurityValid && <small className="nkj-calc-error">Enter a purity percentage from 0 to 100.</small>}
+                <div className="nkj-calc-total-row"><span>Old Ornament Value</span><strong>₹ {money(total)}</strong></div>
+              </>
+            ) : (
+              <>
+                <div className="nkj-calc-breakdown-row"><span>Metal Value ({money(weight)} × {money(rate)})</span><strong>₹ {money(metalValue)}</strong></div>
+                <div className="nkj-calc-breakdown-row">
+                  <span>Making Charge{makingMode === "percentage" ? ` (${makingInputValue}%)` : ""}</span>
+                  <strong>₹ {money(isMakingValid ? makingChargeRupees : 0)}</strong>
+                </div>
+                <div className="nkj-calc-breakdown-row"><span>Stamp Charge</span><strong>₹ {money(stamp)}</strong></div>
+                <div className="nkj-calc-breakdown-row"><span>Extra Charge</span><strong>₹ {money(extra)}</strong></div>
+                {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
+                <div className="nkj-calc-total-row"><span>Total Amount</span><strong>₹ {money(total)}</strong></div>
+              </>
+            )}
+          </div>
+          <div className="nkj-calc-result-actions">
+            {calculationFeedback && <small className="nkj-calc-calculation-feedback" role="status">{calculationFeedback}</small>}
+            <div>
+              <button type="button" className="nkj-calc-calculate" onClick={handleCalculate}>
+                <CalculatorIcon size={16} /> Calculate
+              </button>
+              <button type="button" className="nkj-calc-reset" onClick={reset}>
+                <RotateCcw size={16} /> Reset
+              </button>
+            </div>
+          </div>
+        </section>
       </section>
       <CalculationHistory title="Recent Calculations (Last 15)" items={history} onClear={clearHistory} />
     </div>
