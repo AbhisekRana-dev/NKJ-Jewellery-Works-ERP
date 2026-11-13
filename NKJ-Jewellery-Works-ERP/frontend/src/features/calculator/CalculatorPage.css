@@ -2164,7 +2164,7 @@
     flex: 0 0 auto !important;
   }
 
-  .app-content:has(.nkj-calculator-page) > main.container {
+  .app-content:has(.nkj-calculator-page) > main.container:not(.nkj-owner-container) {
     display: flex !important;
     flex: 1 1 auto !important;
     flex-direction: column;
@@ -2174,6 +2174,18 @@
     min-height: 0 !important;
     height: auto !important;
     margin: 0 !important;
+    padding: 8px clamp(10px, 1.5vw, 24px) !important;
+    overflow: hidden !important;
+  }
+
+  .app-content:has(.nkj-calculator-page) > main.container.nkj-owner-container {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column;
+    max-width: none !important;
+    min-width: 0;
+    min-height: 0 !important;
+    height: auto !important;
     padding: 8px clamp(10px, 1.5vw, 24px) !important;
     overflow: hidden !important;
   }
