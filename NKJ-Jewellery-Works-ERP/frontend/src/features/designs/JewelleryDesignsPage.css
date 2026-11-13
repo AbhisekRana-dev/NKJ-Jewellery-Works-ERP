@@ -1547,3 +1547,46 @@
   .nkj-design-modal {animation:nkj-dark-modal-in .24s cubic-bezier(.2,.75,.25,1) both;}
   @keyframes nkj-dark-modal-in {from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 }
+
+
+/* Day mode restores the warm ivory jewellery-catalogue presentation. */
+body:not(.nkj-theme-dark) .nkj-design-modal {
+  color:#34242b!important;border:1px solid #e5c77e!important;
+  background:#fffdfa!important;box-shadow:0 24px 70px rgba(39,13,20,.28)!important;
+}
+body:not(.nkj-theme-dark) .nkj-design-modal > .nkj-design-modal-photo,
+body:not(.nkj-theme-dark) .nkj-design-modal > .nkj-design-photo-missing.nkj-design-modal-photo-pending {
+  border:0!important;background:#f8efe1!important;box-shadow:none!important;
+}
+body:not(.nkj-theme-dark) .nkj-design-modal > .nkj-design-modal-photo img {background:#fffdf9!important;filter:none!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-photo > small {left:auto!important;right:8px!important;bottom:8px!important;border:0!important;background:rgba(49,23,31,.72)!important;color:#fff!important;}
+body:not(.nkj-theme-dark) .nkj-design-photo-zoom,
+body:not(.nkj-theme-dark) .nkj-design-photo-nav {border:0!important;background:rgba(49,23,31,.82)!important;color:#fff!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-content h2 {color:#68102a!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-content p {color:#74666c!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-content dl {background:#fffefa!important;border:0!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-content dl div {border-bottom:1px solid #eee4df!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-content dt {color:#96858b!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-content dd {color:#68102a!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-gallery-section {border:1px solid #eee1d5!important;background:#fffefa!important;}
+body:not(.nkj-theme-dark) .nkj-design-admin-panel {border:1px solid #e8d5ad!important;background:linear-gradient(145deg,#fffdf7,#fff8ec)!important;}
+body:not(.nkj-theme-dark) .nkj-design-admin-panel-heading {color:#8d1732!important;}
+body:not(.nkj-theme-dark) .nkj-design-admin-panel-heading span {color:#a36b22!important;}
+body:not(.nkj-theme-dark) .nkj-design-admin-panel-heading b {color:#8d1732!important;}
+body:not(.nkj-theme-dark) .nkj-design-admin-button {border:1px solid #e3d0bd!important;background:#fff!important;color:#72132e!important;}
+body:not(.nkj-theme-dark) .nkj-design-admin-button.primary {border-color:#8d1433!important;background:#8d1433!important;color:#fff!important;}
+body:not(.nkj-theme-dark) .nkj-design-admin-button.gold {border-color:#d7b46c!important;background:#fff4d9!important;color:#744d13!important;}
+body:not(.nkj-theme-dark) .nkj-design-admin-button.danger {border-color:#e7b8bb!important;background:#fff5f4!important;color:#a32437!important;}
+body:not(.nkj-theme-dark) .nkj-design-edit-form,
+body:not(.nkj-theme-dark) .nkj-design-upload-tools,
+body:not(.nkj-theme-dark) .nkj-design-mobile-qr-panel {border:1px solid #eadcc7!important;background:#fff!important;}
+body:not(.nkj-theme-dark) .nkj-design-edit-grid label,
+body:not(.nkj-theme-dark) .nkj-design-edit-toggles label {color:#795b55!important;}
+body:not(.nkj-theme-dark) .nkj-design-edit-grid input,
+body:not(.nkj-theme-dark) .nkj-design-edit-grid textarea {border:1px solid #e7d9d1!important;background:#fff!important;color:#402e34!important;}
+body:not(.nkj-theme-dark) .nkj-design-upload-tools > div:first-child b,
+body:not(.nkj-theme-dark) .nkj-design-replace-photo-tools > div b {color:#79132f!important;}
+body:not(.nkj-theme-dark) .nkj-design-upload-tools > div:first-child small,
+body:not(.nkj-theme-dark) .nkj-design-replace-photo-tools > div small {color:#897975!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-close {border:1px solid #ecdeda!important;background:#fff!important;color:#71102c!important;}
+body:not(.nkj-theme-dark) .nkj-design-modal-done {border:1px solid #710f2c!important;background:#710f2c!important;color:#fff7e8!important;}
