@@ -254,7 +254,7 @@ function ManualCalculator({ active }) {
       // Handle it before the editable-field guard so the shortcut also works
       // when focus is inside a calculator control.
       if (key === "Escape") {
-        if (event.target instanceof Element && !event.target.closest(".nkj-calculator-page")) return;
+        if (event.target instanceof Element && !event.target.closest(".nkj-calculator-page--manual")) return;
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
@@ -364,7 +364,7 @@ function ManualCalculator({ active }) {
   );
 }
 
-function OrnamentCalculator({ mode, history, addHistory, clearHistory }) {
+function OrnamentCalculator({ mode, active, history, addHistory, clearHistory }) {
   const isOld = mode === "old";
   const draftKey = isOld ? "nkj_old_ornament_draft" : "nkj_new_ornament_draft";
   const [draft, setDraft] = usePersistentDraft(draftKey, INITIAL_ORNAMENT_DRAFT);
@@ -398,9 +398,30 @@ function OrnamentCalculator({ mode, history, addHistory, clearHistory }) {
 
   const reset = useCallback(() => {
     setDraft({ ...INITIAL_ORNAMENT_DRAFT });
+    setCalculationFeedback("");
   }, [setDraft]);
 
-  // Ornament drafts reset only through their explicit Reset buttons.
+  // Escape resets only the selected Ornament tab. The inactive Ornament
+  // component stays mounted to preserve its draft, but has no active listener.
+  useEffect(() => {
+    if (!active) return undefined;
+
+    const handleActiveOrnamentReset = (event) => {
+      if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest(".nkj-calculator-page")) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      reset();
+    };
+
+    window.addEventListener("keydown", handleActiveOrnamentReset, true);
+    return () => window.removeEventListener("keydown", handleActiveOrnamentReset, true);
+  }, [active, reset]);
+
+  // Ornament drafts reset only through their own Reset button or active-tab Escape.
 
   // Add exactly one record only after a valid, deliberate Calculate action.
   // A short click guard blocks duplicate events from rapid double-clicks while
@@ -583,7 +604,11 @@ function OrnamentCalculator({ mode, history, addHistory, clearHistory }) {
 
 export default function CalculatorPage() {
   const [mode, setMode] = useState("new");
-  const [ornamentHistory, addOrnamentHistory, clearOrnamentHistory] = usePersistentHistory("nkj_ornament_calculation_history", 15);
+  // Keep each Ornament tab's history separate as well as its persisted draft.
+  const [newOrnamentHistory, addNewOrnamentHistory, clearNewOrnamentHistory] =
+    usePersistentHistory("nkj_new_ornament_calculation_history", 15);
+  const [oldOrnamentHistory, addOldOrnamentHistory, clearOldOrnamentHistory] =
+    usePersistentHistory("nkj_old_ornament_calculation_history", 15);
 
   const changeMode = (nextMode) => {
     if (nextMode === mode) return;
@@ -631,10 +656,10 @@ export default function CalculatorPage() {
               <h2>{options.find((option) => option.id === mode)?.label}</h2>
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "new"}>
-              <OrnamentCalculator mode="new" history={ornamentHistory} addHistory={addOrnamentHistory} clearHistory={clearOrnamentHistory} />
+              <OrnamentCalculator mode="new" active={mode === "new"} history={newOrnamentHistory} addHistory={addNewOrnamentHistory} clearHistory={clearNewOrnamentHistory} />
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "old"}>
-              <OrnamentCalculator mode="old" history={ornamentHistory} addHistory={addOrnamentHistory} clearHistory={clearOrnamentHistory} />
+              <OrnamentCalculator mode="old" active={mode === "old"} history={oldOrnamentHistory} addHistory={addOldOrnamentHistory} clearHistory={clearOldOrnamentHistory} />
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "manual"}>
               <ManualCalculator active={mode === "manual"} />
