@@ -229,13 +229,37 @@ public class ErpModuleService {
                 """);
         }
         if (module.equals("attendance")) {
-            return jdbc.queryForList("SELECT a.id, a.staff_id AS \"staffId\", s.staff_code AS \"staffCode\", s.full_name AS \"staffName\", a.attendance_date AS \"attendanceDate\", a.status, a.check_in AS \"checkIn\", a.check_out AS \"checkOut\", a.working_hours AS \"workingHours\", a.remarks FROM staff_attendance a JOIN staff s ON s.id=a.staff_id ORDER BY a.attendance_date DESC, a.id DESC LIMIT 500");
+            return jdbc.queryForList("""
+                SELECT a.id, a.staff_id AS "staffId", s.staff_code AS "staffCode",
+                       s.full_name AS "staffName", a.attendance_date AS "attendanceDate",
+                       a.status, a.check_in AS "checkIn", a.check_out AS "checkOut",
+                       a.working_hours AS "workingHours", a.remarks,
+                       a.attendance_source AS "attendanceSource", a.leave_id AS "leaveId",
+                       a.is_system_generated AS "systemGenerated", a.is_locked AS locked,
+                       l.leave_type AS "leaveType", l.from_date AS "leaveFromDate",
+                       l.to_date AS "leaveToDate"
+                  FROM staff_attendance a
+                  JOIN staff s ON s.id=a.staff_id
+                  LEFT JOIN staff_leaves l ON l.id=a.leave_id
+                 ORDER BY a.attendance_date DESC, a.id DESC
+                 LIMIT 5000
+                """);
         }
         if (module.equals("salary")) {
             return jdbc.queryForList("SELECT a.id, a.staff_id AS \"staffId\", s.staff_code AS \"staffCode\", s.full_name AS \"staffName\", a.payroll_month AS \"payrollMonth\", a.basic_salary AS \"basicSalary\", a.allowances, a.overtime, a.bonus, a.deductions, a.advance_salary AS \"advanceSalary\", a.absent_deduction AS \"absentDeduction\", a.net_salary AS \"netSalary\", a.amount_paid AS \"amountPaid\", a.remaining_salary AS \"remainingSalary\", a.payment_date AS \"paymentDate\", a.payment_method AS \"paymentMethod\", a.payment_status AS \"paymentStatus\" FROM staff_salary a JOIN staff s ON s.id=a.staff_id ORDER BY a.payroll_month DESC LIMIT 500");
         }
         if (module.equals("leaves")) {
-            return jdbc.queryForList("SELECT l.id, l.staff_id AS \"staffId\", s.staff_code AS \"staffCode\", s.full_name AS \"staffName\", l.from_date AS \"fromDate\", l.to_date AS \"toDate\", l.leave_type AS \"leaveType\", l.reason, l.status FROM staff_leaves l JOIN staff s ON s.id=l.staff_id ORDER BY l.from_date DESC, l.id DESC LIMIT 500");
+            return jdbc.queryForList("""
+                SELECT l.id, l.staff_id AS "staffId", s.staff_code AS "staffCode",
+                       s.full_name AS "staffName", l.from_date AS "fromDate",
+                       l.to_date AS "toDate", l.leave_type AS "leaveType",
+                       l.reason, l.status, l.approved_by AS "approvedBy",
+                       l.approved_at AS "approvedAt"
+                  FROM staff_leaves l
+                  JOIN staff s ON s.id=l.staff_id
+                 ORDER BY l.from_date DESC, l.id DESC
+                 LIMIT 1000
+                """);
         }
         if (module.equals("salary-payments")) {
             return jdbc.queryForList("""
@@ -254,6 +278,99 @@ public class ErpModuleService {
         }
         if (module.equals("audit-logs")) return jdbc.queryForList("SELECT id, actor_identity AS \"actor\", action, module, record_id AS \"recordId\", ip_address AS \"ipAddress\", occurred_at AS \"occurredAt\" FROM audit_logs ORDER BY occurred_at DESC LIMIT 500");
         return jdbc.queryForList("SELECT " + select + " FROM " + d.table() + " ORDER BY id DESC LIMIT 500");
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String,Object> attendanceDashboard(int year, int month) {
+        final java.time.YearMonth requestedMonth;
+        try {
+            requestedMonth = java.time.YearMonth.of(year, month);
+        } catch (java.time.DateTimeException ex) {
+            throw new IllegalArgumentException("Select a valid attendance month and year.");
+        }
+        java.time.LocalDate start = requestedMonth.atDay(1);
+        java.time.LocalDate end = requestedMonth.atEndOfMonth();
+        java.time.LocalDate today = shopToday();
+
+        List<Map<String,Object>> staffRows = jdbc.queryForList("""
+            SELECT id, staff_code AS "staffCode", full_name AS "fullName",
+                   designation, department, photo_url AS "photoUrl", status
+              FROM staff WHERE UPPER(status)='ACTIVE'
+             ORDER BY full_name, id
+            """);
+        List<Map<String,Object>> attendanceRows = jdbc.queryForList("""
+            SELECT a.id, a.staff_id AS "staffId", s.staff_code AS "staffCode",
+                   s.full_name AS "staffName", a.attendance_date AS "attendanceDate",
+                   a.status, a.check_in AS "checkIn", a.check_out AS "checkOut",
+                   a.working_hours AS "workingHours", a.remarks,
+                   a.attendance_source AS "attendanceSource", a.leave_id AS "leaveId",
+                   a.is_system_generated AS "systemGenerated", a.is_locked AS locked,
+                   l.leave_type AS "leaveType", l.from_date AS "leaveFromDate",
+                   l.to_date AS "leaveToDate"
+              FROM staff_attendance a
+              JOIN staff s ON s.id=a.staff_id
+              LEFT JOIN staff_leaves l ON l.id=a.leave_id
+             WHERE UPPER(s.status)='ACTIVE'
+               AND a.attendance_date BETWEEN ? AND ?
+             ORDER BY s.full_name, a.attendance_date
+            """, java.sql.Date.valueOf(start), java.sql.Date.valueOf(end));
+        Map<String,Object> todayCounts = jdbc.queryForMap("""
+            SELECT COUNT(*) FILTER (WHERE a.status='PRESENT') AS "todayPresent",
+                   COUNT(*) FILTER (WHERE a.status='ABSENT') AS "todayAbsent",
+                   COUNT(*) FILTER (WHERE a.status='HALF_DAY') AS "todayHalfDay"
+              FROM staff s
+              LEFT JOIN staff_attendance a
+                ON a.staff_id=s.id AND a.attendance_date=?
+             WHERE UPPER(s.status)='ACTIVE'
+            """, java.sql.Date.valueOf(today));
+
+        Map<String,Object> summary = new LinkedHashMap<>();
+        summary.put("totalStaff", staffRows.size());
+        summary.put("todayPresent", todayCounts.getOrDefault("todayPresent", 0));
+        summary.put("todayAbsent", todayCounts.getOrDefault("todayAbsent", 0));
+        summary.put("todayHalfDay", todayCounts.getOrDefault("todayHalfDay", 0));
+
+        Map<String,Object> response = new LinkedHashMap<>();
+        response.put("year", year);
+        response.put("month", month);
+        response.put("monthStart", start.toString());
+        response.put("monthEnd", end.toString());
+        response.put("today", today.toString());
+        response.put("staff", staffRows);
+        response.put("records", attendanceRows);
+        response.put("summary", summary);
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String,Object> checkAttendanceLeave(long staffId, String dateValue) {
+        java.time.LocalDate day = parseDate(dateValue, "Attendance date");
+        Map<String,Object> person = jdbc.queryForMap(
+                "SELECT id, full_name AS \"staffName\", staff_code AS \"staffCode\", status FROM staff WHERE id=?",
+                staffId);
+        Map<String,Object> result = new LinkedHashMap<>();
+        result.put("staffId", staffId);
+        result.put("date", day.toString());
+        result.put("allowed", true);
+        if (!"ACTIVE".equalsIgnoreCase(String.valueOf(person.get("status")))) {
+            result.put("allowed", false);
+            result.put("message", "Attendance cannot be added for an inactive staff member.");
+            return result;
+        }
+        List<Map<String,Object>> approved = jdbc.queryForList("""
+            SELECT id, leave_type AS "leaveType", from_date AS "fromDate",
+                   to_date AS "toDate", reason
+              FROM staff_leaves
+             WHERE staff_id=? AND UPPER(status)='APPROVED'
+               AND from_date<=? AND to_date>=?
+             ORDER BY id LIMIT 1
+            """, staffId, java.sql.Date.valueOf(day), java.sql.Date.valueOf(day));
+        if (!approved.isEmpty()) {
+            result.put("allowed", false);
+            result.put("message", "Attendance cannot be modified because this employee has an approved leave for the selected date.");
+            result.put("leave", approved.get(0));
+        }
+        return result;
     }
 
     @Transactional(readOnly = true)
