@@ -568,6 +568,17 @@ export default function JewelleryDesignsPage() {
     }
   };
 
+  const revokeMobileUploadQr = async () => {
+    if (!isAdmin || !qrSession?.sessionId) return;
+    try {
+      await request(`/admin/design-upload-sessions/${qrSession.sessionId}`, { method: "DELETE" });
+      setQrSession((current) => current ? { ...current, status: "REVOKED" } : current);
+      setQrError("");
+    } catch (error) {
+      setQrError(error.message || "Could not revoke this QR upload session.");
+    }
+  };
+
   const generateMobileUploadQr = async () => {
     if (!isAdmin || !selected || qrLoading) return;
     setQrLoading(true);
@@ -1063,7 +1074,7 @@ export default function JewelleryDesignsPage() {
                                 <small>Design: {selected.designId || selected.designCode}</small>
                                 {qrSession.expiresAt && <small>Expires: {new Date(qrSession.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</small>}
                                 {["EXPIRED", "REVOKED", "UPLOADED"].includes(qrSession.status) && <button type="button" className="nkj-design-admin-button gold" onClick={generateMobileUploadQr} disabled={qrLoading}><QrCode size={13} /> Generate New QR</button>}
-                                {["WAITING", "SCANNED"].includes(qrSession.status) && <button type="button" className="nkj-design-admin-button" onClick={closeSelectedModal}>Close and Revoke QR</button>}
+                                {["WAITING", "SCANNED"].includes(qrSession.status) && <button type="button" className="nkj-design-admin-button danger" onClick={revokeMobileUploadQr}><X size={13} /> Revoke QR</button>}
                               </div>
                             </div>
                           )}
