@@ -186,7 +186,6 @@ function evaluateExpression(source) {
 function ManualCalculator({ active }) {
   const [draft, setDraft] = usePersistentDraft("nkj_manual_calculator_draft", INITIAL_MANUAL_DRAFT);
   const { expression, result, error } = draft;
-  const [history, addHistory, clearHistory] = usePersistentHistory("nkj_manual_calculator_history", 15);
   const calculateGuardRef = useRef({ inFlight: false, lastAcceptedAt: 0, lastExpression: "" });
 
   const append = useCallback((value) => {
@@ -220,12 +219,6 @@ function ManualCalculator({ active }) {
       const rounded = Number(value.toFixed(8));
       const formatted = String(rounded);
 
-      // One successful explicit Calculate action creates exactly one record.
-      addHistory({
-        expression: source.replaceAll("*", "×").replaceAll("/", "÷"),
-        result: rounded.toLocaleString("en-IN", { maximumFractionDigits: 8 }),
-      });
-
       guard.lastExpression = source;
       guard.lastAcceptedAt = now;
       setDraft((current) => ({ ...current, result: formatted, calculated: true, error: "" }));
@@ -234,7 +227,7 @@ function ManualCalculator({ active }) {
     } finally {
       guard.inFlight = false;
     }
-  }, [expression, addHistory, setDraft]);
+  }, [expression, setDraft]);
 
   const clear = useCallback(() => {
     setDraft({ ...INITIAL_MANUAL_DRAFT });
@@ -335,7 +328,7 @@ function ManualCalculator({ active }) {
   ];
 
   return (
-    <div className="nkj-calc-with-history nkj-calc-manual-layout">
+    <div className="nkj-calc-manual-only">
       <section className="nkj-calc-manual">
         <div className="nkj-calc-display">
           <span>MANUAL CALCULATOR</span>
@@ -344,39 +337,39 @@ function ManualCalculator({ active }) {
           {error && <small className="nkj-calc-error">{error}</small>}
         </div>
 
-        <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
-          {keys.map(([label, value]) => (
-            <button
-              type="button"
-              key={label}
-              className={
-                value === "clear" ? "utility"
-                  : value === "equal" ? "equal"
-                    : ["+", "-", "*", "/", "%"].includes(value) ? "operator"
-                      : ""
-              }
-              onClick={() => {
-                if (value === "clear") resetManualCalculator();
-                else if (value === "equal") calculate();
-                else append(value);
-              }}
-            >
-              {label}
+        <div className="nkj-calc-manual-keypad-area">
+          <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
+            {keys.map(([label, value]) => (
+              <button
+                type="button"
+                key={label}
+                className={
+                  value === "clear" ? "utility"
+                    : value === "equal" ? "equal"
+                      : ["+", "-", "*", "/", "%"].includes(value) ? "operator"
+                        : ""
+                }
+                onClick={() => {
+                  if (value === "clear") resetManualCalculator();
+                  else if (value === "equal") calculate();
+                  else append(value);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="nkj-calc-manual-side-actions">
+            <button type="button" className="nkj-calc-backspace" onClick={backspace}>
+              <Delete size={18} /> DEL
             </button>
-          ))}
-        </div>
-
-        <div className="nkj-calc-manual-actions">
-          <button type="button" className="nkj-calc-backspace" onClick={backspace}>
-            <Delete size={18} /> DEL
-          </button>
-          <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
-            <RotateCcw size={17} /> Reset
-          </button>
+            <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
+              <RotateCcw size={17} /> Reset
+            </button>
+          </div>
         </div>
         <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets</p>
       </section>
-      <CalculationHistory title="Calculation History" items={history} onClear={clearHistory} />
     </div>
   );
 }
