@@ -186,6 +186,8 @@ function evaluateExpression(source) {
 function ManualCalculator({ active }) {
   const [draft, setDraft] = usePersistentDraft("nkj_manual_calculator_draft", INITIAL_MANUAL_DRAFT);
   const { expression, result, error } = draft;
+  const [history, addHistory, clearHistory] = usePersistentHistory("nkj_manual_calculator_history", 15);
+  const calculateGuardRef = useRef({ inFlight: false, lastAcceptedAt: 0, lastExpression: "" });
 
   const append = useCallback((value) => {
     setDraft((current) => {
@@ -206,16 +208,33 @@ function ManualCalculator({ active }) {
   }, [setDraft]);
 
   const calculate = useCallback(() => {
+    const guard = calculateGuardRef.current;
+    const now = Date.now();
+    if (guard.inFlight) return;
+    if (guard.lastExpression === expression && now - guard.lastAcceptedAt < 450) return;
+
+    guard.inFlight = true;
     try {
       const source = expression;
       const value = evaluateExpression(source);
       const rounded = Number(value.toFixed(8));
       const formatted = String(rounded);
+
+      // One successful explicit Calculate action creates exactly one record.
+      addHistory({
+        expression: source.replaceAll("*", "×").replaceAll("/", "÷"),
+        result: rounded.toLocaleString("en-IN", { maximumFractionDigits: 8 }),
+      });
+
+      guard.lastExpression = source;
+      guard.lastAcceptedAt = now;
       setDraft((current) => ({ ...current, result: formatted, calculated: true, error: "" }));
     } catch (err) {
       setDraft((current) => ({ ...current, error: err.message || "Invalid calculation." }));
+    } finally {
+      guard.inFlight = false;
     }
-  }, [expression, setDraft]);
+  }, [expression, addHistory, setDraft]);
 
   const clear = useCallback(() => {
     setDraft({ ...INITIAL_MANUAL_DRAFT });
@@ -308,56 +327,56 @@ function ManualCalculator({ active }) {
   }, [active, append, calculate, backspace]);
 
   const keys = [
-    ["AC", "clear"], ["(", "("], [")", ")"], ["%", "%"],
-    ["7", "7"], ["8", "8"], ["9", "9"], ["÷", "/"],
-    ["4", "4"], ["5", "5"], ["6", "6"], ["×", "*"],
-    ["1", "1"], ["2", "2"], ["3", "3"], ["−", "-"],
-    ["DEL", "delete"], ["0", "0"], [".", "."], ["+", "+"],
+    ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
+    ["7", "7"], ["8", "8"], ["9", "9"], ["×", "*"],
+    ["4", "4"], ["5", "5"], ["6", "6"], ["−", "-"],
+    ["1", "1"], ["2", "2"], ["3", "3"], ["+", "+"],
+    ["%", "%"], ["0", "0"], [".", "."], ["=", "equal"],
   ];
 
   return (
-    <div className="nkj-calc-manual-only">
+    <div className="nkj-calc-with-history nkj-calc-manual-layout">
       <section className="nkj-calc-manual">
         <div className="nkj-calc-display">
+          <span>MANUAL CALCULATOR</span>
           <div className="nkj-calc-expression" aria-live="polite">{expression}</div>
-          <div className="nkj-calc-display-result">= {Number(result || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="nkj-calc-result">= {Number(result || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           {error && <small className="nkj-calc-error">{error}</small>}
         </div>
 
-        <div className="nkj-calc-manual-keypad-area">
-          <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
-            {keys.map(([label, value]) => (
-              <button
-                type="button"
-                key={label}
-                className={
-                  value === "clear" ? "utility"
-                    : value === "delete" ? "delete"
-                      : ["+", "-", "*", "/", "%"].includes(value) ? "operator"
-                        : ""
-                }
-                onClick={() => {
-                  if (value === "clear") resetManualCalculator();
-                  else if (value === "delete") backspace();
-                  else append(value);
-                }}
-              >
-                {value === "delete" ? <><Delete size={19} /> DEL</> : label}
-              </button>
-            ))}
-          </div>
-
-          <div className="nkj-calc-manual-side-actions">
-            <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
-              <RotateCcw size={20} /> Reset
+        <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
+          {keys.map(([label, value]) => (
+            <button
+              type="button"
+              key={label}
+              className={
+                value === "clear" ? "utility"
+                  : value === "equal" ? "equal"
+                    : ["+", "-", "*", "/", "%"].includes(value) ? "operator"
+                      : ""
+              }
+              onClick={() => {
+                if (value === "clear") resetManualCalculator();
+                else if (value === "equal") calculate();
+                else append(value);
+              }}
+            >
+              {label}
             </button>
-            <button type="button" className="nkj-calc-manual-save" onClick={calculate}>
-              <SaveIcon size={20} /> Save
-            </button>
-          </div>
+          ))}
         </div>
-        <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to save result · Backspace to delete · Esc resets</p>
+
+        <div className="nkj-calc-manual-actions">
+          <button type="button" className="nkj-calc-backspace" onClick={backspace}>
+            <Delete size={18} /> DEL
+          </button>
+          <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
+            <RotateCcw size={17} /> Reset
+          </button>
+        </div>
+        <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets</p>
       </section>
+      <CalculationHistory title="Calculation History" items={history} onClear={clearHistory} />
     </div>
   );
 }
