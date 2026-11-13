@@ -184,23 +184,17 @@ function ManualCalculator({ active }) {
     }));
   }, [setDraft]);
 
-  const [history, addHistory, clearHistory] = usePersistentHistory("nkj_manual_calculator_history", 15);
-
   const calculate = useCallback(() => {
     try {
       const source = expression;
       const value = evaluateExpression(source);
       const rounded = Number(value.toFixed(8));
       const formatted = String(rounded);
-      addHistory({
-        expression: source.replaceAll("*", "×").replaceAll("/", "÷"),
-        result: rounded.toLocaleString("en-IN", { maximumFractionDigits: 8 }),
-      });
       setDraft((current) => ({ ...current, result: formatted, expression: formatted, error: "" }));
     } catch (err) {
       setDraft((current) => ({ ...current, error: err.message || "Invalid calculation." }));
     }
-  }, [expression, addHistory, setDraft]);
+  }, [expression, setDraft]);
 
   const clear = useCallback(() => {
     setDraft({ ...INITIAL_MANUAL_DRAFT });
@@ -296,7 +290,7 @@ function ManualCalculator({ active }) {
   ];
 
   return (
-    <div className="nkj-calc-with-history nkj-calc-manual-layout">
+    <div className="nkj-calc-manual-only">
       <section className="nkj-calc-manual">
         <div className="nkj-calc-display">
           <span>MANUAL CALCULATOR</span>
@@ -326,7 +320,6 @@ function ManualCalculator({ active }) {
         </div>
         <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets</p>
       </section>
-      <CalculationHistory title="Calculation History" items={history} onClear={clearHistory} />
     </div>
   );
 }
