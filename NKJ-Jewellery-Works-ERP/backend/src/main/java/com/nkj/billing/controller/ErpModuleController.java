@@ -35,6 +35,19 @@ public class ErpModuleController {
     @GetMapping("/modules/{module}")
     public Object list(@PathVariable String module) { return modules.list(module); }
 
+    @GetMapping("/modules/staff/{staffId}/notes")
+    public Object listStaffNotes(@PathVariable long staffId) {
+        return modules.listStaffNotes(staffId);
+    }
+
+    @DeleteMapping("/modules/staff/{staffId}/notes/{noteId}")
+    public Map<String,Object> deleteStaffNote(
+            @PathVariable long staffId,
+            @PathVariable long noteId,
+            jakarta.servlet.http.HttpServletRequest request) {
+        return modules.deleteStaffNote(staffId, noteId, request.getRemoteAddr());
+    }
+
     @GetMapping("/installments/accounts")
     public Object installmentAccounts() {
         return modules.installmentAccounts();
