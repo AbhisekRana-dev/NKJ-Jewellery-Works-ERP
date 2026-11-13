@@ -1,5 +1,6 @@
 import "./AttendanceManagementPage.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   CalendarDays, RefreshCw, Plus, Download, ChevronLeft, ChevronRight,
   ChevronsLeft, ChevronsRight, Users, Check, X, Lock, Pencil, Trash2,
@@ -39,6 +40,8 @@ const saveCsv = (filename, rows) => {
 
 export default function AttendanceManagementPage() {
   const initialToday = todayLocal();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const staffFilter = searchParams.get("staffId") || "";
   const [year, setYear] = useState(Number(initialToday.slice(0, 4)));
   const [month, setMonth] = useState(Number(initialToday.slice(5, 7)));
   const [today, setToday] = useState(initialToday);
@@ -126,15 +129,15 @@ export default function AttendanceManagementPage() {
   const filteredStaff = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return staff;
-    return staff.filter((person) => `${person.fullName || ""} ${staffIdLabel(person)}`.toLowerCase().includes(query));
-  }, [staff, search]);
+    return staff.filter((person) => {
+      const matchesStaff = !staffFilter || String(person.id) === String(staffFilter);
+      return matchesStaff && `${person.fullName || ""} ${staffIdLabel(person)}`.toLowerCase().includes(query);
+    });
+  }, [staff, search, staffFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredStaff.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleStaff = filteredStaff.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const dayIndex = selectedDate.slice(0, 7) === `${year}-${String(month).padStart(2, "0")}`
-    ? Number(selectedDate.slice(8, 10)) : 1;
-
   const totalsFor = (staffId) => days.reduce((totals, day) => {
     const record = recordMap.get(`${staffId}|${day.key}`);
     if (record?.status === "PRESENT") totals.present += 1;
@@ -230,7 +233,7 @@ export default function AttendanceManagementPage() {
         setSelectedDate(form.attendanceDate);
       } else if (viewMode === "SINGLE_DAY") setSelectedDate(form.attendanceDate);
       setMessage("Attendance record saved.");
-      await load(true);
+      if (nextYear === year && nextMonth === month) await load(true);
     } catch (saveError) {
       setError(saveError.message || "Could not save attendance.");
     } finally {
@@ -305,7 +308,7 @@ export default function AttendanceManagementPage() {
     setEditingCell(`${person.id}|${selectedDate}`);
   };
 
-  const years = Array.from({ length: 9 }, (_, index) => new Date().getFullYear() - 5 + index);
+  const years = Array.from({ length: 19 }, (_, index) => new Date().getFullYear() - 15 + index);
   const firstRecord = filteredStaff.length ? (safePage - 1) * pageSize + 1 : 0;
   const lastRecord = Math.min(safePage * pageSize, filteredStaff.length);
 
@@ -358,13 +361,23 @@ export default function AttendanceManagementPage() {
               <button type="button" onClick={goToday}><Clock3 size={15} /> Today</button>
             </div>
           ) : (
-            <label className="nkj-attendance-single-date"><span>Selected Date</span><input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} /></label>
+            <label className="nkj-attendance-single-date"><span>Selected Date</span><input type="date" value={selectedDate} onChange={(event) => {
+              const nextDate = event.target.value;
+              if (!nextDate) return;
+              setSelectedDate(nextDate);
+              setYear(Number(nextDate.slice(0, 4)));
+              setMonth(Number(nextDate.slice(5, 7)));
+              setEditingCell(null);
+            }} /></label>
           )}
         </section>
 
         <div className="nkj-attendance-table-toolbar">
           <label><Search size={16} /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search staff name or Staff ID…" /></label>
-          <span>{filteredStaff.length} active staff</span>
+          <div className="nkj-attendance-toolbar-right">
+            {staffFilter && <span className="nkj-attendance-staff-filter">Filtered by Staff ID <b>{staff.find((person) => String(person.id) === String(staffFilter))?.staffCode || staffFilter}</b><button type="button" onClick={() => { const next = new URLSearchParams(searchParams); next.delete("staffId"); setSearchParams(next, { replace: true }); }}>Clear</button></span>}
+            <span>{filteredStaff.length} active staff</span>
+          </div>
         </div>
 
         <div className="nkj-attendance-table-card">
