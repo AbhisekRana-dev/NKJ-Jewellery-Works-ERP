@@ -136,17 +136,18 @@ function evaluateExpression(source) {
       const value = factor();
       return token === "-" ? -value : value;
     }
+    let value;
     if (token === "(") {
       take();
-      const value = expression();
+      value = expression();
       if (take() !== ")") throw new Error("Missing closing bracket.");
-      return value;
+    } else {
+      if (!token || !/^\d*\.?\d+$/.test(token)) {
+        throw new Error("Enter a valid number.");
+      }
+      take();
+      value = Number(token);
     }
-    if (!token || !/^\d*\.?\d+$/.test(token)) {
-      throw new Error("Enter a valid number.");
-    }
-    take();
-    let value = Number(token);
     // A trailing percent is a postfix percentage (10% = 0.1), not modulo.
     while (peek() === "%") {
       take();
@@ -306,7 +307,7 @@ function ManualCalculator({ active }) {
 
     window.addEventListener("keydown", handleCalculatorKeyDown, true);
     return () => window.removeEventListener("keydown", handleCalculatorKeyDown, true);
-  }, [active, append, calculate, backspace]);
+  }, [active, append, calculate, backspace, clear]);
 
   const keys = [
     ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
@@ -514,7 +515,7 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
                 {!isPurityValid && <small className="nkj-calc-error">Purity must be between 0 and 100%.</small>}
               </label>
             )}
-            <label>
+            <label className={isOld ? "nkj-calc-rate-field nkj-calc-rate-field-old" : "nkj-calc-rate-field"}>
               Rate / GM (₹)
               <input {...numberInput(rate, (value) => updateDraftField("rate", value))} placeholder="Enter rate per gram" />
             </label>
