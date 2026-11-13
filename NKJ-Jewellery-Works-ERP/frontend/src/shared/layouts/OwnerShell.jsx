@@ -147,7 +147,7 @@ export function Nav({ active = "home" }) {
     }
   }, [ownerWorkspace]);
 
-  if (ownerWorkspace) {
+  if (ownerWorkspace && !calculatorOwnerWorkspace) {
     return (
       <>
         <aside className={`nkj-owner-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`} aria-label="Owner navigation">
@@ -247,7 +247,7 @@ export function Nav({ active = "home" }) {
   }
 
   return (
-    <header className="topbar">
+    <header className={`topbar${calculatorOwnerWorkspace ? " nkj-owner-calculator-topbar" : ""}`}>
       <Link to="/" className="brand">
         <div className="logo">NKJ</div>
         <div><b>Nandikishor Jewellery Works</b><small>{calculatorOwnerWorkspace ? <><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</> : "Sasra, Gopiballavpur, Jhargram"}</small></div>
