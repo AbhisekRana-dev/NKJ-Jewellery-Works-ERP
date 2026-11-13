@@ -80,3 +80,23 @@
   color: #7b1730;
   font: 700 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
   white-space: nowrap;}
+
+
+/* Staff-linked module filtering and cross-navigation. */
+.nkj-module-toolbar.has-staff-filter { flex-wrap: wrap; gap: 10px; }
+.nkj-module-staff-filter { display: flex; align-items: center; gap: 7px; min-width: 220px; }
+.nkj-module-staff-filter span { color: #7a4b57; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.nkj-module-staff-filter select { min-width: 0; min-height: 36px; padding: 7px 10px; border: 1px solid #e7d8d0; border-radius: 7px; background: #fff; color: #4d3540; font-size: 10px; }
+.nkj-module-staff-link { color: #82102f; font-weight: 800; text-decoration: none; }
+.nkj-module-staff-link:hover { color: #a86a17; text-decoration: underline; }
+.nkj-payroll-linked-review { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border: 1px solid #e9ddc8; border-radius: 9px; background: #fffaf0; }
+.nkj-payroll-linked-review > div { display: grid; flex: 1 1 100%; gap: 3px; }
+.nkj-payroll-linked-review b { color: #7b142e; font-size: 10px; }
+.nkj-payroll-linked-review small { color: #7f7072; font-size: 9px; line-height: 1.4; }
+.nkj-payroll-linked-review a { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border: 1px solid #e3d1bb; border-radius: 7px; background: #fff; color: #7a1731; font-size: 9px; font-weight: 800; text-decoration: none; }
+.nkj-payroll-linked-review a:hover { border-color: #b98d3b; background: #fff3da; }
+@media (max-width: 650px) {
+  .nkj-module-staff-filter { width: 100%; }
+  .nkj-module-staff-filter select { flex: 1; }
+  .nkj-payroll-linked-review a { flex: 1 1 100%; justify-content: center; }
+}
