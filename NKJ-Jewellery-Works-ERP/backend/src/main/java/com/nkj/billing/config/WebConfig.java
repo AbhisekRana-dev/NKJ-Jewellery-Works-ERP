@@ -21,16 +21,16 @@ public class WebConfig implements WebMvcConfigurer {
     private final AuthInterceptor auth;
     private final RealtimeMutationInterceptor realtimeMutationInterceptor;
     private final String[] allowedOrigins;
-    private final String designsUploadDir;
+    private final JewelleryDesignImageStorageService imageStorage;
 
     public WebConfig(
             AuthInterceptor auth,
             RealtimeMutationInterceptor realtimeMutationInterceptor,
-            @Value("${nkj.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}") String allowedOrigins,
-            @Value("${nkj.designs.upload-dir:uploads/designs}") String designsUploadDir) {
+            JewelleryDesignImageStorageService imageStorage,
+            @Value("${nkj.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}") String allowedOrigins) {
         this.auth = auth;
         this.realtimeMutationInterceptor = realtimeMutationInterceptor;
-        this.designsUploadDir = designsUploadDir;
+        this.imageStorage = imageStorage;
         this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
@@ -44,7 +44,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String location = Path.of(designsUploadDir).toAbsolutePath().normalize().toUri().toString();
+        String location = imageStorage.getUploadRoot().toUri().toString();
         if (!location.endsWith("/")) location += "/";
         registry.addResourceHandler("/api/uploads/designs/**")
                 .addResourceLocations(location)
