@@ -4049,3 +4049,302 @@
   .nkj-calc-manual-only .nkj-calc-expression { text-align:left !important; white-space:normal !important; }
   .nkj-calc-manual-only .nkj-calc-result { text-align:right !important; }
 }
+
+
+/* ============================================================
+   ORNAMENT CALCULATORS — fixed 70 / 30 workspace
+   Shared by New Ornaments and Old Ornaments.
+   The left region contains the inputs and live total card;
+   the right region is reserved exclusively for recent history.
+============================================================ */
+@media (min-width: 1101px) {
+  .nkj-calc-with-history.nkj-calc-ornament-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 7fr) minmax(260px, 3fr) !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding-top: 12px !important;
+    overflow: hidden !important;
+  }
+
+  /* The 70% calculation area must never be widened by its contents. */
+  .nkj-calc-ornament-layout > .nkj-calc-ornament {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.08fr) minmax(245px, .92fr) !important;
+    align-items: stretch !important;
+    align-content: stretch !important;
+    gap: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-fields {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-content: center !important;
+    align-items: stretch !important;
+    gap: 16px 14px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 5px 0 !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-fields > label {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    gap: 7px !important;
+    color: #ead8b8 !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-fields input,
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-fields select {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 46px !important;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-result-card {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* Compact 30% history panel with its own vertical scrolling. */
+  .nkj-calc-ornament-layout > .nkj-calc-history {
+    display: flex !important;
+    flex-direction: column !important;
+    align-self: stretch !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-heading {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-heading h3 {
+    min-width: 0 !important;
+    font-size: clamp(14px, 1.05vw, 18px) !important;
+    line-height: 1.2 !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-heading > button {
+    flex: 0 0 auto !important;
+    min-height: 32px !important;
+    padding: 6px 9px !important;
+    font-size: 10px !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-list {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    padding-right: 2px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(72px, auto) 22px !important;
+    align-items: center !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 40px !important;
+    box-sizing: border-box !important;
+    padding: 6px 8px !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-expression {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-row strong {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    text-align: right !important;
+    font-size: clamp(12px, .95vw, 15px) !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-row > button {
+    width: 22px !important;
+    min-width: 22px !important;
+    height: 27px !important;
+  }
+}
+
+/* Tablet: keep both regions side-by-side only while they remain readable. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .nkj-calc-with-history.nkj-calc-ornament-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.45fr) minmax(250px, 1fr) !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    grid-template-rows: auto auto !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-fields {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 11px 9px !important;
+    min-width: 0 !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-result-card {
+    min-width: 0 !important;
+    min-height: 200px !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 320px !important;
+    max-height: 520px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-list {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Mobile and narrow tablet: stack the history below the full calculator. */
+@media (max-width: 900px) {
+  .nkj-calc-with-history.nkj-calc-ornament-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    grid-template-rows: auto auto !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-fields {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-result-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 200px !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 230px !important;
+    max-height: none !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-history .nkj-calc-history-list {
+    max-height: 360px !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .nkj-calc-ornament-layout > .nkj-calc-ornament > .nkj-calc-fields {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+}
