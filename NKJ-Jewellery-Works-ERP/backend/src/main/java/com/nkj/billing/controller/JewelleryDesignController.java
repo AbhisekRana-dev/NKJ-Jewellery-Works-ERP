@@ -806,8 +806,10 @@ public class JewelleryDesignController {
     @Transactional
     public Map<String, Object> uploadImages(
             @PathVariable long id,
-            @RequestParam("files") List<MultipartFile> files) throws IOException {
-        return storeDesignImages(id, files, null, null);
+            @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(value = "rotations", required = false) List<Integer> rotations,
+            @RequestParam(value = "cropZooms", required = false) List<Double> cropZooms) throws IOException {
+        return storeDesignImages(id, files, rotations, cropZooms);
     }
 
     /**
