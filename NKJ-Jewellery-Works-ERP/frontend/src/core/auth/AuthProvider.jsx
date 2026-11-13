@@ -51,6 +51,7 @@ export function AuthProvider({ children }) {
   }, []);
 
 
+  // Keep owner controls hidden until AuthProvider confirms the current session.
   // Revalidate frequently and as soon as the owner returns to the tab. If the
   // backend expires or revokes the token, the shared API client immediately
   // dispatches nkj:session-expired and all management controls are removed.
