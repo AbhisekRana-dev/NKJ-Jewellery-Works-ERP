@@ -10,7 +10,6 @@ import { request } from "../../core/api/client";
 import { getRealtimeClientId, useRealtimeRefresh } from "../../core/realtime/realtime";
 import { useAuth } from "../../core/auth/AuthProvider";
 import "./JewelleryDesignsPage.css";
-import { getPurityOptions } from "./purityOptions";
 
 const PAGE_SIZE = 24;
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -159,14 +158,7 @@ export default function JewelleryDesignsPage() {
   const [subcategory, setSubcategory] = useState("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("latest");
-  const [purity, setPurity] = useState("");
-  const [style, setStyle] = useState("");
-  const [material, setMaterial] = useState("");
-  const [region, setRegion] = useState("");
-  const [facets, setFacets] = useState({ styles: [], materials: [], regions: [], purities: [] });
   const [view, setView] = useState("grid");
-  const [minWeight, setMinWeight] = useState("");
-  const [maxWeight, setMaxWeight] = useState("");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [items, setItems] = useState([]);
@@ -205,24 +197,6 @@ export default function JewelleryDesignsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    setFacets({ styles: [], materials: [], regions: [], purities: getPurityOptions(metal) });
-    request(`/designs/filters?metal=${encodeURIComponent(metal)}`, { publicRequest: true })
-      .then((data) => {
-        if (!cancelled) setFacets({
-          styles: Array.isArray(data.styles) ? data.styles : [],
-          materials: Array.isArray(data.materials) ? data.materials : [],
-          regions: Array.isArray(data.regions) ? data.regions : [],
-          purities: getPurityOptions(metal),
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setFacets({ styles: [], materials: [], regions: [], purities: getPurityOptions(metal) });
-      });
-    return () => { cancelled = true; };
-  }, [metal]);
-
   const loadDesigns = useCallback(async (nextPage, append = false) => {
     setLoading(true);
     setError("");
@@ -235,12 +209,6 @@ export default function JewelleryDesignsPage() {
       });
       if (subcategory) params.set("subcategory", subcategory);
       if (search.trim()) params.set("q", search.trim());
-      if (purity) params.set("purity", purity);
-      if (style) params.set("style", style);
-      if (material) params.set("material", material);
-      if (region) params.set("region", region);
-      if (minWeight !== "") params.set("minWeight", minWeight);
-      if (maxWeight !== "") params.set("maxWeight", maxWeight);
       const result = await request(`/designs?${params.toString()}`, { publicRequest: true });
       const nextItems = Array.isArray(result.items) ? result.items : [];
       setItems((current) => append ? [...current, ...nextItems] : nextItems);
@@ -255,7 +223,7 @@ export default function JewelleryDesignsPage() {
     } finally {
       setLoading(false);
     }
-  }, [metal, subcategory, search, sort, purity, style, material, region, minWeight, maxWeight]);
+  }, [metal, subcategory, search, sort]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => loadDesigns(0, false), search.trim() ? 280 : 0);
@@ -509,36 +477,6 @@ export default function JewelleryDesignsPage() {
             </div>
           </div>
 
-          <div className="nkj-design-filter-row" aria-label="Filter jewellery designs">
-            <label>Style
-              <select value={style} onChange={(event) => setStyle(event.target.value)}>
-                <option value="">All styles</option>
-                {facets.styles.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-            </label>
-            <label>Purity
-              <select value={purity} onChange={(event) => setPurity(event.target.value)}>
-                <option value="">All purities</option>
-                {facets.purities.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-            </label>
-            <label>Material
-              <select value={material} onChange={(event) => setMaterial(event.target.value)}>
-                <option value="">All materials</option>
-                {facets.materials.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-            </label>
-            <label>Regional inspiration
-              <select value={region} onChange={(event) => setRegion(event.target.value)}>
-                <option value="">All regions</option>
-                {facets.regions.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-            </label>
-            <label>Minimum weight (g)<input type="number" min="0" step="0.001" value={minWeight} onChange={(event) => setMinWeight(event.target.value)} placeholder="No minimum" /></label>
-            <label>Maximum weight (g)<input type="number" min="0" step="0.001" value={maxWeight} onChange={(event) => setMaxWeight(event.target.value)} placeholder="No maximum" /></label>
-            <button type="button" onClick={() => { setPurity(""); setStyle(""); setMaterial(""); setRegion(""); setMinWeight(""); setMaxWeight(""); }}>Clear filters</button>
-          </div>
-
           {error && <div className="nkj-designs-error" role="alert">{error}</div>}
           {loading && items.length === 0 ? (
             <div className="nkj-designs-loading"><LoaderCircle className="spin" size={24} /> Loading designs…</div>
@@ -570,7 +508,10 @@ export default function JewelleryDesignsPage() {
                     <div className="nkj-design-card-content">
                       <div className="nkj-design-card-meta">
                         <span>{design.subcategoryName}</span>
-                        <small title={design.designId || design.designCode}>{design.designId || design.designCode}</small>
+                        <small className="nkj-design-id-badge" title={design.designId || design.designCode}>
+                          <span>DESIGN ID</span>
+                          <b>{design.designId || design.designCode}</b>
+                        </small>
                       </div>
                       <h3>{design.designName}</h3>
                       <p>{design.metalType} <span>•</span> {design.styleLabel || "Traditional Indian"} <span>•</span> {design.regionalInspiration || "Pan-Indian"}</p>
