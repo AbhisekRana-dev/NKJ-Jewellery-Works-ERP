@@ -185,9 +185,7 @@ function evaluateExpression(source) {
 
 function ManualCalculator({ active }) {
   const [draft, setDraft] = usePersistentDraft("nkj_manual_calculator_draft", INITIAL_MANUAL_DRAFT);
-  const [history, addHistory, clearHistory] = usePersistentHistory("nkj_manual_calculation_history", 15);
   const { expression, result, error } = draft;
-  const calculateGuardRef = useRef({ inFlight: false, lastAcceptedAt: 0, lastExpression: "" });
 
   const append = useCallback((value) => {
     setDraft((current) => {
@@ -208,28 +206,14 @@ function ManualCalculator({ active }) {
   }, [setDraft]);
 
   const calculate = useCallback(() => {
-    const guard = calculateGuardRef.current;
-    const now = Date.now();
-    if (guard.inFlight) return;
-    if (guard.lastExpression === expression && now - guard.lastAcceptedAt < 450) return;
-
-    guard.inFlight = true;
     try {
-      const source = expression;
-      const value = evaluateExpression(source);
-      const rounded = Number(value.toFixed(8));
-      const formatted = String(rounded);
-
-      guard.lastExpression = source;
-      guard.lastAcceptedAt = now;
+      const value = evaluateExpression(expression);
+      const formatted = String(Number(value.toFixed(8)));
       setDraft((current) => ({ ...current, result: formatted, calculated: true, error: "" }));
-      addHistory({ expression: source, result: Number(rounded).toLocaleString("en-IN", { maximumFractionDigits: 8 }) });
     } catch (err) {
       setDraft((current) => ({ ...current, error: err.message || "Invalid calculation." }));
-    } finally {
-      guard.inFlight = false;
     }
-  }, [expression, setDraft, addHistory]);
+  }, [expression, setDraft]);
 
   const clear = useCallback(() => {
     setDraft({ ...INITIAL_MANUAL_DRAFT });
@@ -372,7 +356,6 @@ function ManualCalculator({ active }) {
         </div>
         <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets</p>
       </section>
-      <CalculationHistory title="Calculation History" items={history} onClear={clearHistory} emptyText="Your manual calculations will appear here." />
     </div>
   );
 }
