@@ -4,7 +4,7 @@ import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
   Layers3, Star, ChevronDown, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird, QrCode,
   LayoutGrid, List, Pencil, Trash2, Save, UploadCloud, Smartphone, CheckCircle2, Lock,
-  RotateCcw, Plus,
+  RotateCcw,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
@@ -182,7 +182,7 @@ function DesignImage({ design }) {
 }
 
 export default function JewelleryDesignsPage() {
-  const { isAdmin, authReady } = useAuth();
+  const { isAdmin } = useAuth();
   const [categories, setCategories] = useState([]);
   const [metal, setMetal] = useState("GOLD");
   const [subcategory, setSubcategory] = useState("");
@@ -340,8 +340,7 @@ export default function JewelleryDesignsPage() {
     document.body.style.overflow = "hidden";
     const handlePreviewKeys = (event) => {
       if (event.key === "Escape") {
-        setSelected(null);
-        setZoomed(false);
+        closeSelectedModal();
         return;
       }
       const imageCount = Array.isArray(selected.images) ? selected.images.length : 0;
