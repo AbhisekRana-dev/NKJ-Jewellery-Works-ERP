@@ -1,6 +1,6 @@
 import "./ErpModulePage.css";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, Pencil, Trash2, X, Save, Printer, Package, Gem, Users, ShieldCheck, Clock3, Hammer, CalendarCheck, ClipboardList } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Save, Printer, Package, Gem, Users, ShieldCheck, Clock3, Hammer, CalendarCheck, ClipboardList, CalendarDays, CheckCircle2, XCircle } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
@@ -221,6 +221,11 @@ export default function ErpModulePage({ module }) {
   ] : module === "karigars" ? [
     ["Total Karigars", rows.length, Users], ["Active", rows.filter(x=>String(x.status).toUpperCase()==="ACTIVE").length, ShieldCheck],
     ["On Hold", rows.filter(x=>String(x.status).toUpperCase()==="ON_HOLD").length, Clock3], ["Specialities", new Set(rows.map(x=>x.speciality).filter(Boolean)).size, Hammer]
+  ] : module === "leaves" ? [
+    ["Total Leave Requests", rows.length, CalendarDays],
+    ["Pending", rows.filter((row) => String(row.status).toUpperCase() === "PENDING").length, Clock3],
+    ["Approved", rows.filter((row) => String(row.status).toUpperCase() === "APPROVED").length, CheckCircle2],
+    ["Rejected / Cancelled", rows.filter((row) => ["REJECTED", "CANCELLED", "REVOKED"].includes(String(row.status).toUpperCase())).length, XCircle]
   ] : [];
   const printBooking = (row) => {
     const safe = (v) => String(v ?? "—").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
