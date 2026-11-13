@@ -386,14 +386,13 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
     return () => window.removeEventListener("keydown", handleEscape, true);
   }, [active, reset]);
 
-  const historyInitialized = useRef(false);
+  const draftHistorySnapshot = JSON.stringify(draft);
+  const previousHistorySnapshot = useRef(draftHistorySnapshot);
   useEffect(() => {
-    if (!historyInitialized.current) {
-      historyInitialized.current = true;
-      return undefined;
-    }
+    if (draftHistorySnapshot === previousHistorySnapshot.current) return undefined;
+    previousHistorySnapshot.current = draftHistorySnapshot;
 
-    if (!(Number(weight) > 0) || !(Number(rate) > 0) || !isPurityValid || !isMakingValid) {
+    if (!active || !(Number(weight) > 0) || !(Number(rate) > 0) || !isPurityValid || !isMakingValid) {
       return undefined;
     }
 
@@ -405,7 +404,7 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
     }, 800);
 
     return () => window.clearTimeout(timeout);
-  }, [weight, purity, rate, making, makingMode, stamp, extra, isOld, purityPercent, makingInputValue, total, isPurityValid, isMakingValid, addHistory]);
+  }, [draftHistorySnapshot, active, weight, purity, rate, making, makingMode, stamp, extra, isOld, purityPercent, makingInputValue, total, isPurityValid, isMakingValid, addHistory]);
 
   return (
     <div className="nkj-calc-with-history nkj-calc-ornament-layout">
