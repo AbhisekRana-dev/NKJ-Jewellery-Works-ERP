@@ -1,9 +1,9 @@
 package com.nkj.billing.config;
 
 import java.util.Arrays;
-import java.nio.file.Path;
 
 import com.nkj.billing.realtime.RealtimeMutationInterceptor;
+import com.nkj.billing.service.JewelleryDesignImageStorageService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
