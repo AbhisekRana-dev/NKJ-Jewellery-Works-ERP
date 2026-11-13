@@ -37,7 +37,7 @@ public class JewelleryDesignImageStorageService {
 
     public JewelleryDesignImageStorageService(
             @Value("${nkj.designs.upload-dir:uploads/designs}") String uploadDirectory) {
-        this.uploadRoot = Path.of(uploadDirectory).toAbsolutePath().normalize();
+        this.uploadRoot = DesignImageStoragePath.resolve(uploadDirectory);
         try {
             Files.createDirectories(this.uploadRoot);
             if (!Files.isDirectory(this.uploadRoot) || !Files.isWritable(this.uploadRoot)) {
@@ -46,6 +46,10 @@ public class JewelleryDesignImageStorageService {
         } catch (IOException error) {
             throw new IllegalStateException("Could not initialize the persistent jewellery image storage directory: " + this.uploadRoot, error);
         }
+    }
+
+    public Path getUploadRoot() {
+        return uploadRoot;
     }
 
     public StoredImage store(long designId, MultipartFile file) throws IOException {
