@@ -5,7 +5,7 @@ import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
-  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem,
+  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem, MapPin,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
@@ -75,6 +75,7 @@ export function Nav({ active = "home" }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
   const sidebarNavRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
+  const calculatorOwnerWorkspace = ownerWorkspace && active === "calculator";
   const persistSidebarState = (collapsed) => {
     try {
       window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
@@ -124,16 +125,17 @@ export function Nav({ active = "home" }) {
     const body = document.body;
     body.classList.toggle("nkj-owner-layout", ownerWorkspace);
     body.classList.toggle("nkj-owner-sidebar-collapsed", ownerWorkspace && sidebarCollapsed);
+    body.classList.toggle("nkj-owner-calculator-layout", calculatorOwnerWorkspace);
     body.classList.toggle("invoice-page", active === "invoice");
 
-    if (ownerWorkspace) {
+    if (ownerWorkspace && !calculatorOwnerWorkspace) {
       try {
         window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
       } catch {
         // The sidebar remains usable when browser storage is unavailable.
       }
     }
-  }, [active, ownerWorkspace, sidebarCollapsed]);
+  }, [active, ownerWorkspace, sidebarCollapsed, calculatorOwnerWorkspace]);
 
   useLayoutEffect(() => {
     if (!ownerWorkspace || !sidebarNavRef.current) return;
@@ -248,19 +250,21 @@ export function Nav({ active = "home" }) {
     <header className="topbar">
       <Link to="/" className="brand">
         <div className="logo">NKJ</div>
-        <div><b>Nandikishor Jewellery Works</b><small>Sasra, Gopiballavpur, Jhargram</small></div>
+        <div><b>Nandikishor Jewellery Works</b><small>{calculatorOwnerWorkspace ? <><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</> : "Sasra, Gopiballavpur, Jhargram"}</small></div>
       </Link>
       <nav aria-label="Main navigation">
         <Link className={active === "home" ? "active" : ""} to="/"><HomeIcon />Home</Link>
         <Link className={active === "designs" ? "active" : ""} to="/designs"><Gem />Jewellery Designs</Link>
         <Link className={active === "calculator" ? "active" : ""} to="/calculator"><CalculatorIcon />Calculator</Link>
         <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
-        {isAdmin ? <>
-          <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
-          <Link className={active === "dashboard" ? "active" : ""} to="/dashboard"><LayoutDashboard />Dashboard</Link>
-          <Link className={active === "profile" ? "active" : ""} to="/profile"><User />Profile</Link>
-          <button className="navbtn" onClick={logout}><LogOut />Logout</button>
-        </> : <Link className={active === "login" ? "active" : ""} to="/login"><LogIn />Owner Login</Link>}
+        {calculatorOwnerWorkspace
+          ? <span className="nkj-calculator-owner-user"><User size={24} /> {user || "admin"}</span>
+          : isAdmin ? <>
+            <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
+            <Link className={active === "dashboard" ? "active" : ""} to="/dashboard"><LayoutDashboard />Dashboard</Link>
+            <Link className={active === "profile" ? "active" : ""} to="/profile"><User />Profile</Link>
+            <button className="navbtn" onClick={logout}><LogOut />Logout</button>
+          </> : <Link className={active === "login" ? "active" : ""} to="/login"><LogIn />Owner Login</Link>}
       </nav>
     </header>
   );
@@ -268,7 +272,7 @@ export function Nav({ active = "home" }) {
 
 export function Page({ active, children }) {
   const { isAdmin } = useAuth();
-  const ownerLayout = isAdmin && active !== "login";
+  const ownerLayout = isAdmin && active !== "login" && active !== "calculator";
 
   return (
     <>
