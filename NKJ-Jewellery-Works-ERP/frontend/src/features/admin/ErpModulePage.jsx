@@ -1,6 +1,7 @@
 import "./ErpModulePage.css";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, Pencil, Trash2, X, Save, Printer, Package, Gem, Users, ShieldCheck, Clock3, Hammer } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Save, Printer, Package, Gem, Users, ShieldCheck, Clock3, Hammer, CalendarCheck, ClipboardList } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 import { request } from "../../core/api/client";
@@ -32,6 +33,10 @@ export default function ErpModulePage({ module }) {
   const config = moduleConfig[module];
   const [rows, setRows] = useState([]);
   const [staffOptions, setStaffOptions] = useState([]);
+  const [salaryOptions, setSalaryOptions] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const staffFilter = searchParams.get("staffId") || "";
+  const staffLinkedModule = ["attendance", "leaves", "salary", "salary-payments"].includes(module);
   const [form, setForm] = useState(() => emptyForm(config.fields));
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -46,13 +51,16 @@ export default function ErpModulePage({ module }) {
     setLoading(true);
     setError("");
     try {
-      const needsStaffLookup = ["attendance", "salary", "leaves"].includes(module);
-      const [data, staffData] = await Promise.all([
+      const needsStaffLookup = ["attendance", "salary", "leaves", "salary-payments"].includes(module);
+      const needsSalaryLookup = module === "salary-payments";
+      const [data, staffData, salaryData] = await Promise.all([
         request(`/admin/modules/${config.api}`),
         needsStaffLookup ? request("/admin/modules/staff") : Promise.resolve([]),
+        needsSalaryLookup ? request("/admin/modules/salary") : Promise.resolve([]),
       ]);
       setRows(Array.isArray(data) ? data : []);
       if (needsStaffLookup) setStaffOptions(Array.isArray(staffData) ? staffData : []);
+      if (needsSalaryLookup) setSalaryOptions(Array.isArray(salaryData) ? salaryData : []);
     } catch (e) {
       setError(e.message || "Could not load records.");
     } finally {
@@ -71,6 +79,7 @@ export default function ErpModulePage({ module }) {
   useEffect(() => {
     setRows([]);
     setStaffOptions([]);
+    setSalaryOptions([]);
     setForm(emptyForm(config.fields));
     setEditingId(null);
     setShowForm(false);
@@ -82,11 +91,16 @@ export default function ErpModulePage({ module }) {
   const needsActiveStaff = ["attendance", "salary", "leaves"].includes(module);
   const hasActiveStaff = staffOptions.some((person) => String(person.status || "").toUpperCase() === "ACTIVE");
   const staffSelectionBlocked = needsActiveStaff && !hasActiveStaff && !editingId;
+  const salarySelectionBlocked = module === "salary-payments" && !salaryOptions.some((record) => Number(record.remainingSalary || 0) > 0) && !editingId;
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return rows;
-    return rows.filter((row) => Object.values(row).some((value) => String(value ?? "").toLowerCase().includes(query)));
-  }, [rows, search]);
+    return rows.filter((row) => {
+      const matchesSearch = Object.values(row).some((value) => String(value ?? "").toLowerCase().includes(query));
+      const matchesStaff = !staffLinkedModule || !staffFilter || String(row.staffId || "") === String(staffFilter);
+      return matchesSearch && matchesStaff;
+    });
+  }, [rows, search, staffLinkedModule, staffFilter]);
 
   const startCreate = () => {
     createRequestKeyRef.current = "";
@@ -96,6 +110,9 @@ export default function ErpModulePage({ module }) {
     setError("");
     if (["attendance", "salary", "leaves"].includes(module) && !hasActiveStaff) {
       setError("No active staff profiles are available. Add or activate a staff member in Staff Details first.");
+    }
+    if (module === "salary-payments" && !salaryOptions.some((record) => Number(record.remainingSalary || 0) > 0)) {
+      setError("No salary record has an outstanding balance. Create a Salary Management record first.");
     }
     setShowForm(true);
   };
@@ -120,7 +137,7 @@ export default function ErpModulePage({ module }) {
     setMessage("");
     const payload = { ...form };
     for (const field of config.fields) {
-      if (field[2] === "number" || field[2] === "staff-select") {
+      if (field[2] === "number" || field[2] === "staff-select" || field[2] === "salary-select") {
         payload[field[0]] = payload[field[0]] === "" ? null : Number(payload[field[0]]);
       }
       if (payload[field[0]] === "") payload[field[0]] = null;
@@ -201,7 +218,21 @@ export default function ErpModulePage({ module }) {
         {message && <p className="success">{message}</p>}
 
         {stats.length > 0 && <div className="nkj-module-kpis">{stats.map(([label,value,Icon])=><div key={label}><Icon size={20}/><span>{label}</span><strong>{value}</strong></div>)}</div>}
-        <div className="nkj-module-toolbar">
+        <div className={`nkj-module-toolbar ${staffLinkedModule ? "has-staff-filter" : ""}`}>
+          {staffLinkedModule && (
+            <label className="nkj-module-staff-filter">
+              <span>Staff member</span>
+              <select value={staffFilter} onChange={(event) => {
+                const next = new URLSearchParams(searchParams);
+                if (event.target.value) next.set("staffId", event.target.value);
+                else next.delete("staffId");
+                setSearchParams(next, { replace: true });
+              }}>
+                <option value="">All staff</option>
+                {staffOptions.map((person) => <option key={person.id} value={String(person.id)}>{person.staffCode || `NKJ-STF-${String(person.id).padStart(5, "0")}`} — {person.fullName}</option>)}
+              </select>
+            </label>
+          )}
           <Search size={18} />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${config.title.toLowerCase()}...`} />
           <span>{filtered.length} records</span>
@@ -232,6 +263,18 @@ export default function ErpModulePage({ module }) {
                     </>
                   ) : field[2] === "textarea" ? (
                     <textarea required={!!field[3]} rows={2} value={form[field[0]]} onChange={(event) => setForm({ ...form, [field[0]]: event.target.value })} />
+                  ) : field[2] === "salary-select" ? (
+                    <>
+                      <select required value={form[field[0]]} onChange={(event) => setForm((current) => ({ ...current, [field[0]]: event.target.value }))} disabled={!salaryOptions.some((record) => Number(record.remainingSalary || 0) > 0)}>
+                        <option value="">Select staff payroll record</option>
+                        {salaryOptions.filter((record) => Number(record.remainingSalary || 0) > 0 || String(record.id) === String(form[field[0]])).map((record) => (
+                          <option key={record.id} value={String(record.id)}>
+                            {record.staffCode || `NKJ-STF-${String(record.staffId).padStart(5, "0")}`} — {record.staffName} · {record.payrollMonth} · Due ₹{money(record.remainingSalary)}
+                          </option>
+                        ))}
+                      </select>
+                      <small className="nkj-field-hint">Select an existing payroll record. The receipt is linked to that staff member and updates the remaining salary automatically.</small>
+                    </>
                   ) : field[2] === "staff-select" ? (
                     <>
                       <select
@@ -272,9 +315,16 @@ export default function ErpModulePage({ module }) {
                 </label>
               ))}
             </div>
+            {module === "salary" && form.staffId && form.payrollMonth && (
+              <div className="nkj-payroll-linked-review">
+                <div><b>Linked staff records</b><small>Review attendance and approved leave for this staff member and payroll month before entering the unpaid absence deduction. No deduction is assumed automatically.</small></div>
+                <Link to={`/attendance?staffId=${form.staffId}`}><CalendarCheck size={14} /> Review Attendance</Link>
+                <Link to={`/leaves?staffId=${form.staffId}`}><ClipboardList size={14} /> Review Leave</Link>
+              </div>
+            )}
             <div className="nkj-module-form-actions">
               <button type="button" className="secondary" onClick={() => setShowForm(false)}>Cancel</button>
-              <button type="submit" className="primary" disabled={saving || staffSelectionBlocked}><Save size={16} />{saving ? "Saving…" : "Save Record"}</button>
+              <button type="submit" className="primary" disabled={saving || staffSelectionBlocked || salarySelectionBlocked}><Save size={16} />{saving ? "Saving…" : "Save Record"}</button>
             </div>
           </form>
         )}
@@ -286,7 +336,11 @@ export default function ErpModulePage({ module }) {
               <tbody>
                 {filtered.map((row) => (
                   <tr key={row.id}>
-                    {config.columns.map(([key]) => <td key={key}>{businessCodeFields.has(key) && row[key] ? <span className="nkj-business-code">{row[key]}</span> : display(key, row[key])}</td>)}
+                    {config.columns.map(([key]) => <td key={key}>
+                      {key === "staffName" && row.staffId
+                        ? <Link className="nkj-module-staff-link" to={`/staff?staffId=${row.staffId}`}>{row[key] || "Staff member"}</Link>
+                        : businessCodeFields.has(key) && row[key] ? <span className="nkj-business-code">{row[key]}</span> : display(key, row[key])}
+                    </td>)}
                     {showActions && <td><div className="nkj-row-actions">{!auditDeleteOnly && !config.readOnly && !config.appendOnly && <button className="small-action" onClick={() => startEdit(row)}><Pencil size={14} /> Edit</button>}{module === "bookings" && <button className="small-action" onClick={() => printBooking(row)}><Printer size={14}/> Print</button>}{(auditDeleteOnly || (!config.readOnly && !config.appendOnly)) && <button className="small-action nkj-delete-action" onClick={() => remove(row)}><Trash2 size={14} /> Delete</button>}</div></td>}
                   </tr>
                 ))}
