@@ -62,6 +62,21 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // Mobile QR upload routes are capability-authorized by a random,
+        // SHA-256-hashed, short-lived, single-use token. Only the three exact
+        // token routes are public; all session creation/status/revocation and
+        // catalogue mutations remain owner-authenticated /api/admin endpoints.
+        String qrTokenRoute = "/api/mobile-design-upload/[A-Za-z0-9_-]{40,100}";
+        if (requestPath.matches(qrTokenRoute)
+                && "GET".equalsIgnoreCase(req.getMethod())) {
+            return true;
+        }
+        if ((requestPath.matches(qrTokenRoute + "/design-id")
+                || requestPath.matches(qrTokenRoute + "/design"))
+                && "POST".equalsIgnoreCase(req.getMethod())) {
+            return true;
+        }
+
         if (("GET".equalsIgnoreCase(req.getMethod()) && "/api/invoices/date-support".equals(requestPath))
                 || ("POST".equalsIgnoreCase(req.getMethod()) &&
                 ("/api/invoices".equals(requestPath) || "/api/invoices/verify-pin".equals(requestPath) || "/api/invoices/consume-print-ticket".equals(requestPath)))) {
