@@ -15,6 +15,7 @@ import DatabaseStatus, { AuditLogsPage } from "../features/admin/AdminToolsPage"
 import MetalRatesPage from "../features/rates/MetalRatesPage";
 import InstallmentManagementPage from "../features/installments/InstallmentManagementPage";
 import StaffDetailsPage from "../features/staff/StaffDetailsPage";
+import AttendanceManagementPage from "../features/attendance/AttendanceManagementPage";
 import InventoryPage from "../features/inventory/InventoryPage";
 import KarigarsPage from "../features/karigars/KarigarsPage";
 import TransactionsPage from "../features/transactions/TransactionsPage";
@@ -59,7 +60,7 @@ export default function App() {
           <Route path="/inventory" element={<OwnerOnly><InventoryPage /></OwnerOnly>} />
           <Route path="/stock-movements" element={<OwnerOnly><ErpModulePage module="stock-movements" /></OwnerOnly>} />
           <Route path="/staff" element={<OwnerOnly><StaffDetailsPage /></OwnerOnly>} />
-          <Route path="/attendance" element={<OwnerOnly><ErpModulePage module="attendance" /></OwnerOnly>} />
+          <Route path="/attendance" element={<OwnerOnly><AttendanceManagementPage /></OwnerOnly>} />
           <Route path="/salary" element={<OwnerOnly><ErpModulePage module="salary" /></OwnerOnly>} />
           <Route path="/salary-payments" element={<OwnerOnly><ErpModulePage module="salary-payments" /></OwnerOnly>} />
           <Route path="/leaves" element={<OwnerOnly><ErpModulePage module="leaves" /></OwnerOnly>} />
