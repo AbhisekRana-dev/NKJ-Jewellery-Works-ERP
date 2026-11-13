@@ -40,7 +40,20 @@
 .nkj-catalog-design-cell > span:last-child {display:grid;gap:4px;min-width:0;}
 .nkj-catalog-design-cell b {color:#64102b;font-size:10px;}
 .nkj-catalog-design-cell small,.nkj-catalog-subcategory {display:block;margin-top:4px;color:#928188;font-size:9px;}
-.nkj-catalog-table code {color:#8b5b21;font-size:9px;font-weight:800;}
+.nkj-catalog-table code {
+  display: inline-block;
+  max-width: 245px;
+  padding: 6px 8px;
+  border: 1px solid #83c7c5;
+  border-radius: 7px;
+  background: #e8f8f6;
+  color: #064c53;
+  font: 850 10px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .15px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .nkj-catalog-badge {display:inline-flex;align-items:center;margin:2px 3px 2px 0;padding:4px 6px;border-radius:999px;font-size:8px;font-weight:850;white-space:nowrap;}
 .nkj-catalog-badge.sample {background:#fff3d8;color:#8d6319;}
 .nkj-catalog-badge.real {background:#e7f5ed;color:#237445;}
@@ -411,7 +424,21 @@
 .nkj-catalog-details-modal > header span { color: #a4772a; font-size: 8px; font-weight: 900; letter-spacing: 1.7px; }
 .nkj-catalog-details-modal > header h2 { margin: 4px 0; color: #68102a; font: 800 21px Georgia,serif; }
 .nkj-catalog-details-modal > header button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #ecdeda; border-radius: 50%; background: #fff; color: #71102c; cursor: pointer; }
-.nkj-catalog-details-id { display: inline-flex; margin: 4px 0 12px; padding: 6px 9px; border: 1px solid #ead8b9; border-radius: 7px; background: #fff8e9; color: #73132d; font: 800 11px ui-monospace,monospace; overflow-wrap: anywhere; }
+.nkj-catalog-details-id {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 4px 0 12px;
+  padding: 7px 10px;
+  border: 1px solid #83c7c5;
+  border-radius: 7px;
+  background: #e8f8f6;
+  color: #064c53;
+  font: 850 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .15px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .nkj-catalog-details-photos { display: flex; gap: 9px; overflow-x: auto; padding: 3px 0 10px; }
 .nkj-catalog-details-photos img { flex: 0 0 126px; width: 126px; height: 126px; object-fit: contain; border: 1px solid #e8dbca; border-radius: 9px; background: #fbf5ea; }
 .nkj-catalog-details-photos > div { color: #8c7b76; font-size: 10px; }
