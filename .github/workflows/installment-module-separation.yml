@@ -1501,7 +1501,7 @@ jobs:
               assert 400 <= status < 500, f"{method} {path} should be rejected but returned HTTP {status}: {result}"
               return status, result
 
-          def png_bytes(width=96, height=96):
+          def png_bytes(width=1200, height=600):
               def chunk(kind, data):
                   return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", binascii.crc32(kind + data) & 0xffffffff)
               rows = []
