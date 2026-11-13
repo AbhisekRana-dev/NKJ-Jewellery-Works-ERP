@@ -625,6 +625,7 @@ export default function CalculatorPage() {
               <button
                 type="button"
                 key={id}
+                data-calculator-mode={id}
                 className={mode === id ? "active" : ""}
                 onClick={() => changeMode(id)}
               >
