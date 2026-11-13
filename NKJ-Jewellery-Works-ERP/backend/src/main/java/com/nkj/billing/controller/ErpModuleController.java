@@ -35,6 +35,20 @@ public class ErpModuleController {
     @GetMapping("/modules/{module}")
     public Object list(@PathVariable String module) { return modules.list(module); }
 
+    @GetMapping("/attendance/dashboard")
+    public Map<String,Object> attendanceDashboard(
+            @RequestParam int year,
+            @RequestParam int month) {
+        return modules.attendanceDashboard(year, month);
+    }
+
+    @GetMapping("/attendance/leave-check")
+    public Map<String,Object> checkAttendanceLeave(
+            @RequestParam long staffId,
+            @RequestParam String date) {
+        return modules.checkAttendanceLeave(staffId, date);
+    }
+
     @GetMapping("/modules/staff/{staffId}/notes")
     public Object listStaffNotes(@PathVariable long staffId) {
         return modules.listStaffNotes(staffId);
