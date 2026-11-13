@@ -399,7 +399,11 @@ function OrnamentCalculator({ mode, active }) {
             : <>
                 <small>Metal value: ₹ {money(metalValue)}</small>
                 <small>Making charge{makingMode === "percentage" ? ` (${makingInputValue}% of metal value)` : ""}: ₹ {money(isMakingValid ? makingChargeRupees : 0)}</small>
-                {makingMode === "percentage" && <small>Calculation: ₹ {money(metalValue)} × {makingInputValue}% ÷ 100</small>}
+                {makingMode === "percentage" && (
+                  <small>
+                    Calculation: ₹ {money(metalValue)} × {makingInputValue}% ÷ 100 = ₹ {money(isMakingValid ? makingChargeRupees : 0)}
+                  </small>
+                )}
                 <small>Stamp + extra charges: ₹ {money(Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0))}</small>
                 {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
               </>}
