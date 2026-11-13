@@ -140,9 +140,8 @@ function ManualCalculator({ active }) {
     setDraft({ ...INITIAL_MANUAL_DRAFT });
   }, [setDraft]);
 
-  const confirmReset = useCallback(() => {
-    if (window.confirm("Reset Manual Calculator? Only its saved draft will be cleared.")) clear();
-  }, [clear]);
+  // Reset immediately; no confirmation dialog for the Manual Calculator.
+  const resetManualCalculator = clear;
 
   const backspace = useCallback(() => {
     setDraft((current) => ({
@@ -220,7 +219,7 @@ function ManualCalculator({ active }) {
 
     window.addEventListener("keydown", handleCalculatorKeyDown, true);
     return () => window.removeEventListener("keydown", handleCalculatorKeyDown, true);
-  }, [active, append, calculate, confirmReset, backspace]);
+  }, [active, append, calculate, backspace]);
 
   const keys = [
     ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
@@ -244,7 +243,7 @@ function ManualCalculator({ active }) {
             type="button"
             key={label}
             className={value === "clear" ? "utility" : value === "equal" ? "equal" : ["+", "-", "*", "/", "%"].includes(value) ? "operator" : ""}
-            onClick={() => value === "clear" ? confirmReset() : value === "equal" ? calculate() : append(value)}
+            onClick={() => value === "clear" ? resetManualCalculator() : value === "equal" ? calculate() : append(value)}
           >
             {label}
           </button>
@@ -253,7 +252,7 @@ function ManualCalculator({ active }) {
           <Delete size={18} /> DEL
         </button>
       </div>
-      <button type="button" className="nkj-calc-manual-reset" onClick={confirmReset}>
+      <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
         <RotateCcw size={15} /> Reset Manual Calculator
       </button>
       <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets immediately</p>
@@ -293,10 +292,7 @@ function OrnamentCalculator({ mode, active }) {
     setDraft({ ...INITIAL_ORNAMENT_DRAFT });
   }, [setDraft]);
 
-  const confirmReset = useCallback(() => {
-    const name = isOld ? "Old Ornaments" : "New Ornaments";
-    if (window.confirm(`Reset ${name}? Only its saved draft will be cleared.`)) reset();
-  }, [isOld, reset]);
+  // Reset immediately; the button and Esc shortcut share this handler.
 
   // Escape is a quick reset for the currently active ornament calculator.
   // Unlike the Reset button, this keyboard shortcut does not show a popup.
@@ -407,9 +403,9 @@ function OrnamentCalculator({ mode, active }) {
                 <small>Stamp + extra charges: ₹ {money(Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0))}</small>
                 {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
               </>}
-          <small className="nkj-calc-reset-hint">Press Esc to reset immediately, or click Reset for confirmation.</small>
+          <small className="nkj-calc-reset-hint">Press Esc or click Reset to clear this calculator immediately.</small>
         </div>
-        <button type="button" className="nkj-calc-reset" onClick={confirmReset}>
+        <button type="button" className="nkj-calc-reset" onClick={reset}>
           <RotateCcw size={15} /> Reset
         </button>
       </div>
