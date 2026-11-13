@@ -341,7 +341,7 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
   const [draft, setDraft] = usePersistentDraft(draftKey, INITIAL_ORNAMENT_DRAFT);
   const { weight, purity, rate, making, makingMode, stamp, extra } = draft;
   const [calculationFeedback, setCalculationFeedback] = useState("");
-  const calculateGuardRef = useRef({ inFlight: false, lastAcceptedAt: 0 });
+  const calculateGuardRef = useRef({ inFlight: false, lastAcceptedAt: 0, lastSignature: "" });
 
   const updateDraftField = useCallback((field, value) => {
     setCalculationFeedback("");
@@ -402,7 +402,13 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
   const handleCalculate = useCallback(() => {
     const guard = calculateGuardRef.current;
     const now = Date.now();
-    if (guard.inFlight || now - guard.lastAcceptedAt < 650) return;
+    const calculationSignature = JSON.stringify({
+      mode, weight, purity: purityPercent, rate, making, makingMode, stamp, extra,
+    });
+    if (guard.inFlight) return;
+    // Ignore the same calculation only when the second click is part of a rapid double-click.
+    // A changed input signature is always allowed, and the same values can be submitted again later.
+    if (guard.lastSignature === calculationSignature && now - guard.lastAcceptedAt < 450) return;
 
     if (!(Number(weight) > 0) || !(Number(rate) > 0)) {
       setCalculationFeedback("Enter a weight and rate greater than zero before calculating.");
@@ -419,6 +425,7 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
 
     guard.inFlight = true;
     guard.lastAcceptedAt = now;
+    guard.lastSignature = calculationSignature;
     try {
       const formatNumber = (value) => Number(value || 0).toLocaleString("en-IN", {
         maximumFractionDigits: 2,
@@ -443,8 +450,8 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
       guard.inFlight = false;
     }
   }, [
-    weight, rate, isPurityValid, purityPercent, isMakingValid, isOld,
-    makingMode, makingInputValue, makingChargeRupees, stamp, extra, total, addHistory,
+    mode, weight, purityPercent, rate, making, makingMode, stamp, extra,
+    isPurityValid, isMakingValid, isOld, makingInputValue, makingChargeRupees, total, addHistory,
   ]);
 
   return (
