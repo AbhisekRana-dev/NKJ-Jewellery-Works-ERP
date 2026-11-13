@@ -282,7 +282,18 @@ function ManualCalculator({ active }) {
     };
 
     window.addEventListener("keydown", handleCalculatorKeyDown, true);
-    return (
+    return () => window.removeEventListener("keydown", handleCalculatorKeyDown, true);
+  }, [active, append, calculate, backspace]);
+
+  const keys = [
+    ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
+    ["7", "7"], ["8", "8"], ["9", "9"], ["×", "*"],
+    ["4", "4"], ["5", "5"], ["6", "6"], ["−", "-"],
+    ["1", "1"], ["2", "2"], ["3", "3"], ["+", "+"],
+    ["%", "%"], ["0", "0"], [".", "."], ["=", "equal"],
+  ];
+
+  return (
     <div className="nkj-calc-with-history nkj-calc-manual-layout">
       <section className="nkj-calc-manual">
         <div className="nkj-calc-display">
