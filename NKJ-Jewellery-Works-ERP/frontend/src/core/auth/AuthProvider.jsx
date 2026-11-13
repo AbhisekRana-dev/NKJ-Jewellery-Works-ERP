@@ -51,16 +51,28 @@ export function AuthProvider({ children }) {
   }, []);
 
 
-  // Revalidate the owner session periodically. If the backend expires or revokes
-  // the token, the API client dispatches nkj:session-expired and protected UI hides.
+  // Revalidate frequently and as soon as the owner returns to the tab. If the
+  // backend expires or revokes the token, the shared API client immediately
+  // dispatches nkj:session-expired and all management controls are removed.
   useEffect(() => {
     if (!user) return undefined;
-    const timer = window.setInterval(() => {
+    const validateSession = () => {
       request("/auth/session").catch(() => {
         // A 401 is handled centrally by the shared API client.
       });
-    }, 60_000);
-    return () => window.clearInterval(timer);
+    };
+    const timer = window.setInterval(validateSession, 15_000);
+    const onFocus = () => validateSession();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") validateSession();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [user]);
 
   async function begin(username, password) {
