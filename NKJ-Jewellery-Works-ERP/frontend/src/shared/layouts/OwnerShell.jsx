@@ -5,7 +5,7 @@ import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
-  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem, Sun, Moon,
+  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
@@ -13,16 +13,6 @@ const SIDEBAR_STORAGE_KEY = "nkj-owner-sidebar-collapsed";
 const SIDEBAR_SCROLL_KEY = "nkj-owner-sidebar-scroll";
 const SIDEBAR_NAV_CLICK_KEY = "nkj-owner-sidebar-nav-last-click";
 const SIDEBAR_DOUBLE_CLICK_MS = 450;
-const THEME_STORAGE_KEY = "nkj-theme-mode";
-
-function initialThemeMode() {
-  try {
-    return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
-  } catch {
-    return "light";
-  }
-}
-
 function initialSidebarState() {
   try {
     const saved = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -83,31 +73,8 @@ const ownerNavigation = [
 export function Nav({ active = "home" }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
-  const [themeMode, setThemeMode] = useState(initialThemeMode);
   const sidebarNavRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
-  const toggleTheme = () => setThemeMode((current) => current === "dark" ? "light" : "dark");
-
-  useLayoutEffect(() => {
-    document.body.classList.toggle("nkj-theme-dark", themeMode === "dark");
-    document.documentElement.dataset.nkjTheme = themeMode;
-    try { window.localStorage.setItem(THEME_STORAGE_KEY, themeMode); } catch { /* Theme still works for this session. */ }
-  }, [themeMode]);
-
-  const themeToggle = (
-    <button
-      type="button"
-      className="nkj-theme-toggle"
-      onClick={toggleTheme}
-      aria-label={themeMode === "dark" ? "Switch to day theme" : "Switch to night theme"}
-      aria-pressed={themeMode === "dark"}
-      title={themeMode === "dark" ? "Switch to day theme" : "Switch to night theme"}
-    >
-      {themeMode === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-      <span>{themeMode === "dark" ? "Day theme" : "Night theme"}</span>
-    </button>
-  );
-
   const persistSidebarState = (collapsed) => {
     try {
       window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
@@ -270,7 +237,6 @@ export function Nav({ active = "home" }) {
               <CalculatorIcon size={17} /> <span>Calculator</span>
             </Link>
             <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
-            {themeToggle}
             <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
           </div>
         </header>
@@ -289,7 +255,6 @@ export function Nav({ active = "home" }) {
         <Link className={active === "designs" ? "active" : ""} to="/designs"><Gem />Jewellery Designs</Link>
         <Link className={active === "calculator" ? "active" : ""} to="/calculator"><CalculatorIcon />Calculator</Link>
         <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
-        {themeToggle}
         {isAdmin ? <>
           <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
           <Link className={active === "dashboard" ? "active" : ""} to="/dashboard"><LayoutDashboard />Dashboard</Link>
