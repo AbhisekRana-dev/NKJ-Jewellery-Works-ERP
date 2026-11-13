@@ -364,7 +364,7 @@ function ManualCalculator({ active }) {
   );
 }
 
-function OrnamentCalculator({ mode, active, history, addHistory, clearHistory }) {
+function OrnamentCalculator({ mode, history, addHistory, clearHistory }) {
   const isOld = mode === "old";
   const draftKey = isOld ? "nkj_old_ornament_draft" : "nkj_new_ornament_draft";
   const [draft, setDraft] = usePersistentDraft(draftKey, INITIAL_ORNAMENT_DRAFT);
@@ -400,30 +400,7 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
     setDraft({ ...INITIAL_ORNAMENT_DRAFT });
   }, [setDraft]);
 
-  // Reset immediately; the button and Esc shortcut share this handler.
-
-  // Escape is a quick reset for the currently active ornament calculator.
-  // Unlike the Reset button, this keyboard shortcut does not show a popup.
-  useEffect(() => {
-    if (!active) return undefined;
-
-    const handleEscape = (event) => {
-      if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
-      const target = event.target;
-      const isInCalculator = target instanceof Element
-        ? Boolean(target.closest(".nkj-calculator-page"))
-        : target === document.body || target === document.documentElement;
-      if (!isInCalculator) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      reset();
-    };
-
-    window.addEventListener("keydown", handleEscape, true);
-    return () => window.removeEventListener("keydown", handleEscape, true);
-  }, [active, reset]);
+  // Ornament drafts reset only through their explicit Reset buttons.
 
   // Add exactly one record only after a valid, deliberate Calculate action.
   // A short click guard blocks duplicate events from rapid double-clicks while
@@ -654,10 +631,10 @@ export default function CalculatorPage() {
               <h2>{options.find((option) => option.id === mode)?.label}</h2>
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "new"}>
-              <OrnamentCalculator mode="new" active={mode === "new"} history={ornamentHistory} addHistory={addOrnamentHistory} clearHistory={clearOrnamentHistory} />
+              <OrnamentCalculator mode="new" history={ornamentHistory} addHistory={addOrnamentHistory} clearHistory={clearOrnamentHistory} />
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "old"}>
-              <OrnamentCalculator mode="old" active={mode === "old"} history={ornamentHistory} addHistory={addOrnamentHistory} clearHistory={clearOrnamentHistory} />
+              <OrnamentCalculator mode="old" history={ornamentHistory} addHistory={addOrnamentHistory} clearHistory={clearOrnamentHistory} />
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "manual"}>
               <ManualCalculator active={mode === "manual"} />
