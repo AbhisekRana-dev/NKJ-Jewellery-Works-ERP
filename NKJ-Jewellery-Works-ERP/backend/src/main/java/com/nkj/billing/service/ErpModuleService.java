@@ -1399,6 +1399,18 @@ public class ErpModuleService {
         data.put("paymentStatus", calculatedStatus);
     }
 
+    private void lockStaffForLinkedRecord(String module, long recordId) {
+        if (!"attendance".equals(module) && !"leaves".equals(module)) return;
+        String table = "attendance".equals(module) ? "staff_attendance" : "staff_leaves";
+        List<Map<String,Object>> linked = jdbc.queryForList(
+                "SELECT staff_id FROM " + table + " WHERE id=?", recordId);
+        if (linked.isEmpty()) throw new IllegalArgumentException("Record not found.");
+        long staffId = requiredId(linked.get(0).get("staff_id"), "Staff ID");
+        // Use one lock order (staff row, then leave/attendance row) for create,
+        // update, delete and approval to prevent cross-module deadlocks.
+        lockStaffRow(staffId);
+    }
+
     private void lockStaffRow(long staffId) {
         List<Map<String,Object>> rows = jdbc.queryForList(
                 "SELECT id, status FROM staff WHERE id=? FOR UPDATE", staffId);
@@ -1691,6 +1703,7 @@ public class ErpModuleService {
         }
         Definition d = writableDefinition(module);
         if (body == null || body.isEmpty()) throw new IllegalArgumentException("Update data is required.");
+        lockStaffForLinkedRecord(module, id);
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=? FOR UPDATE", id);
         // Pre-Bookings are loaded and updated only from pre_booking_bills.
         Map<String,Object> normalized = new LinkedHashMap<>(body);
@@ -1914,6 +1927,7 @@ public class ErpModuleService {
             throw new IllegalArgumentException("Posted stock and payment transactions cannot be deleted. Record a correcting transaction instead.");
         }
         Definition d = writableDefinition(module);
+        lockStaffForLinkedRecord(module, id);
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=? FOR UPDATE", id);
         if ("attendance".equals(module)) {
             if (Boolean.TRUE.equals(before.get("is_locked")) || Boolean.TRUE.equals(before.get("is_system_generated"))
