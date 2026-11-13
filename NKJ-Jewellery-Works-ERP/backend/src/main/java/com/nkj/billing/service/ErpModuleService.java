@@ -428,6 +428,8 @@ public class ErpModuleService {
         if (module.equals("pre-bookings") && data.get("bookingNo") == null) data.put("bookingNo", "PENDING-" + UUID.randomUUID());
         if (module.equals("repairs") && data.get("orderNo") == null) data.put("orderNo", "PENDING-" + UUID.randomUUID());
         validate(d, data);
+        if (module.equals("attendance")) validateAttendanceForWrite(data, null);
+        if (module.equals("leaves")) validateLeaveForWrite(data, null);
         if (module.equals("payments")
                 && nonNegative(data.get("amount"), "Amount received").signum() <= 0) {
             throw new IllegalArgumentException("A customer receipt must contain an amount greater than zero.");
@@ -464,6 +466,10 @@ public class ErpModuleService {
         Object[] values = included.stream().map(x -> jdbcValue(x, data.get(x.key()))).toArray();
         Long id = jdbc.queryForObject("INSERT INTO " + d.table() + " (" + columns + ") VALUES (" + placeholders + ") RETURNING id", Long.class, values);
 
+        if (module.equals("leaves") && "APPROVED".equalsIgnoreCase(String.valueOf(data.get("status")))) {
+            jdbc.update("UPDATE staff_leaves SET approved_by=?, approved_at=NOW() WHERE id=?", auth.getUsername(), id);
+            reconcileApprovedLeave(id, ip);
+        }
         if (module.equals("staff")) {
             String staffCode = "NKJ-STF-" + String.format("%05d", id);
             jdbc.update("UPDATE staff SET staff_code=? WHERE id=?", staffCode, id);
@@ -1393,6 +1399,166 @@ public class ErpModuleService {
         data.put("paymentStatus", calculatedStatus);
     }
 
+    private void lockStaffRow(long staffId) {
+        List<Map<String,Object>> rows = jdbc.queryForList(
+                "SELECT id, status FROM staff WHERE id=? FOR UPDATE", staffId);
+        if (rows.isEmpty()) throw new IllegalArgumentException("The selected staff member does not exist.");
+    }
+
+    private void validateAttendanceForWrite(Map<String,Object> data, Long existingAttendanceId) {
+        long staffId = requiredId(data.get("staffId"), "Staff ID");
+        java.time.LocalDate date = parseDate(data.get("attendanceDate"), "Attendance date");
+        lockStaffRow(staffId);
+        String staffStatus = jdbc.queryForObject("SELECT status FROM staff WHERE id=?", String.class, staffId);
+        if (!"ACTIVE".equalsIgnoreCase(staffStatus)) {
+            throw new IllegalArgumentException("Attendance can only be recorded for active staff members.");
+        }
+        List<Map<String,Object>> approved = jdbc.queryForList("""
+            SELECT id, leave_type AS "leaveType", from_date AS "fromDate", to_date AS "toDate"
+              FROM staff_leaves
+             WHERE staff_id=? AND UPPER(status)='APPROVED'
+               AND from_date <= ? AND to_date >= ?
+             ORDER BY id LIMIT 1
+            """, staffId, java.sql.Date.valueOf(date), java.sql.Date.valueOf(date));
+        if (!approved.isEmpty()) {
+            Map<String,Object> leave = approved.get(0);
+            throw new IllegalArgumentException(
+                    "Attendance cannot be modified because this employee has an approved leave for the selected date. "
+                    + String.valueOf(leave.get("leaveType")) + " from "
+                    + String.valueOf(leave.get("fromDate")) + " to " + String.valueOf(leave.get("toDate")) + ".");
+        }
+        List<Map<String,Object>> duplicates = existingAttendanceId == null
+                ? jdbc.queryForList("SELECT id FROM staff_attendance WHERE staff_id=? AND attendance_date=? FOR UPDATE",
+                        staffId, java.sql.Date.valueOf(date))
+                : jdbc.queryForList("SELECT id FROM staff_attendance WHERE staff_id=? AND attendance_date=? AND id<>? FOR UPDATE",
+                        staffId, java.sql.Date.valueOf(date), existingAttendanceId);
+        if (!duplicates.isEmpty()) {
+            throw new IllegalArgumentException("Attendance already exists for this staff member on the selected date.");
+        }
+    }
+
+    private void validateLeaveForWrite(Map<String,Object> data, Long existingLeaveId) {
+        long staffId = requiredId(data.get("staffId"), "Staff ID");
+        java.time.LocalDate from = parseDate(data.get("fromDate"), "Leave from date");
+        java.time.LocalDate to = parseDate(data.get("toDate"), "Leave to date");
+        if (from.isAfter(to)) throw new IllegalArgumentException("Leave From Date cannot be after To Date.");
+        String leaveType = data.get("leaveType") == null ? "" : String.valueOf(data.get("leaveType")).trim();
+        if (leaveType.isBlank()) throw new IllegalArgumentException("Select a leave type.");
+        String status = data.get("status") == null ? "PENDING" : String.valueOf(data.get("status")).trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("PENDING", "APPROVED", "REJECTED", "CANCELLED", "REVOKED").contains(status)) {
+            throw new IllegalArgumentException("Leave status must be PENDING, APPROVED, REJECTED, CANCELLED or REVOKED.");
+        }
+        lockStaffRow(staffId);
+        String staffStatus = jdbc.queryForObject("SELECT status FROM staff WHERE id=?", String.class, staffId);
+        if (existingLeaveId == null && !"ACTIVE".equalsIgnoreCase(staffStatus)) {
+            throw new IllegalArgumentException("New leave can only be submitted for an active staff member.");
+        }
+        if ("PENDING".equals(status) || "APPROVED".equals(status)) {
+            String overlapSql = """
+                SELECT id, from_date AS "fromDate", to_date AS "toDate", status
+                  FROM staff_leaves
+                 WHERE staff_id = ?
+                   AND UPPER(status) IN ('PENDING','APPROVED')
+                   AND from_date <= ? AND to_date >= ?
+                """ + (existingLeaveId == null ? "" : " AND id <> " + existingLeaveId)
+                + " ORDER BY from_date, id LIMIT 1 FOR UPDATE";
+            List<Map<String,Object>> overlaps = jdbc.queryForList(
+                    overlapSql, staffId, java.sql.Date.valueOf(to), java.sql.Date.valueOf(from));
+            if (!overlaps.isEmpty()) {
+                Map<String,Object> other = overlaps.get(0);
+                throw new IllegalArgumentException("This leave overlaps another " + String.valueOf(other.get("status"))
+                        + " leave for the selected staff member (" + String.valueOf(other.get("fromDate"))
+                        + " to " + String.valueOf(other.get("toDate")) + ").");
+            }
+        }
+    }
+
+    private void reconcileApprovedLeave(long leaveId, String ip) {
+        Map<String,Object> leave = jdbc.queryForMap(
+                "SELECT id, staff_id, from_date, to_date, leave_type, status FROM staff_leaves WHERE id=? FOR UPDATE",
+                leaveId);
+        if (!"APPROVED".equalsIgnoreCase(String.valueOf(leave.get("status")))) return;
+        long staffId = ((Number) leave.get("staff_id")).longValue();
+        java.time.LocalDate from = parseDate(leave.get("from_date"), "Leave from date");
+        java.time.LocalDate to = parseDate(leave.get("to_date"), "Leave to date");
+        for (java.time.LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+            List<Map<String,Object>> existingRows = jdbc.queryForList(
+                    "SELECT * FROM staff_attendance WHERE staff_id=? AND attendance_date=? FOR UPDATE",
+                    staffId, java.sql.Date.valueOf(day));
+            if (!existingRows.isEmpty()) {
+                Map<String,Object> before = existingRows.get(0);
+                Long currentLeaveId = before.get("leave_id") == null ? null : ((Number) before.get("leave_id")).longValue();
+                if (Objects.equals(currentLeaveId, leaveId) && Boolean.TRUE.equals(before.get("is_locked"))) continue;
+                if (currentLeaveId != null || Boolean.TRUE.equals(before.get("is_locked"))) {
+                    throw new IllegalArgumentException("An attendance date is already controlled by another approved leave. Resolve the overlapping leave before approval.");
+                }
+                long attendanceId = ((Number) before.get("id")).longValue();
+                jdbc.update("""
+                    UPDATE staff_attendance
+                       SET previous_status=?, previous_check_in=?, previous_check_out=?,
+                           previous_working_hours=?, previous_remarks=?,
+                           status='ABSENT', check_in=NULL, check_out=NULL, working_hours=0,
+                           remarks='Automatically marked Absent – Approved Leave',
+                           attendance_source='APPROVED_LEAVE', leave_id=?,
+                           is_system_generated=TRUE, is_locked=TRUE
+                     WHERE id=?
+                    """, before.get("status"), before.get("check_in"), before.get("check_out"),
+                        before.get("working_hours"), before.get("remarks"), leaveId, attendanceId);
+                Map<String,Object> after = jdbc.queryForMap("SELECT * FROM staff_attendance WHERE id=?", attendanceId);
+                audit("APPROVED_LEAVE_ATTENDANCE_RECONCILED", "attendance", attendanceId, before, after, ip);
+            } else {
+                Long attendanceId = jdbc.queryForObject("""
+                    INSERT INTO staff_attendance(
+                        staff_id, attendance_date, status, working_hours, remarks,
+                        attendance_source, leave_id, is_system_generated, is_locked
+                    ) VALUES (?, ?, 'ABSENT', 0, 'Automatically marked Absent – Approved Leave',
+                              'APPROVED_LEAVE', ?, TRUE, TRUE)
+                    RETURNING id
+                    """, Long.class, staffId, java.sql.Date.valueOf(day), leaveId);
+                Map<String,Object> after = jdbc.queryForMap("SELECT * FROM staff_attendance WHERE id=?", attendanceId);
+                audit("APPROVED_LEAVE_ATTENDANCE_CREATED", "attendance", attendanceId, null, after, ip);
+            }
+        }
+    }
+
+    private void deactivateApprovedLeave(long leaveId, String ip) {
+        List<Map<String,Object>> linkedRows = jdbc.queryForList("""
+            SELECT * FROM staff_attendance
+             WHERE leave_id=? AND attendance_source='APPROVED_LEAVE'
+             ORDER BY attendance_date, id
+             FOR UPDATE
+            """, leaveId);
+        for (Map<String,Object> before : linkedRows) {
+            long attendanceId = ((Number) before.get("id")).longValue();
+            Object previousStatus = before.get("previous_status");
+            if (previousStatus == null) {
+                jdbc.update("DELETE FROM staff_attendance WHERE id=? AND leave_id=?", attendanceId, leaveId);
+                audit("APPROVED_LEAVE_ATTENDANCE_REMOVED", "attendance", attendanceId, before, null, ip);
+            } else {
+                jdbc.update("""
+                    UPDATE staff_attendance
+                       SET status=previous_status,
+                           check_in=previous_check_in,
+                           check_out=previous_check_out,
+                           working_hours=COALESCE(previous_working_hours, 0),
+                           remarks=previous_remarks,
+                           attendance_source='MANUAL',
+                           leave_id=NULL,
+                           is_system_generated=FALSE,
+                           is_locked=FALSE,
+                           previous_status=NULL,
+                           previous_check_in=NULL,
+                           previous_check_out=NULL,
+                           previous_working_hours=NULL,
+                           previous_remarks=NULL
+                     WHERE id=? AND leave_id=?
+                    """, attendanceId, leaveId);
+                Map<String,Object> after = jdbc.queryForMap("SELECT * FROM staff_attendance WHERE id=?", attendanceId);
+                audit("APPROVED_LEAVE_ATTENDANCE_RESTORED", "attendance", attendanceId, before, after, ip);
+            }
+        }
+    }
+
     private void calculateSalary(Map<String,Object> data) {
         BigDecimal basic = nonNegative(data.get("basicSalary"), "Basic salary");
         BigDecimal allowances = nonNegative(data.get("allowances"), "Allowances");
@@ -1529,6 +1695,41 @@ public class ErpModuleService {
         // Pre-Bookings are loaded and updated only from pre_booking_bills.
         Map<String,Object> normalized = new LinkedHashMap<>(body);
         normalized.replaceAll((key, value) -> value instanceof String text && text.isBlank() ? null : value);
+
+        if ("attendance".equals(module)) {
+            if (Boolean.TRUE.equals(before.get("is_locked")) || Boolean.TRUE.equals(before.get("is_system_generated"))
+                    || before.get("leave_id") != null) {
+                throw new IllegalArgumentException("This attendance is locked because it was generated by an approved leave.");
+            }
+            Map<String,Object> candidate = new LinkedHashMap<>();
+            candidate.put("staffId", before.get("staff_id"));
+            candidate.put("attendanceDate", before.get("attendance_date"));
+            candidate.putAll(normalized);
+            validateAttendanceForWrite(candidate, id);
+        }
+
+        boolean reapplyApprovedLeave = false;
+        if ("leaves".equals(module)) {
+            String oldStatus = String.valueOf(before.get("status"));
+            Map<String,Object> candidate = new LinkedHashMap<>();
+            candidate.put("staffId", before.get("staff_id"));
+            candidate.put("fromDate", before.get("from_date"));
+            candidate.put("toDate", before.get("to_date"));
+            candidate.put("leaveType", before.get("leave_type"));
+            candidate.put("status", before.get("status"));
+            candidate.put("reason", before.get("reason"));
+            candidate.putAll(normalized);
+            validateLeaveForWrite(candidate, id);
+            String nextStatus = String.valueOf(candidate.get("status")).toUpperCase(Locale.ROOT);
+            boolean wasApproved = "APPROVED".equalsIgnoreCase(oldStatus);
+            boolean remainsApproved = "APPROVED".equals(nextStatus);
+            boolean coverageChanged = !Objects.equals(String.valueOf(before.get("staff_id")), String.valueOf(candidate.get("staffId")))
+                    || !parseDate(before.get("from_date"), "Existing leave from date").equals(parseDate(candidate.get("fromDate"), "Leave from date"))
+                    || !parseDate(before.get("to_date"), "Existing leave to date").equals(parseDate(candidate.get("toDate"), "Leave to date"));
+            reapplyApprovedLeave = remainsApproved && (!wasApproved || coverageChanged);
+            if (wasApproved && (!remainsApproved || coverageChanged)) deactivateApprovedLeave(id, ip);
+        }
+
         // A paid amount is a cumulative cash figure. It may only increase here;
         // decreases/refunds must be recorded as separate cash operations.
         if ("purchases".equals(module)
@@ -1676,6 +1877,11 @@ public class ErpModuleService {
                         id, latestNote, auth.getUsername());
             }
         }
+        if ("leaves".equals(module) && reapplyApprovedLeave) {
+            jdbc.update("UPDATE staff_leaves SET approved_by=?, approved_at=NOW() WHERE id=?",
+                    auth.getUsername(), id);
+            reconcileApprovedLeave(id, ip);
+        }
         audit("UPDATE", module, id, before, applied, ip);
         return Map.of("success", true, "message", "Record updated successfully.");
     }
@@ -1709,6 +1915,19 @@ public class ErpModuleService {
         }
         Definition d = writableDefinition(module);
         Map<String,Object> before = jdbc.queryForMap("SELECT * FROM " + d.table() + " WHERE id=? FOR UPDATE", id);
+        if ("attendance".equals(module)) {
+            if (Boolean.TRUE.equals(before.get("is_locked")) || Boolean.TRUE.equals(before.get("is_system_generated"))
+                    || before.get("leave_id") != null) {
+                throw new IllegalArgumentException("Approved-leave attendance is locked and cannot be deleted.");
+            }
+            Map<String,Object> candidate = new LinkedHashMap<>();
+            candidate.put("staffId", before.get("staff_id"));
+            candidate.put("attendanceDate", before.get("attendance_date"));
+            validateAttendanceForWrite(candidate, id);
+        }
+        if ("leaves".equals(module) && "APPROVED".equalsIgnoreCase(String.valueOf(before.get("status")))) {
+            deactivateApprovedLeave(id, ip);
+        }
         String cashSourceModule = switch (module) {
             case "payments" -> "PAYMENTS";
             case "pre-bookings" -> "PRE_BOOKINGS";
