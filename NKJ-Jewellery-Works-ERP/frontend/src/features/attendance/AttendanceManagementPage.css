@@ -297,3 +297,10 @@
   .nkj-attendance-modal-actions { flex-direction: column-reverse; }
   .nkj-attendance-modal-actions button { width: 100%; }
 }
+.nkj-attendance-toolbar-right { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 9px; }
+.nkj-attendance-staff-filter { display: inline-flex; align-items: center; gap: 7px; padding: 5px 8px; border: 1px solid #e8d7bd; border-radius: 7px; background: #fff8e9; color: #7d5428; font-size: 9px; }
+.nkj-attendance-staff-filter b { color: #7e1230; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.nkj-attendance-staff-filter a { color: #8b1734; font-weight: 850; text-decoration: none; }
+.nkj-attendance-staff-filter button { padding: 2px 5px; border: 0; background: transparent; color: #8b1734; font-size: 9px; font-weight: 800; text-decoration: underline; cursor: pointer; }
+.nkj-leave-approve-action { border-color: #cce7d2 !important; background: #f0faf2 !important; color: #217541 !important; }
+.nkj-leave-reject-action { border-color: #f0d0d0 !important; background: #fff6f5 !important; color: #a42936 !important; }
