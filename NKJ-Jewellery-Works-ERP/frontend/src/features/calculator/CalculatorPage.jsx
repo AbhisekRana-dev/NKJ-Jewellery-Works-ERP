@@ -256,7 +256,6 @@ function ManualCalculator({ active }) {
       // Handle it before the editable-field guard so the shortcut also works
       // when focus is inside a calculator control.
       if (key === "Escape") {
-        if (!(event.target instanceof Element) || !event.target.closest(".nkj-calculator-page--manual")) return;
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
@@ -411,7 +410,6 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
     const handleActiveOrnamentReset = (event) => {
       if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
-      if (!(target instanceof Element) || !target.closest(".nkj-calculator-page")) return;
 
       event.preventDefault();
       event.stopPropagation();
