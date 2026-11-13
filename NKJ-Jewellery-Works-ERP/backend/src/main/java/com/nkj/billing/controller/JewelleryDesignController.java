@@ -186,7 +186,8 @@ public class JewelleryDesignController {
     @Transactional
     public Map<String, Object> createMobileUploadSession(
             HttpServletRequest request,
-            HttpServletResponse response) {
+            HttpServletResponse response,
+            @RequestParam(value = "designId", required = false) Long targetDesignId) {
         String owner = auth.getUsername();
         if (owner == null || owner.isBlank()) {
             throw new IllegalArgumentException("Your owner session is not available. Sign in again and reopen the QR upload window.");
@@ -203,7 +204,7 @@ public class JewelleryDesignController {
                               'session_id', 'token_hash', 'created_by', 'created_at',
                               'expires_at', 'consumed_at', 'revoked_at', 'uploaded_design_id',
                               'created_ip', 'uploaded_ip', 'first_scanned_at',
-                              'reserved_design_id', 'reserved_category_id'
+                              'reserved_design_id', 'reserved_category_id', 'target_design_id'
                           ]::TEXT[]) AS expected(column_name)
                          WHERE NOT EXISTS (
                              SELECT 1
@@ -225,6 +226,16 @@ public class JewelleryDesignController {
             return Map.of("message",
                     "The QR upload database schema is incomplete. Missing columns: " + missingColumns
                     + ". Restart the backend and confirm Flyway migrations V32, V37 and V38 have completed successfully.");
+        }
+
+        Map<String,Object> targetDesign = null;
+        if (targetDesignId != null) {
+            ensureDesignExists(targetDesignId);
+            targetDesign = jdbc.queryForMap("""
+                SELECT id, design_id AS "designId", design_name AS "designName"
+                  FROM public.jewellery_designs
+                 WHERE id=? AND is_deleted=FALSE
+                """, targetDesignId);
         }
 
         // Resolve and validate the website URL before revoking or creating sessions.
@@ -271,14 +282,23 @@ public class JewelleryDesignController {
 
         jdbc.update("""
                 INSERT INTO public.jewellery_design_upload_sessions
-                    (session_id, token_hash, created_by, expires_at, created_ip)
-                VALUES (?, ?, ?, ?, ?)
-                """, sessionId, sha256Hex(token), owner, expiresAt, request.getRemoteAddr());
+                    (session_id, token_hash, created_by, expires_at, created_ip, target_design_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, sessionId, sha256Hex(token), owner, expiresAt, request.getRemoteAddr(), targetDesignId);
 
-        return Map.of("sessionId", sessionId.toString(),
-                "uploadUrl", base + "/mobile-design-upload/" + token,
-                "expiresAt", expiresAt.toInstant().toString(),
-                "expiresInSeconds", 300, "status", "WAITING");
+        Map<String,Object> result = new LinkedHashMap<>();
+        result.put("sessionId", sessionId.toString());
+        result.put("uploadUrl", base + "/mobile-design-upload/" + token);
+        result.put("expiresAt", expiresAt.toInstant().toString());
+        result.put("expiresInSeconds", 300);
+        result.put("status", "WAITING");
+        result.put("uploadMode", targetDesignId == null ? "CREATE_DESIGN" : "UPDATE_DESIGN_IMAGES");
+        result.put("targetDesignId", targetDesignId);
+        if (targetDesign != null) {
+            result.put("designId", targetDesign.get("designId"));
+            result.put("designName", targetDesign.get("designName"));
+        }
+        return result;
     }
 
     @GetMapping("/api/admin/design-upload-sessions/{sessionId}")
@@ -297,6 +317,8 @@ public class JewelleryDesignController {
                        END AS status,
                        s.expires_at AS "expiresAt",
                        s.uploaded_design_id AS "designRecordId",
+                       s.target_design_id AS "targetDesignId",
+                       CASE WHEN s.target_design_id IS NULL THEN 'CREATE_DESIGN' ELSE 'UPDATE_DESIGN_IMAGES' END AS "uploadMode",
                        s.created_at AS "createdAt",
                        s.first_scanned_at AS "scannedAt",
                        s.consumed_at AS "uploadedAt",
@@ -305,7 +327,7 @@ public class JewelleryDesignController {
                        c.metal_type AS "metalType",
                        c.slug AS "subcategorySlug"
                   FROM public.jewellery_design_upload_sessions s
-                  LEFT JOIN public.jewellery_designs d ON d.id=s.uploaded_design_id
+                  LEFT JOIN public.jewellery_designs d ON d.id=COALESCE(s.target_design_id, s.uploaded_design_id)
                   LEFT JOIN public.jewellery_design_categories c ON c.id=d.category_id
                  WHERE s.session_id=? AND s.created_by=?
                 """, sessionId, auth.getUsername());
@@ -358,13 +380,15 @@ public class JewelleryDesignController {
                        s.expires_at AS "expiresAt",
                        GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (s.expires_at - NOW()))))::BIGINT AS "secondsRemaining",
                        s.consumed_at AS "uploadedAt",
+                       s.target_design_id AS "targetDesignId",
+                       CASE WHEN s.target_design_id IS NULL THEN 'CREATE_DESIGN' ELSE 'UPDATE_DESIGN_IMAGES' END AS "uploadMode",
                        d.id AS "designRecordId",
                        d.design_id AS "generatedDesignId",
                        d.design_name AS "designName",
                        c.metal_type AS "metalType",
                        c.subcategory_name AS "subcategoryName"
                   FROM public.jewellery_design_upload_sessions s
-                  LEFT JOIN public.jewellery_designs d ON d.id=s.uploaded_design_id
+                  LEFT JOIN public.jewellery_designs d ON d.id=COALESCE(s.target_design_id, s.uploaded_design_id)
                   LEFT JOIN public.jewellery_design_categories c ON c.id=d.category_id
                  WHERE s.token_hash=?
                 """, tokenHash);
@@ -388,6 +412,7 @@ public class JewelleryDesignController {
                 SELECT session_id, (expires_at > NOW()) AS "notExpired",
                        (consumed_at IS NOT NULL) AS consumed,
                        (revoked_at IS NOT NULL) AS revoked,
+                       target_design_id AS "targetDesignId",
                        reserved_design_id AS "reservedDesignId",
                        reserved_category_id AS "reservedCategoryId"
                   FROM public.jewellery_design_upload_sessions
@@ -396,6 +421,9 @@ public class JewelleryDesignController {
                 """, sha256Hex(token));
         if (rows.isEmpty()) throw new IllegalArgumentException("This QR upload link is invalid or expired.");
         Map<String, Object> session = rows.get(0);
+        if (session.get("targetDesignId") != null) {
+            throw new IllegalArgumentException("This QR session is linked to an existing design and can only upload photographs.");
+        }
         if (Boolean.TRUE.equals(session.get("revoked"))
                 || Boolean.TRUE.equals(session.get("consumed"))
                 || !Boolean.TRUE.equals(session.get("notExpired"))) {
@@ -427,8 +455,8 @@ public class JewelleryDesignController {
     @Transactional
     public Map<String, Object> uploadDesignFromMobileQr(
             @PathVariable String token,
-            @RequestParam("categoryId") String categoryId,
-            @RequestParam("designName") String designName,
+            @RequestParam(value = "categoryId", required = false) String categoryId,
+            @RequestParam(value = "designName", required = false) String designName,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "styleLabel", required = false) String styleLabel,
             @RequestParam(value = "keywords", required = false) String keywords,
@@ -452,6 +480,7 @@ public class JewelleryDesignController {
                        (expires_at > NOW()) AS "notExpired",
                        (consumed_at IS NOT NULL) AS consumed,
                        (revoked_at IS NOT NULL) AS revoked,
+                       target_design_id AS "targetDesignId",
                        reserved_design_id AS "reservedDesignId",
                        reserved_category_id AS "reservedCategoryId"
                   FROM public.jewellery_design_upload_sessions
@@ -473,6 +502,27 @@ public class JewelleryDesignController {
             throw new IllegalArgumentException("Select between 1 and 20 jewellery photographs.");
         }
 
+        Object targetDesignValue = session.get("targetDesignId");
+        if (targetDesignValue instanceof Number targetNumber) {
+            long targetId = targetNumber.longValue();
+            ensureDesignExists(targetId);
+            Map<String,Object> withImages = storeDesignImages(targetId, files, rotations, cropZooms);
+            jdbc.update("""
+                    UPDATE public.jewellery_design_upload_sessions
+                       SET consumed_at=NOW(), uploaded_design_id=?, uploaded_ip=?
+                     WHERE session_id=? AND consumed_at IS NULL AND revoked_at IS NULL
+                    """, targetId, request.getRemoteAddr(), session.get("session_id"));
+            Map<String,Object> result = new LinkedHashMap<>(withImages);
+            result.put("uploadStatus", "UPLOADED");
+            result.put("uploadMode", "UPDATE_DESIGN_IMAGES");
+            result.put("designRecordId", targetId);
+            result.put("designName", withImages.get("designName"));
+            return result;
+        }
+
+        if (categoryId == null || categoryId.isBlank() || designName == null || designName.isBlank()) {
+            throw new IllegalArgumentException("Choose a subcategory and enter a design name.");
+        }
         Map<String, Object> body = new HashMap<>();
         body.put("categoryId", categoryId);
         body.put("designName", designName);
