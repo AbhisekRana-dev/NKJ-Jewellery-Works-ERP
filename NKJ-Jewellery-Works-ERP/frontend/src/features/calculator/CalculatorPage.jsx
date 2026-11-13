@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Calculator as CalculatorIcon, Coins, Gem, Scale, Delete, RotateCcw, History, Copy, Trash2 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import "./CalculatorPage.css";
 
@@ -47,6 +47,64 @@ const numberInput = (value, setter) => ({
   value,
   onChange: (event) => setter(event.target.value),
 });
+
+function usePersistentHistory(storageKey, limit = 15) {
+  const [items, setItems] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
+      return Array.isArray(saved) ? saved.slice(0, limit) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(items.slice(0, limit)));
+    } catch {
+      // History is optional; calculator functions remain available without storage.
+    }
+  }, [storageKey, items, limit]);
+
+  const addItem = useCallback((item) => {
+    setItems((current) => [{ ...item, createdAt: Date.now() }, ...current].slice(0, limit));
+  }, [limit]);
+
+  const clearItems = useCallback(() => setItems([]), []);
+  return [items, addItem, clearItems];
+}
+
+function CalculationHistory({ title, items, onClear, emptyText = "Your calculations will appear here." }) {
+  const copyItem = (item) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(`${item.expression} = ${item.result}`).catch(() => {});
+    }
+  };
+
+  return (
+    <aside className="nkj-calc-history">
+      <div className="nkj-calc-history-heading">
+        <h3><History size={20} /> {title}</h3>
+        <button type="button" onClick={onClear} disabled={!items.length}>
+          <Trash2 size={14} /> Clear All
+        </button>
+      </div>
+      <div className="nkj-calc-history-list">
+        {items.length ? items.map((item, index) => (
+          <div className="nkj-calc-history-row" key={`${item.createdAt || "history"}-${index}`}>
+            <span className="nkj-calc-history-expression">{item.expression}</span>
+            <strong>{item.result}</strong>
+            <button type="button" aria-label="Copy calculation" title="Copy calculation" onClick={() => copyItem(item)}>
+              <Copy size={17} />
+            </button>
+          </div>
+        )) : <p className="nkj-calc-history-empty">{emptyText}</p>}
+      </div>
+    </aside>
+  );
+}
+
 
 function evaluateExpression(source) {
   const tokens = source.match(/\d*\.?\d+|[()+\-*/%]/g) || [];
@@ -124,17 +182,23 @@ function ManualCalculator({ active }) {
     }));
   }, [setDraft]);
 
+  const [history, addHistory, clearHistory] = usePersistentHistory("nkj_manual_calculator_history", 15);
+
   const calculate = useCallback(() => {
-    setDraft((current) => {
-      try {
-        const value = evaluateExpression(current.expression);
-        const formatted = String(Number(value.toFixed(8)));
-        return { ...current, result: formatted, expression: formatted, error: "" };
-      } catch (err) {
-        return { ...current, error: err.message || "Invalid calculation." };
-      }
-    });
-  }, [setDraft]);
+    try {
+      const source = expression;
+      const value = evaluateExpression(source);
+      const rounded = Number(value.toFixed(8));
+      const formatted = String(rounded);
+      addHistory({
+        expression: source.replaceAll("*", "×").replaceAll("/", "÷"),
+        result: rounded.toLocaleString("en-IN", { maximumFractionDigits: 8 }),
+      });
+      setDraft((current) => ({ ...current, result: formatted, expression: formatted, error: "" }));
+    } catch (err) {
+      setDraft((current) => ({ ...current, error: err.message || "Invalid calculation." }));
+    }
+  }, [expression, addHistory, setDraft]);
 
   const clear = useCallback(() => {
     setDraft({ ...INITIAL_MANUAL_DRAFT });
@@ -218,49 +282,43 @@ function ManualCalculator({ active }) {
     };
 
     window.addEventListener("keydown", handleCalculatorKeyDown, true);
-    return () => window.removeEventListener("keydown", handleCalculatorKeyDown, true);
-  }, [active, append, calculate, backspace]);
-
-  const keys = [
-    ["AC", "clear"], ["(", "("], [")", ")"], ["÷", "/"],
-    ["7", "7"], ["8", "8"], ["9", "9"], ["×", "*"],
-    ["4", "4"], ["5", "5"], ["6", "6"], ["−", "-"],
-    ["1", "1"], ["2", "2"], ["3", "3"], ["+", "+"],
-    ["%", "%"], ["0", "0"], [".", "."], ["=", "equal"],
-  ];
-
-  return (
-    <section className="nkj-calc-manual">
-      <div className="nkj-calc-display">
-        <span>MANUAL CALCULATOR</span>
-        <div className="nkj-calc-expression" aria-live="polite">{expression}</div>
-        <div className="nkj-calc-result">= {result}</div>
-        {error && <small className="nkj-calc-error">{error}</small>}
-      </div>
-      <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
-        {keys.map(([label, value]) => (
-          <button
-            type="button"
-            key={label}
-            className={value === "clear" ? "utility" : value === "equal" ? "equal" : ["+", "-", "*", "/", "%"].includes(value) ? "operator" : ""}
-            onClick={() => value === "clear" ? resetManualCalculator() : value === "equal" ? calculate() : append(value)}
-          >
-            {label}
+    return (
+    <div className="nkj-calc-with-history nkj-calc-manual-layout">
+      <section className="nkj-calc-manual">
+        <div className="nkj-calc-display">
+          <span>MANUAL CALCULATOR</span>
+          <div className="nkj-calc-expression" aria-live="polite">{expression}</div>
+          <div className="nkj-calc-result">= {result}</div>
+          {error && <small className="nkj-calc-error">{error}</small>}
+        </div>
+        <div className="nkj-calc-keypad" aria-label="Manual calculator keypad">
+          {keys.map(([label, value]) => (
+            <button
+              type="button"
+              key={label}
+              className={value === "clear" ? "utility" : value === "equal" ? "equal" : ["+", "-", "*", "/", "%"].includes(value) ? "operator" : ""}
+              onClick={() => value === "clear" ? resetManualCalculator() : value === "equal" ? calculate() : append(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="nkj-calc-manual-actions">
+          <button type="button" className="nkj-calc-backspace" onClick={backspace} aria-label="Delete last character">
+            <Delete size={17} /> DEL
           </button>
-        ))}
-        <button type="button" className="backspace" onClick={backspace} aria-label="Delete last character">
-          <Delete size={18} /> DEL
-        </button>
-      </div>
-      <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
-        <RotateCcw size={15} /> Reset Manual Calculator
-      </button>
-      <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets immediately</p>
-    </section>
+          <button type="button" className="nkj-calc-manual-reset" onClick={resetManualCalculator}>
+            <RotateCcw size={15} /> Reset
+          </button>
+        </div>
+        <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets</p>
+      </section>
+      <CalculationHistory title="Calculation History" items={history} onClear={clearHistory} />
+    </div>
   );
 }
 
-function OrnamentCalculator({ mode, active }) {
+function OrnamentCalculator({ mode, active, history, addHistory, clearHistory }) {
   const isOld = mode === "old";
   const draftKey = isOld ? "nkj_old_ornament_draft" : "nkj_new_ornament_draft";
   const [draft, setDraft] = usePersistentDraft(draftKey, INITIAL_ORNAMENT_DRAFT);
@@ -317,8 +375,30 @@ function OrnamentCalculator({ mode, active }) {
     return () => window.removeEventListener("keydown", handleEscape, true);
   }, [active, reset]);
 
+  const historyInitialized = useRef(false);
+  useEffect(() => {
+    if (!historyInitialized.current) {
+      historyInitialized.current = true;
+      return undefined;
+    }
+
+    if (!(Number(weight) > 0) || !(Number(rate) > 0) || !isPurityValid || !isMakingValid) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => {
+      const expressionText = isOld
+        ? `${Number(weight).toLocaleString("en-IN", { maximumFractionDigits: 2 })} gm × ${purityPercent}% × ₹${Number(rate).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`
+        : `${Number(weight).toLocaleString("en-IN", { maximumFractionDigits: 2 })} gm × ₹${Number(rate).toLocaleString("en-IN", { maximumFractionDigits: 2 })} + MC ${makingMode === "percentage" ? `${makingInputValue}%` : `₹${Number(making || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}${Number(stamp) > 0 ? ` + SC ₹${Number(stamp).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}${Number(extra) > 0 ? ` + EC ₹${Number(extra).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}`;
+      addHistory({ expression: expressionText, result: `₹ ${money(total)}` });
+    }, 800);
+
+    return () => window.clearTimeout(timeout);
+  }, [weight, purity, rate, making, makingMode, stamp, extra, isOld, purityPercent, makingInputValue, total, isPurityValid, isMakingValid, addHistory]);
+
   return (
-    <section className="nkj-calc-ornament">
+    <div className="nkj-calc-with-history nkj-calc-ornament-layout">
+      <section className="nkj-calc-ornament">
       <div className="nkj-calc-fields">
         <label>
           {isOld ? "Weight (gm)" : "Net Weight (gm)"}
@@ -413,12 +493,15 @@ function OrnamentCalculator({ mode, active }) {
           <RotateCcw size={15} /> Reset
         </button>
       </div>
-    </section>
+      </section>
+      <CalculationHistory title="Recent Calculations (Last 15)" items={history} onClear={clearHistory} />
+    </div>
   );
 }
 
 export default function CalculatorPage() {
   const [mode, setMode] = useState("new");
+  const [ornamentHistory, addOrnamentHistory, clearOrnamentHistory] = usePersistentHistory("nkj_ornament_calculation_history", 15);
 
   const changeMode = (nextMode) => {
     if (nextMode === mode) return;
@@ -465,10 +548,10 @@ export default function CalculatorPage() {
               <h2>{options.find((option) => option.id === mode)?.label}</h2>
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "new"}>
-              <OrnamentCalculator mode="new" active={mode === "new"} />
+              <OrnamentCalculator mode="new" active={mode === "new"} history={ornamentHistory} addHistory={addOrnamentHistory} clearHistory={clearOrnamentHistory} />
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "old"}>
-              <OrnamentCalculator mode="old" active={mode === "old"} />
+              <OrnamentCalculator mode="old" active={mode === "old"} history={ornamentHistory} addHistory={addOrnamentHistory} clearHistory={clearOrnamentHistory} />
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "manual"}>
               <ManualCalculator active={mode === "manual"} />
