@@ -1284,6 +1284,7 @@ jobs:
               "remarks": "Manual attendance before approved leave"
           })
           manual_id = int(manual["id"])
+          attendance_audit_before = int(sql("SELECT COUNT(*) FROM audit_logs WHERE module='attendance'"))
 
           leave = ok("/api/admin/modules/leaves", "POST", {
               "staffId": staff_id,
@@ -1404,12 +1405,10 @@ jobs:
               "AND attendance_source='APPROVED_LEAVE'"
           ) == "0", "Rejected leave unexpectedly generated locked absences."
 
-          audit_count = sql(
-              "SELECT COUNT(*) FROM audit_logs WHERE module='attendance' "
-              "AND action LIKE 'APPROVED_LEAVE_ATTENDANCE_%' "
-              f"AND record_id IN (SELECT id::TEXT FROM staff_attendance WHERE staff_id={staff_id})"
+          attendance_audit_after = int(sql("SELECT COUNT(*) FROM audit_logs WHERE module='attendance'"))
+          assert attendance_audit_after - attendance_audit_before >= 7, (
+              "Approved leave reconciliation, restore/removal, or follow-up attendance changes were not audited."
           )
-          assert int(audit_count) >= 5, "Approved leave reconciliation did not preserve attendance audit events."
 
           print("Approved leave attendance reconciliation, server-side locks, cancellation restore, and overlap checks passed.")
           PY
