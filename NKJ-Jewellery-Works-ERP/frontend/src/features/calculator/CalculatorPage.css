@@ -893,3 +893,249 @@
   .nkj-calc-manual-reset,
   .nkj-calc-keyboard-hint { width: 100%; }
 }
+
+
+/* Two-column calculator workspace with persistent calculation history. */
+.nkj-calc-with-history {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(330px, .92fr);
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  padding-top: 14px;
+}
+.nkj-calc-manual-layout .nkj-calc-manual {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-color: rgba(210, 168, 83, .55);
+  border-radius: 17px;
+  background: linear-gradient(145deg, #29212a, #19151e);
+  box-shadow: 0 10px 25px rgba(0,0,0,.28);
+}
+.nkj-calc-manual-layout .nkj-calc-display {
+  width: 100%;
+  min-height: 118px;
+  padding: 14px 17px;
+  border-radius: 13px;
+}
+.nkj-calc-manual-layout .nkj-calc-expression {
+  font-size: clamp(17px, 1.35vw, 22px);
+}
+.nkj-calc-manual-layout .nkj-calc-result {
+  font-size: clamp(29px, 2.6vw, 40px);
+}
+.nkj-calc-manual-layout .nkj-calc-keypad {
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+.nkj-calc-manual-layout .nkj-calc-keypad button {
+  min-height: clamp(45px, 5.4vh, 58px);
+  border-radius: 11px;
+  font-size: clamp(17px, 1.25vw, 22px);
+}
+.nkj-calc-manual-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.nkj-calc-backspace {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #69505a;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3b303a, #29232d);
+  color: #f5e8d8;
+  font-weight: 800;
+  cursor: pointer;
+}
+.nkj-calc-backspace:hover {
+  border-color: #c99a48;
+  background: #493a3d;
+}
+.nkj-calc-manual-layout .nkj-calc-manual-reset {
+  min-height: 42px;
+  margin: 0;
+  border-color: #98743b;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3a2d30, #29212a);
+  color: #f2d99e;
+  font-size: 12px;
+}
+.nkj-calc-manual-layout .nkj-calc-keyboard-hint {
+  margin: 0;
+  font-size: 9px;
+}
+.nkj-calc-history {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 15px;
+  overflow: hidden;
+  border: 1px solid rgba(202, 157, 76, .45);
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(119, 31, 62, .18), transparent 45%),
+    linear-gradient(145deg, #261d27, #19151e);
+  box-shadow: 0 9px 24px rgba(0,0,0,.25);
+}
+.nkj-calc-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 11px;
+  border-bottom: 1px solid rgba(205, 164, 91, .25);
+}
+.nkj-calc-history-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  margin: 0;
+  color: #f4e4c5;
+  font: 800 clamp(16px, 1.3vw, 20px) Georgia, "Times New Roman", serif;
+}
+.nkj-calc-history-heading h3 svg { flex: 0 0 auto; color: #e1b65c; }
+.nkj-calc-history-heading > button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #92713e;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #3a2d30, #29212a);
+  color: #f1d99e;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.nkj-calc-history-heading > button:hover:not(:disabled) {
+  border-color: #d0a34e;
+  background: #49352f;
+}
+.nkj-calc-history-heading > button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+.nkj-calc-history-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-content: start;
+  gap: 7px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+.nkj-calc-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 25px;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 7px 9px 7px 11px;
+  border: 1px solid rgba(178, 139, 130, .26);
+  border-radius: 10px;
+  background: linear-gradient(100deg, rgba(60, 43, 54, .85), rgba(40, 32, 42, .92));
+}
+.nkj-calc-history-expression {
+  min-width: 0;
+  overflow: hidden;
+  color: #f0e8e5;
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nkj-calc-history-row strong {
+  color: #ffc94e;
+  font-size: 14px;
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+}
+.nkj-calc-history-row > button {
+  width: 25px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #e4c27e;
+  cursor: pointer;
+}
+.nkj-calc-history-row > button:hover { color: #fff0b8; }
+.nkj-calc-history-empty {
+  margin: auto 0;
+  padding: 22px 10px;
+  color: #b7a7b0;
+  font-size: 12px;
+  text-align: center;
+}
+.nkj-calc-ornament-layout {
+  grid-template-columns: minmax(0, 1.12fr) minmax(340px, .88fr);
+}
+.nkj-calc-ornament-layout .nkj-calc-ornament {
+  grid-template-columns: minmax(0, 1fr) minmax(225px, .9fr);
+  align-items: stretch;
+  gap: 13px;
+  padding-top: 0;
+}
+.nkj-calc-ornament-layout .nkj-calc-fields {
+  gap: 13px 12px;
+}
+.nkj-calc-ornament-layout .nkj-calc-fields label {
+  font-size: 11px;
+}
+.nkj-calc-ornament-layout .nkj-calc-result-card {
+  min-height: 220px;
+}
+.nkj-calc-ornament-layout .nkj-calc-history {
+  max-height: 570px;
+}
+
+@media (min-width: 1200px) {
+  .nkj-calculator-workspace { padding: 13px 16px 16px; }
+  .nkj-calc-with-history { gap: 18px; }
+  .nkj-calc-history-row { min-height: 43px; }
+}
+@media (max-width: 1100px) {
+  .nkj-calc-with-history,
+  .nkj-calc-ornament-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nkj-calc-history { min-height: 230px; }
+  .nkj-calc-history-list { max-height: 360px; }
+  .nkj-calc-ornament-layout .nkj-calc-ornament {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nkj-calc-ornament-layout .nkj-calc-result-card { min-height: 190px; }
+}
+@media (max-width: 680px) {
+  .nkj-calc-with-history { gap: 12px; padding-top: 10px; }
+  .nkj-calc-manual-layout .nkj-calc-manual { padding: 10px; }
+  .nkj-calc-manual-layout .nkj-calc-display { min-height: 100px; }
+  .nkj-calc-manual-layout .nkj-calc-keypad button { min-height: 48px; }
+  .nkj-calc-history { padding: 11px; }
+  .nkj-calc-history-row { grid-template-columns: minmax(0,1fr) auto 22px; gap: 6px; }
+  .nkj-calc-history-expression { font-size: 10px; }
+  .nkj-calc-history-row strong { font-size: 12px; }
+  .nkj-calc-history-heading h3 { font-size: 15px; }
+}
