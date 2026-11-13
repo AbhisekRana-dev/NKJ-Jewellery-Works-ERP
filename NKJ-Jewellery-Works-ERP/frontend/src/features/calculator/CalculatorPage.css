@@ -1183,3 +1183,200 @@
     align-content: center;
   }
 }
+
+
+/* Full-height reference layout for every calculator tab.
+   The workspace expands to the available owner-page height rather than
+   stopping at the previous fixed 650px cap. */
+@media (min-width: 1101px) {
+  .nkj-calculator-page {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100dvh - 123px);
+    height: calc(100dvh - 123px);
+    padding-top: 3px;
+    padding-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .nkj-calculator-heading {
+    flex: 0 0 auto;
+    min-height: 54px;
+    margin-bottom: 9px;
+    padding-top: 5px;
+    padding-bottom: 6px;
+  }
+
+  .nkj-calculator-layout {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    gap: 9px;
+  }
+
+  .nkj-calculator-options {
+    flex: 0 0 auto;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .nkj-calculator-options button {
+    min-height: 58px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .nkj-calculator-option-icon {
+    width: 39px;
+    height: 39px;
+    flex-basis: 39px;
+  }
+
+  .nkj-calculator-workspace {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    height: auto !important;
+    min-height: 0;
+    max-height: none !important;
+    padding: 13px 16px 15px;
+    overflow: hidden;
+  }
+
+  .nkj-calculator-workspace-title {
+    flex: 0 0 auto;
+    padding-bottom: 9px;
+  }
+
+  .nkj-calculator-panel {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .nkj-calc-with-history {
+    display: grid;
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    padding-top: 10px;
+    overflow: hidden;
+  }
+
+  /* Manual calculator: grow the keypad rows to use the complete panel height. */
+  .nkj-calc-manual-layout .nkj-calc-manual {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    align-content: stretch;
+    justify-content: stretch;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 13px;
+    gap: 9px;
+    overflow: hidden;
+  }
+
+  .nkj-calc-manual-layout .nkj-calc-display {
+    min-height: 100px;
+  }
+
+  .nkj-calc-manual-layout .nkj-calc-keypad {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(5, minmax(42px, 1fr));
+    align-content: stretch;
+    min-height: 0;
+    height: 100%;
+    gap: 7px;
+  }
+
+  .nkj-calc-manual-layout .nkj-calc-keypad button {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .nkj-calc-manual-layout .nkj-calc-history,
+  .nkj-calc-ornament-layout .nkj-calc-history {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .nkj-calc-history-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* New and Old Ornaments: form and live result stretch to the same full-height grid. */
+  .nkj-calc-ornament-layout .nkj-calc-ornament {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(230px, .92fr);
+    align-items: stretch;
+    align-content: stretch;
+    height: 100%;
+    min-height: 0;
+    padding: 10px 0 0;
+    gap: 16px;
+  }
+
+  .nkj-calc-ornament-layout .nkj-calc-fields {
+    align-content: center;
+    align-items: center;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(14px, 2.1vh, 22px) 16px;
+    min-height: 0;
+  }
+
+  .nkj-calc-ornament-layout .nkj-calc-fields input,
+  .nkj-calc-ornament-layout .nkj-calc-fields select {
+    min-height: 47px;
+    font-size: 14px;
+  }
+
+  .nkj-calc-ornament-layout .nkj-calc-result-card {
+    height: 100%;
+    min-height: 0;
+    align-self: stretch;
+    justify-content: space-between;
+  }
+}
+
+/* On smaller screens preserve the natural stacked flow without clipping content. */
+@media (max-width: 1100px) {
+  .nkj-calculator-page {
+    min-height: calc(100dvh - 110px);
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+  .nkj-calculator-layout { flex: initial; min-height: initial; }
+  .nkj-calculator-workspace {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .nkj-calculator-panel { display: block; overflow: visible; }
+  .nkj-calc-with-history {
+    height: auto;
+    min-height: initial;
+    overflow: visible;
+  }
+  .nkj-calc-manual-layout .nkj-calc-manual {
+    height: auto;
+    min-height: initial;
+    display: flex;
+  }
+  .nkj-calc-manual-layout .nkj-calc-keypad {
+    height: auto;
+    grid-template-rows: none;
+  }
+  .nkj-calc-manual-layout .nkj-calc-keypad button { height: auto; min-height: 48px; }
+  .nkj-calc-ornament-layout .nkj-calc-ornament { height: auto; min-height: initial; }
+}
