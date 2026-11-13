@@ -100,3 +100,27 @@
   .nkj-module-staff-filter select { flex: 1; }
   .nkj-payroll-linked-review a { flex: 1 1 100%; justify-content: center; }
 }
+/* Staff Leave review actions */
+.nkj-leave-approve-action {
+  border-color: #cce7d2 !important;
+  background: #f0faf2 !important;
+  color: #217541 !important;
+}
+.nkj-leave-approve-action:hover {
+  border-color: #7eb88c !important;
+  background: #e4f6e8 !important;
+}
+.nkj-leave-reject-action {
+  border-color: #f0d0d0 !important;
+  background: #fff6f5 !important;
+  color: #a42936 !important;
+}
+.nkj-leave-reject-action:hover {
+  border-color: #dfa0a5 !important;
+  background: #ffefee !important;
+}
+.nkj-module-page .nkj-module-table .nkj-status-pill.approved { background:#e8f7eb;color:#1b7b3e; }
+.nkj-module-page .nkj-module-table .nkj-status-pill.pending { background:#fff4d9;color:#93620b; }
+.nkj-module-page .nkj-module-table .nkj-status-pill.rejected,
+.nkj-module-page .nkj-module-table .nkj-status-pill.cancelled,
+.nkj-module-page .nkj-module-table .nkj-status-pill.revoked { background:#fff0f0;color:#a22727; }
