@@ -161,14 +161,26 @@ function ManualCalculator({ active }) {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
 
       const target = event.target;
+      const key = event.key;
+
+      // Escape immediately resets only the active Manual Calculator.
+      // Handle it before the editable-field guard so the shortcut also works
+      // when focus is inside a calculator control.
+      if (key === "Escape") {
+        if (event.target instanceof Element && !event.target.closest(".nkj-calculator-page")) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        clear();
+        return;
+      }
+
       const isEditingField = target instanceof HTMLElement && (
         target.isContentEditable
         || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
         || Boolean(target.closest('[contenteditable="true"], [role="textbox"]'))
       );
       if (isEditingField) return;
-
-      const key = event.key;
       const consume = () => {
         event.preventDefault();
         event.stopPropagation();
@@ -204,8 +216,6 @@ function ManualCalculator({ active }) {
         return;
       }
 
-      // Escape is intentionally not a reset shortcut. Clearing is available
-      // only through an explicit Reset/AC button click with confirmation.
     };
 
     window.addEventListener("keydown", handleCalculatorKeyDown, true);
@@ -246,7 +256,7 @@ function ManualCalculator({ active }) {
       <button type="button" className="nkj-calc-manual-reset" onClick={confirmReset}>
         <RotateCcw size={15} /> Reset Manual Calculator
       </button>
-      <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Use Reset to clear (confirmation required)</p>
+      <p className="nkj-calc-keyboard-hint">Keyboard: 0–9, +, −, *, /, %, brackets · Enter or = to calculate · Backspace to delete · Esc resets immediately</p>
     </section>
   );
 }
@@ -287,6 +297,29 @@ function OrnamentCalculator({ mode, active }) {
     const name = isOld ? "Old Ornaments" : "New Ornaments";
     if (window.confirm(`Reset ${name}? Only its saved draft will be cleared.`)) reset();
   }, [isOld, reset]);
+
+  // Escape is a quick reset for the currently active ornament calculator.
+  // Unlike the Reset button, this keyboard shortcut does not show a popup.
+  useEffect(() => {
+    if (!active) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      const isInCalculator = target instanceof Element
+        ? Boolean(target.closest(".nkj-calculator-page"))
+        : target === document.body || target === document.documentElement;
+      if (!isInCalculator) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      reset();
+    };
+
+    window.addEventListener("keydown", handleEscape, true);
+    return () => window.removeEventListener("keydown", handleEscape, true);
+  }, [active, reset]);
 
   return (
     <section className="nkj-calc-ornament">
@@ -374,7 +407,7 @@ function OrnamentCalculator({ mode, active }) {
                 <small>Stamp + extra charges: ₹ {money(Math.max(0, Number(stamp) || 0) + Math.max(0, Number(extra) || 0))}</small>
                 {!isMakingValid && <small className="nkj-calc-error">Enter a making charge percentage from 0 to 100.</small>}
               </>}
-          <small className="nkj-calc-reset-hint">Click Reset and confirm to clear only this calculator.</small>
+          <small className="nkj-calc-reset-hint">Press Esc to reset immediately, or click Reset for confirmation.</small>
         </div>
         <button type="button" className="nkj-calc-reset" onClick={confirmReset}>
           <RotateCcw size={15} /> Reset
