@@ -50,11 +50,13 @@ const numberInput = (value, setter) => ({
   onWheel: (event) => event.currentTarget.blur(),
 });
 
-function usePersistentHistory(storageKey, limit = 15) {
+function usePersistentHistory(storageKey, limit = 15, legacyStorageKey = null) {
   const [items, setItems] = useState(() => {
     if (typeof window === "undefined") return [];
     try {
-      const saved = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
+      const stored = window.localStorage.getItem(storageKey);
+      const legacy = legacyStorageKey ? window.localStorage.getItem(legacyStorageKey) : null;
+      const saved = JSON.parse(stored ?? legacy ?? "[]");
       return Array.isArray(saved) ? saved.slice(0, limit) : [];
     } catch {
       return [];
@@ -254,7 +256,7 @@ function ManualCalculator({ active }) {
       // Handle it before the editable-field guard so the shortcut also works
       // when focus is inside a calculator control.
       if (key === "Escape") {
-        if (event.target instanceof Element && !event.target.closest(".nkj-calculator-page--manual")) return;
+        if (!(event.target instanceof Element) || !event.target.closest(".nkj-calculator-page--manual")) return;
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
@@ -606,9 +608,9 @@ export default function CalculatorPage() {
   const [mode, setMode] = useState("new");
   // Keep each Ornament tab's history separate as well as its persisted draft.
   const [newOrnamentHistory, addNewOrnamentHistory, clearNewOrnamentHistory] =
-    usePersistentHistory("nkj_new_ornament_calculation_history", 15);
+    usePersistentHistory("nkj_new_ornament_calculation_history", 15, "nkj_ornament_calculation_history");
   const [oldOrnamentHistory, addOldOrnamentHistory, clearOldOrnamentHistory] =
-    usePersistentHistory("nkj_old_ornament_calculation_history", 15);
+    usePersistentHistory("nkj_old_ornament_calculation_history", 15, "nkj_ornament_calculation_history");
 
   const changeMode = (nextMode) => {
     if (nextMode === mode) return;
