@@ -737,7 +737,7 @@ export default function JewelleryCatalogAdminPage() {
                       {design.thumbnailUrl ? <img src={assetUrl(design.thumbnailUrl)} alt="" loading="lazy" /> : <span className="nkj-catalog-placeholder"><ImagePlus size={17} /></span>}
                       <span><b>{design.designName}</b><small>{design.styleLabel}</small></span>
                     </div></td>
-                    <td><code title={design.designId || design.designCode}>{design.designId || design.designCode}</code><small className="nkj-catalog-subcategory">Legacy: {design.designCode}</small></td>
+                    <td><code className="nkj-catalog-design-id" title={design.designId || design.designCode}>{design.designId || design.designCode}</code><small className="nkj-catalog-subcategory">Legacy: {design.designCode}</small></td>
                     <td>{design.metalType}<small className="nkj-catalog-subcategory">{design.subcategoryName}</small>
                       <small className="nkj-catalog-subcategory">{[design.purity, design.weightGrams != null ? Number(design.weightGrams).toLocaleString("en-IN") + " g" : "", design.priceInr != null ? "₹" + Number(design.priceInr).toLocaleString("en-IN") : ""].filter(Boolean).join(" · ") || "Specs not set"}</small>
                     </td>
