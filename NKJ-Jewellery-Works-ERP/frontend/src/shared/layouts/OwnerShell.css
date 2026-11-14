@@ -3625,15 +3625,15 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
 }
 
 
-/* Prevent the full shop name from being clipped in the desktop owner navbar. */
+/* Keep the shop name readable and make the central gold ornament clearly visible. */
 @media screen and (min-width: 1451px) and (max-width: 1750px) {
   .nkj-owner-topbar.nkj-reference-navbar {
-    grid-template-columns: minmax(390px, 36%) minmax(36px, 3%) minmax(0, 61%) !important;
+    grid-template-columns: minmax(420px, 32%) minmax(110px, 10%) minmax(0, 58%) !important;
   }
 
   body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj-reference-navbar,
   body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
-    grid-template-columns: minmax(390px, 36%) minmax(36px, 3%) minmax(0, 61%) !important;
+    grid-template-columns: minmax(420px, 32%) minmax(110px, 10%) minmax(0, 58%) !important;
   }
 
   .nkj-owner-topbar.nkj-reference-navbar > .brand {
@@ -3665,5 +3665,35 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     overflow: visible !important;
     white-space: nowrap !important;
     font-size: 13px !important;
+  }
+
+  /* Use more of the middle grid track for the horizontal gold flourish. */
+  .nkj-owner-topbar.nkj-reference-navbar::before {
+    width: 100% !important;
+    height: 28px !important;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 28' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23e3b94e' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 14H91M149 14H240'/%3E%3Cpath d='M120 3L131 14L120 25L109 14Z' fill='%23f2d16b' stroke='%23ffe39a'/%3E%3Cpath d='M99 7L106 14L99 21L92 14ZM141 7L148 14L141 21L134 14Z' fill='%23e5bd50'/%3E%3Cpath d='M83 10L87 14L83 18L79 14ZM157 10L161 14L157 18L153 14Z' fill='%23f4d985'/%3E%3C/g%3E%3C/svg%3E") center / 100% 28px no-repeat !important;
+    opacity: 1 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    gap: 5px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    gap: 6px !important;
+    padding-inline: 7px !important;
+    font-size: 11.5px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+    width: 17px !important;
+    height: 17px !important;
+    flex-basis: 17px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    gap: 6px !important;
+    padding-inline: 9px !important;
+    font-size: 11.5px !important;
   }
 }
