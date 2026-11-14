@@ -2468,3 +2468,159 @@ body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-
   background-size: 100% 100% !important;
   opacity: 1 !important;
 }
+
+
+/* Navbar overflow and sidebar-state correction.
+   The owner header must occupy only the space available beside the live sidebar.
+   When the sidebar collapses/expands, :has() updates the header width immediately. */
+.nkj-owner-topbar.nkj-reference-navbar {
+  box-sizing: border-box !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4200 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, .88fr) minmax(0, 1.72fr) !important;
+  align-items: center !important;
+  gap: clamp(12px, 1.25vw, 22px) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 88px !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 9px clamp(16px, 2vw, 30px) !important;
+  overflow: visible !important;
+}
+
+body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
+  width: calc(100% - var(--nkj-owner-expanded-width, 258px)) !important;
+  max-width: calc(100% - var(--nkj-owner-expanded-width, 258px)) !important;
+  margin-left: var(--nkj-owner-expanded-width, 258px) !important;
+  grid-template-columns: minmax(0, .78fr) minmax(0, 1.48fr) !important;
+  gap: 10px !important;
+  padding-inline: clamp(12px, 1.35vw, 22px) !important;
+}
+
+body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj-reference-navbar {
+  width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
+  max-width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
+  margin-left: var(--nkj-owner-collapsed-width, 82px) !important;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.7fr) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > .brand {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  border-right: 1px solid rgba(224,179,67,.62) !important;
+  padding: 0 clamp(10px, 1.2vw, 20px) 0 0 !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: clamp(18px, 1.75vw, 29px) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav {
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  gap: clamp(5px, .65vw, 11px) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a {
+  flex: 0 1 auto !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+  padding-inline: clamp(9px, .9vw, 15px) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+  padding-left: clamp(8px, .85vw, 14px) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* The decorative frame stays behind the content and never clips the controls. */
+.nkj-owner-topbar.nkj-reference-navbar::after {
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+@media (max-width: 1450px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 10px 16px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    min-height: 48px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(224,179,67,.5) !important;
+    padding: 0 0 8px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+    row-gap: 7px !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar,
+  body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    padding: 10px 12px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a,
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 40px !important;
+    height: auto !important;
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    font-size: clamp(18px, 4vw, 23px) !important;
+  }
+}
