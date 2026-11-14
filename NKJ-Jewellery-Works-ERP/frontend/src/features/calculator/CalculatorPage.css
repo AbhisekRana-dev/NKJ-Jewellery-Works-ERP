@@ -9575,3 +9575,31 @@ main.container:has(.nkj-calculator-page) {
     font-size: clamp(31px, 2.7vw, 42px) !important;
   }
 }
+
+
+/* ============================================================
+   OWNER SIDEBAR OFFSET — CALCULATOR PAGE
+   Calculator's desktop full-width rule above was overriding the
+   shared owner container and allowing the fixed sidebar to cover
+   the first column. Keep the same usable content area as every
+   other owner route, for both expanded and collapsed sidebars.
+============================================================ */
+@media (min-width: 1101px) {
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container:has(.nkj-calculator-page) {
+    box-sizing: border-box !important;
+    width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
+    max-width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
+    min-width: 0 !important;
+    margin: 0 0 0 var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+  }
+
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container:has(.nkj-calculator-page) > .nkj-calculator-page {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
