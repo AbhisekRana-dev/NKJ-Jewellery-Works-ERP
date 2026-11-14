@@ -594,7 +594,7 @@ export default function MobileDesignUploadPage() {
               <Camera size={20} /><b>Take Photo</b><small>Use rear camera</small>
             </button>
           </div>
-          <div className="nkj-mobile-qr-scan-tools">
+          {!updatingExistingDesign && <div className="nkj-mobile-qr-scan-tools">
             <button type="button" onClick={() => qrImageRef.current?.click()} disabled={qrScanning || saving}>
               {qrScanning ? <LoaderCircle className="spin" size={18} /> : <ScanLine size={18} />}
               <span><b>{qrScanning ? "Reading QR image…" : "Scan QR from Image"}</b><small>Select a JPG, PNG or WebP image containing a QR code</small></span>
@@ -602,7 +602,7 @@ export default function MobileDesignUploadPage() {
             <input ref={qrImageRef} className="nkj-mobile-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" onChange={(event) => { scanQrImage(event.target.files?.[0]); event.target.value = ""; }} />
             {qrScanError && <p className="nkj-mobile-qr-scan-error" role="alert">{qrScanError}</p>}
             {qrScanResult && <div className="nkj-mobile-qr-scan-result" role="status"><b><QrCode size={14} /> Decoded QR information</b><pre>{qrScanResult}</pre></div>}
-          </div>
+          </div>}
           <input ref={galleryRef} className="nkj-mobile-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => { addPhotos(event.target.files); event.target.value = ""; }} />
           <input ref={cameraFallbackRef} className="nkj-mobile-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" capture="environment" onChange={(event) => { addPhotos(event.target.files); event.target.value = ""; }} />
 
