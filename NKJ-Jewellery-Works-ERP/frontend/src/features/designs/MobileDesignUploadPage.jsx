@@ -67,6 +67,8 @@ export default function MobileDesignUploadPage() {
   const [categoryId, setCategoryId] = useState("");
   const [designName, setDesignName] = useState("");
   const [description, setDescription] = useState("");
+  const [styleLabel, setStyleLabel] = useState("");
+  const [materialLabel, setMaterialLabel] = useState("");
   const [purity, setPurity] = useState("");
   const [weightGrams, setWeightGrams] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -317,6 +319,8 @@ export default function MobileDesignUploadPage() {
       const fields = parseQrFields(decodedText);
       const name = qrValue(fields, "designName", "design_name", "name", "productName", "product_name");
       const details = qrValue(fields, "description", "details", "designDetails");
+      const style = qrValue(fields, "style", "styleLabel", "designStyle");
+      const material = qrValue(fields, "material", "materialLabel", "metalMaterial");
       const purityValue = qrValue(fields, "purity", "fineness", "karat");
       const weight = qrValue(fields, "weightGrams", "weight_grams", "weight", "grossWeight");
       const category = qrValue(fields, "subcategory", "jewelleryType", "jewelryType", "category", "subcategoryName");
@@ -325,6 +329,8 @@ export default function MobileDesignUploadPage() {
       if (!updatingExistingDesign) {
         if (name) setDesignName(name.slice(0, 160));
         if (details) setDescription(details.slice(0, 5000));
+        if (style) setStyleLabel(style.slice(0, 80));
+        if (material) setMaterialLabel(material.slice(0, 120));
         else if (!name && !purityValue && !weight && !category && decodedText.length <= 5000) {
           setDescription(decodedText);
         }
@@ -343,7 +349,7 @@ export default function MobileDesignUploadPage() {
           }
         }
       }
-      if (!name && !details && !purityValue && !weight && !category) {
+      if (!name && !details && !style && !material && !purityValue && !weight && !category) {
         setQrScanError("QR code decoded, but it does not contain recognised design fields. The decoded text is shown below.");
       }
     } catch (err) {
@@ -468,7 +474,8 @@ export default function MobileDesignUploadPage() {
       data.append("categoryId", categoryId);
       data.append("designName", designName.trim());
       data.append("description", description);
-      data.append("styleLabel", "Shop photograph");
+      data.append("styleLabel", styleLabel || "Shop photograph");
+      data.append("materialLabel", materialLabel);
       data.append("keywords", designName.trim());
       data.append("purity", purity);
       data.append("weightGrams", weightGrams);
@@ -661,6 +668,14 @@ export default function MobileDesignUploadPage() {
           <label>Description
             <textarea rows={3} maxLength={5000} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the jewellery design (optional)" />
           </label>
+          <div className="nkj-mobile-field-row">
+            <label>Style (optional)
+              <input maxLength={80} value={styleLabel} onChange={(event) => setStyleLabel(event.target.value)} placeholder="Traditional / Modern" />
+            </label>
+            <label>Material (optional)
+              <input maxLength={120} value={materialLabel} onChange={(event) => setMaterialLabel(event.target.value)} placeholder="Gold / Silver / Diamond" />
+            </label>
+          </div>
           <div className="nkj-mobile-field-row">
             <label>Purity (optional)
               <input maxLength={40} value={purity} onChange={(event) => setPurity(event.target.value)} placeholder="22K / 18K / 925" />
