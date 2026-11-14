@@ -243,28 +243,44 @@ export function Nav({ active = "home" }) {
     );
   }
 
+  if (calculatorOwnerWorkspace) {
+    return (
+      <header className="topbar nkj-owner-topbar nkj-reference-navbar">
+        <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
+          <div className="logo">NKJ</div>
+          <div className="nkj-navbar-brand-copy">
+            <b>Nandikishor Jewellery Works</b>
+            <small><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</small>
+          </div>
+        </Link>
+        <nav aria-label="Main navigation">
+          <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
+          <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
+          <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+          <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
+          <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b></span>
+        </nav>
+      </header>
+    );
+  }
+
   return (
-    <header className={`topbar${calculatorOwnerWorkspace ? " nkj-owner-topbar nkj-reference-navbar" : ""}`}>
-      <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
+    <header className="topbar">
+      <Link to="/" className="brand">
         <div className="logo">NKJ</div>
-        <div className="nkj-navbar-brand-copy">
-          <b>Nandikishor Jewellery Works</b>
-          <small><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</small>
-        </div>
+        <div><b>Nandikishor Jewellery Works</b><small>Sasra, Gopiballavpur, Jhargram</small></div>
       </Link>
       <nav aria-label="Main navigation">
-        <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
-        <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
-        <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
-        <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
-        {calculatorOwnerWorkspace
-          ? <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b></span>
-          : isAdmin ? <>
-            <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
-            <Link className={active === "dashboard" ? "active" : ""} to="/dashboard"><LayoutDashboard />Dashboard</Link>
-            <Link className={active === "profile" ? "active" : ""} to="/profile"><User />Profile</Link>
-            <button className="navbtn" onClick={logout}><LogOut />Logout</button>
-          </> : <Link className={active === "login" ? "active" : ""} to="/login"><LogIn />Owner Login</Link>}
+        <Link className={active === "home" ? "active" : ""} to="/"><HomeIcon />Home</Link>
+        <Link className={active === "designs" ? "active" : ""} to="/designs"><Gem />Jewellery Designs</Link>
+        <Link className={active === "calculator" ? "active" : ""} to="/calculator"><CalculatorIcon />Calculator</Link>
+        <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
+        {isAdmin ? <>
+          <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
+          <Link className={active === "dashboard" ? "active" : ""} to="/dashboard"><LayoutDashboard />Dashboard</Link>
+          <Link className={active === "profile" ? "active" : ""} to="/profile"><User />Profile</Link>
+          <button className="navbtn" onClick={logout}><LogOut />Logout</button>
+        </> : <Link className={active === "login" ? "active" : ""} to="/login"><LogIn />Owner Login</Link>}
       </nav>
     </header>
   );
