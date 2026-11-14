@@ -618,6 +618,7 @@ public class JewelleryDesignController {
             @RequestParam(value = "designName", required = false) String designName,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "styleLabel", required = false) String styleLabel,
+            @RequestParam(value = "materialLabel", required = false) String materialLabel,
             @RequestParam(value = "keywords", required = false) String keywords,
             @RequestParam(value = "purity", required = false) String purity,
             @RequestParam(value = "weightGrams", required = false) String weightGrams,
@@ -687,6 +688,7 @@ public class JewelleryDesignController {
         body.put("designName", designName);
         body.put("description", description == null ? "" : description);
         body.put("styleLabel", styleLabel == null ? "Shop photograph" : styleLabel);
+        body.put("materialLabel", materialLabel == null ? "" : materialLabel);
         body.put("keywords", keywords == null ? "" : keywords);
         body.put("purity", purity == null ? "" : purity);
         body.put("weightGrams", weightGrams == null ? "" : weightGrams);
