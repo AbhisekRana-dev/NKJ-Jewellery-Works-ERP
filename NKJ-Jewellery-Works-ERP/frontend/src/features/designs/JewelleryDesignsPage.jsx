@@ -668,12 +668,6 @@ export default function JewelleryDesignsPage() {
               <Link to="/design-catalog" state={{ openNewDesign: true }} className="nkj-designs-owner-add">
                 <ImagePlus size={17} /> Add New Design
               </Link>
-              <Link to="/design-catalog" state={{ openQr: true }} className="nkj-designs-owner-qr">
-                <QrCode size={17} /> QR Code Upload
-              </Link>
-              <button type="button" onClick={() => refreshCatalogue()} className="nkj-designs-owner-refresh">
-                <LoaderCircle size={16} /> Refresh
-              </button>
             </div>
           )}
         </section>
