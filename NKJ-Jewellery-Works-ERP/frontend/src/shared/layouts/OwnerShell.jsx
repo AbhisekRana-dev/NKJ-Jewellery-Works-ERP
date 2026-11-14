@@ -223,24 +223,21 @@ export function Nav({ active = "home" }) {
           </div>
         </aside>
 
-        <header className="nkj-owner-topbar">
-          <div className="nkj-owner-top-title">
-            <span className="eyebrow">OWNER WORKSPACE</span>
-            <b>Nandikishor Jewellery Works</b>
-          </div>
-          <div className="nkj-owner-top-actions">
-            <Link to="/" className="nkj-calculator-link nkj-home-link" aria-label="Open home">
-              <HomeIcon size={17} /> <span>Home</span>
-            </Link>
-            <Link to="/designs" className="nkj-calculator-link nkj-designs-link" aria-label="Open jewellery designs">
-              <Gem size={17} /> <span>Jewellery Designs</span>
-            </Link>
-            <Link to="/calculator" className="nkj-calculator-link" aria-label="Open calculator">
-              <CalculatorIcon size={17} /> <span>Calculator</span>
-            </Link>
-            <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
-            <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
-          </div>
+        <header className="topbar nkj-owner-topbar nkj-reference-navbar">
+          <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
+            <div className="logo">NKJ</div>
+            <div className="nkj-navbar-brand-copy">
+              <b>Nandikishor Jewellery Works</b>
+              <small><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</small>
+            </div>
+          </Link>
+          <nav aria-label="Main navigation">
+            <Link className="nkj-navbar-link" to="/"><HomeIcon /> <span>Home</span></Link>
+            <Link className="nkj-navbar-link" to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
+            <Link className="nkj-navbar-link" to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+            <Link className="nkj-navbar-link nkj-navbar-invoice" to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
+            <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b></span>
+          </nav>
         </header>
       </>
     );
