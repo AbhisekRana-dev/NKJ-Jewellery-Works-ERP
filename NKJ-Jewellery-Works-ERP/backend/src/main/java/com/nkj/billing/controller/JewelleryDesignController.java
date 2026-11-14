@@ -25,6 +25,7 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.DecodeHintType;
 import com.google.zxing.MultiFormatReader;
+import com.google.zxing.LuminanceSource;
 import com.google.zxing.NotFoundException;
 import com.google.zxing.Result;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
@@ -442,7 +443,7 @@ public class JewelleryDesignController {
             BufferedImage candidate = rotation == 0 ? source : rotateForQr(source, rotation);
             for (boolean inverted : new boolean[] {false, true}) {
                 try {
-                    var luminance = new BufferedImageLuminanceSource(candidate);
+                    LuminanceSource luminance = new BufferedImageLuminanceSource(candidate);
                     if (inverted) luminance = luminance.invert();
                     BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(luminance));
                     Result result = new MultiFormatReader().decode(bitmap, hints);
