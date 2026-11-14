@@ -936,10 +936,6 @@
     flex-basis: 34px !important;
     width: 34px !important;
   }
-
-  .nkj-designs-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
 }
 
 /* Preserve deliberate local table scrolling for wide datasets. */
@@ -950,5 +946,98 @@
     max-width: 100%;
     overflow-x: auto;
     overscroll-behavior-x: contain;
+  }
+}
+
+
+/* Jewellery Design Catalog admin — compact data-management workspace. */
+@media screen and (min-width: 1200px) {
+  .nkj-catalog-admin {
+    max-width: 100% !important;
+  }
+
+  .nkj-catalog-admin-heading {
+    gap: 12px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .nkj-catalog-admin-heading h1 {
+    font-size: 24px !important;
+  }
+
+  .nkj-catalog-primary,
+  .nkj-catalog-qr-button,
+  .nkj-catalog-bulk-fields > button {
+    min-height: 36px !important;
+    padding: 7px 11px !important;
+  }
+
+  .nkj-catalog-bulk {
+    margin-bottom: 12px !important;
+    padding: 12px !important;
+  }
+
+  .nkj-catalog-bulk-heading {
+    margin-bottom: 9px !important;
+  }
+
+  .nkj-catalog-bulk-fields,
+  .nkj-catalog-filters {
+    gap: 8px !important;
+  }
+
+  .nkj-catalog-filters {
+    margin-bottom: 10px !important;
+    padding: 10px !important;
+  }
+
+  .nkj-catalog-bulk-fields select,
+  .nkj-catalog-filters select,
+  .nkj-catalog-search {
+    min-height: 34px !important;
+  }
+
+  .nkj-catalog-table th {
+    padding: 9px 10px !important;
+  }
+
+  .nkj-catalog-table td {
+    padding: 7px 9px !important;
+  }
+
+  .nkj-catalog-design-cell {
+    gap: 7px !important;
+  }
+
+  .nkj-catalog-design-cell img,
+  .nkj-catalog-placeholder {
+    width: 40px !important;
+    height: 40px !important;
+    flex-basis: 40px !important;
+  }
+
+  .nkj-catalog-modal {
+    max-height: 88dvh !important;
+    padding: 16px !important;
+  }
+
+  .nkj-catalog-modal > header {
+    margin-bottom: 12px !important;
+  }
+
+  .nkj-catalog-form-grid {
+    gap: 10px !important;
+  }
+
+  .nkj-catalog-form-grid input:not([type="file"]),
+  .nkj-catalog-form-grid select,
+  .nkj-catalog-form-grid textarea {
+    min-height: 35px !important;
+    padding: 7px 9px !important;
+  }
+
+  .nkj-catalog-modal > footer {
+    margin-top: 14px !important;
+    padding-top: 11px !important;
   }
 }
