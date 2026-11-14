@@ -246,8 +246,7 @@ export function Nav({ active = "home" }) {
   if (calculatorOwnerWorkspace) {
     return (
       <header className="topbar nkj-owner-topbar nkj-reference-navbar">
-        <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
-          <div className="logo">NKJ</div>
+        <Link to="/" className="brand nkj-navbar-brand-no-logo" aria-label="Nandikishor Jewellery Works home">
           <div className="nkj-navbar-brand-copy">
             <b>Nandikishor Jewellery Works</b>
             <small><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</small>
