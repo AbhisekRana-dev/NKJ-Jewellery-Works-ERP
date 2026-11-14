@@ -1523,3 +1523,312 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.top
   .topbar nav button {padding-inline: 8px !important; font-size: 10px !important;}
   .topbar nav .nkj-navbar-user {font-size: 10px;}
 }
+
+
+
+/* =========================================================
+   OWNER NAVBAR ALIGNMENT REPAIR
+   Dedicated grid prevents the brand and first navigation link
+   from overlapping when older generic .topbar rules are loaded.
+========================================================= */
+.nkj-owner-topbar.nkj-reference-navbar {
+  box-sizing: border-box !important;
+  position: sticky !important;
+  inset: 0 auto auto 0 !important;
+  z-index: 4300 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 1.55fr) !important;
+  align-items: center !important;
+  justify-content: stretch !important;
+  column-gap: clamp(16px, 1.6vw, 30px) !important;
+  row-gap: 0 !important;
+  width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
+  min-width: 0 !important;
+  min-height: 88px !important;
+  height: 88px !important;
+  margin: 0 0 0 var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
+  padding: 9px clamp(18px, 2vw, 34px) !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(ellipse at 0% 50%, rgba(228,177,70,.10), transparent 24%),
+    radial-gradient(ellipse at 100% 50%, rgba(228,177,70,.10), transparent 24%),
+    linear-gradient(105deg, #70001f 0%, #4b0018 48%, #790021 100%) !important;
+  border-bottom: 3px solid #d5a33e !important;
+  box-shadow: 0 4px 18px rgba(45,0,15,.22) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > .brand {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex: initial !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: clamp(11px, 1vw, 17px) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  text-decoration: none !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > .brand .logo {
+  position: relative !important;
+  display: grid !important;
+  flex: 0 0 clamp(54px, 4.1vw, 68px) !important;
+  place-items: center !important;
+  width: clamp(54px, 4.1vw, 68px) !important;
+  height: clamp(54px, 4.1vw, 68px) !important;
+  margin: 0 !important;
+  border: 2px solid #efc65c !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle, #700b2a 0%, #420014 100%) !important;
+  box-shadow: 0 0 0 3px rgba(240,195,83,.10), inset 0 0 12px rgba(255,221,130,.10) !important;
+  color: #ffe08a !important;
+  font: 800 clamp(19px, 1.45vw, 25px)/1 Georgia, "Times New Roman", serif !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > .brand .logo::before {
+  content: "♛";
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f4cd62;
+  font: 700 17px Georgia, serif;
+  text-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  gap: 5px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: #fff8ed !important;
+  font: 800 clamp(19px, 1.62vw, 28px)/1.1 Georgia, "Times New Roman", serif !important;
+  letter-spacing: .05px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: #f5d47e !important;
+  font: 750 clamp(10px, .85vw, 13px)/1.2 Arial, Helvetica, sans-serif !important;
+  letter-spacing: .15px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex: initial !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+  gap: clamp(7px, .72vw, 13px) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  scrollbar-width: none !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  flex: 0 1 auto !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  min-height: 54px !important;
+  height: 54px !important;
+  margin: 0 !important;
+  padding: 9px clamp(10px, 1.05vw, 17px) !important;
+  border: 1.5px solid rgba(220,174,66,.78) !important;
+  border-radius: 19px !important;
+  background: rgba(47,0,15,.10) !important;
+  color: #fff5e7 !important;
+  font: 700 clamp(11px, .95vw, 16px)/1.1 Georgia, "Times New Roman", serif !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  transition: background .18s ease, color .18s ease, border-color .18s ease !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a:nth-child(2) {
+  padding-inline: clamp(12px, 1.2vw, 19px) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+  display: block !important;
+  flex: 0 0 21px !important;
+  width: 21px !important;
+  height: 21px !important;
+  color: #f3cb59 !important;
+  stroke-width: 2.2 !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a.active,
+.nkj-owner-topbar.nkj-reference-navbar > nav > a:hover {
+  border-color: #ffe18b !important;
+  background: linear-gradient(115deg, #fff0b8 0%, #f2c95e 100%) !important;
+  color: #65091f !important;
+  box-shadow: 0 3px 10px rgba(18,0,7,.18), inset 0 1px 0 rgba(255,255,255,.65) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a.active svg,
+.nkj-owner-topbar.nkj-reference-navbar > nav > a:hover svg {
+  color: #65091f !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  min-width: max-content !important;
+  min-height: 44px !important;
+  margin: 0 0 0 1px !important;
+  padding: 0 0 0 clamp(10px, .85vw, 15px) !important;
+  border-left: 1px solid rgba(240,199,97,.65) !important;
+  color: #fff6e9 !important;
+  font: 700 clamp(11px, .85vw, 14px)/1 Georgia, "Times New Roman", serif !important;
+  white-space: nowrap !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user svg {
+  width: 19px !important;
+  height: 19px !important;
+  color: #f4cf68 !important;
+}
+
+/* At narrower desktop widths, reduce branding first; keep every link visible. */
+@media (max-width: 1450px) and (min-width: 901px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(0, .82fr) minmax(0, 1.45fr) !important;
+    column-gap: 12px !important;
+    padding-inline: 13px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    font-size: clamp(16px, 1.45vw, 21px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+    font-size: 9px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    gap: 5px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    min-height: 46px !important;
+    height: 46px !important;
+    gap: 6px !important;
+    padding-inline: 8px !important;
+    font-size: 11px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+    width: 17px !important;
+    height: 17px !important;
+    flex-basis: 17px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    font-size: 11px !important;
+  }
+}
+
+/* Mobile/tablet: stack brand above a horizontally scrollable nav row. */
+@media (max-width: 900px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+    gap: 9px !important;
+    width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 10px 12px 9px !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand .logo {
+    flex-basis: 43px !important;
+    width: 43px !important;
+    height: 43px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    font-size: 17px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 2px !important;
+    scrollbar-width: thin !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    flex: 0 0 auto !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 6px 10px !important;
+    border-radius: 13px !important;
+    font-size: 10px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+    width: 15px !important;
+    height: 15px !important;
+    flex-basis: 15px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    min-height: 34px !important;
+    font-size: 10px !important;
+  }
+}
