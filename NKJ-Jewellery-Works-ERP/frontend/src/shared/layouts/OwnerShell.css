@@ -1918,3 +1918,16 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.top
     min-height: 36px !important;
   }
 }
+
+
+/* Calculator-only: hide the legacy NKJ mark even if the shared owner header renders it. */
+body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > .brand .logo,
+body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > .brand::before,
+body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > .brand::after {
+  display: none !important;
+  content: none !important;
+}
+
+body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > .brand {
+  gap: 0 !important;
+}
