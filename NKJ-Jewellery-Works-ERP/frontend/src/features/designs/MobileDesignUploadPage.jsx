@@ -361,7 +361,7 @@ export default function MobileDesignUploadPage() {
     incoming.slice(0, remaining).forEach((file) => {
       const mime = String(file.type || "").toLowerCase();
       const extensionOk = /\.(jpe?g|png|webp)$/i.test(file.name || "");
-      const mimeOk = ["image/jpeg", "image/png", "image/webp"].includes(mime);
+      const mimeOk = ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp"].includes(mime);
       if (!(mimeOk || extensionOk)) rejected.push(`${file.name}: unsupported format`);
       else if (file.size > MAX_FILE_BYTES) rejected.push(`${file.name}: larger than 10 MB`);
       else {
@@ -580,7 +580,7 @@ export default function MobileDesignUploadPage() {
             <button type="button" className="is-primary" onClick={() => galleryRef.current?.click()}>
               <ImagePlus size={20} /><b>Upload from Gallery</b><small>Select multiple photos</small>
             </button>
-            <button type="button" onClick={() => { setCameraError(""); setCameraOpen(true); }}>
+            <button type="button" onClick={() => { setCameraError(""); if (window.isSecureContext && navigator.mediaDevices?.getUserMedia) setCameraOpen(true); else cameraFallbackRef.current?.click(); }}>
               <Camera size={20} /><b>Take Photo</b><small>Use rear camera</small>
             </button>
           </div>
