@@ -3036,3 +3036,24 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     margin-left: 4px !important;
   }
 }
+
+
+/* Wider breathing room between the shop title and the first navigation pill. */
+@media (min-width: 1451px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    column-gap: clamp(28px, 2.8vw, 48px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    margin-left: clamp(14px, 1.6vw, 28px) !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(270px, 25%) minmax(90px, 1fr) max-content !important;
+    column-gap: clamp(22px, 2.2vw, 38px) !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(300px, 26%) minmax(150px, 1fr) max-content !important;
+  }
+}
