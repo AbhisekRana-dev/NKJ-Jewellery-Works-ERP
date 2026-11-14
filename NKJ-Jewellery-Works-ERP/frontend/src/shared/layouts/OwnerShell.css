@@ -3328,3 +3328,65 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     background: rgba(229, 186, 81, .72) !important;
   }
 }
+
+
+/* ==========================================================
+   NAVBAR FIX — KEEP THE COMPLETE SHOP NAME VISIBLE
+   Matches the supplied reference: wider brand area, centred
+   gold divider ornament and a compact single-row navigation.
+========================================================== */
+@media (min-width: 1451px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(420px, 30%) minmax(230px, 19%) minmax(0, 51%) !important;
+    overflow: visible !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    min-width: 0 !important;
+    overflow: visible !important;
+    padding-right: 14px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy {
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    font-size: clamp(24px, 1.5vw, 28px) !important;
+    letter-spacing: -.25px !important;
+    white-space: nowrap !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+    overflow: visible !important;
+    white-space: nowrap !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    gap: clamp(7px, .65vw, 12px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    flex: 0 0 auto !important;
+    padding-inline: clamp(10px, .78vw, 15px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    flex: 0 0 auto !important;
+    padding-inline: 11px !important;
+  }
+}
+
+@media (min-width: 1451px) and (max-width: 1750px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(390px, 29%) minmax(190px, 17%) minmax(0, 54%) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    font-size: 24px !important;
+  }
+}
