@@ -3623,31 +3623,3 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     flex-basis: 18px !important;
   }
 }
-
-
-/* ============================================================
-   FIXED OWNER NAVBAR — DESKTOP VIEWPORT
-   Keep the owner navigation visible during document scrolling.
-   Its measured desktop height is reserved inside app-content so
-   the first page section is never hidden under the fixed bar.
-   Sidebar keeps its own independent fixed positioning.
-============================================================ */
-@media screen and (min-width: 1451px) {
-  body.nkj-owner-layout .app-content {
-    padding-top: 89.6px !important;
-  }
-
-  body.nkj-owner-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar {
-    position: fixed !important;
-    top: 0 !important;
-    left: var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
-    right: 0 !important;
-    width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
-    max-width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
-    height: 89.6px !important;
-    min-height: 89.6px !important;
-    max-height: 89.6px !important;
-    margin: 0 !important;
-    z-index: 5000 !important;
-  }
-}
