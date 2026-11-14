@@ -2955,3 +2955,68 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     font-size: 10px !important;
   }
 }
+
+
+/* Reduce the restored ornamental navbar height by 20% without changing its look. */
+@media (min-width: 1451px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    height: 89.6px !important;
+    min-height: 89.6px !important;
+    max-height: 89.6px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    height: 60.8px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar::before {
+    height: 22.4px !important;
+    background-size: 100% 22.4px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a,
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    height: 43.2px !important;
+    min-height: 43.2px !important;
+  }
+}
+
+@media (max-width: 1450px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    row-gap: 6.4px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8.8px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    min-height: 38.4px !important;
+    padding-bottom: 6.4px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    gap: 5.6px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a,
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    height: 35.2px !important;
+    min-height: 35.2px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a,
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+}
