@@ -21,6 +21,8 @@ import java.math.BigDecimal;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.DecodeHintType;
@@ -42,6 +44,7 @@ import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -412,14 +415,32 @@ public class JewelleryDesignController {
             throw new IllegalArgumentException("This mobile upload link has expired, was revoked, or has already been used.");
         }
 
-        BufferedImage image = ImageIO.read(file.getInputStream());
+        BufferedImage image;
+        try (var input = file.getInputStream();
+             ImageInputStream imageInput = ImageIO.createImageInputStream(input)) {
+            if (imageInput == null) {
+                throw new IllegalArgumentException("The selected file is not a readable JPG, PNG or WebP image.");
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInput);
+            if (!readers.hasNext()) {
+                throw new IllegalArgumentException("The selected file is not a readable JPG, PNG or WebP image.");
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(imageInput, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if (width < 1 || height < 1 || width > 8000 || height > 8000
+                        || (long) width * height > 24_000_000L) {
+                    throw new IllegalArgumentException("QR image dimensions must not exceed 8000 × 8000 pixels or 24 megapixels.");
+                }
+                image = reader.read(0);
+            } finally {
+                reader.dispose();
+            }
+        }
         if (image == null) {
             throw new IllegalArgumentException("The selected file is not a readable JPG, PNG or WebP image.");
-        }
-        if (image.getWidth() < 1 || image.getHeight() < 1
-                || image.getWidth() > 8000 || image.getHeight() > 8000
-                || (long) image.getWidth() * image.getHeight() > 24_000_000L) {
-            throw new IllegalArgumentException("QR image dimensions must not exceed 8000 × 8000 pixels or 24 megapixels.");
         }
 
         String decodedText = decodeQrText(image);
