@@ -332,11 +332,11 @@ export default function MobileDesignUploadPage() {
         if (details) setDescription(details.slice(0, 5000));
         if (style) setStyleLabel(style.slice(0, 80));
         if (material) setMaterialLabel(material.slice(0, 120));
-        else if (!name && !purityValue && !weight && !category && decodedText.length <= 5000) {
+        if (!name && !details && !style && !material && !purityValue && !weight && !category && !categoryIdFromQr && decodedText.length <= 5000) {
           setDescription(decodedText);
         }
         if (purityValue) setPurity(purityValue.slice(0, 40));
-        const parsedWeight = Number(String(weight).replace(/,/g, "").match(/\\d+(?:\\.\\d+)?/)?.[0]);
+        const parsedWeight = Number(String(weight).replace(/,/g, "").match(/\d+(?:\.\d+)?/)?.[0]);
         if (weight && Number.isFinite(parsedWeight) && parsedWeight >= 0) setWeightGrams(String(parsedWeight));
         if (metalValue && METALS.includes(metalValue)) setMetal(metalValue);
         if (category || categoryIdFromQr) {
@@ -352,7 +352,7 @@ export default function MobileDesignUploadPage() {
           }
         }
       }
-      if (!name && !details && !style && !material && !purityValue && !weight && !category) {
+      if (!name && !details && !style && !material && !purityValue && !weight && !category && !categoryIdFromQr) {
         setQrScanError("QR code decoded, but it does not contain recognised design fields. The decoded text is shown below.");
       }
     } catch (err) {
