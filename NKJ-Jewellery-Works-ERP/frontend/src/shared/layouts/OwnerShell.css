@@ -2643,3 +2643,315 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topb
 body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
   flex: 0 0 auto !important;
 }
+
+
+/* FINAL NAVBAR LAYOUT — clean 3-zone composition matching the supplied
+   reference: brand | ornamental divider gap | navigation.
+   The center flourish is no longer part of the border artwork, so it can
+   never be drawn underneath the navigation buttons. */
+.nkj-owner-topbar.nkj-reference-navbar {
+  box-sizing: border-box !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4200 !important;
+  display: grid !important;
+  grid-template-columns: minmax(340px, 25%) minmax(120px, 1fr) max-content !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: center !important;
+  column-gap: 0 !important;
+  row-gap: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 112px !important;
+  min-height: 112px !important;
+  max-height: 112px !important;
+  margin: 0 !important;
+  padding: 7px clamp(20px, 2vw, 34px) 7px clamp(28px, 3.7vw, 76px) !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(105deg, #690018 0%, #510012 46%, #680018 100%) !important;
+  box-shadow: inset 0 0 20px rgba(25,0,6,.28), 0 3px 12px rgba(40,0,12,.18) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar::before {
+  content: "" !important;
+  display: block !important;
+  position: relative !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  justify-self: stretch !important;
+  width: 100% !important;
+  height: 28px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  pointer-events: none !important;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%2028%22%20preserveAspectRatio%3D%22none%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23dcb142%22%20stroke-width%3D%221.35%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M0%2014H168M232%2014H400%22%20opacity%3D%22.9%22%2F%3E%3Cpath%20d%3D%22M200%204L210%2014L200%2024L190%2014Z%22%20fill%3D%22%23e7bf50%22%20stroke%3D%22%23f2d47e%22%2F%3E%3Cpath%20d%3D%22M181%208L187%2014L181%2020L175%2014ZM219%208L225%2014L219%2020L213%2014Z%22%20fill%3D%22%23dfb13c%22%2F%3E%3Cpath%20d%3D%22M168%2011L171%2014L168%2017L165%2014ZM232%2011L235%2014L232%2017L229%2014Z%22%20fill%3D%22%23f4d47e%22%2F%3E%3Ccircle%20cx%3D%22200%22%20cy%3D%2214%22%20r%3D%222.2%22%20fill%3D%22%23fff0b0%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / 100% 28px no-repeat !important;
+  opacity: .98 !important;
+  z-index: 1 !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201747%20103%22%20preserveAspectRatio%3D%22none%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23e2b64b%22%20stroke-width%3D%221.35%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%203H1744V100H3Z%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M7%208H1740M7%2095H1740%22%20opacity%3D%22.65%22%2F%3E%3Cpath%20d%3D%22M6%2036C17%2034%2023%2020%2035%208C32%2022%2039%2028%2051%2028M8%208C21%208%2028%2015%2030%2028C18%2027%2012%2034%208%2046M9%2018C17%2017%2020%2013%2024%208M8%2054C20%2048%2026%2040%2029%2030M1741%2036C1730%2034%201724%2020%201712%208C1715%2022%201708%2028%201696%2028M1739%208C1726%208%201719%2015%201717%2028C1729%2027%201735%2034%201739%2046M1738%2018C1730%2017%201727%2013%201723%208M1739%2054C1727%2048%201721%2040%201718%2030%22%2F%3E%3Cpath%20d%3D%22M6%2067C17%2069%2023%2083%2035%2095C32%2081%2039%2075%2051%2075M8%2095C21%2095%2028%2088%2030%2075C18%2076%2012%2069%208%2057M9%2085C17%2086%2020%2090%2024%2095M8%2049C20%2055%2026%2063%2029%2073M1741%2067C1730%2069%201724%2083%201712%2095C1715%2081%201708%2075%201696%2075M1739%2095C1726%2095%201719%2088%201717%2075C1729%2076%201735%2069%201739%2057M1738%2085C1730%2086%201727%2090%201723%2095M1739%2049C1727%2055%201721%2063%201718%2073%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > .brand {
+  position: relative !important;
+  z-index: 2 !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: 76px !important;
+  margin: 0 !important;
+  padding: 0 18px 0 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-right: 1px solid rgba(229,185,73,.72) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy {
+  display: grid !important;
+  align-content: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+  display: block !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: #fff8ed !important;
+  font: 700 clamp(20px, 1.85vw, 31px)/1.1 Georgia, "Times New Roman", serif !important;
+  letter-spacing: .05px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.2) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  color: #f6d989 !important;
+  font: 700 clamp(11px, .95vw, 16px)/1.15 Georgia, "Times New Roman", serif !important;
+  white-space: nowrap !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small svg {
+  flex: 0 0 17px !important;
+  width: 17px !important;
+  height: 17px !important;
+  color: #f3cc59 !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav {
+  position: relative !important;
+  z-index: 2 !important;
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+  gap: clamp(8px, .72vw, 14px) !important;
+  width: max-content !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 54px !important;
+  min-height: 54px !important;
+  min-width: max-content !important;
+  margin: 0 !important;
+  padding: 0 clamp(15px, 1.1vw, 21px) !important;
+  border: 1.5px solid #d8a72f !important;
+  border-radius: 28px !important;
+  background: rgba(48,0,13,.18) !important;
+  color: #fff0c9 !important;
+  font: 700 clamp(12px, .93vw, 16px)/1 Georgia, "Times New Roman", serif !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07) !important;
+  transition: background .16s ease, color .16s ease, border-color .16s ease !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+  flex: 0 0 21px !important;
+  width: 21px !important;
+  height: 21px !important;
+  color: #f4c84e !important;
+  stroke-width: 2.35 !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a:hover {
+  background: rgba(255,221,135,.13) !important;
+  border-color: #ffe29a !important;
+  color: #fff8e8 !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a.active,
+.nkj-owner-topbar.nkj-reference-navbar > nav > a.active:hover {
+  border-color: #f7d36d !important;
+  background: linear-gradient(180deg, #ffedac 0%, #f4cf61 100%) !important;
+  color: #3f1008 !important;
+  box-shadow: 0 2px 8px rgba(14,0,5,.18), inset 0 1px 0 rgba(255,255,255,.75) !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > a.active svg {
+  color: #481306 !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  height: 54px !important;
+  min-height: 54px !important;
+  margin: 0 !important;
+  padding: 0 17px !important;
+  border: 1.5px solid #d8a72f !important;
+  border-radius: 28px !important;
+  background: rgba(48,0,13,.18) !important;
+  color: #fff0c9 !important;
+  font: 700 clamp(12px, .93vw, 16px)/1 Georgia, "Times New Roman", serif !important;
+  white-space: nowrap !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user svg {
+  flex: 0 0 auto !important;
+  color: #f3c84f !important;
+}
+
+.nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user b {
+  color: inherit !important;
+  font-weight: 700 !important;
+}
+
+/* Expanded sidebar: same layout, with tighter proportions in the narrower
+   content column. Collapsed sidebar automatically regains the wider grid. */
+body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
+  width: calc(100% - var(--nkj-owner-expanded-width, 258px)) !important;
+  max-width: calc(100% - var(--nkj-owner-expanded-width, 258px)) !important;
+  margin-left: var(--nkj-owner-expanded-width, 258px) !important;
+  grid-template-columns: minmax(270px, 25%) minmax(50px, 1fr) max-content !important;
+  padding-left: clamp(18px, 2.4vw, 42px) !important;
+  padding-right: 24px !important;
+  column-gap: 0 !important;
+}
+
+body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj-reference-navbar {
+  width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
+  max-width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
+  margin-left: var(--nkj-owner-collapsed-width, 82px) !important;
+}
+
+/* Smaller screens move navigation to a second row rather than cropping it. */
+@media (max-width: 1450px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    row-gap: 8px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 10px 18px 11px !important;
+    overflow: visible !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    height: auto !important;
+    min-height: 48px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(229,185,73,.55) !important;
+    padding: 0 0 8px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 7px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a,
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    height: 44px !important;
+    min-height: 44px !important;
+    padding-inline: 13px !important;
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    padding: 10px 12px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    font-size: clamp(17px, 4.3vw, 23px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+    font-size: 11px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    justify-content: flex-start !important;
+    gap: 6px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a,
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding-inline: 9px !important;
+    font-size: 10px !important;
+  }
+}
