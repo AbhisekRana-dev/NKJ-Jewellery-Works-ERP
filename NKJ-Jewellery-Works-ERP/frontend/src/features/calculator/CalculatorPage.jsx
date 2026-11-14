@@ -600,8 +600,183 @@ function OrnamentCalculator({ mode, active, history, addHistory, clearHistory })
   );
 }
 
+
+const INITIAL_DIAMOND_DRAFT = Object.freeze({
+  goldWeight: "",
+  goldRate: "",
+  diamondCarat: "",
+  diamondRate: "",
+  makingMode: "percentage",
+  making: "12",
+  setting: "",
+  stamp: "",
+});
+
+function DiamondCalculator({ active, history, addHistory, clearHistory }) {
+  const [draft, setDraft] = usePersistentDraft("nkj_diamond_calculator_draft", INITIAL_DIAMOND_DRAFT);
+  const [feedback, setFeedback] = useState("");
+  const calculateGuardRef = useRef({ inFlight: false, lastAcceptedAt: 0, lastSignature: "" });
+  const { goldWeight, goldRate, diamondCarat, diamondRate, makingMode, making, setting, stamp } = draft;
+
+  const update = useCallback((field, value) => {
+    setFeedback("");
+    setDraft((current) => ({ ...current, [field]: value }));
+  }, [setDraft]);
+
+  const goldValue = Math.max(0, Number(goldWeight) || 0) * Math.max(0, Number(goldRate) || 0);
+  const diamondValue = Math.max(0, Number(diamondCarat) || 0) * Math.max(0, Number(diamondRate) || 0);
+  const makingNumber = Number(making);
+  const makingInput = Number.isFinite(makingNumber) ? Math.max(0, makingNumber) : 0;
+  const makingValid = makingMode !== "percentage" || making === ""
+    || (Number.isFinite(makingNumber) && makingNumber >= 0 && makingNumber <= 100);
+  const makingValue = makingMode === "percentage" ? goldValue * makingInput / 100 : makingInput;
+  const settingValue = Math.max(0, Number(setting) || 0);
+  const stampValue = Math.max(0, Number(stamp) || 0);
+  const total = goldValue + diamondValue + makingValue + settingValue + stampValue;
+
+  const reset = useCallback(() => {
+    setDraft({ ...INITIAL_DIAMOND_DRAFT });
+    setFeedback("");
+  }, [setDraft]);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    const handleEscape = (event) => {
+      if (event.key !== "Escape" || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (
+        target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+      )) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      reset();
+    };
+    window.addEventListener("keydown", handleEscape, true);
+    return () => window.removeEventListener("keydown", handleEscape, true);
+  }, [active, reset]);
+
+  const calculate = useCallback(() => {
+    const guard = calculateGuardRef.current;
+    const now = Date.now();
+    const signature = JSON.stringify(draft);
+    if (guard.inFlight || (guard.lastSignature === signature && now - guard.lastAcceptedAt < 450)) return;
+    if (!(Number(goldWeight) > 0) || !(Number(goldRate) > 0)) {
+      setFeedback("Enter gold weight and gold rate greater than zero.");
+      return;
+    }
+    if (!(Number(diamondCarat) > 0) || !(Number(diamondRate) > 0)) {
+      setFeedback("Enter diamond carat and diamond rate greater than zero.");
+      return;
+    }
+    if (!makingValid) {
+      setFeedback("Making charge percentage must be between 0 and 100.");
+      return;
+    }
+
+    guard.inFlight = true;
+    guard.lastAcceptedAt = now;
+    guard.lastSignature = signature;
+    try {
+      const fmt = (value) => Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 3 });
+      const expression = `Gold ${fmt(goldWeight)} gm × ₹${money(goldRate)} + Diamond ${fmt(diamondCarat)} ct × ₹${money(diamondRate)} + Making ₹${money(makingValue)} + Setting ₹${money(settingValue)} + Stamp ₹${money(stampValue)}`;
+      addHistory({ expression, result: `₹ ${money(total)}` });
+      setFeedback("Calculation added to Recent Calculations.");
+    } finally {
+      guard.inFlight = false;
+    }
+  }, [draft, goldWeight, goldRate, diamondCarat, diamondRate, makingValid, makingValue, settingValue, stampValue, total, addHistory]);
+
+  return (
+    <div className="nkj-calc-with-history nkj-calc-diamond-layout">
+      <section className="nkj-calc-details-card nkj-calc-diamond-details">
+        <header className="nkj-calc-section-heading">
+          <Gem size={22} />
+          <h3>Diamond &amp; Gold Details</h3>
+        </header>
+        <div className="nkj-calc-fields">
+          <label>
+            <span className="nkj-calc-field-label"><Scale size={17} />Gold Weight (gm) <b>*</b></span>
+            <input {...numberInput(goldWeight, (value) => update("goldWeight", value))} placeholder="Enter gold weight" />
+          </label>
+          <label>
+            <span className="nkj-calc-field-label"><Coins size={17} />Gold Rate (₹/gm) <b>*</b></span>
+            <input {...numberInput(goldRate, (value) => update("goldRate", value))} placeholder="Enter gold rate" />
+          </label>
+          <label>
+            <span className="nkj-calc-field-label"><Gem size={17} />Diamond Weight (ct) <b>*</b></span>
+            <input {...numberInput(diamondCarat, (value) => update("diamondCarat", value))} placeholder="Enter total carat" />
+          </label>
+          <label>
+            <span className="nkj-calc-field-label"><Gem size={17} />Diamond Rate (₹/ct) <b>*</b></span>
+            <input {...numberInput(diamondRate, (value) => update("diamondRate", value))} placeholder="Enter rate per carat" />
+          </label>
+          <div className="nkj-calc-diamond-subheading"><BadgeCheck size={18} />Charges</div>
+          <label>
+            <span className="nkj-calc-field-label"><Tag size={17} />Making Charge Type</span>
+            <select value={makingMode} onChange={(event) => update("makingMode", event.target.value)} aria-label="Diamond making charge type">
+              <option value="percentage">Percentage (%)</option>
+              <option value="rupees">Rupees (₹)</option>
+            </select>
+          </label>
+          <label>
+            <span className="nkj-calc-field-label"><Wrench size={17} />Making Charge ({makingMode === "percentage" ? "%" : "₹"})</span>
+            <input
+              type="number" min="0" max={makingMode === "percentage" ? 100 : undefined}
+              step="0.01" inputMode="decimal" value={making}
+              onChange={(event) => update("making", event.target.value)}
+              onWheel={(event) => event.currentTarget.blur()}
+              placeholder={makingMode === "percentage" ? "Enter percentage" : "Enter amount"}
+              aria-invalid={!makingValid}
+            />
+          </label>
+          <label>
+            <span className="nkj-calc-field-label"><Wrench size={17} />Setting Charge (₹)</span>
+            <input {...numberInput(setting, (value) => update("setting", value))} placeholder="0.00" />
+          </label>
+          <label>
+            <span className="nkj-calc-field-label"><Stamp size={17} />Stamp Charge (₹)</span>
+            <input {...numberInput(stamp, (value) => update("stamp", value))} placeholder="0.00" />
+          </label>
+        </div>
+        <div className="nkj-calc-result-actions nkj-calc-diamond-actions">
+          {feedback && <small className="nkj-calc-calculation-feedback" role="status">{feedback}</small>}
+          <div>
+            <button type="button" className="nkj-calc-calculate" onClick={calculate}>
+              <CalculatorIcon size={16} /> Calculate
+            </button>
+            <button type="button" className="nkj-calc-reset" onClick={reset}>
+              <RotateCcw size={16} /> Reset
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="nkj-calc-result-card nkj-calc-diamond-summary">
+        <header className="nkj-calc-result-hero">
+          <span><Gem size={21} /> CALCULATION SUMMARY</span>
+          <strong>₹ {money(total)}</strong>
+        </header>
+        <div className="nkj-calc-breakdown">
+          <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Coins size={18} />Gold Value ({money(goldWeight)} gm × ₹{money(goldRate)})</span><strong>₹ {money(goldValue)}</strong></div>
+          <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Gem size={18} />Diamond Value ({Number(diamondCarat || 0).toFixed(3)} ct × ₹{money(diamondRate)})</span><strong>₹ {money(diamondValue)}</strong></div>
+          <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Wrench size={18} />Making Charge{makingMode === "percentage" ? ` (${makingInput}% of Gold Value)` : ""}</span><strong>₹ {money(makingValue)}</strong></div>
+          <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Wrench size={18} />Setting Charge</span><strong>₹ {money(settingValue)}</strong></div>
+          <div className="nkj-calc-breakdown-row"><span className="nkj-calc-breakdown-label"><Stamp size={18} />Stamp Charge</span><strong>₹ {money(stampValue)}</strong></div>
+          <div className="nkj-calc-total-row"><span>Total Amount</span><strong>₹ {money(total)}</strong></div>
+        </div>
+        <div className="nkj-calc-diamond-summary-footer">Premium Jewellery <span>•</span> Timeless Value</div>
+      </section>
+
+      <CalculationHistory title="Recent Calculations (Last 10)" items={history} onClear={clearHistory} emptyText="Your diamond calculations will appear here." />
+    </div>
+  );
+}
+
 export default function CalculatorPage() {
   const [mode, setMode] = useState("new");
+  const [diamondHistory, addDiamondHistory, clearDiamondHistory] =
+    usePersistentHistory("nkj_diamond_calculation_history", 10);
   // Keep each Ornament tab's history separate as well as its persisted draft.
   const [newOrnamentHistory, addNewOrnamentHistory, clearNewOrnamentHistory] =
     usePersistentHistory("nkj_new_ornament_calculation_history", 15, "nkj_ornament_calculation_history");
@@ -617,7 +792,8 @@ export default function CalculatorPage() {
   const options = [
     { id: "new", label: "New Ornaments", icon: Gem, description: "Gold / silver ornament calculation" },
     { id: "old", label: "Old Ornaments", icon: Scale, description: "Old gold exchange value" },
-    { id: "manual", label: "Manual Calculator", icon: CalculatorIcon, description: "Standard arithmetic calculator" },
+    { id: "diamond", label: "Diamond Calculator", icon: Gem, description: "Diamond jewellery calculation" },
+    { id: "manual", label: "Manual Calculations", icon: CalculatorIcon, description: "Standard arithmetic calculator" },
   ];
 
   return (
@@ -650,7 +826,7 @@ export default function CalculatorPage() {
 
           <section className="nkj-calculator-workspace">
             <div className="nkj-calculator-workspace-title">
-              {mode === "manual" ? <CalculatorIcon size={24} /> : <Coins size={20} />}
+              {mode === "manual" ? <CalculatorIcon size={24} /> : mode === "diamond" ? <Gem size={24} /> : <Coins size={20} />}
               <h2>{options.find((option) => option.id === mode)?.label}</h2>
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "new"}>
@@ -658,6 +834,9 @@ export default function CalculatorPage() {
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "old"}>
               <OrnamentCalculator mode="old" active={mode === "old"} history={oldOrnamentHistory} addHistory={addOldOrnamentHistory} clearHistory={clearOldOrnamentHistory} />
+            </div>
+            <div className="nkj-calculator-panel" hidden={mode !== "diamond"}>
+              <DiamondCalculator active={mode === "diamond"} history={diamondHistory} addHistory={addDiamondHistory} clearHistory={clearDiamondHistory} />
             </div>
             <div className="nkj-calculator-panel" hidden={mode !== "manual"}>
               <ManualCalculator active={mode === "manual"} />
