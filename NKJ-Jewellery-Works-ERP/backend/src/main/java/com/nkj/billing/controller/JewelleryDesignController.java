@@ -43,16 +43,19 @@ public class JewelleryDesignController {
     private final JewelleryDesignImageStorageService imageStorage;
     private final AuthService auth;
     private final String mobileUploadBaseUrl;
+    private final boolean allowPrivateHttpMobileUploads;
 
     public JewelleryDesignController(
             JdbcTemplate jdbc,
             JewelleryDesignImageStorageService imageStorage,
             AuthService auth,
-            @Value("${nkj.designs.mobile-upload-base-url:}") String mobileUploadBaseUrl) {
+            @Value("${nkj.designs.mobile-upload-base-url:}") String mobileUploadBaseUrl,
+            @Value("${nkj.designs.mobile-upload-allow-private-http:false}") boolean allowPrivateHttpMobileUploads) {
         this.jdbc = jdbc;
         this.imageStorage = imageStorage;
         this.auth = auth;
         this.mobileUploadBaseUrl = mobileUploadBaseUrl;
+        this.allowPrivateHttpMobileUploads = allowPrivateHttpMobileUploads;
     }
 
     @GetMapping("/api/designs/categories")
@@ -257,12 +260,16 @@ public class JewelleryDesignController {
         if (baseHost != null && ("localhost".equalsIgnoreCase(baseHost)
                 || "127.0.0.1".equals(baseHost) || "::1".equals(baseHost))) {
             throw new IllegalArgumentException(
-                    "This QR URL points to localhost and cannot be opened from your phone. Set DESIGNS_MOBILE_UPLOAD_BASE_URL to an HTTPS website address or secure tunnel reachable from the phone.");
+                    "This QR URL points to localhost and cannot be opened from your phone. Open the ERP on your PC using its Wi-Fi IPv4 address (for example, http://192.168.1.10:5173), not localhost.");
         }
+        boolean secureHttps = "https".equalsIgnoreCase(scheme);
+        boolean permittedPrivateLanHttp = allowPrivateHttpMobileUploads
+                && "http".equalsIgnoreCase(scheme)
+                && isPrivateIpv4Host(baseHost);
         if (baseHost == null || baseUri.getRawUserInfo() != null || baseUri.getFragment() != null
-                || !("https".equalsIgnoreCase(scheme))) {
+                || !(secureHttps || permittedPrivateLanHttp)) {
             throw new IllegalArgumentException(
-                    "The mobile upload website URL must use HTTPS. HTTP is allowed only for localhost testing.");
+                    "Mobile upload requires HTTPS, or HTTP on a private Wi-Fi IPv4 address when NKJ_DESIGNS_MOBILE_UPLOAD_ALLOW_PRIVATE_HTTP=true. Open the ERP using your PC's Wi-Fi IPv4 address.");
         }
         String base = baseCandidate.trim().replaceAll("/+$", "");
 
@@ -299,6 +306,25 @@ public class JewelleryDesignController {
             result.put("designName", targetDesign.get("designName"));
         }
         return result;
+    }
+
+    private static boolean isPrivateIpv4Host(String host) {
+        if (host == null) return false;
+        String[] octets = host.split("\\.", -1);
+        if (octets.length != 4) return false;
+        int[] values = new int[4];
+        try {
+            for (int i = 0; i < 4; i++) {
+                if (octets[i].isEmpty() || (octets[i].length() > 1 && octets[i].startsWith("0"))) return false;
+                values[i] = Integer.parseInt(octets[i]);
+                if (values[i] < 0 || values[i] > 255) return false;
+            }
+        } catch (NumberFormatException invalidAddress) {
+            return false;
+        }
+        return values[0] == 10
+                || (values[0] == 192 && values[1] == 168)
+                || (values[0] == 172 && values[1] >= 16 && values[1] <= 31);
     }
 
     @GetMapping("/api/admin/design-upload-sessions/{sessionId}")
