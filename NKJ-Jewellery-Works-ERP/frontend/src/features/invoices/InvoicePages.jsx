@@ -483,12 +483,14 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
   frame.title = "Invoice PDF print";
   frame.setAttribute("aria-hidden", "true");
   frame.setAttribute("tabindex", "-1");
+  // Give the print document a real landscape A4 viewport. A 1x1px iframe
+  // activates narrow-screen layout rules before the browser opens print preview.
   Object.assign(frame.style, {
     position: "fixed",
     right: "0",
     bottom: "0",
-    width: "1px",
-    height: "1px",
+    width: "297mm",
+    height: "210mm",
     border: "0",
     opacity: "0",
     pointerEvents: "none",
@@ -597,12 +599,21 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
     const printStyle = printDocument.createElement("style");
     printStyle.textContent = `
       @page {
-        size: A4 landscape;
+        /* Explicit physical dimensions prevent an A4 portrait page with a
+           sideways landscape invoice when printer defaults are remembered. */
+        size: 297mm 210mm;
         margin: 3mm;
       }
 
       @media print {
-        html,
+        html {
+          width: 297mm !important;
+          min-width: 297mm !important;
+          max-width: 297mm !important;
+          height: 210mm !important;
+          min-height: 210mm !important;
+        }
+
         body {
           width: 291mm !important;
           min-width: 291mm !important;
@@ -630,8 +641,11 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
           box-sizing: border-box !important;
           zoom: 1 !important;
           transform: none !important;
-          rotate: none !important;
+          transform-origin: top left !important;
+          rotate: 0deg !important;
           translate: none !important;
+          writing-mode: horizontal-tb !important;
+          direction: ltr !important;
           overflow: visible !important;
           background: #fff !important;
           border: 0.35mm solid #c98a2a !important;
