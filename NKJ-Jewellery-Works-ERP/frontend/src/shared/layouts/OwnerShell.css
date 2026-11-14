@@ -3476,3 +3476,28 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
   max-height: 66px !important;
   flex-basis: 66px !important;
 }
+
+
+/* ============================================================
+   90% DESKTOP CALIBRATION — CENTER THE NAVBAR FLOURISH
+   The final grid-based pseudo-element inherited left:29% and
+   top:55% from an older absolute-positioned divider rule.
+   Clear those offsets so the ornament sits in the middle track,
+   vertically centered with the brand and navigation controls.
+   Existing home-page proportions and all theme/behavior remain.
+============================================================ */
+@media (min-width: 1451px) {
+  body.nkj-owner-layout .nkj-owner-topbar.nkj-reference-navbar::before {
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: stretch !important;
+    margin: 0 !important;
+  }
+}
