@@ -483,17 +483,19 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
   frame.title = "Invoice PDF print";
   frame.setAttribute("aria-hidden", "true");
   frame.setAttribute("tabindex", "-1");
-  // Give the print document a real landscape A4 viewport. A 1x1px iframe
-  // activates narrow-screen layout rules before the browser opens print preview.
+  // Render in a real A4-landscape iframe viewport. Keep the frame opaque and
+  // move it off-canvas; opacity:0 on the iframe can make some Chromium print
+  // paths rasterize the child document as a blank page.
   Object.assign(frame.style, {
     position: "fixed",
-    right: "0",
-    bottom: "0",
+    left: "-310mm",
+    top: "0",
     width: "297mm",
     height: "210mm",
     border: "0",
-    opacity: "0",
+    opacity: "1",
     pointerEvents: "none",
+    zIndex: "-1",
   });
   document.body.appendChild(frame);
 
@@ -606,15 +608,10 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
       }
 
       @media print {
-        html {
-          width: 297mm !important;
-          min-width: 297mm !important;
-          max-width: 297mm !important;
-          height: 210mm !important;
-          min-height: 210mm !important;
-        }
-
+        html,
         body {
+          display: block !important;
+          visibility: visible !important;
           width: 291mm !important;
           min-width: 291mm !important;
           max-width: 291mm !important;
@@ -624,6 +621,17 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
           padding: 0 !important;
           overflow: visible !important;
           background: #fff !important;
+        }
+
+        /* The iframe contains only the invoice, so nothing needs to be hidden.
+           Override legacy body:has(...){visibility:hidden} print selectors. */
+        body:has(#invoice-print) * {
+          visibility: visible !important;
+        }
+
+        body:has(#invoice-print) #invoice-print,
+        body:has(#invoice-print) #invoice-print * {
+          visibility: visible !important;
         }
 
         body:has(#invoice-print) #invoice-print {
@@ -646,13 +654,22 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
           translate: none !important;
           writing-mode: horizontal-tb !important;
           direction: ltr !important;
+          visibility: visible !important;
           overflow: visible !important;
           background: #fff !important;
+          float: none !important;
+          clear: both !important;
           border: 0.35mm solid #c98a2a !important;
           border-radius: 0 !important;
           box-shadow: none !important;
           break-inside: auto !important;
           page-break-inside: auto !important;
+        }
+
+        #invoice-print,
+        #invoice-print * {
+          writing-mode: horizontal-tb !important;
+          direction: ltr !important;
         }
 
         /* Avoid percentage tracks plus gaps overflowing the page at the right edge. */
