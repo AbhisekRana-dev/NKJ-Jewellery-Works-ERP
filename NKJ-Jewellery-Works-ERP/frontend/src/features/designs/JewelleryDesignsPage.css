@@ -3119,7 +3119,7 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   border-radius: 7px !important;
   background: #17131c !important;
   color: #f0d9a7 !important;
-  font: 750 12px/1.3 inherit !important;
+  font: inherit !important;\n  font-size: 12px !important;\n  font-weight: 750 !important;\n  line-height: 1.3 !important;
   text-align: right !important;
   outline: none !important;
 }
