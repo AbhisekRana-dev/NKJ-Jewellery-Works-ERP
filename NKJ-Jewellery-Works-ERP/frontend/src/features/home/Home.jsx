@@ -102,6 +102,7 @@ export function Home() {
           gold24kRate: configured ? String(Number(nextRates.gold24kRate || 0) * 10 || "") : "",
           gold22kRate: configured ? String(Number(nextRates.gold22kRate || 0) * 10 || "") : "",
           silverRate: configured ? String(Number(nextRates.silverRate || 0) * 10 || "") : "",
+          diamondRate: Number(nextRates.diamondRate) > 0 ? String(Number(nextRates.diamondRate)) : "",
         });
       }
     } catch (error) {
@@ -160,9 +161,28 @@ export function Home() {
           diamondRate,
         }),
       });
-      setRates({ ...defaultMetalRates, ...updated });
+
+      // Confirm the persisted value, not only the PUT response. This also
+      // detects an older Spring Boot process that silently ignores diamondRate.
+      let confirmedRates = updated;
+      const returnedDiamondRate = Number(updated?.diamondRate);
+      if (!Number.isFinite(returnedDiamondRate) || Math.abs(returnedDiamondRate - diamondRate) >= 0.005) {
+        confirmedRates = await request("/rates");
+      }
+      const savedDiamondRate = Number(confirmedRates?.diamondRate);
+      if (!Number.isFinite(savedDiamondRate) || Math.abs(savedDiamondRate - diamondRate) >= 0.005) {
+        throw new Error("The server did not confirm the saved Diamond rate. Restart the latest Spring Boot backend and make sure Flyway migration V47 has completed, then save again.");
+      }
+
+      setRates({ ...defaultMetalRates, ...confirmedRates });
+      setRateForm({
+        gold24kRate: String(gold24kRate),
+        gold22kRate: String(gold22kRate),
+        silverRate: String(silverRate),
+        diamondRate: String(savedDiamondRate),
+      });
       setShowRateEditor(false);
-      setRateMessage("Gold, silver and diamond rates updated successfully.");
+      setRateMessage("Gold, silver and diamond rates updated and verified successfully.");
     } catch (error) {
       setRateError(error.message || "Could not update metal rates.");
     } finally {
