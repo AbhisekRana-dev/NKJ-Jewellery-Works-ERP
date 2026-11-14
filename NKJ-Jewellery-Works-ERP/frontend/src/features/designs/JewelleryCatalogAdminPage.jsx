@@ -469,6 +469,7 @@ export default function JewelleryCatalogAdminPage() {
   };
 
   const makePendingImagePrimary = (preview) => {
+    setActiveStoredImageId(null);
     setImageFiles((current) => [preview.file, ...current.filter((file) => file !== preview.file)]);
     setActiveUploadPreviewKey(preview.key);
   };
@@ -1040,7 +1041,7 @@ export default function JewelleryCatalogAdminPage() {
                   <div className="nkj-catalog-photo-thumbnails">
                     {imagePreviews.map((preview, index) => (
                       <div className={"nkj-catalog-photo-thumb" + ((!activeStoredImageId && (activeUploadPreviewKey ? activeUploadPreviewKey === preview.key : index === 0)) ? " active" : "")} key={preview.key}>
-                        <button type="button" className="nkj-catalog-photo-thumb-image" onClick={() => setActiveUploadPreviewKey(preview.key)} title={preview.file.name}>
+                        <button type="button" className="nkj-catalog-photo-thumb-image" onClick={() => { setActiveStoredImageId(null); setActiveUploadPreviewKey(preview.key); }} title={preview.file.name}>
                           <img
                             src={preview.url}
                             alt={preview.file.name}
