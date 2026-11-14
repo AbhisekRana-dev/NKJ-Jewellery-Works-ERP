@@ -92,7 +92,7 @@ export function Home() {
 
   const refreshRates = async () => {
     try {
-      const data = await request("/rates");
+      const data = await request("/rates", { cache: "no-store" });
       if (!data) return;
       const nextRates = { ...defaultMetalRates, ...data };
       setRates(nextRates);
