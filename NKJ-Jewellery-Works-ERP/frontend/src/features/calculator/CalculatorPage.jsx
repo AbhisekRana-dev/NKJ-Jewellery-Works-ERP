@@ -620,7 +620,7 @@ function DiamondCalculationHistory({ items, onClear }) {
       item.title,
       item.expression,
       `Total: ${item.result}`,
-    ].filter(Boolean).join("\\n");
+    ].filter(Boolean).join("\n");
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text).catch(() => {});
     }
