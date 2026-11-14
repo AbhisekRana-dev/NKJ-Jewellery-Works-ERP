@@ -1318,3 +1318,207 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
   }
   .nkj-owner-top-actions .nkj-calculator-link span {display:none;}
 }
+
+
+/* =========================================================
+   UNIFIED NKJ BURGUNDY + GOLD NAVBAR
+   Shared by public pages, Calculator and Owner workspace.
+   Owner workspace keeps its existing sidebar; only its top header
+   adopts the same visual language and navigation treatment.
+========================================================= */
+.topbar,
+.nkj-owner-topbar.topbar {
+  box-sizing: border-box !important;
+  min-height: 94px !important;
+  height: auto !important;
+  padding: 10px clamp(16px, 3vw, 48px) !important;
+  gap: clamp(12px, 2vw, 28px) !important;
+  background:
+    radial-gradient(ellipse at 0% 50%, rgba(228,177,70,.12), transparent 22%),
+    radial-gradient(ellipse at 100% 50%, rgba(228,177,70,.12), transparent 22%),
+    linear-gradient(105deg, #70001f 0%, #4b0018 48%, #790021 100%) !important;
+  border-bottom: 3px solid #d5a33e !important;
+  box-shadow: 0 4px 18px rgba(45,0,15,.22) !important;
+  color: #fff7e9 !important;
+}
+.topbar .brand {
+  display: flex !important;
+  align-items: center !important;
+  flex: 0 1 auto !important;
+  min-width: 250px !important;
+  max-width: min(48%, 620px) !important;
+  gap: 15px !important;
+  text-decoration: none !important;
+}
+.topbar .brand .logo {
+  position: relative !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 66px !important;
+  height: 66px !important;
+  flex: 0 0 66px !important;
+  border: 2px solid #efc65c !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle, #700b2a 0%, #420014 100%) !important;
+  color: #ffe08a !important;
+  font: 800 25px Georgia, "Times New Roman", serif !important;
+  box-shadow: 0 0 0 3px rgba(240,195,83,.1), inset 0 0 12px rgba(255,221,130,.1) !important;
+}
+.topbar .brand .logo::before {
+  content: "♛";
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f4cd62;
+  font: 700 19px Georgia, serif;
+  text-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+.topbar .brand > div:last-child,
+.topbar .nkj-navbar-brand-copy {
+  display: grid !important;
+  min-width: 0;
+  gap: 5px !important;
+}
+.topbar .brand b {
+  color: #fff8ed !important;
+  font: 800 clamp(18px, 1.8vw, 29px)/1.12 Georgia, "Times New Roman", serif !important;
+  letter-spacing: .1px;
+  white-space: nowrap !important;
+}
+.topbar .brand small {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  color: #f5d47e !important;
+  font-size: clamp(10px, .9vw, 14px) !important;
+  font-weight: 750 !important;
+  line-height: 1.2;
+  letter-spacing: .2px;
+}
+.topbar nav {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+  gap: clamp(6px, 1vw, 16px) !important;
+  overflow-x: auto !important;
+  scrollbar-width: none;
+}
+.topbar nav::-webkit-scrollbar {display:none;}
+.topbar nav a,
+.topbar nav button,
+.topbar nav .nkj-navbar-link {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+  min-height: 56px !important;
+  padding: 10px clamp(13px, 1.4vw, 25px) !important;
+  border: 1.5px solid rgba(220,174,66,.8) !important;
+  border-radius: 22px !important;
+  background: rgba(47,0,15,.12) !important;
+  color: #fff5e7 !important;
+  font: 700 clamp(12px, 1vw, 17px)/1.1 Georgia, "Times New Roman", serif !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+  transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease !important;
+}
+.topbar nav a svg,
+.topbar nav button svg {
+  width: 23px !important;
+  height: 23px !important;
+  flex: 0 0 23px !important;
+  color: #f3cb59 !important;
+  stroke-width: 2.2 !important;
+}
+.topbar nav a.active,
+.topbar nav a:hover,
+.topbar nav button:hover {
+  border-color: #ffe18b !important;
+  background: linear-gradient(115deg, #fff0b8 0%, #f2c95e 100%) !important;
+  color: #65091f !important;
+  box-shadow: 0 3px 10px rgba(18,0,7,.2), inset 0 1px 0 rgba(255,255,255,.65) !important;
+}
+.topbar nav a.active svg,
+.topbar nav a:hover svg {color:#65091f !important;}
+.topbar nav .nkj-navbar-invoice {
+  background: rgba(255,255,255,.045) !important;
+}
+.topbar nav .nkj-navbar-user,
+.topbar nav .nkj-calculator-owner-user {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 46px;
+  padding: 0 7px 0 15px;
+  border-left: 1px solid rgba(240,199,97,.65);
+  color: #fff6e9 !important;
+  font: 700 14px Georgia, "Times New Roman", serif;
+  white-space: nowrap;
+}
+.topbar nav .nkj-navbar-user svg,
+.topbar nav .nkj-calculator-owner-user svg {color:#f4cf68 !important;}
+/* Owner header aligns with the existing owner content column. */
+.nkj-owner-topbar.topbar {
+  position: sticky !important;
+  top: 0 !important;
+  left: auto !important;
+  z-index: 4100 !important;
+  width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width))) !important;
+  margin: 0 0 0 var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width)) !important;
+  display: flex !important;
+  justify-content: space-between !important;
+}
+.nkj-owner-topbar.topbar .brand {max-width: 46% !important;}
+body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.topbar {
+  width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
+  margin-left: var(--nkj-owner-collapsed-width, 82px) !important;
+}
+@media (max-width: 1050px) {
+  .topbar,
+  .nkj-owner-topbar.topbar {min-height: 82px !important; padding: 8px 14px !important; gap: 10px !important;}
+  .topbar .brand {min-width: 190px !important; gap: 10px !important;}
+  .topbar .brand .logo {width: 54px !important; height: 54px !important; flex-basis: 54px !important; font-size: 20px !important;}
+  .topbar .brand b {font-size: clamp(15px, 1.7vw, 21px) !important;}
+  .topbar nav {gap: 5px !important;}
+  .topbar nav a,
+  .topbar nav button {min-height: 46px !important; padding: 8px 10px !important; gap: 6px !important; font-size: 12px !important;}
+  .topbar nav a svg,
+  .topbar nav button svg {width: 19px !important; height: 19px !important; flex-basis: 19px !important;}
+}
+@media (max-width: 760px) {
+  .topbar,
+  .nkj-owner-topbar.topbar {
+    min-height: 0 !important;
+    height: auto !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 12px 12px 9px !important;
+    gap: 10px !important;
+  }
+  .topbar .brand,
+  .nkj-owner-topbar.topbar .brand {max-width: 100% !important; min-width: 0 !important;}
+  .topbar .brand .logo {width: 46px !important; height: 46px !important; flex-basis: 46px !important; font-size: 18px !important;}
+  .topbar .brand b {font-size: 17px !important;}
+  .topbar .brand small {font-size: 10px !important;}
+  .topbar nav {width: 100% !important; justify-content: flex-start !important; gap: 6px !important; padding-bottom: 2px;}
+  .topbar nav a,
+  .topbar nav button {min-height: 39px !important; padding: 7px 10px !important; border-radius: 15px !important; font-size: 11px !important;}
+  .topbar nav a svg,
+  .topbar nav button svg {width: 16px !important; height: 16px !important; flex-basis: 16px !important;}
+  .topbar nav .nkj-navbar-user,
+  .topbar nav .nkj-calculator-owner-user {min-height: 36px; padding-left: 9px; font-size: 11px;}
+}
+@media (max-width: 420px) {
+  .topbar .brand b {font-size: 15px !important;}
+  .topbar nav a,
+  .topbar nav button {padding-inline: 8px !important; font-size: 10px !important;}
+  .topbar nav .nkj-navbar-user {font-size: 10px;}
+}
