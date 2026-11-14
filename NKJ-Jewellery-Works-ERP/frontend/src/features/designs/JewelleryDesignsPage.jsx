@@ -867,9 +867,17 @@ export default function JewelleryDesignsPage() {
 
               <div className="nkj-design-modal-content">
                 <div className="nkj-design-modal-content-scroll">
-                  <span>{selected.designId || selected.designCode} • {selected.metalType} • {selected.subcategoryName}</span>
+                  <div className="nkj-design-modal-identity">
+                    <div className="nkj-design-modal-id-highlight" aria-label={`Design ID ${selected.designId || selected.designCode || "Not assigned"}`}>
+                      <span><QrCode size={15} /> DESIGN ID</span>
+                      <strong>{selected.designId || selected.designCode || "Not assigned"}</strong>
+                    </div>
+                    <span className="nkj-design-modal-category-line">
+                      {selected.metalType || "Jewellery"} <i>•</i> {selected.subcategoryName || "Type not specified"}
+                    </span>
+                  </div>
                   {selected.designId && selected.designCode && <small className="nkj-design-legacy-code">Legacy code: {selected.designCode}</small>}
-                  <h2 id="nkj-design-modal-title">{selected.designName}</h2>
+                  <h2 id="nkj-design-modal-title">{selected.designName || "Untitled Design"}</h2>
                   <p>{selected.description || "No additional design description has been added."}</p>
                   <dl>
                     <div><dt>Jewellery type</dt><dd>{selected.subcategoryName || "—"}</dd></div>
