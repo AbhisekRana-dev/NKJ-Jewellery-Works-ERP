@@ -3020,3 +3020,297 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     min-height: 32px !important;
   }
 }
+
+
+/* ============================================================
+   REFERENCE-MATCH NAVBAR GEOMETRY
+   Match the supplied 2048px reference: left brand, centre
+   gold flourish, then all five navigation pills in one row.
+   Keep the existing 20% height reduction.
+============================================================ */
+@media (min-width: 1451px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: minmax(400px, 28%) minmax(300px, 23%) minmax(0, 49%) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    column-gap: 0 !important;
+    row-gap: 0 !important;
+    height: 89.6px !important;
+    min-height: 89.6px !important;
+    max-height: 89.6px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 6px 2% 6px 3.2% !important;
+    overflow: hidden !important;
+    border-top: 1.5px solid #d8aa3d !important;
+    border-bottom: 1.5px solid #d8aa3d !important;
+    background: linear-gradient(105deg, #690018 0%, #510012 47%, #690018 100%) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar::after {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+    border: 0 !important;
+    background-image: inherit !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 100% 100% !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar::before {
+    content: "" !important;
+    display: block !important;
+    position: relative !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: stretch !important;
+    width: 100% !important;
+    height: 22.4px !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 28' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23dfb64c' stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 14H168M232 14H400'/%3E%3Cpath d='M200 4L210 14L200 24L190 14Z' fill='%23e8c65e' stroke='%23f3d987'/%3E%3Cpath d='M181 8L187 14L181 20L175 14ZM219 8L225 14L219 20L213 14Z' fill='%23dcb143'/%3E%3Cpath d='M168 11L171 14L168 17L165 14ZM232 11L235 14L232 17L229 14Z' fill='%23f0d27a'/%3E%3C/g%3E%3C/svg%3E") center / 100% 22.4px no-repeat !important;
+    pointer-events: none !important;
+    opacity: .98 !important;
+    z-index: 1 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    position: relative !important;
+    z-index: 2 !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 60.8px !important;
+    margin: 0 !important;
+    padding: 0 12px 0 24px !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-left: 2px solid #e0b64a !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    color: #fff6e8 !important;
+    font: 700 clamp(22px, 1.72vw, 31px)/1.08 Georgia, "Times New Roman", serif !important;
+    letter-spacing: 0 !important;
+    text-align: left !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+    display: flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    color: #f4d47f !important;
+    font: 700 clamp(12px, .9vw, 16px)/1.15 Georgia, "Times New Roman", serif !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small svg {
+    flex: 0 0 17px !important;
+    width: 17px !important;
+    height: 17px !important;
+    color: #f0c750 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    position: relative !important;
+    z-index: 2 !important;
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: nowrap !important;
+    gap: clamp(10px, .78vw, 16px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    height: 43.2px !important;
+    min-height: 43.2px !important;
+    margin: 0 !important;
+    padding: 0 clamp(13px, .9vw, 19px) !important;
+    border: 1.4px solid #d9ab39 !important;
+    border-radius: 24px !important;
+    background: rgba(45,0,12,.16) !important;
+    color: #fff0ca !important;
+    font: 700 clamp(12px, .84vw, 16px)/1 Georgia, "Times New Roman", serif !important;
+    text-align: center !important;
+    text-decoration: none !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+    transition: background .16s ease, color .16s ease !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+    display: block !important;
+    flex: 0 0 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+    color: #edc44b !important;
+    stroke-width: 2.3 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a:hover {
+    background: rgba(255,224,145,.12) !important;
+    border-color: #f1d27d !important;
+    color: #fff7e6 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a.active,
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a.active:hover {
+    border-color: #f5d36e !important;
+    background: linear-gradient(180deg, #ffedaa 0%, #f1c956 100%) !important;
+    color: #471206 !important;
+    box-shadow: none !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a.active svg {
+    color: #481306 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    min-width: max-content !important;
+    height: 43.2px !important;
+    min-height: 43.2px !important;
+    margin: 0 0 0 2px !important;
+    padding: 0 14px !important;
+    border: 1.4px solid #d9ab39 !important;
+    border-radius: 24px !important;
+    background: rgba(45,0,12,.16) !important;
+    color: #fff0ca !important;
+    font: 700 clamp(12px, .84vw, 16px)/1 Georgia, "Times New Roman", serif !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user svg {
+    flex: 0 0 auto !important;
+    color: #edc44b !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user b {
+    color: inherit !important;
+    font-weight: 700 !important;
+  }
+
+  /* When sidebar is expanded, reclaim width from the divider first. */
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
+    width: calc(100% - var(--nkj-owner-expanded-width, 258px)) !important;
+    max-width: calc(100% - var(--nkj-owner-expanded-width, 258px)) !important;
+    margin-left: var(--nkj-owner-expanded-width, 258px) !important;
+    grid-template-columns: minmax(330px, 27%) minmax(130px, 16%) minmax(0, 57%) !important;
+    padding-left: 2.4% !important;
+    padding-right: 1.5% !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj-reference-navbar {
+    width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
+    max-width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
+    margin-left: var(--nkj-owner-collapsed-width, 82px) !important;
+    grid-template-columns: minmax(380px, 28%) minmax(260px, 23%) minmax(0, 49%) !important;
+  }
+}
+
+/* At typical laptop widths retain one row and scale the brand/navigation
+   evenly; below desktop width switch to a tidy two-row header. */
+@media (min-width: 1451px) and (max-width: 1750px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(330px, 27%) minmax(150px, 15%) minmax(0, 58%) !important;
+    padding-left: 2.2% !important;
+    padding-right: 1.5% !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    gap: 7px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    gap: 6px !important;
+    padding-inline: 10px !important;
+    font-size: 12px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+    width: 18px !important;
+    height: 18px !important;
+    flex-basis: 18px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    gap: 6px !important;
+    padding-inline: 9px !important;
+    font-size: 12px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    font-size: 24px !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(280px, 27%) minmax(90px, 12%) minmax(0, 61%) !important;
+  }
+}
