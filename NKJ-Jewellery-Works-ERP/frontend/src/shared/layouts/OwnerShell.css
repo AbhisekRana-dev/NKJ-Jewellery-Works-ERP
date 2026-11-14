@@ -2624,3 +2624,22 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     font-size: clamp(18px, 4vw, 23px) !important;
   }
 }
+
+
+/* Expanded sidebar reduces the usable header width: allow navigation to wrap
+   into a second tidy row instead of pushing the last controls off-screen. */
+body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
+  height: auto !important;
+  min-height: 88px !important;
+  overflow: visible !important;
+}
+body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar > nav {
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  align-content: center !important;
+  row-gap: 6px !important;
+}
+body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar > nav > a,
+body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+  flex: 0 0 auto !important;
+}
