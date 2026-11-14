@@ -305,7 +305,7 @@ public class JewelleryDesignController {
             throw new IllegalArgumentException(
                     "Mobile upload requires HTTPS, or HTTP on a private Wi-Fi IPv4 address when NKJ_DESIGNS_MOBILE_UPLOAD_ALLOW_PRIVATE_HTTP=true. Open the ERP using your PC's Wi-Fi IPv4 address.");
         }
-        String base = baseCandidate.trim().replaceAll("/+$", "");
+        String base = baseUri.toString().replaceAll("/+$", "");
 
         // Regeneration invalidates every still-live QR issued by this owner.
         jdbc.update("""
