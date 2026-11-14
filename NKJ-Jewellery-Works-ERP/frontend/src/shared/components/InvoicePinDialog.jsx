@@ -35,15 +35,26 @@ export default function InvoicePinDialog({
     }
 
     setBusy(true);
-
+    // Open a blank tab directly from the Verify PIN click. After async
+    // authorization and PDF generation, Chromium can navigate this tab to
+    // the ready-to-print PDF without popup blocking.
+    let pdfWindow = null;
     try {
+      pdfWindow = window.open("about:blank", "_blank");
+      if (pdfWindow) {
+        pdfWindow.document.title = "Preparing invoice PDF";
+        pdfWindow.document.body.innerHTML =
+          '<main style="font:16px Arial,sans-serif;padding:32px;color:#641029">Preparing your secure A4 landscape invoice PDF…</main>';
+      }
+
       const result = await request("/invoices/verify-pin", {
         method: "POST",
         body: JSON.stringify({ pin, invoiceId }),
       });
 
-      await onVerified(result.ticket);
+      await onVerified(result.ticket, pdfWindow);
     } catch (e) {
+      if (pdfWindow && !pdfWindow.closed) pdfWindow.close();
       setError(e.message || "PIN verification failed.");
     } finally {
       setBusy(false);
