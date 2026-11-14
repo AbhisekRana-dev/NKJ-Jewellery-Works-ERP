@@ -2800,3 +2800,142 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* Design identity and highlighted Design ID — applies to every catalogue record. */
+.nkj-design-modal-identity {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 9px 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 1px 0 2px !important;
+}
+.nkj-design-modal-id-highlight {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 7px 10px !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  padding: 9px 12px !important;
+  border: 1px solid #e4c06f !important;
+  border-radius: 10px !important;
+  background: linear-gradient(115deg, #f8e5ad 0%, #d7ad59 100%) !important;
+  color: #381625 !important;
+  box-shadow: 0 5px 14px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.48) !important;
+}
+.nkj-design-modal-id-highlight > span {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  color: #6e2634 !important;
+  font-size: 9px !important;
+  font-weight: 950 !important;
+  letter-spacing: 1px !important;
+  white-space: nowrap !important;
+}
+.nkj-design-modal-id-highlight > strong {
+  display: inline-block !important;
+  min-width: 0 !important;
+  color: #351321 !important;
+  font: 900 13px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  letter-spacing: .35px !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+.nkj-design-modal-category-line {
+  color: #d7c5a2 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .6px !important;
+  text-transform: uppercase !important;
+}
+.nkj-design-modal-category-line i {
+  padding-inline: 4px !important;
+  color: #d9b56c !important;
+  font-style: normal !important;
+}
+
+/* The same prominent ID treatment is used on every gallery card. */
+.nkj-design-card-meta .nkj-design-id-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 5px 8px !important;
+  max-width: 100% !important;
+  padding: 6px 9px !important;
+  border: 1px solid rgba(230,190,112,.8) !important;
+  border-radius: 8px !important;
+  background: linear-gradient(115deg, #f2d993, #c79a4d) !important;
+  color: #381625 !important;
+  box-shadow: 0 3px 9px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35) !important;
+}
+.nkj-design-card-meta .nkj-design-id-badge > span {
+  color: #6f2638 !important;
+  font-size: 7px !important;
+  font-weight: 950 !important;
+  letter-spacing: .75px !important;
+}
+.nkj-design-card-meta .nkj-design-id-badge > b {
+  color: #351321 !important;
+  font: 900 9px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  letter-spacing: .2px !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+/* Keep the requested identity fields readable and consistent in every modal. */
+.nkj-design-modal-content dl {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
+}
+.nkj-design-modal-content dl div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  min-width: 0 !important;
+}
+.nkj-design-modal-content dl dt {
+  flex: 0 0 auto !important;
+  color: #c3b6ac !important;
+  font-size: 10px !important;
+  font-weight: 550 !important;
+}
+.nkj-design-modal-content dl dd {
+  min-width: 0 !important;
+  color: #f0d9a7 !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  text-align: right !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+.nkj-design-modal-content h2 {
+  margin: 3px 0 5px !important;
+  color: #fff0d1 !important;
+  font-size: clamp(25px, 2.5vw, 34px) !important;
+  font-weight: 850 !important;
+  line-height: 1.12 !important;
+}
+@media (max-width: 560px) {
+  .nkj-design-modal-identity {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+  .nkj-design-modal-id-highlight {
+    width: fit-content !important;
+    max-width: 100% !important;
+  }
+  .nkj-design-modal-content dl div {
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .nkj-design-modal-content dl dd {
+    max-width: 60% !important;
+  }
+}
