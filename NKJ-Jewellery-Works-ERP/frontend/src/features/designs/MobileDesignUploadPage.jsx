@@ -386,12 +386,12 @@ export default function MobileDesignUploadPage() {
       }
     });
     if (incoming.length > remaining) rejected.push(`Only ${MAX_PHOTOS} photos are allowed per design.`);
-    if (rejected.length) setError(rejected.join(". "));
     if (accepted.length) {
       setPhotos((current) => [...current, ...accepted].slice(0, MAX_PHOTOS));
       setPrimaryPhotoId((current) => current || accepted[0].id);
-      setError("");
     }
+    if (rejected.length) setError(rejected.join(". "));
+    else if (accepted.length) setError("");
   };
 
   const closeCamera = () => {
