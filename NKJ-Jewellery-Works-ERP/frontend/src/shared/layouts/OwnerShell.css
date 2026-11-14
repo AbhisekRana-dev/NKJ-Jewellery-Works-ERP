@@ -3501,3 +3501,125 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     margin: 0 !important;
   }
 }
+
+
+/* ============================================================
+   100% VIEWPORT FIT — MATCH THE EXISTING 90% VISUAL DENSITY
+   Applies only to the 1451–1750 CSS-pixel desktop viewport band.
+   The 90% browser view on the supplied monitor has a wider CSS
+   viewport, so its current appearance is left unchanged.
+   No zoom/scale transforms are used.
+============================================================ */
+@media screen and (min-width: 1451px) and (max-width: 1750px) {
+  body.nkj-owner-layout {
+    --nkj-owner-expanded-width: 216px;
+    --nkj-owner-collapsed-width: 74px;
+  }
+
+  .nkj-owner-sidebar.is-collapsed > .nkj-owner-brand {
+    min-height: 113px !important;
+    height: 113px !important;
+    padding: 38px 0 10px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed > .nkj-owner-brand .nkj-owner-logo-image {
+    width: 60px !important;
+    height: 60px !important;
+    max-width: 60px !important;
+    max-height: 60px !important;
+    flex-basis: 60px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-nav {
+    padding: 6px 7px 11px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-group {
+    margin: 6px 0 8px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {
+    min-height: 49px !important;
+    padding: 5px 3px !important;
+    gap: 2.7px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a svg {
+    width: 20px !important;
+    height: 20px !important;
+    flex-basis: 20px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-short-label {
+    font-size: 7.2px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom {
+    padding: 7px 6px max(10px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom a,
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button {
+    min-height: 35px !important;
+    padding: 7px 5px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(420px, 30%) minmax(90px, 9%) minmax(0, 61%) !important;
+    height: 86px !important;
+    min-height: 86px !important;
+    max-height: 86px !important;
+    padding: 5px 1.5% 5px 2.2% !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(420px, 30%) minmax(90px, 9%) minmax(0, 61%) !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(350px, 31%) minmax(90px, 8%) minmax(0, 61%) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    height: 55px !important;
+    padding: 0 10px 0 20px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy {
+    gap: 4.5px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    font-size: 26px !important;
+    line-height: 1.06 !important;
+    letter-spacing: 0 !important;
+    text-overflow: clip !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+    font-size: 14px !important;
+    line-height: 1.1 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    gap: 6px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a,
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    height: 39px !important;
+    min-height: 39px !important;
+    gap: 6px !important;
+    padding-inline: 9px !important;
+    font-size: 12px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+    width: 18px !important;
+    height: 18px !important;
+    flex-basis: 18px !important;
+  }
+}
