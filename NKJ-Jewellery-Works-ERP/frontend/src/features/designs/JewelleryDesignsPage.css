@@ -2280,3 +2280,523 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   background: linear-gradient(120deg,#d0ad69,#a47a39) !important;
   color: #171512 !important;
 }
+
+
+/* ================================================================
+   NKJ LUXURY CATALOGUE — polished public Jewellery Designs page
+   Scope: JewelleryDesignsPage only. Catalogue/API behaviour unchanged.
+   ================================================================ */
+.nkj-designs-page {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 1580px !important;
+  margin: 0 auto !important;
+  padding: clamp(12px, 1.7vw, 24px) !important;
+  border: 1px solid rgba(215, 180, 108, .24) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(137, 27, 61, .22), transparent 34%),
+    radial-gradient(ellipse at 96% 100%, rgba(186, 139, 62, .10), transparent 30%),
+    linear-gradient(145deg, #15121a 0%, #1c1720 52%, #131119 100%) !important;
+  box-shadow: 0 18px 44px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
+
+.nkj-designs-hero {
+  position: relative !important;
+  isolation: isolate !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 190px !important;
+  margin: 0 0 22px !important;
+  padding: clamp(24px, 3vw, 42px) clamp(22px, 3.4vw, 48px) !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(225, 190, 116, .56) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(ellipse at 83% 48%, rgba(236, 195, 112, .16), transparent 26%),
+    linear-gradient(112deg, #260d19 0%, #54152d 48%, #32101f 100%) !important;
+  box-shadow: 0 14px 28px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.055) !important;
+}
+
+.nkj-designs-hero::before,
+.nkj-designs-hero::after {
+  content: "" !important;
+  position: absolute !important;
+  z-index: -1 !important;
+  display: block !important;
+  width: clamp(190px, 22vw, 310px) !important;
+  height: clamp(190px, 22vw, 310px) !important;
+  right: clamp(28px, 8vw, 118px) !important;
+  top: 50% !important;
+  border: 1px solid rgba(237, 202, 125, .22) !important;
+  border-radius: 50% !important;
+  transform: translateY(-50%) rotate(-18deg) !important;
+  pointer-events: none !important;
+}
+.nkj-designs-hero::after {
+  width: clamp(145px, 17vw, 235px) !important;
+  height: clamp(145px, 17vw, 235px) !important;
+  right: clamp(65px, 10vw, 150px) !important;
+  border-style: dashed !important;
+  opacity: .7 !important;
+}
+
+.nkj-designs-hero-copy {
+  max-width: 720px !important;
+}
+.nkj-designs-eyebrow {
+  gap: 9px !important;
+  color: #f0cc7b !important;
+  font-size: 10px !important;
+  letter-spacing: 2.2px !important;
+}
+.nkj-designs-hero h1 {
+  margin: 12px 0 9px !important;
+  color: #fff2d6 !important;
+  font-size: clamp(31px, 3.2vw, 46px) !important;
+  line-height: 1.05 !important;
+  letter-spacing: -.6px !important;
+  text-shadow: 0 3px 16px rgba(0,0,0,.25) !important;
+}
+.nkj-designs-hero p {
+  max-width: 610px !important;
+  color: #dfd0ca !important;
+  font-size: clamp(12px, .95vw, 14px) !important;
+  line-height: 1.75 !important;
+}
+.nkj-designs-owner-tools {
+  position: relative !important;
+  z-index: 2 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 9px !important;
+  max-width: 390px !important;
+}
+.nkj-designs-owner-tools a,
+.nkj-designs-owner-tools button {
+  min-height: 42px !important;
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+.nkj-designs-owner-tools a:first-child {
+  box-shadow: 0 6px 15px rgba(0,0,0,.2) !important;
+}
+
+/* Metal selector becomes a balanced three-card collection switcher. */
+.nkj-designs-metal-section {
+  margin: 0 0 20px !important;
+  padding: 17px 18px 18px !important;
+  border: 1px solid rgba(210, 174, 105, .22) !important;
+  border-radius: 17px !important;
+  background: linear-gradient(145deg, rgba(38,31,41,.88), rgba(25,21,29,.94)) !important;
+  box-shadow: 0 8px 22px rgba(0,0,0,.14) !important;
+}
+.nkj-designs-metal-heading {
+  gap: 15px !important;
+  margin: 0 0 14px !important;
+}
+.nkj-designs-metal-heading > span {
+  max-width: 120px !important;
+}
+.nkj-designs-metal-heading h2 {
+  gap: 9px !important;
+  font-size: 19px !important;
+  letter-spacing: .1px !important;
+}
+.nkj-designs-metal-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+.nkj-designs-metal-card,
+.nkj-designs-metal-card.tone-gold,
+.nkj-designs-metal-card.tone-silver,
+.nkj-designs-metal-card.tone-diamond {
+  position: relative !important;
+  box-sizing: border-box !important;
+  min-height: 92px !important;
+  padding: 14px 16px !important;
+  gap: 13px !important;
+  border-radius: 14px !important;
+  text-align: left !important;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease !important;
+}
+.nkj-designs-metal-card:hover {
+  transform: translateY(-2px) !important;
+}
+.nkj-designs-metal-card.active {
+  outline: 0 !important;
+  border-color: #e4c171 !important;
+  background: linear-gradient(112deg, #624928, #3e2b22) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,226,165,.13), 0 8px 20px rgba(0,0,0,.24) !important;
+}
+.nkj-designs-metal-symbol {
+  width: 54px !important;
+  height: 54px !important;
+  flex-basis: 54px !important;
+  font-size: 19px !important;
+}
+.nkj-designs-metal-copy {
+  gap: 4px !important;
+}
+.nkj-designs-metal-copy b {
+  font-size: 21px !important;
+  line-height: 1.12 !important;
+}
+.nkj-designs-metal-copy small {
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+}
+.nkj-designs-metal-copy em {
+  font-size: 9px !important;
+  letter-spacing: .2px !important;
+}
+.nkj-designs-metal-card > svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Category filters are grouped in a quieter, easy-to-scan panel. */
+.nkj-designs-category-section {
+  margin: 0 0 22px !important;
+  padding: 17px 18px 18px !important;
+  border: 1px solid rgba(210, 174, 105, .2) !important;
+  border-radius: 16px !important;
+  background: rgba(28, 24, 32, .78) !important;
+}
+.nkj-designs-section-heading {
+  margin: 0 0 13px !important;
+  align-items: center !important;
+}
+.nkj-designs-section-heading > div > span,
+.nkj-designs-gallery-heading > div:first-child > span {
+  color: #dcb76c !important;
+  font-size: 9px !important;
+  letter-spacing: 1.65px !important;
+}
+.nkj-designs-section-heading h2 {
+  margin-top: 4px !important;
+  color: #f4e8d2 !important;
+  font-size: 22px !important;
+  line-height: 1.2 !important;
+}
+.nkj-designs-section-heading > small {
+  padding: 6px 10px !important;
+  border: 1px solid rgba(215,180,108,.2) !important;
+  border-radius: 999px !important;
+  color: #d9c59e !important;
+  background: rgba(255,255,255,.035) !important;
+}
+.nkj-designs-category-box {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.nkj-designs-category-box button {
+  min-height: 38px !important;
+  padding: 8px 12px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-weight: 750 !important;
+}
+.nkj-designs-category-box button.active {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 4px 10px rgba(0,0,0,.18) !important;
+}
+
+/* Gallery heading, search, sort and layout controls. */
+.nkj-designs-gallery-section {
+  margin-top: 0 !important;
+}
+.nkj-designs-gallery-heading {
+  align-items: center !important;
+  gap: 18px !important;
+  margin: 0 0 16px !important;
+  padding: 2px 0 14px !important;
+  border-bottom: 1px solid rgba(215,180,108,.2) !important;
+}
+.nkj-designs-gallery-heading h2 {
+  margin: 5px 0 4px !important;
+  color: #f5e8d1 !important;
+  font-size: clamp(22px, 2vw, 27px) !important;
+  line-height: 1.15 !important;
+}
+.nkj-designs-gallery-heading > div:first-child > small {
+  color: #bfb2b0 !important;
+  font-size: 10px !important;
+}
+.nkj-designs-gallery-tools {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+.nkj-designs-search {
+  width: min(360px, 32vw) !important;
+  min-height: 42px !important;
+  padding-inline: 13px !important;
+  border-radius: 11px !important;
+}
+.nkj-designs-search input {
+  min-width: 0 !important;
+  font-size: 11px !important;
+}
+.nkj-designs-sort {
+  min-height: 42px !important;
+  padding-inline: 12px !important;
+  border-radius: 11px !important;
+}
+.nkj-designs-sort select {
+  font-size: 10px !important;
+}
+.nkj-design-view-toggle {
+  min-height: 42px !important;
+  padding: 3px !important;
+  border-radius: 11px !important;
+}
+.nkj-design-view-toggle button {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+}
+
+/* Refined product cards. Keep uploaded photographs intact and unfiltered. */
+.nkj-designs-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
+  gap: 16px !important;
+}
+.nkj-design-card {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  border: 1px solid rgba(215,180,108,.24) !important;
+  border-radius: 15px !important;
+  background: linear-gradient(155deg, #29232d, #1a171f) !important;
+  box-shadow: 0 7px 18px rgba(0,0,0,.22) !important;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease !important;
+}
+.nkj-design-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: rgba(230,190,112,.58) !important;
+  box-shadow: 0 14px 28px rgba(0,0,0,.31) !important;
+}
+.nkj-design-card-image {
+  flex: 0 0 auto !important;
+  overflow: hidden !important;
+  background: radial-gradient(ellipse at 50% 38%, #37313a, #1c1921 75%) !important;
+}
+.nkj-design-image-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  background: transparent !important;
+}
+.nkj-design-photo,
+.nkj-design-photo-missing,
+.nkj-design-art {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-height: 220px !important;
+  aspect-ratio: 1.18 / 1 !important;
+}
+.nkj-design-photo img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 220px !important;
+  object-fit: contain !important;
+  background: transparent !important;
+  filter: none !important;
+  transition: transform .28s ease !important;
+}
+.nkj-design-image-trigger:hover .nkj-design-photo img {
+  transform: scale(1.035) !important;
+}
+.nkj-design-card-content {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  min-width: 0 !important;
+  padding: 14px 15px 15px !important;
+  background: linear-gradient(160deg, #24202a, #1a171f) !important;
+}
+.nkj-design-card-meta {
+  width: 100% !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.nkj-design-card-meta > span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  font-size: 9px !important;
+  letter-spacing: .8px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.nkj-design-id-badge {
+  flex: 0 0 auto !important;
+  padding: 5px 7px !important;
+  border: 1px solid rgba(215,180,108,.22) !important;
+  border-radius: 7px !important;
+  background: rgba(255,255,255,.035) !important;
+}
+.nkj-design-card h3 {
+  display: -webkit-box !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  margin: 9px 0 5px !important;
+  overflow: hidden !important;
+  color: #f4e3c4 !important;
+  font-size: 16px !important;
+  line-height: 1.28 !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+.nkj-design-card-content > p {
+  width: 100% !important;
+  margin: 0 !important;
+  color: #c8bdb8 !important;
+  font-size: 10px !important;
+  line-height: 1.55 !important;
+}
+.nkj-design-card-content > .nkj-design-card-specs {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin-top: 10px !important;
+}
+.nkj-design-card-specs > span {
+  padding: 4px 7px !important;
+  border: 1px solid rgba(215,180,108,.17) !important;
+  border-radius: 6px !important;
+  background: rgba(255,255,255,.035) !important;
+  color: #d8c8aa !important;
+  font-size: 9px !important;
+}
+.nkj-design-card-content > button {
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 38px !important;
+  margin-top: auto !important;
+  padding: 9px 12px !important;
+  border: 1px solid rgba(211,174,103,.36) !important;
+  border-radius: 9px !important;
+  background: linear-gradient(110deg, #4b2630, #30202b) !important;
+  color: #f2dba9 !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease !important;
+}
+.nkj-design-card-content > button:hover {
+  border-color: #e2bd70 !important;
+  background: linear-gradient(110deg, #68402d, #452530) !important;
+  transform: translateY(-1px) !important;
+}
+.nkj-design-favorite {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+}
+.nkj-design-new-label,
+.nkj-design-featured,
+.nkj-design-sample-label,
+.nkj-design-real-label {
+  font-size: 8px !important;
+  letter-spacing: .35px !important;
+}
+.nkj-designs-pagination {
+  margin-top: 18px !important;
+  padding: 16px 2px 4px !important;
+  border-top-color: rgba(215,180,108,.2) !important;
+  color: #c2b5b2 !important;
+}
+
+/* List view remains readable and uses a clear two-column product row. */
+.nkj-designs-grid.is-list .nkj-design-card {
+  border-radius: 13px !important;
+}
+.nkj-designs-grid.is-list .nkj-design-card-content > button {
+  width: auto !important;
+  min-width: 135px !important;
+  margin-top: 12px !important;
+}
+.nkj-designs-error,
+.nkj-designs-empty,
+.nkj-designs-loading {
+  border-radius: 14px !important;
+}
+
+/* Tablet and mobile: controls wrap cleanly; no horizontal overflow. */
+@media (min-width: 1500px) {
+  .nkj-designs-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 1180px) {
+  .nkj-designs-page { padding: 12px !important; }
+  .nkj-designs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .nkj-designs-gallery-heading { align-items: flex-start !important; flex-direction: column !important; }
+  .nkj-designs-gallery-tools { justify-content: flex-start !important; width: 100% !important; }
+  .nkj-designs-search { flex: 1 1 280px !important; width: auto !important; }
+}
+@media (max-width: 760px) {
+  .nkj-designs-page { padding: 9px !important; border-radius: 15px !important; }
+  .nkj-designs-hero {
+    min-height: 0 !important;
+    margin-bottom: 14px !important;
+    padding: 23px 18px !important;
+    border-radius: 16px !important;
+  }
+  .nkj-designs-hero::before { right: -75px !important; opacity: .65 !important; }
+  .nkj-designs-hero::after { right: -35px !important; opacity: .45 !important; }
+  .nkj-designs-hero h1 { font-size: clamp(27px, 7vw, 36px) !important; }
+  .nkj-designs-owner-tools { justify-content: flex-start !important; max-width: none !important; margin-top: 10px !important; }
+  .nkj-designs-metal-section,
+  .nkj-designs-category-section { padding: 13px !important; margin-bottom: 14px !important; }
+  .nkj-designs-metal-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .nkj-designs-metal-card { min-height: 76px !important; padding: 10px 12px !important; }
+  .nkj-designs-metal-symbol { width: 46px !important; height: 46px !important; flex-basis: 46px !important; }
+  .nkj-designs-metal-copy b { font-size: 18px !important; }
+  .nkj-designs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .nkj-design-photo,
+  .nkj-design-photo-missing,
+  .nkj-design-art { min-height: 150px !important; }
+  .nkj-design-photo img { min-height: 150px !important; }
+  .nkj-design-card-content { padding: 10px !important; }
+  .nkj-design-card h3 { min-height: 34px !important; font-size: 13px !important; }
+  .nkj-design-card-content > button { min-height: 34px !important; font-size: 9px !important; }
+  .nkj-designs-gallery-tools { gap: 7px !important; }
+  .nkj-designs-search { flex-basis: 100% !important; }
+  .nkj-designs-sort { flex: 1 1 auto !important; }
+}
+@media (max-width: 430px) {
+  .nkj-designs-page { padding: 7px !important; }
+  .nkj-designs-gallery-heading h2 { font-size: 21px !important; }
+  .nkj-design-card-meta { flex-wrap: wrap !important; }
+  .nkj-design-id-badge { margin-left: auto !important; }
+  .nkj-designs-grid.is-list .nkj-design-card { grid-template-columns: 100px minmax(0, 1fr) !important; }
+  .nkj-designs-grid.is-list .nkj-design-card-image,
+  .nkj-designs-grid.is-list .nkj-design-image-trigger,
+  .nkj-designs-grid.is-list .nkj-design-photo,
+  .nkj-designs-grid.is-list .nkj-design-photo-missing,
+  .nkj-designs-grid.is-list .nkj-design-art { min-height: 125px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nkj-designs-page *,
+  .nkj-designs-page *::before,
+  .nkj-designs-page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
