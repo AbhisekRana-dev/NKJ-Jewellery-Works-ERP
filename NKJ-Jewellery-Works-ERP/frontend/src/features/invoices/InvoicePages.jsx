@@ -1157,8 +1157,11 @@ export function InvoicePage() {
       setShowInvoicePin(false);
 
       const file = await createInvoiceSharePdfFile(
-        { id: invoiceId, invoiceNo },
-        (message) => updateInvoicePdfPopup(pdfWindow, message),
+        {
+          id: invoiceId,
+          invoiceNo,
+          _pdfProgressCallback: (message) => updateInvoicePdfPopup(pdfWindow, message),
+        },
       );
       updateInvoicePdfPopup(pdfWindow, "PDF is ready. Opening the landscape invoice…");
       const opened = openInvoicePdfForPrinting(file, pdfWindow);
@@ -2411,7 +2414,8 @@ function collectInvoicePrintStyles() {
  * the website. The cloned invoice takes over #invoice-print while rendering,
  * so print selectors target the clone, never the visible source invoice.
  */
-async function createInvoiceSharePdfFile(invoice, onProgress = () => {}) {
+async function createInvoiceSharePdfFile(invoice) {
+  const onProgress = typeof invoice?._pdfProgressCallback === "function" ? invoice._pdfProgressCallback : () => {};
   if (!invoice?.id || !invoice?.invoiceNo) {
     throw new Error("Only a saved invoice can be shared as a PDF.");
   }
@@ -2936,8 +2940,10 @@ export function SavedInvoices() {
         body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
       });
       const file = await createInvoiceSharePdfFile(
-        selectedInvoice,
-        (message) => updateInvoicePdfPopup(pdfWindow, message),
+        {
+          ...selectedInvoice,
+          _pdfProgressCallback: (message) => updateInvoicePdfPopup(pdfWindow, message),
+        },
       );
       updateInvoicePdfPopup(pdfWindow, "PDF is ready. Opening the landscape invoice…");
       const opened = openInvoicePdfForPrinting(file, pdfWindow);
