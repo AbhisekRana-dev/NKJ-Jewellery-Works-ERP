@@ -3623,3 +3623,47 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     flex-basis: 18px !important;
   }
 }
+
+
+/* Prevent the full shop name from being clipped in the desktop owner navbar. */
+@media screen and (min-width: 1451px) and (max-width: 1750px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(390px, 36%) minmax(36px, 3%) minmax(0, 61%) !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj-reference-navbar,
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(390px, 36%) minmax(36px, 3%) minmax(0, 61%) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    overflow: visible !important;
+    padding-right: 7px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy {
+    width: max-content !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    width: max-content !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+    font-size: 24px !important;
+    letter-spacing: 0 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+    width: max-content !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+  }
+}
