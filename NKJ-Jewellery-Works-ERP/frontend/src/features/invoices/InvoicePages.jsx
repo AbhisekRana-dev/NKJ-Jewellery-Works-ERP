@@ -1145,7 +1145,7 @@ export function InvoicePage() {
     return () => window.removeEventListener("keydown", handleInvoicePrintShortcut, true);
   }, [showInvoicePin, isPrintPreparing, saving]);
 
-  async function printCurrentInvoice(ticket) {
+  async function printCurrentInvoice(ticket, pdfWindow) {
     setIsPrintPreparing(true);
     setError("");
     try {
@@ -1155,12 +1155,16 @@ export function InvoicePage() {
       });
       setShowInvoicePin(false);
 
-      // Open the native browser print dialog only after the security PIN
-      // has been verified and the one-time print ticket has been consumed.
-      // The invoice @page / @media print rules format it as A4 landscape.
-      window.print();
-      setSuccessMessage(`Print dialog opened for invoice ${invoiceNo}.`);
+      const file = await createInvoiceSharePdfFile({ id: invoiceId, invoiceNo });
+      const opened = openInvoicePdfForPrinting(file, pdfWindow);
+      setShowInvoicePin(false);
+      setSuccessMessage(
+        opened
+          ? `Invoice ${invoiceNo} opened as an upright A4 landscape PDF and saved to Downloads. Press Ctrl+P in the PDF tab to print.`
+          : `Invoice ${invoiceNo} saved as an upright A4 landscape PDF. Open it from Downloads and press Ctrl+P to print.`
+      );
     } catch (error) {
+      if (pdfWindow && !pdfWindow.closed) pdfWindow.close();
       setShowInvoicePin(false);
       setError(error.message || "Could not prepare the invoice PDF.");
     } finally {
@@ -2281,6 +2285,34 @@ function downloadInvoicePdfFile(file) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+function openInvoicePdfForPrinting(file, previewWindow) {
+  if (!(file instanceof File) || file.type !== "application/pdf" || file.size < 1000) {
+    throw new Error("The generated invoice PDF is invalid. Nothing was opened or downloaded.");
+  }
+
+  const url = URL.createObjectURL(file);
+  let opened = false;
+  if (previewWindow && !previewWindow.closed) {
+    try {
+      previewWindow.opener = null;
+      previewWindow.location.replace(url);
+      opened = true;
+    } catch {
+      try {
+        previewWindow.location.href = url;
+        opened = true;
+      } catch {
+        opened = false;
+      }
+    }
+  }
+
+  // Keep a saved copy as well as opening the PDF viewer for Ctrl+P printing.
+  downloadInvoicePdfFile(file);
+  window.setTimeout(() => URL.revokeObjectURL(url), 15 * 60 * 1000);
+  return opened;
+}
+
 /** Export the existing SavedInvoicePrintSheet as a PDF file. */
 function collectInvoicePrintStyles() {
   const collected = [];
@@ -2826,19 +2858,29 @@ export function SavedInvoices() {
 
   if (!isAdmin) return null;
 
-  const printSavedInvoice = async (ticket) => {
+  const printSavedInvoice = async (ticket, pdfWindow) => {
     if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo) {
-      throw new Error("Open a saved invoice before downloading its PDF.");
+      throw new Error("Open a saved invoice before generating its PDF.");
     }
-    await request("/invoices/consume-print-ticket", {
-      method: "POST",
-      body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
-    });
-    setShowPrintPin(false);
-    // Print the selected invoice through the browser's native print
-    // dialog. The same print stylesheet hides ERP navigation and metadata.
-    window.print();
-    setDetailError("");
+    try {
+      await request("/invoices/consume-print-ticket", {
+        method: "POST",
+        body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
+      });
+      const file = await createInvoiceSharePdfFile(selectedInvoice);
+      const opened = openInvoicePdfForPrinting(file, pdfWindow);
+      setShowPrintPin(false);
+      setDetailError(
+        opened
+          ? "The upright A4 landscape invoice PDF opened in a new tab and was saved to Downloads. Press Ctrl+P in the PDF tab to print."
+          : "The upright A4 landscape invoice PDF was saved to Downloads. Open it and press Ctrl+P to print."
+      );
+    } catch (error) {
+      if (pdfWindow && !pdfWindow.closed) pdfWindow.close();
+      setShowPrintPin(false);
+      setErr(error.message || "Could not generate the invoice PDF.");
+      throw error;
+    }
   };
 
   const shareInvoiceOnWhatsApp = async () => {
