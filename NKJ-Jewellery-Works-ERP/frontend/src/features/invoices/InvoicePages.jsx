@@ -1155,12 +1155,11 @@ export function InvoicePage() {
       });
       setShowInvoicePin(false);
 
-      // Generate a real landscape PDF instead of opening the browser print
-      // dialog. This prevents saved Portrait settings and browser URL/date
-      // headers from being embedded in the invoice file.
-      const file = await createInvoiceSharePdfFile({ id: invoiceId, invoiceNo });
-      downloadInvoicePdfFile(file);
-      setSuccessMessage(`Invoice ${invoiceNo} downloaded as an upright A4 landscape PDF. Open the downloaded PDF to print it.`);
+      // Open the native browser print dialog only after the security PIN
+      // has been verified and the one-time print ticket has been consumed.
+      // The invoice @page / @media print rules format it as A4 landscape.
+      window.print();
+      setSuccessMessage(`Print dialog opened for invoice ${invoiceNo}.`);
     } catch (error) {
       setShowInvoicePin(false);
       setError(error.message || "Could not prepare the invoice PDF.");
@@ -2836,14 +2835,10 @@ export function SavedInvoices() {
       body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
     });
     setShowPrintPin(false);
-    try {
-      const file = sharePdfFile || await createInvoiceSharePdfFile(selectedInvoice);
-      downloadInvoicePdfFile(file);
-      setDetailError("");
-    } catch (error) {
-      setErr(error.message || "Could not prepare the invoice PDF.");
-      throw error;
-    }
+    // Print the selected invoice through the browser's native print
+    // dialog. The same print stylesheet hides ERP navigation and metadata.
+    window.print();
+    setDetailError("");
   };
 
   const shareInvoiceOnWhatsApp = async () => {
