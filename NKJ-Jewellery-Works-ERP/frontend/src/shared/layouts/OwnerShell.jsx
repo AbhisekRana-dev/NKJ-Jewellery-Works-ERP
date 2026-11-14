@@ -75,6 +75,7 @@ export function Nav({ active = "home" }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
   const sidebarNavRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
+  const calculatorOwnerWorkspace = ownerWorkspace && active === "calculator";
   const persistSidebarState = (collapsed) => {
     try {
       window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
@@ -124,16 +125,17 @@ export function Nav({ active = "home" }) {
     const body = document.body;
     body.classList.toggle("nkj-owner-layout", ownerWorkspace);
     body.classList.toggle("nkj-owner-sidebar-collapsed", ownerWorkspace && sidebarCollapsed);
+    body.classList.toggle("nkj-owner-calculator-layout", calculatorOwnerWorkspace);
     body.classList.toggle("invoice-page", active === "invoice");
 
-    if (ownerWorkspace) {
+    if (ownerWorkspace && !calculatorOwnerWorkspace) {
       try {
         window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
       } catch {
         // The sidebar remains usable when browser storage is unavailable.
       }
     }
-  }, [active, ownerWorkspace, sidebarCollapsed]);
+  }, [active, ownerWorkspace, sidebarCollapsed, calculatorOwnerWorkspace]);
 
   useLayoutEffect(() => {
     if (!ownerWorkspace || !sidebarNavRef.current) return;
@@ -145,7 +147,7 @@ export function Nav({ active = "home" }) {
     }
   }, [ownerWorkspace]);
 
-  if (ownerWorkspace) {
+  if (ownerWorkspace && !calculatorOwnerWorkspace) {
     return (
       <>
         <aside className={`nkj-owner-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`} aria-label="Owner navigation">
@@ -217,33 +219,48 @@ export function Nav({ active = "home" }) {
           </div>
         </aside>
 
-        <header className="nkj-owner-topbar">
-          <div className="nkj-owner-top-title">
-            <span className="eyebrow">OWNER WORKSPACE</span>
-            <b>Nandikishor Jewellery Works</b>
-          </div>
-          <div className="nkj-owner-top-actions">
-            <Link to="/" className="nkj-calculator-link nkj-home-link" aria-label="Open home">
-              <HomeIcon size={17} /> <span>Home</span>
-            </Link>
-            <Link to="/designs" className="nkj-calculator-link nkj-designs-link" aria-label="Open jewellery designs">
-              <Gem size={17} /> <span>Jewellery Designs</span>
-            </Link>
-            <Link to="/calculator" className="nkj-calculator-link" aria-label="Open calculator">
-              <CalculatorIcon size={17} /> <span>Calculator</span>
-            </Link>
-            <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
-            <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
-          </div>
+        <header className="topbar nkj-owner-topbar nkj-reference-navbar">
+          <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
+            <div className="nkj-navbar-brand-copy">
+              <b>Nandikishor Jewellery Works</b>
+              <small><MapPin size={14} /> Sasra, Gopiballavpur, Jhargram</small>
+            </div>
+          </Link>
+          <nav aria-label="Main navigation">
+            <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
+            <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
+            <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+            <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
+            <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b><ChevronDown size={15} aria-hidden="true" /></span>
+          </nav>
         </header>
       </>
+    );
+  }
+
+  if (calculatorOwnerWorkspace) {
+    return (
+      <header className="topbar nkj-owner-topbar nkj-reference-navbar">
+        <Link to="/" className="brand nkj-navbar-brand-no-logo" aria-label="Nandikishor Jewellery Works home">
+          <div className="nkj-navbar-brand-copy">
+            <b>Nandikishor Jewellery Works</b>
+            <small><MapPin size={14} /> Sasra, Gopiballavpur, Jhargram</small>
+          </div>
+        </Link>
+        <nav aria-label="Main navigation">
+          <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
+          <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
+          <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+          <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
+          <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b><ChevronDown size={15} aria-hidden="true" /></span>
+        </nav>
+      </header>
     );
   }
 
   return (
     <header className="topbar">
       <Link to="/" className="brand">
-        <div className="logo">NKJ</div>
         <div><b>Nandikishor Jewellery Works</b><small>Sasra, Gopiballavpur, Jhargram</small></div>
       </Link>
       <nav aria-label="Main navigation">
