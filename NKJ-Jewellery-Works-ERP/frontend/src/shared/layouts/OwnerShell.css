@@ -3440,3 +3440,39 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     height: 21px !important;
   }
 }
+
+
+/* Sidebar brand: logo only, centred in the expanded rail. */
+.nkj-owner-sidebar > .nkj-owner-brand {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  min-height: 112px !important;
+  height: 112px !important;
+  padding: 8px 10px !important;
+  overflow: hidden !important;
+}
+.nkj-owner-sidebar > .nkj-owner-brand .nkj-owner-logo-image {
+  display: block !important;
+  width: 96px !important;
+  height: 96px !important;
+  max-width: 96px !important;
+  max-height: 96px !important;
+  flex: 0 0 96px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  margin: 0 auto !important;
+}
+.nkj-owner-sidebar.is-collapsed > .nkj-owner-brand {
+  min-height: 126px !important;
+  height: 126px !important;
+  padding: 42px 0 12px !important;
+}
+.nkj-owner-sidebar.is-collapsed > .nkj-owner-brand .nkj-owner-logo-image {
+  width: 66px !important;
+  height: 66px !important;
+  max-width: 66px !important;
+  max-height: 66px !important;
+  flex-basis: 66px !important;
+}
