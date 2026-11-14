@@ -33,12 +33,18 @@ import com.google.zxing.Result;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
 import java.net.URI;
+import java.net.NetworkInterface;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.HashMap;
@@ -272,10 +278,23 @@ public class JewelleryDesignController {
         }
         String scheme = baseUri.getScheme();
         String baseHost = baseUri.getHost();
-        if (baseHost != null && ("localhost".equalsIgnoreCase(baseHost)
-                || "127.0.0.1".equals(baseHost) || "::1".equals(baseHost))) {
-            throw new IllegalArgumentException(
-                    "This QR URL points to localhost and cannot be opened from your phone. Open the ERP on your PC using its Wi-Fi IPv4 address (for example, http://192.168.1.10:5173), not localhost.");
+        if (isLoopbackHost(baseHost)) {
+            if (!allowPrivateHttpMobileUploads) {
+                throw new IllegalArgumentException(
+                        "The ERP was opened on localhost. For local phone uploads, set NKJ_DESIGNS_MOBILE_UPLOAD_ALLOW_PRIVATE_HTTP=true in backend/.env and restart the backend. The QR generator will then automatically use your PC's Wi-Fi IP.");
+            }
+            String lanAddress = discoverPrivateLanIpv4();
+            if (lanAddress == null) {
+                throw new IllegalArgumentException(
+                        "Could not detect your PC's private Wi-Fi IPv4 address. Connect your PC to Wi-Fi, run ipconfig, and open the ERP using that IPv4 address.");
+            }
+            try {
+                baseUri = new URI(scheme, null, lanAddress, baseUri.getPort(),
+                        baseUri.getPath(), baseUri.getQuery(), null);
+                baseHost = baseUri.getHost();
+            } catch (java.net.URISyntaxException invalidLanUrl) {
+                throw new IllegalArgumentException("Could not build the mobile upload URL from your PC's Wi-Fi address.");
+            }
         }
         boolean secureHttps = "https".equalsIgnoreCase(scheme);
         boolean permittedPrivateLanHttp = allowPrivateHttpMobileUploads
@@ -321,6 +340,66 @@ public class JewelleryDesignController {
             result.put("designName", targetDesign.get("designName"));
         }
         return result;
+    }
+
+    private static boolean isLoopbackHost(String host) {
+        return host != null && ("localhost".equalsIgnoreCase(host)
+                || "127.0.0.1".equals(host) || "::1".equals(host));
+    }
+
+    /**
+     * When the owner has opened Vite on localhost, build the QR URL with the
+     * computer's reachable private IPv4 address instead. The phone can then
+     * open the Vite page over the same trusted Wi-Fi network.
+     */
+    private static String discoverPrivateLanIpv4() {
+        List<String> candidates = new ArrayList<>();
+        try {
+            var interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface network = interfaces.nextElement();
+                try {
+                    if (!network.isUp() || network.isLoopback()) continue;
+                    var addresses = network.getInetAddresses();
+                    while (addresses.hasMoreElements()) {
+                        InetAddress address = addresses.nextElement();
+                        if (address instanceof Inet4Address
+                                && !address.isLoopbackAddress()
+                                && !address.isLinkLocalAddress()
+                                && isPrivateIpv4Host(address.getHostAddress())) {
+                            candidates.add(address.getHostAddress());
+                        }
+                    }
+                } catch (SocketException ignored) {
+                    // Ignore an adapter that disappears while interfaces are enumerated.
+                }
+            }
+        } catch (SocketException ignored) {
+            return null;
+        }
+        return candidates.stream()
+                .distinct()
+                .sorted(Comparator.comparingInt(JewelleryDesignController::lanAddressPriority))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static int lanAddressPriority(String address) {
+        try {
+            NetworkInterface network = NetworkInterface.getByInetAddress(InetAddress.getByName(address));
+            if (network != null) {
+                String label = (network.getDisplayName() + " " + network.getName()).toLowerCase(Locale.ROOT);
+                if (label.contains("wi-fi") || label.contains("wifi")
+                        || label.contains("wlan") || label.contains("wireless")) return 0;
+                if (label.contains("ethernet") || label.matches(".*\\beth[0-9]+\\b.*")) return 1;
+                if (!network.isVirtual()) return 2;
+            }
+        } catch (Exception ignored) {
+            // Fall back to a stable address-family preference.
+        }
+        if (address.startsWith("192.168.")) return 3;
+        if (address.startsWith("10.")) return 4;
+        return 5;
     }
 
     private static boolean isPrivateIpv4Host(String host) {
