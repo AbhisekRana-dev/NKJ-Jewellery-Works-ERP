@@ -1,0 +1,963 @@
+/*
+ * NKJ ERP — 100% browser zoom desktop density layer.
+ *
+ * Purpose: reproduce the compact spacing of the previous 90% browser view
+ * using ordinary, responsive CSS dimensions at 100% browser zoom.
+ *
+ * This file is imported after App.jsx and its feature styles so these
+ * screen-only refinements are predictable. It does not use CSS zoom,
+ * transform scaling, fixed viewport clipping, or global font scaling.
+ * Invoice sheet geometry and all print/PDF rules are intentionally excluded.
+ */
+
+@media screen and (min-width: 1200px) {
+  /* Shared app canvas: recover space from generous outer gutters. */
+  .app-layout,
+  .app-content {
+    min-width: 0;
+  }
+
+  .app-content > main.container:not(.invoice-container) {
+    box-sizing: border-box;
+    padding: 18px clamp(14px, 1.7vw, 27px) 24px;
+  }
+
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container:not(.invoice-container) {
+    padding: 18px clamp(13px, 1.55vw, 24px) 24px !important;
+    min-height: calc(100dvh - 80px);
+    min-width: 0;
+  }
+
+  /* Navbar proportions stay the same; only reduce excess height and gaps. */
+  .topbar:not(.nkj-owner-topbar) {
+    min-height: 70px !important;
+    height: 70px !important;
+    padding: 7px clamp(12px, 2vw, 27px) !important;
+    gap: 12px !important;
+  }
+
+  .topbar:not(.nkj-owner-topbar) .brand {
+    gap: 10px !important;
+  }
+
+  .topbar:not(.nkj-owner-topbar) .brand .logo {
+    width: 45px !important;
+    height: 45px !important;
+    flex-basis: 45px !important;
+  }
+
+  .topbar:not(.nkj-owner-topbar) nav {
+    gap: 4px !important;
+  }
+
+  .topbar:not(.nkj-owner-topbar) nav a,
+  .topbar:not(.nkj-owner-topbar) nav button {
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 7px 9px !important;
+    font-size: 10.5px !important;
+    gap: 6px !important;
+  }
+
+  .topbar:not(.nkj-owner-topbar) nav a svg,
+  .topbar:not(.nkj-owner-topbar) nav button svg {
+    width: 15px !important;
+    height: 15px !important;
+    flex-basis: 15px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar {
+    min-height: 79px !important;
+    height: 79px !important;
+    padding: 8px clamp(15px, 2.35vw, 36px) !important;
+    gap: clamp(10px, 1.55vw, 23px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy {
+    gap: 5px !important;
+    min-width: 0 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    font-size: clamp(18px, 1.62vw, 27px) !important;
+    line-height: 1.08 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small {
+    font-size: clamp(9px, .78vw, 12px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    gap: clamp(5px, .65vw, 10px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    min-height: 47px !important;
+    height: 47px !important;
+    padding: 8px clamp(9px, .9vw, 14px) !important;
+    font-size: clamp(10px, .82vw, 13px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a svg {
+    width: 18px !important;
+    height: 18px !important;
+    flex-basis: 18px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    min-height: 40px !important;
+    font-size: clamp(10px, .78vw, 12px) !important;
+    padding-left: clamp(8px, .75vw, 13px) !important;
+  }
+
+  /* Sidebar: retain the established widths/appearance, tighten vertical rhythm. */
+  .nkj-owner-sidebar > .nkj-owner-brand {
+    min-height: 100px !important;
+    height: 100px !important;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+  }
+
+  .nkj-owner-sidebar > .nkj-owner-brand .nkj-owner-logo-image {
+    width: 86px !important;
+    height: 86px !important;
+    max-width: 86px !important;
+    max-height: 86px !important;
+    flex-basis: 86px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed > .nkj-owner-brand {
+    min-height: 113px !important;
+    height: 113px !important;
+    padding-top: 38px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed > .nkj-owner-brand .nkj-owner-logo-image {
+    width: 60px !important;
+    height: 60px !important;
+    max-width: 60px !important;
+    max-height: 60px !important;
+    flex-basis: 60px !important;
+  }
+
+  .nkj-owner-nav {
+    padding-top: 6px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .nkj-owner-nav-group {
+    margin-top: 6px !important;
+    margin-bottom: 9px !important;
+  }
+
+  .nkj-owner-nav a {
+    min-height: 36px !important;
+    margin-block: 2px !important;
+    padding: 7px 9px !important;
+    gap: 9px !important;
+    font-size: 11px !important;
+  }
+
+  .nkj-owner-nav a > svg:first-child {
+    width: 17px !important;
+    height: 17px !important;
+    flex-basis: 17px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {
+    min-height: 49px !important;
+    padding: 5px 3px !important;
+    gap: 2px !important;
+  }
+
+  .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > svg:first-child {
+    width: 20px !important;
+    height: 20px !important;
+    flex-basis: 20px !important;
+  }
+
+  .nkj-owner-sidebar-bottom {
+    padding: 7px 10px max(9px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .nkj-owner-sidebar-bottom button,
+  .nkj-owner-sidebar-bottom a {
+    min-height: 35px !important;
+    padding: 7px 9px !important;
+  }
+
+  /* Common page headings and reusable content spacing. */
+  .page-title,
+  .section-head,
+  .nkj-module-heading,
+  .nkj-dashboard-heading,
+  .nkj-transactions-heading {
+    margin-bottom: 13px !important;
+    gap: 12px !important;
+  }
+
+  .page-title h2,
+  .section-head h2 {
+    font-size: 24px !important;
+  }
+
+  .nkj-module-heading h2,
+  .nkj-dashboard-heading h2,
+  .nkj-transactions-heading h2 {
+    font-size: 25px !important;
+  }
+
+  .nkj-module-heading p,
+  .nkj-dashboard-heading p {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+
+  .toolbar,
+  .nkj-module-toolbar {
+    padding: 8px 10px !important;
+    margin-bottom: 11px !important;
+    gap: 8px !important;
+  }
+
+  .panel {
+    padding: 16px !important;
+  }
+
+  .nkj-module-page {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Reusable ERP module cards, forms and data tables. */
+  .nkj-module-kpis {
+    gap: 10px !important;
+    margin: 13px 0 !important;
+  }
+
+  .nkj-module-kpis > div {
+    padding: 12px 13px !important;
+    gap: 2px 8px !important;
+  }
+
+  .nkj-module-kpis > div svg {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 8px !important;
+  }
+
+  .nkj-module-kpis > div strong {
+    font-size: 20px !important;
+  }
+
+  .nkj-module-form {
+    margin-bottom: 13px !important;
+    padding: 14px 15px !important;
+  }
+
+  .nkj-module-form-head {
+    margin-bottom: 10px !important;
+  }
+
+  .nkj-module-form-head h3 {
+    font-size: 17px !important;
+  }
+
+  .nkj-module-fields {
+    gap: 9px !important;
+  }
+
+  .nkj-module-fields label {
+    gap: 5px !important;
+  }
+
+  .nkj-module-fields input,
+  .nkj-module-fields select,
+  .nkj-module-fields textarea {
+    min-height: 35px !important;
+    padding: 7px 9px !important;
+    font-size: 11px !important;
+  }
+
+  .nkj-module-form-actions {
+    gap: 8px !important;
+    margin-top: 12px !important;
+  }
+
+  .nkj-module-form-actions button,
+  .nkj-module-actions button {
+    padding: 8px 11px !important;
+    font-size: 11px !important;
+  }
+
+  .nkj-module-table {
+    border-radius: 10px !important;
+  }
+
+  .nkj-module-table table {
+    font-size: 11px !important;
+  }
+
+  .nkj-module-table th {
+    padding: 9px 8px !important;
+  }
+
+  .nkj-module-table td {
+    padding: 8px 8px !important;
+  }
+
+  .nkj-row-actions {
+    gap: 4px !important;
+  }
+
+  .nkj-row-actions .small-action {
+    padding: 5px 7px !important;
+    font-size: 10px !important;
+  }
+
+  /* Dashboard: retain the same KPI and chart grid with less vertical bulk. */
+  .nkj-dashboard-heading {
+    margin-bottom: 13px !important;
+  }
+
+  .nkj-dashboard-heading h2 {
+    font-size: 26px !important;
+  }
+
+  .nkj-stat-grid {
+    gap: 11px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .nkj-dashboard .stat {
+    min-height: 104px !important;
+    padding: 11px 14px !important;
+    gap: 13px !important;
+  }
+
+  .nkj-dashboard .stat-icon {
+    width: 70px !important;
+    height: 70px !important;
+    flex-basis: 70px !important;
+  }
+
+  .nkj-dashboard .stat-icon svg {
+    width: 31px !important;
+    height: 31px !important;
+  }
+
+  .nkj-dashboard .stat-copy > span {
+    font-size: 13px !important;
+  }
+
+  .nkj-dashboard .stat-copy > strong {
+    font-size: 23px !important;
+    line-height: 1.2 !important;
+  }
+
+  .nkj-dashboard .stat-sub {
+    font-size: 12px !important;
+  }
+
+  .nkj-dashboard-actions {
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .nkj-dashboard .nkj-action-tile {
+    min-height: 96px !important;
+    padding: 13px 15px !important;
+    gap: 13px !important;
+  }
+
+  .nkj-dashboard .nkj-action-tile > svg {
+    width: 44px !important;
+    height: 44px !important;
+    flex-basis: 44px !important;
+    padding: 10px !important;
+  }
+
+  .nkj-dashboard .panel {
+    padding: 13px !important;
+  }
+
+  .nkj-dashboard .nkj-recent table th,
+  .nkj-dashboard .nkj-recent table td {
+    padding: 8px 7px !important;
+    font-size: 11px !important;
+  }
+
+  /* Public Home: reduce hero/card height while preserving the two-column design. */
+  .nkj-public-welcome {
+    min-height: 468px !important;
+  }
+
+  .nkj-public-copy {
+    padding: 52px 6% !important;
+  }
+
+  .nkj-public-copy h1 {
+    font-size: clamp(42px, 4.5vw, 53px) !important;
+    margin-block: 14px !important;
+  }
+
+  .nkj-public-copy p {
+    font-size: 16px !important;
+    line-height: 1.55 !important;
+  }
+
+  .nkj-public-actions {
+    gap: 10px !important;
+    margin-top: 22px !important;
+  }
+
+  .nkj-public-image img {
+    min-height: 468px !important;
+  }
+
+  .nkj-public-content {
+    padding: 13px 2.4% 18px !important;
+  }
+
+  .nkj-public-home .nkj-public-content .nkj-public-market-services {
+    gap: 13px !important;
+    margin: 15px 0 14px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-card,
+  .nkj-public-home .nkj-public-services-card {
+    min-height: 256px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-heading {
+    min-height: 44px !important;
+    padding-block: 6px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four {
+    padding-top: 10px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four > .nkj-public-rate-item {
+    min-height: clamp(88px, 8vw, 130px) !important;
+    padding: 7px !important;
+  }
+
+  .nkj-public-home .nkj-public-service {
+    min-height: 112px !important;
+    padding-block: 6px !important;
+  }
+
+  .nkj-public-why {
+    gap: 10px !important;
+    margin-block: 14px !important;
+    padding: 12px 14px !important;
+  }
+
+  .nkj-public-features {
+    gap: 11px !important;
+    margin: 16px 0 !important;
+  }
+
+  .nkj-public-features > div {
+    padding: 14px !important;
+    gap: 2px 9px !important;
+  }
+
+  /* Jewellery Designs: compact toolbar, hero and gallery density. */
+  .nkj-designs-page {
+    max-width: 100% !important;
+  }
+
+  .nkj-designs-hero {
+    min-height: 184px !important;
+    margin-bottom: 18px !important;
+    padding: 23px clamp(18px, 3.2vw, 38px) !important;
+    gap: 18px !important;
+  }
+
+  .nkj-designs-hero-mark {
+    width: 130px !important;
+    height: 130px !important;
+    flex-basis: 130px !important;
+  }
+
+  .nkj-designs-hero-ring {
+    width: 94px !important;
+    height: 94px !important;
+  }
+
+  .nkj-designs-hero h1 {
+    font-size: clamp(24px, 2.7vw, 34px) !important;
+  }
+
+  .nkj-designs-toolbar {
+    gap: 10px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .nkj-designs-section-heading {
+    margin-bottom: 10px !important;
+  }
+
+  .nkj-designs-section-heading h2 {
+    font-size: 20px !important;
+  }
+
+  .nkj-designs-grid {
+    gap: 12px !important;
+  }
+
+  .nkj-designs-categories button {
+    min-height: 31px !important;
+    padding: 6px 10px !important;
+  }
+
+  .nkj-designs-search {
+    min-height: 35px !important;
+  }
+
+  /* Inventory: shorter editor, KPI cards and image placeholder. */
+  .nkj-inventory-kpis {
+    gap: 11px !important;
+    margin: 14px 0 !important;
+  }
+
+  .nkj-inventory-kpis > div {
+    padding: 13px !important;
+    gap: 3px 9px !important;
+  }
+
+  .nkj-inventory-kpis svg {
+    width: 37px !important;
+    height: 37px !important;
+    padding: 8px !important;
+  }
+
+  .nkj-inventory-kpis strong {
+    font-size: 20px !important;
+  }
+
+  .nkj-inventory-editor {
+    margin: 13px 0 16px !important;
+    padding: 15px !important;
+  }
+
+  .nkj-inventory-editor-head {
+    gap: 11px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .nkj-inventory-editor-head h3 {
+    font-size: 21px !important;
+  }
+
+  .nkj-inventory-editor-grid {
+    gap: 12px !important;
+  }
+
+  .nkj-inventory-form-column {
+    gap: 11px !important;
+  }
+
+  .nkj-inventory-section {
+    padding: 12px !important;
+  }
+
+  .nkj-inventory-section h4 {
+    margin-bottom: 9px !important;
+    font-size: 16px !important;
+  }
+
+  .nkj-inventory-fields {
+    gap: 9px 11px !important;
+  }
+
+  .nkj-inventory-field input,
+  .nkj-inventory-field select,
+  .nkj-inventory-field textarea {
+    padding: 8px 9px !important;
+    font-size: 12px !important;
+  }
+
+  .nkj-inventory-photo-area > img,
+  .nkj-inventory-photo-placeholder {
+    height: 170px !important;
+    min-height: 170px !important;
+  }
+
+  .nkj-inventory-table {
+    margin-top: 13px !important;
+    padding: 12px !important;
+  }
+
+  /* Installments and Pre-Booking: tighten forms without hiding fields. */
+  .nkj-installment-page .nkj-installment-kpis {
+    gap: 10px !important;
+    margin: 13px 0 !important;
+  }
+
+  .nkj-installment-kpis > div {
+    padding: 12px 13px !important;
+  }
+
+  .nkj-installment-kpis > div svg {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 8px !important;
+  }
+
+  .nkj-installment-kpis > div strong {
+    font-size: 20px !important;
+  }
+
+  .nkj-installment-tabs {
+    gap: 6px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .nkj-installment-tabs button {
+    min-height: 34px !important;
+    padding: 7px 12px !important;
+    font-size: 11px !important;
+  }
+
+  .nkj-installment-form {
+    padding: 15px !important;
+  }
+
+  .nkj-installment-form-grid {
+    gap: 13px !important;
+  }
+
+  .nkj-installment-form-grid > section {
+    padding: 12px !important;
+  }
+
+  .nkj-installment-form-grid input,
+  .nkj-installment-form-grid select,
+  .nkj-installment-receipt-layout input,
+  .nkj-installment-receipt-layout select {
+    min-height: 35px !important;
+    padding: 7px 9px !important;
+  }
+
+  .nkj-installment-selected,
+  .nkj-installment-calculation {
+    padding: 10px !important;
+  }
+
+  .nkj-installment-preview,
+  .nkj-installment-detail-panel {
+    margin-top: 13px !important;
+    padding: 13px !important;
+  }
+
+  .nkj-installment-detail-summary {
+    gap: 8px !important;
+    margin: 12px 0 !important;
+  }
+
+  .nkj-installment-detail-summary > div {
+    padding: 10px !important;
+  }
+
+  /* Rates, Reports, Cashbook and Staff/Attendance cards. */
+  .nkj-rate-management-page .nkj-rate-admin-banner {
+    gap: 11px !important;
+    margin-bottom: 13px !important;
+    padding: 12px 14px !important;
+  }
+
+  .nkj-rate-admin-icon {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .nkj-rate-active-grid {
+    gap: 10px !important;
+    margin-bottom: 13px !important;
+  }
+
+  .nkj-rate-active-card {
+    padding: 13px !important;
+  }
+
+  .nkj-rate-active-card strong {
+    font-size: 21px !important;
+  }
+
+  .nkj-rate-edit-form {
+    padding: 16px !important;
+  }
+
+  .nkj-rate-edit-form h3 {
+    margin-bottom: 12px !important;
+  }
+
+  .nkj-rate-history-panel {
+    margin-top: 14px !important;
+    padding: 12px !important;
+  }
+
+  .nkj-report-kpis {
+    gap: 11px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .nkj-report-kpi {
+    padding: 14px !important;
+    gap: 11px !important;
+  }
+
+  .nkj-report-kpi > span {
+    width: 39px !important;
+    height: 39px !important;
+    flex-basis: 39px !important;
+  }
+
+  .nkj-report-kpi strong {
+    font-size: 18px !important;
+  }
+
+  .nkj-report-grid {
+    gap: 12px !important;
+  }
+
+  .nkj-report-chart,
+  .nkj-report-summary {
+    padding: 15px !important;
+  }
+
+  .nkj-bar-row {
+    margin: 14px 0 !important;
+  }
+
+  .nkj-cash-summary {
+    gap: 10px !important;
+    margin-bottom: 13px !important;
+  }
+
+  .nkj-cash-summary-card {
+    padding: 13px !important;
+    gap: 10px !important;
+  }
+
+  .nkj-cash-summary-card strong {
+    font-size: 21px !important;
+  }
+
+  .nkj-transactions-toolbar {
+    gap: 8px !important;
+    margin-bottom: 11px !important;
+  }
+
+  .nkj-attendance-summary {
+    gap: 9px !important;
+    margin-bottom: 13px !important;
+  }
+
+  .nkj-attendance-summary article {
+    min-height: 76px !important;
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+
+  .nkj-attendance-summary .summary-icon {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .nkj-attendance-controls {
+    gap: 9px !important;
+    margin-bottom: 11px !important;
+  }
+
+  .nkj-attendance-footer {
+    gap: 9px !important;
+    margin-top: 9px !important;
+    padding: 10px 12px !important;
+  }
+
+  .nkj-staff-layout {
+    gap: 12px !important;
+  }
+
+  .nkj-staff-summary > div {
+    padding: 11px !important;
+  }
+
+  .nkj-staff-profile-head {
+    gap: 10px !important;
+  }
+
+  .nkj-staff-notebook {
+    padding-top: 10px !important;
+  }
+
+  /* Profile/settings: trim card and form spacing, keep fields readable. */
+  .nk-profile {
+    gap: 12px !important;
+  }
+
+  .nk-profile section,
+  .nk-profile .panel {
+    padding: 15px !important;
+  }
+
+  .nk-profile h2,
+  .nk-profile h3 {
+    margin-bottom: 9px !important;
+  }
+
+  .nk-profile input,
+  .nk-profile select,
+  .nk-profile textarea {
+    min-height: 35px !important;
+    padding: 7px 9px !important;
+  }
+
+  /* Invoice entry/history outer controls only.
+     The actual .invoice-sheet and its A4/print geometry are not targeted. */
+  body.invoice-page .app-content > main.invoice-container {
+    padding: 12px clamp(10px, 1.2vw, 18px) 16px !important;
+  }
+
+  body.invoice-page .invoice-container > .page-title {
+    margin: 0 0 10px !important;
+  }
+
+  body.invoice-page .nkj-invoice-toolbar {
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+    padding: 8px 10px !important;
+  }
+
+  body.invoice-page .nkj-saved-toolbar-row {
+    gap: 9px !important;
+    margin-bottom: 10px !important;
+  }
+
+  body.invoice-page .nkj-saved-panel {
+    padding: 12px !important;
+  }
+
+  body.invoice-page .nkj-saved-table th,
+  body.invoice-page .nkj-saved-table td {
+    padding: 8px 7px !important;
+  }
+
+  /* Modal dialogs remain centred and scroll within their own safe viewport. */
+  .nkj-design-modal,
+  .nkj-catalog-details-modal,
+  .nkj-refund-modal,
+  .nkj-attendance-modal,
+  .nkj-staff-form-modal {
+    max-height: min(88dvh, 820px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Short desktop viewports need a little more vertical recovery. */
+@media screen and (min-width: 1200px) and (max-height: 820px) {
+  .app-content > main.container:not(.invoice-container) {
+    padding-top: 13px !important;
+    padding-bottom: 17px !important;
+  }
+
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container:not(.invoice-container) {
+    padding-top: 13px !important;
+    padding-bottom: 17px !important;
+  }
+
+  .nkj-public-welcome {
+    min-height: 430px !important;
+  }
+
+  .nkj-public-image img {
+    min-height: 430px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-card,
+  .nkj-public-home .nkj-public-services-card {
+    min-height: 235px !important;
+  }
+
+  .nkj-designs-hero {
+    min-height: 165px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .nkj-dashboard .stat {
+    min-height: 94px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar {
+    min-height: 74px !important;
+    height: 74px !important;
+  }
+}
+
+/* At compact desktop widths, keep controls usable rather than allowing clipping. */
+@media screen and (min-width: 1200px) and (max-width: 1450px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(0, .78fr) minmax(0, 1.5fr) !important;
+    gap: 9px !important;
+    padding-inline: 13px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b {
+    font-size: clamp(17px, 1.5vw, 22px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    gap: 5px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    padding-inline: 8px !important;
+    font-size: 10.5px !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    padding-left: 8px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four > .nkj-public-rate-item {
+    gap: 5px !important;
+    padding-inline: 6px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-metal-bars,
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-diamond-icon {
+    flex-basis: 34px !important;
+    width: 34px !important;
+  }
+
+  .nkj-designs-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Preserve deliberate local table scrolling for wide datasets. */
+@media screen and (min-width: 1200px) {
+  .table-wrap,
+  .nkj-attendance-table-scroll,
+  .nkj-staff-note-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .app-content > main.container * {
+    min-width: 0;
+  }
+
+  .app-content > main.container .invoice-sheet,
+  .app-content > main.container .invoice-sheet * {
+    min-width: revert;
+  }
+}
