@@ -3032,7 +3032,7 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
   .nkj-owner-topbar.nkj-reference-navbar {
     box-sizing: border-box !important;
     display: grid !important;
-    grid-template-columns: minmax(400px, 28%) minmax(300px, 23%) minmax(0, 49%) !important;
+    grid-template-columns: minmax(400px, 26.2%) minmax(340px, 25%) minmax(0, 48.8%) !important;
     grid-template-rows: minmax(0, 1fr) !important;
     align-items: center !important;
     justify-content: stretch !important;
@@ -3047,22 +3047,14 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     margin: 0 !important;
     padding: 6px 2% 6px 3.2% !important;
     overflow: hidden !important;
-    border-top: 1.5px solid #d8aa3d !important;
-    border-bottom: 1.5px solid #d8aa3d !important;
+    border: 1.5px solid #d8aa3d !important;
+    border-radius: 52px !important;
     background: linear-gradient(105deg, #690018 0%, #510012 47%, #690018 100%) !important;
   }
 
   .nkj-owner-topbar.nkj-reference-navbar::after {
-    content: "" !important;
-    position: absolute !important;
-    inset: 0 !important;
-    z-index: 0 !important;
-    pointer-events: none !important;
-    border: 0 !important;
-    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201747%20103'%20preserveAspectRatio%3D'none'%3E%0A%20%3Cg%20fill%3D'none'%20stroke%3D'%23e2b64b'%20stroke-width%3D'1.35'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%0A%20%3Cpath%20d%3D'M3%203H1744V100H3Z'%20stroke-width%3D'2'%2F%3E%0A%20%3Cpath%20d%3D'M7%208H1740M7%2095H1740'%20opacity%3D'.65'%2F%3E%0A%20%3Cpath%20d%3D'M6%2036C17%2034%2023%2020%2035%208C32%2022%2039%2028%2051%2028M8%208C21%208%2028%2015%2030%2028C18%2027%2012%2034%208%2046M9%2018C17%2017%2020%2013%2024%208M8%2054C20%2048%2026%2040%2029%2030M1741%2036C1730%2034%201724%2020%201712%208C1715%2022%201708%2028%201696%2028M1739%208C1726%208%201719%2015%201717%2028C1729%2027%201735%2034%201739%2046M1738%2018C1730%2017%201727%2013%201723%208M1739%2054C1727%2048%201721%2040%201718%2030'%2F%3E%0A%20%3Cpath%20d%3D'M6%2067C17%2069%2023%2083%2035%2095C32%2081%2039%2075%2051%2075M8%2095C21%2095%2028%2088%2030%2075C18%2076%2012%2069%208%2057M9%2085C17%2086%2020%2090%2024%2095M8%2049C20%2055%2026%2063%2029%2073M1741%2067C1730%2069%201724%2083%201712%2095C1715%2081%201708%2075%201696%2075M1739%2095C1726%2095%201719%2088%201717%2075C1729%2076%201735%2069%201739%2057M1738%2085C1730%2086%201727%2090%201723%2095M1739%2049C1727%2055%201721%2063%201718%2073'%2F%3E%0A%20%3Cpath%20d%3D'M505%2051.5H666M722%2051.5H892'%20opacity%3D'.9'%2F%3E%0A%20%3Cpath%20d%3D'M687%2043L695%2051.5L687%2060L679%2051.5Z%20M703%2047L707%2051.5L703%2056L699%2051.5Z%20M671%2047L675%2051.5L671%2056L667%2051.5Z'%20fill%3D'%23e2b64b'%20stroke-width%3D'1'%2F%3E%0A%20%3Ccircle%20cx%3D'687'%20cy%3D'51.5'%20r%3D'2.2'%20fill%3D'%23fff0a9'%2F%3E%0A%20%3C%2Fg%3E%3C%2Fsvg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-size: 100% 100% !important;
+    content: none !important;
+    display: none !important;
   }
 
   .nkj-owner-topbar.nkj-reference-navbar::before {
@@ -3177,7 +3169,7 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
   .nkj-owner-topbar.nkj-reference-navbar > nav > a {
     box-sizing: border-box !important;
     display: inline-flex !important;
-    flex: 0 0 auto !important;
+    flex: 1 1 auto !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 8px !important;
@@ -3229,7 +3221,7 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
   .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
     box-sizing: border-box !important;
     display: inline-flex !important;
-    flex: 0 0 auto !important;
+    flex: 1 1 auto !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 8px !important;
@@ -3271,7 +3263,7 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
     max-width: calc(100% - var(--nkj-owner-collapsed-width, 82px)) !important;
     margin-left: var(--nkj-owner-collapsed-width, 82px) !important;
-    grid-template-columns: minmax(380px, 28%) minmax(260px, 23%) minmax(0, 49%) !important;
+    grid-template-columns: minmax(380px, 26.2%) minmax(300px, 25%) minmax(0, 48.8%) !important;
   }
 }
 
@@ -3279,7 +3271,7 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
    evenly; below desktop width switch to a tidy two-row header. */
 @media (min-width: 1451px) and (max-width: 1750px) {
   .nkj-owner-topbar.nkj-reference-navbar {
-    grid-template-columns: minmax(330px, 27%) minmax(150px, 15%) minmax(0, 58%) !important;
+    grid-template-columns: minmax(330px, 27%) minmax(120px, 12%) minmax(0, 61%) !important;
     padding-left: 2.2% !important;
     padding-right: 1.5% !important;
   }
@@ -3312,5 +3304,27 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
 
   body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .nkj-owner-topbar.nkj-reference-navbar {
     grid-template-columns: minmax(280px, 27%) minmax(90px, 12%) minmax(0, 61%) !important;
+  }
+}
+
+
+@media (min-width: 1451px) {
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    border-right: 0 !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    position: relative !important;
+    margin-left: clamp(8px, .8vw, 15px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user::before {
+    content: "" !important;
+    position: absolute !important;
+    left: clamp(-13px, -.7vw, -9px) !important;
+    top: 8px !important;
+    bottom: 8px !important;
+    width: 1px !important;
+    background: rgba(229, 186, 81, .72) !important;
   }
 }
