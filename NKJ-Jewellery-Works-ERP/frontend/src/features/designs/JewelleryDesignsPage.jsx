@@ -208,6 +208,7 @@ export default function JewelleryDesignsPage() {
   const [adminActionMessage, setAdminActionMessage] = useState("");
   const [pendingImages, setPendingImages] = useState([]);
   const pendingImagesRef = useRef([]);
+  const modalContentRef = useRef(null);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [qrSession, setQrSession] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
@@ -336,6 +337,7 @@ export default function JewelleryDesignsPage() {
 
   useEffect(() => {
     if (!selected) return undefined;
+    if (modalContentRef.current) modalContentRef.current.scrollTop = 0;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const handlePreviewKeys = (event) => {
@@ -865,33 +867,22 @@ export default function JewelleryDesignsPage() {
                     <span>The owner has not uploaded a verified product photograph for this design yet.</span>
                   </div>}
 
-              <div className="nkj-design-modal-content">
-                <div className="nkj-design-modal-content-scroll">
-                  <div className="nkj-design-modal-identity">
-                    <div className="nkj-design-modal-id-highlight" aria-label={`Design ID ${selected.designId || selected.designCode || "Not assigned"}`}>
-                      <span><QrCode size={15} /> DESIGN ID</span>
-                      <strong>{selected.designId || selected.designCode || "Not assigned"}</strong>
-                    </div>
-                    <span className="nkj-design-modal-category-line">
-                      {selected.metalType || "Jewellery"} <i>•</i> {selected.subcategoryName || "Type not specified"}
-                    </span>
-                  </div>
-                  {selected.designId && selected.designCode && <small className="nkj-design-legacy-code">Legacy code: {selected.designCode}</small>}
+              <div className="nkj-design-modal-content" ref={modalContentRef}>
+                <div className="nkj-design-modal-content-scroll nkj-design-modal-compact-details">
                   <h2 id="nkj-design-modal-title">{selected.designName || "Untitled Design"}</h2>
-                  <p>{selected.description || "No additional design description has been added."}</p>
-                  <dl>
-                    <div><dt>Jewellery type</dt><dd>{selected.subcategoryName || "—"}</dd></div>
-                    <div><dt>Style</dt><dd>{selected.styleLabel || "Traditional Indian"}</dd></div>
-                    <div><dt>Regional inspiration</dt><dd>{selected.regionalInspiration || "Pan-Indian"}</dd></div>
-                    <div><dt>Material</dt><dd>{selected.materialLabel || "To be confirmed"}</dd></div>
-                    <div><dt>Purity / fineness</dt><dd>{selected.purity || "Not specified"}</dd></div>
-                    <div><dt>Weight</dt><dd>{selected.weightGrams != null ? Number(selected.weightGrams).toLocaleString("en-IN") + " g" : "Not specified"}</dd></div>
-                    {isAdmin && <div><dt>Reference price</dt><dd>{selected.priceInr != null ? "₹ " + Number(selected.priceInr).toLocaleString("en-IN") : "Not specified"}</dd></div>}
-                    <div><dt>Photograph</dt><dd>{selected.imageStatus === "READY" ? "Available" : "Pending upload"}</dd></div>
-                    <div><dt>Images</dt><dd>{selected.images?.length || selected.imageCount || 0}</dd></div>
-                    <div><dt>Catalogue status</dt><dd>{selected.isSample ? "Sample inspiration" : "Owner-uploaded shop design"}</dd></div>
-                    {isAdmin && <div><dt>Publication</dt><dd>{selected.isActive ? "Public" : "Hidden from public"}</dd></div>}
-                  </dl>
+                  <div className="nkj-design-modal-id-highlight" aria-label={`Design ID ${selected.designId || selected.designCode || "Not assigned"}`}>
+                    <span><QrCode size={15} /> DESIGN ID</span>
+                    <strong>{selected.designId || selected.designCode || "Not assigned"}</strong>
+                  </div>
+                  <section className="nkj-design-modal-detail-section" aria-label="Design details">
+                    <h3>DETAIL</h3>
+                    <dl>
+                      <div><dt>Jewellery type</dt><dd>{selected.subcategoryName || "—"}</dd></div>
+                      <div><dt>Style</dt><dd>{selected.styleLabel || "—"}</dd></div>
+                      <div><dt>Material</dt><dd>{selected.materialLabel || "—"}</dd></div>
+                      <div><dt>Weight</dt><dd>{selected.weightGrams != null ? Number(selected.weightGrams).toLocaleString("en-IN") + " g" : "—"}</dd></div>
+                    </dl>
+                  </section>
 
                   {selected.images?.length > 0 && (
                     <div className="nkj-design-modal-gallery-section">
