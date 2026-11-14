@@ -379,6 +379,9 @@ export default function JewelleryDesignsPage() {
         ? (activeImage?.originalUrl || selected?.originalUrl || activeImage?.displayUrl || activeImage?.thumbnailUrl || "")
         : (activeImage?.displayUrl || activeImage?.originalUrl || selected?.originalUrl || activeImage?.thumbnailUrl || selected?.thumbnailUrl || ""))
     : "";
+  const modalThumbnailUrl = selected?.imageStatus === "READY"
+    ? (activeImage?.thumbnailUrl || selected?.thumbnailUrl || "")
+    : "";
   const activeImageCandidates = [...new Set([
     activeImage?.displayUrl,
     activeImage?.originalUrl,
@@ -851,6 +854,8 @@ export default function JewelleryDesignsPage() {
         {selected && (
           <div className="nkj-catalog-modal-backdrop nkj-catalog-view-backdrop" role="presentation" onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeSelectedModal();
+          }}>
+            
               <section className="nkj-catalog-details-modal nkj-catalog-view-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-design-modal-title">
                 <button type="button" className="nkj-catalog-view-close" onClick={closeSelectedModal} aria-label="Close design details"><X size={23} /></button>
                 <div className="nkj-catalog-view-layout">
@@ -1037,8 +1042,7 @@ export default function JewelleryDesignsPage() {
                     <img src={assetUrl(activeImage?.originalUrl || activeImage?.displayUrl || activeImage?.thumbnailUrl)} alt={selected.designName} />
                   </div>
                 )}
-              </section>  </section>
-            )}
+              </section>
           </div>
         )}
       </div>
