@@ -43,8 +43,10 @@ export default function InvoicePinDialog({
       pdfWindow = window.open("about:blank", "_blank");
       if (pdfWindow) {
         pdfWindow.document.title = "Preparing invoice PDF";
-        pdfWindow.document.body.innerHTML =
-          '<main style="font:16px Arial,sans-serif;padding:32px;color:#641029">Preparing your secure A4 landscape invoice PDF…</main>';
+        const message = pdfWindow.document.createElement("p");
+        message.textContent = "PIN verification in progress. Preparing your secure A4 landscape invoice PDF…";
+        message.style.cssText = "font:16px Arial,sans-serif;padding:32px;color:#641029";
+        pdfWindow.document.body.replaceChildren(message);
       }
 
       const result = await request("/invoices/verify-pin", {
