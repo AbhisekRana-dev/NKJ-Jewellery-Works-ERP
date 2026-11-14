@@ -454,7 +454,7 @@ public class JewelleryDesignController {
         return result;
     }
 
-    private static String decodeQrText(BufferedImage source) {
+    static String decodeQrText(BufferedImage source) {
         Map<DecodeHintType, Object> hints = new HashMap<>();
         hints.put(DecodeHintType.POSSIBLE_FORMATS, List.of(BarcodeFormat.QR_CODE));
         hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
