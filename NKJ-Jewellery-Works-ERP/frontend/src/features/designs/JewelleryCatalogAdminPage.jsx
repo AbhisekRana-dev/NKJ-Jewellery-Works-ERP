@@ -422,19 +422,23 @@ export default function JewelleryCatalogAdminPage() {
   };
 
   const addPendingImages = (files) => {
-    const incoming = Array.from(files || []).filter((file) => file && /^image\/(jpeg|png|webp)$/i.test(file.type));
+    const incoming = Array.from(files || []).filter((file) =>
+      file && (/^image\/(jpeg|png|webp)$/i.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name || ""))
+    );
     if (!incoming.length) return;
+    setActiveStoredImageId(null);
+    setActiveUploadPreviewKey(`${incoming[0].name}::${incoming[0].size}::${incoming[0].lastModified}`);
     setImageFiles((current) => {
       const seen = new Set(current.map((file) => `${file.name}::${file.size}::${file.lastModified}`));
-      const next = [...current];
+      const merged = [...current];
       incoming.forEach((file) => {
         const key = `${file.name}::${file.size}::${file.lastModified}`;
         if (!seen.has(key)) {
           seen.add(key);
-          next.push(file);
+          merged.push(file);
         }
       });
-      return next;
+      return merged;
     });
     setImageAdjustments((current) => {
       const next = { ...current };
@@ -703,6 +707,15 @@ export default function JewelleryCatalogAdminPage() {
       setBulkRunning(false);
     }
   };
+
+  const selectedPendingPhoto = activeStoredImageId
+    ? null
+    : imagePreviews.find((preview) => preview.key === activeUploadPreviewKey) || imagePreviews[0] || null;
+  const selectedStoredPhoto = activeStoredImageId
+    ? currentImages.find((image) => String(image.id) === String(activeStoredImageId)) || null
+    : selectedPendingPhoto
+      ? null
+      : currentImages.find((image) => Number(image.displayOrder) === 0) || currentImages[0] || null;
 
   return (
     <Page active="design-catalog">
@@ -996,28 +1009,23 @@ export default function JewelleryCatalogAdminPage() {
                       multiple
                       onChange={(event) => { addPendingImages(event.target.files); event.target.value = ""; }}
                     />
-                    {(() => {
-                      const activePending = imagePreviews.find((preview) => preview.key === activeUploadPreviewKey) || imagePreviews[0] || null;
-                      const activeStored = currentImages.find((image) => String(image.id) === String(activeStoredImageId))
-                        || currentImages.find((image) => Number(image.displayOrder) === 0)
-                        || currentImages[0]
-                        || null;
-                      const source = activePending?.url || (activeStored ? assetUrl(activeStored.displayUrl || activeStored.thumbnailUrl) : "");
-                      return source ? (
-                        <span className="nkj-catalog-photo-stage">
-                          <img src={source} alt={activePending?.file.name || activeStored?.altText || form.designName || "Design preview"} />
-                          <span className="nkj-catalog-photo-stage-hint"><ImagePlus size={15} /> Add or drop more photographs</span>
-                        </span>
-                      ) : (
-                        <span className="nkj-catalog-photo-empty">
-                          <Upload size={48} strokeWidth={1.65} />
-                          <b>Upload Design Photographs</b>
-                          <small>Drag &amp; drop images here or click to browse</small>
-                          <span className="nkj-catalog-choose-files"><Upload size={16} /> Choose Files</span>
-                          <em>JPG, PNG, WEBP (Max 10 MB each)</em>
-                        </span>
-                      );
-                    })()}
+                    {selectedPendingPhoto?.url || selectedStoredPhoto ? (
+                      <span className="nkj-catalog-photo-stage">
+                        <img
+                          src={selectedPendingPhoto?.url || assetUrl(selectedStoredPhoto.displayUrl || selectedStoredPhoto.thumbnailUrl)}
+                          alt={selectedPendingPhoto?.file.name || selectedStoredPhoto?.altText || form.designName || "Design preview"}
+                        />
+                        <span className="nkj-catalog-photo-stage-hint"><ImagePlus size={15} /> Add or drop more photographs</span>
+                      </span>
+                    ) : (
+                      <span className="nkj-catalog-photo-empty">
+                        <Upload size={48} strokeWidth={1.65} />
+                        <b>Upload Design Photographs</b>
+                        <small>Drag &amp; drop images here or click to browse</small>
+                        <span className="nkj-catalog-choose-files"><Upload size={16} /> Choose Files</span>
+                        <em>JPG, PNG, WEBP (Max 10 MB each)</em>
+                      </span>
+                    )}
                   </label>
 
                   <div className="nkj-catalog-photo-gallery-head">
@@ -1027,7 +1035,7 @@ export default function JewelleryCatalogAdminPage() {
 
                   <div className="nkj-catalog-photo-thumbnails">
                     {imagePreviews.map((preview, index) => (
-                      <div className={"nkj-catalog-photo-thumb" + ((activeUploadPreviewKey ? activeUploadPreviewKey === preview.key : index === 0) ? " active" : "")} key={preview.key}>
+                      <div className={"nkj-catalog-photo-thumb" + ((!activeStoredImageId && (activeUploadPreviewKey ? activeUploadPreviewKey === preview.key : index === 0)) ? " active" : "")} key={preview.key}>
                         <button type="button" className="nkj-catalog-photo-thumb-image" onClick={() => setActiveUploadPreviewKey(preview.key)} title={preview.file.name}>
                           <img src={preview.url} alt={preview.file.name} />
                         </button>
@@ -1037,7 +1045,7 @@ export default function JewelleryCatalogAdminPage() {
                     ))}
 
                     {currentImages.map((image) => (
-                      <div className={"nkj-catalog-photo-thumb" + (Number(image.displayOrder) === 0 ? " is-primary" : "") + (String(activeStoredImageId) === String(image.id) ? " active" : "")} key={image.id}>
+                      <div className={"nkj-catalog-photo-thumb" + (Number(image.displayOrder) === 0 ? " is-primary" : "") + ((String(activeStoredImageId) === String(image.id) || (!activeStoredImageId && !imagePreviews.length && Number(image.displayOrder) === 0)) ? " active" : "")} key={image.id}>
                         <button type="button" className="nkj-catalog-photo-thumb-image" onClick={() => { setActiveStoredImageId(image.id); setActiveUploadPreviewKey(""); }} title={image.altText || form.designName}>
                           <img src={assetUrl(image.thumbnailUrl || image.displayUrl)} alt={image.altText || form.designName} />
                         </button>
@@ -1063,32 +1071,26 @@ export default function JewelleryCatalogAdminPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (imagePreviews.length) {
-                            const active = imagePreviews.find((preview) => preview.key === activeUploadPreviewKey) || imagePreviews[0];
-                            makePendingImagePrimary(active);
-                          } else {
-                            const active = currentImages.find((image) => String(image.id) === String(activeStoredImageId)) || currentImages[0];
-                            if (active) setPrimaryImage(active);
+                          if (selectedPendingPhoto) {
+                            makePendingImagePrimary(selectedPendingPhoto);
+                          } else if (selectedStoredPhoto) {
+                            setPrimaryImage(selectedStoredPhoto);
                           }
                         }}
                       ><CheckCircle2 size={17} /> Primary</button>
                       <button
                         type="button"
                         onClick={() => {
-                          const active = imagePreviews.find((preview) => preview.key === activeUploadPreviewKey) || imagePreviews[0];
-                          const stored = currentImages.find((image) => String(image.id) === String(activeStoredImageId)) || currentImages.find((image) => Number(image.displayOrder) === 0) || currentImages[0];
-                          const src = active?.url || (stored ? assetUrl(stored.displayUrl || stored.thumbnailUrl) : "");
-                          if (src) setPreviewPhoto({ src, alt: active?.file.name || stored?.altText || form.designName || "Jewellery design" });
+                          const src = selectedPendingPhoto?.url || (selectedStoredPhoto ? assetUrl(selectedStoredPhoto.displayUrl || selectedStoredPhoto.thumbnailUrl) : "");
+                          if (src) setPreviewPhoto({ src, alt: selectedPendingPhoto?.file.name || selectedStoredPhoto?.altText || form.designName || "Jewellery design" });
                         }}
                       ><Eye size={17} /> Preview</button>
                       <button
                         type="button"
                         className="remove"
                         onClick={() => {
-                          const active = imagePreviews.find((preview) => preview.key === activeUploadPreviewKey) || imagePreviews[0];
-                          const stored = currentImages.find((image) => String(image.id) === String(activeStoredImageId)) || currentImages.find((image) => Number(image.displayOrder) === 0) || currentImages[0];
-                          if (active) removePendingImage(active);
-                          else if (stored) removeImage(stored);
+                          if (selectedPendingPhoto) removePendingImage(selectedPendingPhoto);
+                          else if (selectedStoredPhoto) removeImage(selectedStoredPhoto);
                         }}
                       ><Trash2 size={17} /> Remove</button>
                     </div>
