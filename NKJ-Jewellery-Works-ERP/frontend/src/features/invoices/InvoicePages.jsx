@@ -1122,6 +1122,29 @@ export function InvoicePage() {
     setShowInvoicePin(true);
   }
 
+  // Ctrl+P / Cmd+P uses the same save + security PIN + direct PDF flow
+  // as the visible invoice button. Do not open Chromium's native page printer.
+  useEffect(() => {
+    const handleInvoicePrintShortcut = (event) => {
+      const isShortcut = (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        String(event.key).toLowerCase() === "p";
+
+      if (!isShortcut) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
+
+      if (event.repeat || showInvoicePin || isPrintPreparing || saving) return;
+      requestPrintPin();
+    };
+
+    window.addEventListener("keydown", handleInvoicePrintShortcut, true);
+    return () => window.removeEventListener("keydown", handleInvoicePrintShortcut, true);
+  }, [showInvoicePin, isPrintPreparing, saving]);
+
   async function printCurrentInvoice(ticket) {
     setIsPrintPreparing(true);
     setError("");
@@ -2600,31 +2623,31 @@ export function SavedInvoices() {
   const [sharingInvoice, setSharingInvoice] = useState(false);
   const shareInProgressRef = useRef(false);
 
-  // Disable Ctrl+P / Cmd+P only while a saved invoice detail is open.
+  // Ctrl+P / Cmd+P on an open saved invoice opens the same security
+  // PIN dialog as the Print / Save PDF action instead of the browser printer.
   useEffect(() => {
     if (!selectedInvoice) return undefined;
 
-    const blockSavedInvoicePrintShortcut = (event) => {
-      const isPrintShortcut = (event.ctrlKey || event.metaKey) &&
-        (String(event.key).toLowerCase() === "p" || event.code === "KeyP");
+    const handleSavedInvoicePrintShortcut = (event) => {
+      const isShortcut = (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        String(event.key).toLowerCase() === "p";
 
-      if (!isPrintShortcut) return;
+      if (!isShortcut) return;
 
       event.preventDefault();
       event.stopPropagation();
       if (typeof event.stopImmediatePropagation === "function") {
         event.stopImmediatePropagation();
       }
+
+      if (event.repeat || showPrintPin || detailLoading) return;
+      setShowPrintPin(true);
     };
 
-    window.addEventListener("keydown", blockSavedInvoicePrintShortcut, true);
-    document.addEventListener("keydown", blockSavedInvoicePrintShortcut, true);
-
-    return () => {
-      window.removeEventListener("keydown", blockSavedInvoicePrintShortcut, true);
-      document.removeEventListener("keydown", blockSavedInvoicePrintShortcut, true);
-    };
-  }, [selectedInvoice]);
+    window.addEventListener("keydown", handleSavedInvoicePrintShortcut, true);
+    return () => window.removeEventListener("keydown", handleSavedInvoicePrintShortcut, true);
+  }, [selectedInvoice, showPrintPin, detailLoading]);
 
   const load = async () => {
     setLoading(true);
