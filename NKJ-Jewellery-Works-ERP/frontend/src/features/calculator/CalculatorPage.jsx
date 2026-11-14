@@ -825,10 +825,12 @@ export default function CalculatorPage() {
           </aside>
 
           <section className="nkj-calculator-workspace">
-            <div className="nkj-calculator-workspace-title">
-              {mode === "manual" ? <CalculatorIcon size={24} /> : mode === "diamond" ? <Gem size={24} /> : <Coins size={20} />}
-              <h2>{options.find((option) => option.id === mode)?.label}</h2>
-            </div>
+            {mode !== "diamond" && mode !== "manual" && (
+              <div className="nkj-calculator-workspace-title">
+                <Coins size={20} />
+                <h2>{options.find((option) => option.id === mode)?.label}</h2>
+              </div>
+            )}
             <div className="nkj-calculator-panel" hidden={mode !== "new"}>
               <OrnamentCalculator mode="new" active={mode === "new"} history={newOrnamentHistory} addHistory={addNewOrnamentHistory} clearHistory={clearNewOrnamentHistory} />
             </div>
