@@ -2136,3 +2136,56 @@ body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-
     font-size: 10px !important;
   }
 }
+
+
+/* Sidebar brand image uses the supplied ornate NKJ logo artwork. */
+.nkj-owner-sidebar > .nkj-owner-brand {
+  box-sizing: border-box !important;
+  justify-content: center !important;
+  min-height: 108px !important;
+  padding: 14px 8px !important;
+  overflow: hidden !important;
+}
+
+.nkj-owner-sidebar .nkj-owner-logo-image {
+  display: block !important;
+  width: 100% !important;
+  max-width: 190px !important;
+  height: 78px !important;
+  flex: 0 1 auto !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.nkj-owner-sidebar.is-collapsed > .nkj-owner-brand {
+  min-height: 126px !important;
+  height: 126px !important;
+  justify-content: center !important;
+  padding: 42px 0 12px !important;
+  border-bottom: 2px solid #c99a37 !important;
+}
+
+.nkj-owner-sidebar.is-collapsed .nkj-owner-logo-image {
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: 72px !important;
+  flex: 0 1 auto !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+@media (max-width: 760px) {
+  .nkj-owner-sidebar:not(.is-collapsed) > .nkj-owner-brand {
+    min-height: 94px !important;
+    padding: 10px 8px !important;
+  }
+
+  .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-logo-image {
+    max-width: 160px !important;
+    height: 68px !important;
+  }
+}
