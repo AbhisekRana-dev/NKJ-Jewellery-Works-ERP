@@ -1467,6 +1467,7 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
 .topbar nav .nkj-calculator-owner-user svg {color:#f4cf68 !important;}
 /* Owner header aligns with the existing owner content column. */
 .nkj-owner-topbar.topbar {
+  display: flex !important;
   position: sticky !important;
   top: 0 !important;
   left: auto !important;
