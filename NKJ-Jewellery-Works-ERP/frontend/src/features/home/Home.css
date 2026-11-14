@@ -971,3 +971,251 @@
     font-size: 11px !important;
   }
 }
+
+
+/* ============================================================
+   100% VIEWPORT FIT — PUBLIC HOME
+   Match the same monitor's existing 90% appearance by using
+   the corresponding compact component dimensions at 100%.
+   Isolated to this page and this desktop viewport band.
+============================================================ */
+@media screen and (min-width: 1451px) and (max-width: 1750px) {
+  .nkj-public-welcome {
+    height: 229px !important;
+    min-height: 229px !important;
+  }
+
+  .nkj-public-copy {
+    padding-top: 18px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .nkj-public-copy .eyebrow {
+    font-size: 11.7px !important;
+    letter-spacing: 1.4px !important;
+  }
+
+  .nkj-public-copy h1 {
+    font-size: 52px !important;
+    line-height: .98 !important;
+    margin: 7px 0 2px !important;
+  }
+
+  .nkj-public-ornament {
+    margin-top: 7px !important;
+    margin-bottom: 6px !important;
+    font-size: 10px !important;
+  }
+
+  .nkj-public-copy p {
+    font-size: 14.4px !important;
+    line-height: 1.45 !important;
+  }
+
+  .nkj-public-image img {
+    height: 229px !important;
+  }
+
+  .nkj-public-content {
+    padding-top: 9px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .nkj-public-home .nkj-public-content .nkj-public-market-services {
+    gap: 15px !important;
+    margin: 16px 0 15px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-card,
+  .nkj-public-home .nkj-public-services-card {
+    min-height: 257px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-heading {
+    min-height: 44px !important;
+    gap: 7px !important;
+    padding: 7px 12px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-heading h3 {
+    gap: 7px !important;
+    font-size: 18px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-heading h3 svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .nkj-public-home .nkj-rate-board-status {
+    gap: 5px !important;
+    padding-left: 9px !important;
+    font-size: 9.9px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-heading .nkj-public-edit-rate {
+    min-height: 31px !important;
+    min-width: 94px !important;
+    padding: 4px 9px !important;
+    font-size: 10.8px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four {
+    gap: 8px !important;
+    padding: 13.5px 7px 7px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four > .nkj-public-rate-item {
+    gap: 7px !important;
+    min-height: 131px !important;
+    padding: 9.5px !important;
+    border-radius: 13.5px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-metal-bars,
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-diamond-icon {
+    flex-basis: 55px !important;
+    width: 55px !important;
+    height: 61px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-metal-bars i {
+    width: 31px !important;
+    height: 18px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-diamond-icon svg {
+    width: 47px !important;
+    height: 47px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-rate-copy {
+    gap: 3.6px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-rate-copy b {
+    font-size: 18px !important;
+    line-height: 1.08 !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-rate-copy strong {
+    font-size: 17px !important;
+    line-height: 1.14 !important;
+    letter-spacing: -.15px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-values-four .nkj-public-rate-copy small {
+    font-size: 10.7px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-meta {
+    padding: 6px 9px 3.5px !important;
+    font-size: 9.9px !important;
+  }
+
+  .nkj-public-home .nkj-public-rate-meta span + span {
+    padding-left: 6px !important;
+  }
+
+  .nkj-public-home .nkj-public-services-card {
+    padding: 9px 10.8px 10.8px !important;
+  }
+
+  .nkj-public-home .nkj-public-services-heading {
+    min-height: 37px !important;
+    margin-bottom: 7px !important;
+    padding: 2.7px 5.4px 8px !important;
+  }
+
+  .nkj-public-home .nkj-public-services-heading h3 {
+    gap: 8px !important;
+    font-size: 19px !important;
+  }
+
+  .nkj-public-home .nkj-public-service {
+    min-height: 112px !important;
+    gap: 6px !important;
+    padding: 6px 6px !important;
+  }
+
+  .nkj-public-home .nkj-public-service svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .nkj-public-home .nkj-public-service b {
+    font-size: 13.5px !important;
+    line-height: 1.15 !important;
+  }
+
+  .nkj-public-home .nkj-public-service span {
+    font-size: 10.8px !important;
+    line-height: 1.3 !important;
+  }
+
+  .nkj-public-why {
+    gap: 7px !important;
+    margin-bottom: 16px !important;
+    padding: 10px 14.4px !important;
+  }
+
+  .nkj-public-why > h3 {
+    gap: 9px !important;
+    font-size: 18px !important;
+  }
+
+  .nkj-public-why > h3 svg {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .nkj-public-why-item {
+    gap: 9px !important;
+    padding: 3px 7px !important;
+  }
+
+  .nkj-public-why-item > svg {
+    width: 35px !important;
+    height: 35px !important;
+  }
+
+  .nkj-public-why-item b {
+    font-size: 13.5px !important;
+  }
+
+  .nkj-public-why-item span {
+    font-size: 10.8px !important;
+  }
+
+  .nkj-public-collection-heading {
+    gap: 14px !important;
+    margin-bottom: 11px !important;
+  }
+
+  .nkj-public-collection-heading h2 {
+    gap: 10px !important;
+    font-size: 21.6px !important;
+  }
+
+  .nkj-public-collection-heading h2 svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .nkj-public-collection-grid {
+    gap: 20px !important;
+  }
+
+  .nkj-public-collection-card img {
+    height: 86px !important;
+  }
+
+  .nkj-public-collection-card div {
+    padding: 7px 13.5px !important;
+    font-size: 14.4px !important;
+  }
+
+  .nkj-public-collection-card div span {
+    font-size: 21.6px !important;
+  }
+}
