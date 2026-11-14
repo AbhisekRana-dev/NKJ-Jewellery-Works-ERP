@@ -7725,3 +7725,121 @@ main.container:has(.nkj-calculator-page) {
   .nkj-calc-diamond-summary .nkj-calc-breakdown-row { min-height: 39px !important; }
   .nkj-calc-diamond-layout > .nkj-calc-history { min-height: 220px !important; }
 }
+
+
+
+/* Diamond tab must use natural document height: the fixed-height manual
+   calculator shell otherwise clips the lower input fields and actions. */
+.nkj-calculator-page--diamond {
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding-bottom: 18px !important;
+}
+.nkj-calculator-page--diamond .nkj-calculator-layout {
+  display: flex !important;
+  flex: none !important;
+  flex-direction: column !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  gap: 10px !important;
+}
+.nkj-calculator-page--diamond .nkj-calculator-options {
+  flex: 0 0 auto !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+.nkj-calculator-page--diamond .nkj-calculator-options > button {
+  min-width: 0 !important;
+}
+.nkj-calculator-page--diamond .nkj-calculator-workspace {
+  display: block !important;
+  flex: none !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 clamp(10px, 1.55vw, 26px) !important;
+  overflow: visible !important;
+}
+.nkj-calculator-page--diamond .nkj-calculator-workspace-title {
+  min-height: 54px !important;
+}
+.nkj-calculator-page--diamond .nkj-calculator-panel:not([hidden]) {
+  display: block !important;
+  flex: none !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+.nkj-calculator-page--diamond .nkj-calc-diamond-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .98fr) minmax(245px, .82fr) !important;
+  align-items: stretch !important;
+  height: auto !important;
+  min-height: 520px !important;
+  overflow: visible !important;
+}
+.nkj-calculator-page--diamond .nkj-calc-diamond-details {
+  min-height: 520px !important;
+  height: auto !important;
+}
+.nkj-calculator-page--diamond .nkj-calc-diamond-details .nkj-calc-fields {
+  flex: 1 0 auto !important;
+  align-content: start !important;
+  gap: clamp(10px, .9vw, 15px) 11px !important;
+  padding: clamp(12px, 1vw, 17px) !important;
+}
+.nkj-calculator-page--diamond .nkj-calc-diamond-details .nkj-calc-fields label {
+  min-width: 0 !important;
+}
+.nkj-calculator-page--diamond .nkj-calc-diamond-actions {
+  flex: 0 0 auto !important;
+  margin-top: auto !important;
+}
+.nkj-calculator-page--diamond .nkj-calc-diamond-summary {
+  min-height: 520px !important;
+  height: auto !important;
+}
+.nkj-calculator-page--diamond .nkj-calc-diamond-summary .nkj-calc-breakdown {
+  flex: 1 0 auto !important;
+}
+.nkj-calculator-page--diamond .nkj-calc-diamond-layout > .nkj-calc-history {
+  min-height: 520px !important;
+  height: auto !important;
+}
+@media (max-width: 1100px) {
+  .nkj-calculator-page--diamond .nkj-calc-diamond-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 0 !important;
+  }
+  .nkj-calculator-page--diamond .nkj-calc-diamond-details,
+  .nkj-calculator-page--diamond .nkj-calc-diamond-summary,
+  .nkj-calculator-page--diamond .nkj-calc-diamond-layout > .nkj-calc-history {
+    min-height: 0 !important;
+  }
+  .nkj-calculator-page--diamond .nkj-calc-diamond-summary {
+    min-height: 360px !important;
+  }
+  .nkj-calculator-page--diamond .nkj-calc-diamond-layout > .nkj-calc-history {
+    min-height: 240px !important;
+  }
+}
+@media (max-width: 560px) {
+  .nkj-calculator-page--diamond .nkj-calculator-options > button {
+    flex-direction: column !important;
+  }
+  .nkj-calculator-page--diamond .nkj-calculator-workspace {
+    margin-inline: 8px !important;
+    padding-inline: 9px !important;
+  }
+  .nkj-calculator-page--diamond .nkj-calculator-workspace-title h2 {
+    font-size: clamp(20px, 5vw, 26px) !important;
+  }
+}
