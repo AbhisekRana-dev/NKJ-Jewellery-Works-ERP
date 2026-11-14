@@ -323,6 +323,7 @@ export default function MobileDesignUploadPage() {
       const material = qrValue(fields, "material", "materialLabel", "metalMaterial");
       const purityValue = qrValue(fields, "purity", "fineness", "karat");
       const weight = qrValue(fields, "weightGrams", "weight_grams", "weight", "grossWeight");
+      const categoryIdFromQr = qrValue(fields, "categoryId", "category_id", "subcategoryId");
       const category = qrValue(fields, "subcategory", "jewelleryType", "jewelryType", "category", "subcategoryName");
       const metalValue = qrValue(fields, "metalType", "metal", "mainCategory").toUpperCase();
 
@@ -335,13 +336,15 @@ export default function MobileDesignUploadPage() {
           setDescription(decodedText);
         }
         if (purityValue) setPurity(purityValue.slice(0, 40));
-        if (weight && Number.isFinite(Number(weight)) && Number(weight) >= 0) setWeightGrams(weight);
+        const parsedWeight = Number(String(weight).replace(/,/g, "").match(/\\d+(?:\\.\\d+)?/)?.[0]);
+        if (weight && Number.isFinite(parsedWeight) && parsedWeight >= 0) setWeightGrams(String(parsedWeight));
         if (metalValue && METALS.includes(metalValue)) setMetal(metalValue);
-        if (category) {
+        if (category || categoryIdFromQr) {
           const match = categories.find((item) =>
-            [item.subcategoryName, item.slug].some((value) =>
+            (categoryIdFromQr && String(item.id) === String(categoryIdFromQr))
+            || (category && [item.subcategoryName, item.slug].some((value) =>
               String(value || "").trim().toLowerCase() === category.toLowerCase(),
-            ),
+            )),
           );
           if (match) {
             setMetal(match.metalType);
@@ -601,7 +604,7 @@ export default function MobileDesignUploadPage() {
             {qrScanResult && <div className="nkj-mobile-qr-scan-result" role="status"><b><QrCode size={14} /> Decoded QR information</b><pre>{qrScanResult}</pre></div>}
           </div>
           <input ref={galleryRef} className="nkj-mobile-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => { addPhotos(event.target.files); event.target.value = ""; }} />
-          <input ref={cameraFallbackRef} className="nkj-mobile-hidden-input" type="file" accept="image/*" capture="environment" onChange={(event) => { addPhotos(event.target.files); event.target.value = ""; }} />
+          <input ref={cameraFallbackRef} className="nkj-mobile-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" capture="environment" onChange={(event) => { addPhotos(event.target.files); event.target.value = ""; }} />
 
           {cameraOpen && (
             <div className="nkj-mobile-camera">
