@@ -89,7 +89,21 @@ public class MetalRateService {
         current.setSourceReference(null);
         current.setSourcePublishedAt(null);
         current.setRateDate(LocalDate.now(SHOP_ZONE));
-        MetalRate saved = repository.save(current);
+        // Flush the JPA write, then verify the persisted value directly from
+        // the same PostgreSQL row used by the public /rates endpoint.
+        MetalRate saved = repository.saveAndFlush(current);
+        int diamondRows = jdbc.update(
+                "UPDATE public.metal_rates SET diamond_rate = ? WHERE id = ?",
+                diamond, RATE_ROW_ID);
+        if (diamondRows != 1) {
+            throw new IllegalStateException("Diamond rate was not saved: expected one metal_rates row, updated " + diamondRows + ".");
+        }
+        BigDecimal persistedDiamond = readPersistedDiamondRate();
+        if (persistedDiamond.compareTo(diamond) != 0) {
+            throw new IllegalStateException("Diamond rate database verification failed. Submitted "
+                    + diamond.toPlainString() + " but PostgreSQL returned " + persistedDiamond.toPlainString() + ".");
+        }
+        saved.setDiamondRate(persistedDiamond);
 
         appendHistory(before, snapshotOf(saved), "MANUAL_RATE_UPDATE", "Manual rate update by administrator", auth.getUsername());
         publishRatesChangedAfterCommit();
@@ -146,6 +160,19 @@ public class MetalRateService {
         current.setSourcePublishedAt(asLocalDateTime(latest.get("new_source_published_at")));
         current.setLastAutoSourceDate(current.getRateDate());
         current.setOwnerVerified(true);
+    }
+
+    private BigDecimal readPersistedDiamondRate() {
+        try {
+            BigDecimal value = jdbc.queryForObject(
+                    "SELECT diamond_rate FROM public.metal_rates WHERE id = ?",
+                    BigDecimal.class, RATE_ROW_ID);
+            return value == null ? BigDecimal.ZERO : value;
+        } catch (org.springframework.dao.DataAccessException exception) {
+            throw new IllegalStateException(
+                    "Diamond rate storage is unavailable in public.metal_rates. Confirm Flyway migration V47 is applied to the database configured by backend/.env.",
+                    exception);
+        }
     }
 
     private BigDecimal asBigDecimal(Object value) {
@@ -313,7 +340,7 @@ public class MetalRateService {
         out.put("gold24kRate", rate.getGold24kRate());
         out.put("gold22kRate", rate.getGold22kRate());
         out.put("silverRate", rate.getSilverRate());
-        out.put("diamondRate", rate.getDiamondRate());
+        out.put("diamondRate", readPersistedDiamondRate());
         out.put("rateMode", rate.getRateMode());
         out.put("rateSource", rate.getRateSource());
         out.put("ownerVerified", rate.isOwnerVerified());
