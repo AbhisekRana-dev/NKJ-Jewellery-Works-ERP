@@ -1149,13 +1149,18 @@ export function InvoicePage() {
     setIsPrintPreparing(true);
     setError("");
     try {
+      updateInvoicePdfPopup(pdfWindow, "PIN verified. Authorizing the one-time print ticket…");
       await request("/invoices/consume-print-ticket", {
         method: "POST",
         body: JSON.stringify({ ticket, invoiceId }),
       });
       setShowInvoicePin(false);
 
-      const file = await createInvoiceSharePdfFile({ id: invoiceId, invoiceNo });
+      const file = await createInvoiceSharePdfFile(
+        { id: invoiceId, invoiceNo },
+        (message) => updateInvoicePdfPopup(pdfWindow, message),
+      );
+      updateInvoicePdfPopup(pdfWindow, "PDF is ready. Opening the landscape invoice…");
       const opened = openInvoicePdfForPrinting(file, pdfWindow);
       setShowInvoicePin(false);
       setSuccessMessage(
@@ -1164,9 +1169,10 @@ export function InvoicePage() {
           : `Invoice ${invoiceNo} saved as an upright A4 landscape PDF. Open it from Downloads and press Ctrl+P to print.`
       );
     } catch (error) {
-      if (pdfWindow && !pdfWindow.closed) pdfWindow.close();
+      const message = error.message || "Could not prepare the invoice PDF.";
+      updateInvoicePdfPopup(pdfWindow, message, true);
       setShowInvoicePin(false);
-      setError(error.message || "Could not prepare the invoice PDF.");
+      setError(message);
     } finally {
       setIsPrintPreparing(false);
     }
@@ -2256,15 +2262,27 @@ function loadHtml2PdfLibrary() {
   if (html2pdfLibraryPromise) return html2pdfLibraryPromise;
   html2pdfLibraryPromise = new Promise((resolve, reject) => {
     const script = document.createElement("script");
+    let settled = false;
+    let timeoutId;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      callback(value);
+    };
+    timeoutId = window.setTimeout(() => {
+      script.remove();
+      finish(reject, new Error("The PDF engine did not load within 20 seconds. Check your internet connection and allow cdnjs.cloudflare.com, then try again."));
+    }, 20000);
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-    script.integrity = "sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==";
+    script.integrity = "sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLus+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==";
     script.crossOrigin = "anonymous";
     script.referrerPolicy = "no-referrer";
     script.async = true;
     script.onload = () => typeof window.html2pdf === "function"
-      ? resolve(window.html2pdf)
-      : reject(new Error("The PDF library could not be initialized."));
-    script.onerror = () => reject(new Error("Could not load the PDF generator. Check your internet connection and try again."));
+      ? finish(resolve, window.html2pdf)
+      : finish(reject, new Error("The PDF engine loaded but could not be initialized."));
+    script.onerror = () => finish(reject, new Error("Could not load the PDF engine from cdnjs. Check your internet connection and try again."));
     document.head.appendChild(script);
   }).catch((error) => {
     html2pdfLibraryPromise = null;
@@ -2285,32 +2303,66 @@ function downloadInvoicePdfFile(file) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+function updateInvoicePdfPopup(previewWindow, message, isError = false) {
+  if (!previewWindow || previewWindow.closed) return;
+  try {
+    const doc = previewWindow.document;
+    doc.title = isError ? "Invoice PDF error" : "Preparing invoice PDF";
+    if (!doc.body) {
+      doc.open();
+      doc.write("<!doctype html><html><head><title>Preparing invoice PDF</title></head><body></body></html>");
+      doc.close();
+    }
+    doc.body.replaceChildren();
+    doc.body.style.cssText = "margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f4ef;font-family:Arial,sans-serif;color:#3b1720;padding:24px;box-sizing:border-box";
+    const panel = doc.createElement("main");
+    panel.style.cssText = "width:min(640px,100%);padding:30px;border:1px solid #d5b56a;border-radius:14px;background:#fff;box-shadow:0 12px 35px rgba(0,0,0,.08);box-sizing:border-box";
+    const heading = doc.createElement("h2");
+    heading.textContent = isError ? "Invoice PDF could not be prepared" : "Preparing your invoice PDF";
+    heading.style.cssText = "margin:0 0 12px;font-size:22px";
+    const detail = doc.createElement("p");
+    detail.textContent = message;
+    detail.style.cssText = "margin:0;color:#604b4d;line-height:1.6;white-space:pre-wrap";
+    panel.append(heading, detail);
+    if (isError) {
+      const hint = doc.createElement("p");
+      hint.textContent = "Return to the invoice tab, correct the issue shown here, then try Print again.";
+      hint.style.cssText = "margin:18px 0 0;color:#7b6670;font-size:13px";
+      panel.appendChild(hint);
+    }
+    doc.body.appendChild(panel);
+  } catch {
+    // The original invoice tab still receives the same error through React state.
+  }
+}
+
 function openInvoicePdfForPrinting(file, previewWindow) {
   if (!(file instanceof File) || file.type !== "application/pdf" || file.size < 1000) {
     throw new Error("The generated invoice PDF is invalid. Nothing was opened or downloaded.");
   }
-
   const url = URL.createObjectURL(file);
   let opened = false;
   if (previewWindow && !previewWindow.closed) {
     try {
-      previewWindow.opener = null;
-      previewWindow.location.replace(url);
+      previewWindow.location.href = url;
       opened = true;
     } catch {
-      try {
-        previewWindow.location.href = url;
-        opened = true;
-      } catch {
-        opened = false;
-      }
+      opened = false;
     }
   }
-
-  // Keep a saved copy as well as opening the PDF viewer for Ctrl+P printing.
   downloadInvoicePdfFile(file);
   window.setTimeout(() => URL.revokeObjectURL(url), 15 * 60 * 1000);
   return opened;
+}
+
+function withInvoicePdfTimeout(promise, timeoutMs, message) {
+  let timerId;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timerId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    }),
+  ]).finally(() => window.clearTimeout(timerId));
 }
 
 /** Export the existing SavedInvoicePrintSheet as a PDF file. */
@@ -2359,7 +2411,7 @@ function collectInvoicePrintStyles() {
  * the website. The cloned invoice takes over #invoice-print while rendering,
  * so print selectors target the clone, never the visible source invoice.
  */
-async function createInvoiceSharePdfFile(invoice) {
+async function createInvoiceSharePdfFile(invoice, onProgress = () => {}) {
   if (!invoice?.id || !invoice?.invoiceNo) {
     throw new Error("Only a saved invoice can be shared as a PDF.");
   }
@@ -2371,7 +2423,12 @@ async function createInvoiceSharePdfFile(invoice) {
     throw new Error("The displayed invoice does not match the selected saved invoice. Close and reopen it before sharing.");
   }
 
-  const html2pdf = await loadHtml2PdfLibrary();
+  onProgress("Loading the PDF engine…");
+  const html2pdf = await withInvoicePdfTimeout(
+    loadHtml2PdfLibrary(),
+    22000,
+    "The PDF engine is taking too long to load. Check your internet connection and allow cdnjs.cloudflare.com.",
+  );
   if (document.fonts?.ready) {
     await Promise.race([
       document.fonts.ready.catch(() => {}),
@@ -2379,6 +2436,7 @@ async function createInvoiceSharePdfFile(invoice) {
     ]);
   }
 
+  onProgress("Preparing invoice layout and shop branding…");
   const printStyles = collectInvoicePrintStyles();
   if (!printStyles || !printStyles.includes("31mm 3mm")) {
     throw new Error("The website's original invoice print styles could not be loaded. PDF sharing was stopped to avoid a broken invoice.");
@@ -2553,15 +2611,17 @@ async function createInvoiceSharePdfFile(invoice) {
       }
     });
 
-    await Promise.all(Array.from(clone.querySelectorAll("img")).map((image) => {
+    onProgress("Loading invoice logo and decorative images…");
+    await withInvoicePdfTimeout(Promise.all(Array.from(clone.querySelectorAll("img")).map((image) => {
       if (image.complete && image.naturalWidth > 0) return Promise.resolve();
       return new Promise((resolve, reject) => {
-        const timer = window.setTimeout(() => reject(new Error("An invoice image did not load; PDF generation was stopped.")), 5000);
+        const timer = window.setTimeout(() => reject(new Error("An invoice image did not load.")), 5000);
         image.addEventListener("load", () => { window.clearTimeout(timer); resolve(); }, { once: true });
-        image.addEventListener("error", () => { window.clearTimeout(timer); reject(new Error("An invoice image could not be loaded; PDF generation was stopped.")); }, { once: true });
+        image.addEventListener("error", () => { window.clearTimeout(timer); reject(new Error("An invoice image could not be loaded.")); }, { once: true });
       });
-    }));
+    })), 12000, "An invoice image did not finish loading. Check the logo and flourish image files, then try again.");
 
+    onProgress("Checking that all invoice fields fit on one landscape A4 page…");
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
 
     const label = clone.querySelector(".form-grid label");
@@ -2583,7 +2643,8 @@ async function createInvoiceSharePdfFile(invoice) {
     }
 
     const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
-    const blob = await html2pdf().set({
+    onProgress("Rendering the invoice and creating the landscape PDF…");
+    const blob = await withInvoicePdfTimeout(html2pdf().set({
       margin: [3, 3, 3, 3],
       filename: fileName,
       image: { type: "jpeg", quality: 0.98 },
@@ -2606,8 +2667,9 @@ async function createInvoiceSharePdfFile(invoice) {
         mode: ["css", "legacy"],
         avoid: ["#invoice-print", ".inv-head", ".inv-two", ".inv-main", ".inv-bottom", ".thankyou", ".items-table tr"],
       },
-    }).from(clone).outputPdf("blob");
+    }).from(clone).outputPdf("blob"), 60000, "PDF rendering exceeded 60 seconds. Close other tabs and try again.");
 
+    onProgress("Verifying A4 landscape page dimensions and rotation…");
     if (!(blob instanceof Blob) || blob.size < 1000) {
       throw new Error("The generated invoice PDF is empty or invalid.");
     }
@@ -2868,11 +2930,16 @@ export function SavedInvoices() {
       throw new Error("Open a saved invoice before generating its PDF.");
     }
     try {
+      updateInvoicePdfPopup(pdfWindow, "PIN verified. Authorizing the one-time print ticket…");
       await request("/invoices/consume-print-ticket", {
         method: "POST",
         body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
       });
-      const file = await createInvoiceSharePdfFile(selectedInvoice);
+      const file = await createInvoiceSharePdfFile(
+        selectedInvoice,
+        (message) => updateInvoicePdfPopup(pdfWindow, message),
+      );
+      updateInvoicePdfPopup(pdfWindow, "PDF is ready. Opening the landscape invoice…");
       const opened = openInvoicePdfForPrinting(file, pdfWindow);
       setShowPrintPin(false);
       setDetailError(
@@ -2881,9 +2948,10 @@ export function SavedInvoices() {
           : "The upright A4 landscape invoice PDF was saved to Downloads. Open it and press Ctrl+P to print."
       );
     } catch (error) {
-      if (pdfWindow && !pdfWindow.closed) pdfWindow.close();
+      const message = error.message || "Could not generate the invoice PDF.";
+      updateInvoicePdfPopup(pdfWindow, message, true);
       setShowPrintPin(false);
-      setErr(error.message || "Could not generate the invoice PDF.");
+      setErr(message);
       throw error;
     }
   };
