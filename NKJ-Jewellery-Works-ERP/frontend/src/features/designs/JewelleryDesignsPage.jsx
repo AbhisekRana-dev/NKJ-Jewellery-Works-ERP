@@ -4,7 +4,7 @@ import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
   Layers3, Star, ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird, QrCode,
   LayoutGrid, List, Pencil, Trash2, Save, UploadCloud, Smartphone, CheckCircle2, Lock,
-  RotateCcw, ZoomIn, ZoomOut, Maximize2, Gem, Package, Weight, Info,
+  RotateCcw, ZoomIn, ZoomOut, Maximize2, Package, Weight, Info,
 } from "lucide-react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
