@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone, RotateCcw, RotateCw, Info, ArrowRightLeft } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone, RotateCcw, RotateCw, Info, ArrowRightLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Gem, Package, Weight, LockKeyhole } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -118,6 +118,11 @@ export default function JewelleryCatalogAdminPage() {
   const [deletingDesign, setDeletingDesign] = useState(false);
   const [viewingDesign, setViewingDesign] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
+  const [detailImageZoom, setDetailImageZoom] = useState(1);
+  const [detailPhotoExpanded, setDetailPhotoExpanded] = useState(false);
+  const [detailsActionBusy, setDetailsActionBusy] = useState(false);
+  const [detailsActionError, setDetailsActionError] = useState("");
   const [bulkFiles, setBulkFiles] = useState([]);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -578,12 +583,61 @@ export default function JewelleryCatalogAdminPage() {
     setError("");
     try {
       const detail = await request(`/admin/designs/${design.id}`);
+      setDetailImageIndex(0);
+      setDetailImageZoom(1);
+      setDetailPhotoExpanded(false);
+      setDetailsActionError("");
       setViewingDesign(detail);
     } catch (err) {
       setError(err.message || "Could not load design details.");
     } finally {
       setDetailsLoading(false);
     }
+  };
+
+  const setViewedPrimaryImage = async (image) => {
+    if (!viewingDesign?.id || !image?.id || detailsActionBusy || Number(image.displayOrder) === 0) return;
+    setDetailsActionBusy(true);
+    setDetailsActionError("");
+    try {
+      const result = await request(`/admin/designs/${viewingDesign.id}/images/${image.id}/primary`, { method: "PUT" });
+      const updatedImages = Array.isArray(result.images) ? result.images : (viewingDesign.images || []).map((item) => ({
+        ...item,
+        displayOrder: String(item.id) === String(image.id) ? 0 : item.displayOrder,
+      }));
+      setViewingDesign((current) => current ? { ...current, images: updatedImages } : current);
+      setDetailImageIndex(Math.max(0, updatedImages.findIndex((item) => String(item.id) === String(image.id))));
+      await loadDesigns(page);
+    } catch (err) {
+      setDetailsActionError(err.message || "Could not set the primary photograph.");
+    } finally {
+      setDetailsActionBusy(false);
+    }
+  };
+
+  const removeViewedImage = async (image) => {
+    if (!viewingDesign?.id || !image?.id || detailsActionBusy) return;
+    if (!window.confirm("Remove this photograph from the design?")) return;
+    setDetailsActionBusy(true);
+    setDetailsActionError("");
+    try {
+      const result = await request(`/admin/designs/${viewingDesign.id}/images/${image.id}`, { method: "DELETE" });
+      const updatedImages = Array.isArray(result.images) ? result.images : (viewingDesign.images || []).filter((item) => String(item.id) !== String(image.id));
+      setViewingDesign((current) => current ? { ...current, images: updatedImages } : current);
+      setDetailImageIndex((current) => Math.max(0, Math.min(current, updatedImages.length - 1)));
+      await loadDesigns(page);
+    } catch (err) {
+      setDetailsActionError(err.message || "Could not remove this photograph.");
+    } finally {
+      setDetailsActionBusy(false);
+    }
+  };
+
+  const openMobileUploadFromDetails = () => {
+    setViewingDesign(null);
+    setQrError("");
+    setQrOpen(true);
+    generateQrSession();
   };
 
   const moveDesign = async () => {
@@ -922,42 +976,190 @@ export default function JewelleryCatalogAdminPage() {
         )}
 
         {viewingDesign && (
-          <div className="nkj-catalog-modal-backdrop nkj-catalog-details-backdrop" role="presentation" onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setViewingDesign(null);
+          <div className="nkj-catalog-modal-backdrop nkj-catalog-details-backdrop nkj-catalog-view-backdrop" role="presentation" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setViewingDesign(null);
+              setDetailPhotoExpanded(false);
+            }
           }}>
-            <section className="nkj-catalog-details-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-catalog-admin-details-title">
-              <header>
-                <div><span>JEWELLERY DESIGN DETAILS</span><h2 id="nkj-catalog-admin-details-title">{viewingDesign.designName}</h2></div>
-                <button type="button" onClick={() => setViewingDesign(null)} aria-label="Close details"><X size={19} /></button>
-              </header>
-              <div className="nkj-catalog-details-id">{viewingDesign.designId || viewingDesign.designCode}</div>
-              <div className="nkj-catalog-details-photos">
-                {(viewingDesign.images || []).map((image) => (
-                  <img key={image.id} src={assetUrl(image.displayUrl || image.thumbnailUrl)} alt={image.altText || viewingDesign.designName} loading="lazy" />
-                ))}
-                {!viewingDesign.images?.length && <div>No photograph uploaded yet.</div>}
+            <section className="nkj-catalog-details-modal nkj-catalog-view-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-catalog-admin-details-title">
+              <button
+                type="button"
+                className="nkj-catalog-view-close"
+                onClick={() => { setViewingDesign(null); setDetailPhotoExpanded(false); }}
+                aria-label="Close design details"
+              ><X size={23} /></button>
+
+              <div className="nkj-catalog-view-layout">
+                <section className="nkj-catalog-view-gallery" aria-label="Design photographs">
+                  <div className="nkj-catalog-view-main-photo">
+                    {viewingDesign.images?.length ? (
+                      <>
+                        <img
+                          className="nkj-catalog-view-main-image"
+                          src={assetUrl(viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.displayUrl
+                            || viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.originalUrl
+                            || viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.thumbnailUrl)}
+                          alt={viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.altText || viewingDesign.designName}
+                          style={{ transform: `scale(${detailImageZoom})` }}
+                          onError={(event) => {
+                            const image = viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)];
+                            const fallback = assetUrl(image?.thumbnailUrl);
+                            if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                          }}
+                        />
+                        <span className="nkj-catalog-view-image-count">{Math.min(detailImageIndex + 1, viewingDesign.images.length)} / {viewingDesign.images.length}</span>
+                        <div className="nkj-catalog-view-image-tools">
+                          <button type="button" aria-label="Zoom in" onClick={() => setDetailImageZoom((value) => Math.min(2.5, Number((value + 0.25).toFixed(2))))}><ZoomIn size={19} /></button>
+                          <button type="button" aria-label="Zoom out" onClick={() => setDetailImageZoom((value) => Math.max(1, Number((value - 0.25).toFixed(2))))} disabled={detailImageZoom <= 1}><ZoomOut size={19} /></button>
+                          <button type="button" aria-label="View photograph full screen" onClick={() => setDetailPhotoExpanded(true)}><Maximize2 size={19} /></button>
+                        </div>
+                        {viewingDesign.images.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              className="nkj-catalog-view-image-arrow previous"
+                              aria-label="Previous photograph"
+                              onClick={() => { setDetailImageIndex((value) => (value - 1 + viewingDesign.images.length) % viewingDesign.images.length); setDetailImageZoom(1); }}
+                            ><ChevronLeft size={25} /></button>
+                            <button
+                              type="button"
+                              className="nkj-catalog-view-image-arrow next"
+                              aria-label="Next photograph"
+                              onClick={() => { setDetailImageIndex((value) => (value + 1) % viewingDesign.images.length); setDetailImageZoom(1); }}
+                            ><ChevronRight size={25} /></button>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <div className="nkj-catalog-view-no-photo"><ImagePlus size={48} /><b>No photograph uploaded</b><span>Edit this design to add product photographs.</span></div>
+                    )}
+                  </div>
+
+                  <div className="nkj-catalog-view-gallery-thumbs">
+                    {(viewingDesign.images || []).map((image, index) => (
+                      <button
+                        type="button"
+                        key={image.id}
+                        className={index === detailImageIndex ? "active" : ""}
+                        onClick={() => { setDetailImageIndex(index); setDetailImageZoom(1); }}
+                        aria-label={`View photograph ${index + 1}`}
+                      >
+                        <img src={assetUrl(image.thumbnailUrl || image.displayUrl || image.originalUrl)} alt={image.altText || `Design photograph ${index + 1}`} />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="nkj-catalog-view-information">
+                  <header className="nkj-catalog-view-title-row">
+                    <div>
+                      <span className="nkj-catalog-view-category">{viewingDesign.metalType || "JEWELLERY"} DESIGN</span>
+                      <h2 id="nkj-catalog-admin-details-title">
+                        {viewingDesign.designName || viewingDesign.subcategoryName}
+                      </h2>
+                    </div>
+                  </header>
+
+                  <div className="nkj-catalog-view-id">
+                    <QrCode size={18} />
+                    <span>DESIGN ID</span>
+                    <b>{viewingDesign.designId || viewingDesign.designCode}</b>
+                  </div>
+
+                  <section className="nkj-catalog-view-card nkj-catalog-view-detail-card">
+                    <h3><Info size={19} /> DETAIL</h3>
+                    <div className="nkj-catalog-view-detail-rows">
+                      <div><Gem size={22} /><span>Jewellery type</span><b>{viewingDesign.subcategoryName || viewingDesign.regionalInspiration || "—"}</b></div>
+                      <div><Layers3 size={22} /><span>Style</span><b>{viewingDesign.styleLabel || "—"}</b></div>
+                      <div><Package size={22} /><span>Material</span><b>{viewingDesign.materialLabel || viewingDesign.metalType || "—"}</b></div>
+                      <div><Weight size={22} /><span>Weight</span><b>{viewingDesign.weightGrams == null ? "—" : Number(viewingDesign.weightGrams).toLocaleString("en-IN") + " g"}</b></div>
+                    </div>
+                    <div className="nkj-catalog-view-extra-details">
+                      <span>Purity <b>{viewingDesign.purity || "Not specified"}</b></span>
+                      <span>Price <b>{viewingDesign.priceInr == null ? "Not set" : "₹" + Number(viewingDesign.priceInr).toLocaleString("en-IN")}</b></span>
+                      <span>Status <b className={viewingDesign.isActive ? "is-active" : "is-inactive"}>{viewingDesign.isActive ? "Active" : "Inactive"}</b></span>
+                      {viewingDesign.regionalInspiration && <span>Regional inspiration <b>{viewingDesign.regionalInspiration}</b></span>}
+                    </div>
+                    {viewingDesign.description && <p className="nkj-catalog-view-description">{viewingDesign.description}</p>}
+                  </section>
+
+                  <section className="nkj-catalog-view-card nkj-catalog-view-photos-card">
+                    <header>
+                      <h3><ImagePlus size={19} /> Design photographs</h3>
+                      <span>{viewingDesign.images?.length || 0} saved</span>
+                    </header>
+                    <div className="nkj-catalog-view-photo-management">
+                      <div className="nkj-catalog-view-photo-strip">
+                        {(viewingDesign.images || []).map((image, index) => (
+                          <button
+                            type="button"
+                            key={image.id}
+                            className={index === detailImageIndex ? "active" : ""}
+                            onClick={() => { setDetailImageIndex(index); setDetailImageZoom(1); }}
+                            aria-label={`Select saved photograph ${index + 1}`}
+                          >
+                            <img src={assetUrl(image.thumbnailUrl || image.displayUrl || image.originalUrl)} alt={image.altText || `Saved photograph ${index + 1}`} />
+                          </button>
+                        ))}
+                        {!viewingDesign.images?.length && <span className="nkj-catalog-view-no-saved">No saved photographs</span>}
+                      </div>
+                      <div className="nkj-catalog-view-photo-actions">
+                        <button
+                          type="button"
+                          className="primary-photo"
+                          disabled={!viewingDesign.images?.length || detailsActionBusy || Number(viewingDesign.images?.[detailImageIndex]?.displayOrder) === 0}
+                          onClick={() => setViewedPrimaryImage(viewingDesign.images[detailImageIndex])}
+                        ><Star size={16} fill="currentColor" /> Primary</button>
+                        <button
+                          type="button"
+                          className="remove-photo"
+                          disabled={!viewingDesign.images?.length || detailsActionBusy}
+                          onClick={() => removeViewedImage(viewingDesign.images[detailImageIndex])}
+                          aria-label="Remove selected photograph"
+                        >{detailsActionBusy ? <LoaderCircle className="spin" size={16} /> : <Trash2 size={17} />}</button>
+                      </div>
+                    </div>
+                    {detailsActionError && <div className="nkj-catalog-view-action-error" role="alert">{detailsActionError}</div>}
+                  </section>
+
+                  <section className="nkj-catalog-view-card nkj-catalog-owner-controls">
+                    <div className="nkj-catalog-owner-controls-heading">
+                      <div><LockKeyhole size={21} /><span><small>OWNER CONTROLS</small><b>Manage this design</b></span></div>
+                      <LockKeyhole size={22} />
+                    </div>
+                    <div className="nkj-catalog-owner-control-actions">
+                      <button type="button" className="edit" onClick={() => {
+                        const selectedDesign = viewingDesign;
+                        setViewingDesign(null);
+                        openEditForm({ id: selectedDesign.id });
+                      }}><Pencil size={18} /> Edit Details</button>
+                      <button type="button" className="archive" onClick={() => {
+                        const selectedDesign = viewingDesign;
+                        setViewingDesign(null);
+                        deleteDesign(selectedDesign);
+                      }}><Trash2 size={18} /> Delete / Archive</button>
+                      <button type="button" className="mobile-upload" onClick={openMobileUploadFromDetails}><QrCode size={19} /> Upload from Mobile (QR Code)</button>
+                    </div>
+                  </section>
+                </section>
               </div>
-              <dl>
-                <div><dt>Main category</dt><dd>{viewingDesign.metalType}</dd></div>
-                <div><dt>Subcategory</dt><dd>{viewingDesign.subcategoryName}</dd></div>
-                <div><dt>Design name</dt><dd>{viewingDesign.designName}</dd></div>
-                <div><dt>Style</dt><dd>{viewingDesign.styleLabel || "—"}</dd></div>
-                <div><dt>Purity / fineness</dt><dd>{viewingDesign.purity || "—"}</dd></div>
-                <div><dt>Weight</dt><dd>{viewingDesign.weightGrams == null ? "—" : Number(viewingDesign.weightGrams).toLocaleString("en-IN") + " g"}</dd></div>
-                <div><dt>Price</dt><dd>{viewingDesign.priceInr == null ? "Not set" : "₹" + Number(viewingDesign.priceInr).toLocaleString("en-IN")}</dd></div>
-                <div><dt>Status</dt><dd>{viewingDesign.isActive ? "Active" : "Inactive"}</dd></div>
-                <div><dt>Images</dt><dd>{viewingDesign.images?.length || 0}</dd></div>
-                <div><dt>Record type</dt><dd>{viewingDesign.isSample ? "Sample inspiration" : "Owner photograph"}</dd></div>
-              </dl>
-              <p>{viewingDesign.description || "No design description added."}</p>
-              <footer>
-                <button type="button" onClick={() => setViewingDesign(null)}>Close</button>
-                <button type="button" className="primary" onClick={() => {
-                  const selectedDesign = viewingDesign;
-                  setViewingDesign(null);
-                  openEditForm({ id: selectedDesign.id });
-                }}><Pencil size={15} /> Edit Design</button>
+
+              <footer className="nkj-catalog-view-footer">
+                <button type="button" onClick={() => { setViewingDesign(null); setDetailPhotoExpanded(false); }}>Close</button>
               </footer>
+
+              {detailPhotoExpanded && viewingDesign.images?.length > 0 && (
+                <div className="nkj-catalog-view-lightbox" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailPhotoExpanded(false); }}>
+                  <button type="button" className="close" onClick={() => setDetailPhotoExpanded(false)} aria-label="Close full-screen photo"><X size={23} /></button>
+                  <img
+                    src={assetUrl(viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.displayUrl
+                      || viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.originalUrl
+                      || viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.thumbnailUrl)}
+                    alt={viewingDesign.designName}
+                  />
+                </div>
+              )}
             </section>
           </div>
         )}
