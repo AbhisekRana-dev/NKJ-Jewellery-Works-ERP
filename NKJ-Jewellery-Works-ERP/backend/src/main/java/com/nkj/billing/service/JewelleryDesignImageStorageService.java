@@ -12,6 +12,7 @@ import javax.imageio.IIOImage;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -120,7 +121,7 @@ public class JewelleryDesignImageStorageService {
                 if (longEdge < 1200 || shortEdge < 600) {
                     throw new IllegalArgumentException("For a clear jewellery catalogue photograph, upload an original image with a longest side of at least 1200 px and a shortest side of at least 600 px.");
                 }
-                source = reader.read(0);
+                source = applyExifOrientation(reader.read(0), readExifOrientation(bytes));
             } finally {
                 reader.dispose();
             }
@@ -179,6 +180,107 @@ public class JewelleryDesignImageStorageService {
         } catch (IOException ignored) {
             // A failed disk cleanup must not expose a path or block catalog edits.
         }
+    }
+
+    /**
+     * Read the EXIF orientation tag from JPEG APP1 metadata. ImageIO decodes
+     * pixel data without applying this tag, which otherwise makes many phone
+     * photographs appear sideways in the catalogue.
+     */
+    private static int readExifOrientation(byte[] data) {
+        if (data == null || data.length < 4
+                || (data[0] & 0xff) != 0xff || (data[1] & 0xff) != 0xd8) return 1;
+        int offset = 2;
+        while (offset + 4 < data.length) {
+            if ((data[offset] & 0xff) != 0xff) {
+                offset++;
+                continue;
+            }
+            while (offset < data.length && (data[offset] & 0xff) == 0xff) offset++;
+            if (offset >= data.length) break;
+            int marker = data[offset++] & 0xff;
+            if (marker == 0xd9 || marker == 0xda) break;
+            if (marker == 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+            if (offset + 2 > data.length) break;
+            int segmentLength = readExifU16(data, offset, false);
+            if (segmentLength < 2 || offset + segmentLength > data.length) break;
+            int payload = offset + 2;
+            if (marker == 0xe1 && segmentLength >= 14
+                    && data[payload] == 'E' && data[payload + 1] == 'x'
+                    && data[payload + 2] == 'i' && data[payload + 3] == 'f'
+                    && data[payload + 4] == 0 && data[payload + 5] == 0) {
+                int tiff = payload + 6;
+                boolean littleEndian = data[tiff] == 'I' && data[tiff + 1] == 'I';
+                boolean bigEndian = data[tiff] == 'M' && data[tiff + 1] == 'M';
+                if (!littleEndian && !bigEndian) return 1;
+                if (readExifU16(data, tiff + 2, littleEndian) != 42) return 1;
+                long ifdOffset = readExifU32(data, tiff + 4, littleEndian);
+                long ifdLong = tiff + ifdOffset;
+                if (ifdLong < 0 || ifdLong + 2 > data.length) return 1;
+                int ifd = (int) ifdLong;
+                int entries = readExifU16(data, ifd, littleEndian);
+                for (int index = 0; index < entries; index++) {
+                    int entry = ifd + 2 + index * 12;
+                    if (entry + 12 > data.length) break;
+                    int tag = readExifU16(data, entry, littleEndian);
+                    int type = readExifU16(data, entry + 2, littleEndian);
+                    long count = readExifU32(data, entry + 4, littleEndian);
+                    if (tag == 0x0112 && type == 3 && count >= 1) {
+                        int value = readExifU16(data, entry + 8, littleEndian);
+                        return value >= 1 && value <= 8 ? value : 1;
+                    }
+                }
+                return 1;
+            }
+            offset += segmentLength;
+        }
+        return 1;
+    }
+
+    private static int readExifU16(byte[] data, int offset, boolean littleEndian) {
+        if (offset < 0 || offset + 2 > data.length) return 0;
+        int first = data[offset] & 0xff;
+        int second = data[offset + 1] & 0xff;
+        return littleEndian ? first | (second << 8) : (first << 8) | second;
+    }
+
+    private static long readExifU32(byte[] data, int offset, boolean littleEndian) {
+        if (offset < 0 || offset + 4 > data.length) return 0;
+        long b0 = data[offset] & 0xffL;
+        long b1 = data[offset + 1] & 0xffL;
+        long b2 = data[offset + 2] & 0xffL;
+        long b3 = data[offset + 3] & 0xffL;
+        return littleEndian
+                ? b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
+                : (b0 << 24) | (b1 << 16) | (b2 << 8) | b3;
+    }
+
+    private static BufferedImage applyExifOrientation(BufferedImage source, int orientation) {
+        if (source == null || orientation <= 1 || orientation > 8) return source;
+        int width = source.getWidth();
+        int height = source.getHeight();
+        boolean swapDimensions = orientation >= 5;
+        BufferedImage corrected = new BufferedImage(
+                swapDimensions ? height : width,
+                swapDimensions ? width : height,
+                BufferedImage.TYPE_INT_RGB);
+        AffineTransform transform = switch (orientation) {
+            case 2 -> new AffineTransform(-1, 0, 0, 1, width - 1, 0);
+            case 3 -> new AffineTransform(-1, 0, 0, -1, width - 1, height - 1);
+            case 4 -> new AffineTransform(1, 0, 0, -1, 0, height - 1);
+            case 5 -> new AffineTransform(0, 1, 1, 0, 0, 0);
+            case 6 -> new AffineTransform(0, 1, -1, 0, height - 1, 0);
+            case 7 -> new AffineTransform(0, -1, -1, 0, height - 1, width - 1);
+            case 8 -> new AffineTransform(0, -1, 1, 0, 0, width - 1);
+            default -> new AffineTransform();
+        };
+        Graphics2D graphics = corrected.createGraphics();
+        try {
+            graphics.drawImage(source, transform, null);
+        } finally {
+            graphics.dispose();
+        }
+        return corrected;
     }
 
     private void writeHighQualityJpeg(BufferedImage image, Path path) throws IOException {
