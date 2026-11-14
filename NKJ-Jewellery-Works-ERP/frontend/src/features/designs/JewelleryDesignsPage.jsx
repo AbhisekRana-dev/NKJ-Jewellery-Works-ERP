@@ -45,10 +45,15 @@ async function uploadAdminMultipart(path, formData) {
 }
 const API_ORIGIN = API_BASE.endsWith("/api") ? API_BASE.slice(0, -4) : API_BASE;
 const assetUrl = (path) => {
-  if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
-  if (path.startsWith("/api/")) return `${API_ORIGIN}${path}`;
-  return path.startsWith("/") ? path : `/${path}`;
+  if (!path || typeof path !== "string") return "";
+  const value = path.trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/api/")) return `${API_ORIGIN}${value}`;
+  if (value.startsWith("api/")) return `${API_ORIGIN}/${value}`;
+  if (value.startsWith("/uploads/designs/")) return `${API_ORIGIN}/api${value}`;
+  if (value.startsWith("uploads/designs/")) return `${API_ORIGIN}/api/${value}`;
+  return value.startsWith("/") ? value : `/${value}`;
 };
 const METALS = [
   { id: "GOLD", label: "Gold", description: "Traditional and contemporary gold designs", tone: "gold", mark: "Au" },
@@ -373,9 +378,6 @@ export default function JewelleryDesignsPage() {
     ? (zoomed
         ? (activeImage?.originalUrl || selected?.originalUrl || activeImage?.displayUrl || activeImage?.thumbnailUrl || "")
         : (activeImage?.displayUrl || activeImage?.originalUrl || selected?.originalUrl || activeImage?.thumbnailUrl || selected?.thumbnailUrl || ""))
-    : "";
-  const modalThumbnailUrl = selected?.imageStatus === "READY"
-    ? (activeImage?.thumbnailUrl || selected?.thumbnailUrl || "")
     : "";
   const activeImageCandidates = [...new Set([
     activeImage?.displayUrl,
@@ -843,7 +845,12 @@ export default function JewelleryDesignsPage() {
               <span>Try another subcategory or keyword.</span>
               <button type="button" onClick={() => { setSearch(""); setSubcategory(""); }}>Clear filters</button>
             </div>
-          
+          ) : null}
+        </section>
+
+        {selected && (
+          <div className="nkj-catalog-modal-backdrop nkj-catalog-view-backdrop" role="presentation" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeSelectedModal();
               <section className="nkj-catalog-details-modal nkj-catalog-view-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-design-modal-title">
                 <button type="button" className="nkj-catalog-view-close" onClick={closeSelectedModal} aria-label="Close design details"><X size={23} /></button>
                 <div className="nkj-catalog-view-layout">
@@ -1030,11 +1037,7 @@ export default function JewelleryDesignsPage() {
                     <img src={assetUrl(activeImage?.originalUrl || activeImage?.displayUrl || activeImage?.thumbnailUrl)} alt={selected.designName} />
                   </div>
                 )}
-              </section>d by the owner. Confirm current availability and final price with the shop."}</small>
-                </div>
-              </div>
-              <button type="button" className="nkj-design-modal-done" onClick={closeSelectedModal}>Close</button>
-            </section>
+              </section>  </section>
             )}
           </div>
         )}
