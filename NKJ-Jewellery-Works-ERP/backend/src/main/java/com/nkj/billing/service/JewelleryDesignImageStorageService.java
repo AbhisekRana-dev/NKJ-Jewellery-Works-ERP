@@ -99,7 +99,7 @@ public class JewelleryDesignImageStorageService {
                 if (!contentType.isBlank()
                         && !"application/octet-stream".equals(contentType)
                         && !expectedMime.equals(contentType)
-                        && !("image/jpg".equals(contentType) && "image/jpeg".equals(expectedMime))) {
+                        && !(( "image/jpg".equals(contentType) || "image/pjpeg".equals(contentType)) && "image/jpeg".equals(expectedMime))) {
                     throw new IllegalArgumentException("The uploaded image content does not match its reported file type.");
                 }
                 String originalName = file.getOriginalFilename();
