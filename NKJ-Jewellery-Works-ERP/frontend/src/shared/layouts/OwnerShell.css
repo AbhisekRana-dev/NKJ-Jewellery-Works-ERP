@@ -3020,3 +3020,19 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     min-height: 32px !important;
   }
 }
+
+
+/* Give the shop identity and page navigation a clearer breathing gap. */
+@media (min-width: 1451px) {
+  .nkj-owner-topbar.nkj-reference-navbar {
+    column-gap: clamp(20px, 2vw, 34px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    padding-right: clamp(14px, 1.2vw, 22px) !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > nav {
+    margin-left: 4px !important;
+  }
+}
