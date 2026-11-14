@@ -69,7 +69,7 @@ export function Home() {
 
   useEffect(() => {
     let active = true;
-    request("/rates")
+    request("/rates", { cache: "no-store" })
       .then((data) => {
         if (!active || !data) return;
         const nextRates = { ...defaultMetalRates, ...data };
@@ -162,16 +162,18 @@ export function Home() {
         }),
       });
 
-      // Confirm the persisted value, not only the PUT response. This also
-      // detects an older Spring Boot process that silently ignores diamondRate.
-      let confirmedRates = updated;
+      // Always read the current database-backed value after the PUT. Bypass
+      // browser/proxy caches so a stale GET cannot mask a successful update.
+      const confirmedRates = await request("/rates", { cache: "no-store" });
       const returnedDiamondRate = Number(updated?.diamondRate);
-      if (!Number.isFinite(returnedDiamondRate) || Math.abs(returnedDiamondRate - diamondRate) >= 0.005) {
-        confirmedRates = await request("/rates");
-      }
       const savedDiamondRate = Number(confirmedRates?.diamondRate);
       if (!Number.isFinite(savedDiamondRate) || Math.abs(savedDiamondRate - diamondRate) >= 0.005) {
-        throw new Error("The server did not confirm the saved Diamond rate. Restart the latest Spring Boot backend and make sure Flyway migration V47 has completed, then save again.");
+        const putValue = Number.isFinite(returnedDiamondRate) ? returnedDiamondRate.toFixed(2) : "missing";
+        const readValue = Number.isFinite(savedDiamondRate) ? savedDiamondRate.toFixed(2) : "missing";
+        throw new Error(
+          `Diamond rate save could not be verified. PUT response: ₹${putValue}; fresh GET /rates: ₹${readValue}. `
+          + "The running backend may be outdated or connected to a different database. Check the backend port (Vite proxy default: 8086), confirm Flyway V47 is applied to that database, and restart the backend from this branch."
+        );
       }
 
       setRates({ ...defaultMetalRates, ...confirmedRates });
