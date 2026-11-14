@@ -18,6 +18,17 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -371,6 +382,106 @@ public class JewelleryDesignController {
                    AND consumed_at IS NULL AND revoked_at IS NULL
                 """, sessionId, auth.getUsername());
         return Map.of("revoked", changed > 0, "sessionId", sessionId.toString());
+    }
+
+    @PostMapping(value = "/api/mobile-design-upload/{token}/scan-qr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, Object> scanQrFromMobileImage(
+            @PathVariable String token,
+            @RequestParam("file") MultipartFile file,
+            HttpServletResponse response) throws IOException {
+        preventMobileUploadCaching(response);
+        if (token == null || token.length() < 40 || token.length() > 100
+                || !token.matches("[A-Za-z0-9_-]+")) {
+            throw new IllegalArgumentException("This QR upload link is invalid.");
+        }
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Choose an image that contains a QR code.");
+        }
+        if (file.getSize() > 10L * 1024L * 1024L) {
+            throw new IllegalArgumentException("QR images must be 10 MB or smaller.");
+        }
+
+        List<Map<String, Object>> activeSessions = jdbc.queryForList("""
+                SELECT session_id
+                  FROM public.jewellery_design_upload_sessions
+                 WHERE token_hash=? AND consumed_at IS NULL
+                   AND revoked_at IS NULL AND expires_at > NOW()
+                """, sha256Hex(token));
+        if (activeSessions.isEmpty()) {
+            throw new IllegalArgumentException("This mobile upload link has expired, was revoked, or has already been used.");
+        }
+
+        BufferedImage image = ImageIO.read(file.getInputStream());
+        if (image == null) {
+            throw new IllegalArgumentException("The selected file is not a readable JPG, PNG or WebP image.");
+        }
+        if (image.getWidth() < 1 || image.getHeight() < 1
+                || image.getWidth() > 8000 || image.getHeight() > 8000
+                || (long) image.getWidth() * image.getHeight() > 24_000_000L) {
+            throw new IllegalArgumentException("QR image dimensions must not exceed 8000 × 8000 pixels or 24 megapixels.");
+        }
+
+        String decodedText = decodeQrText(image);
+        if (decodedText == null || decodedText.isBlank()) {
+            throw new IllegalArgumentException("No readable QR code was found in this image. Try a sharper, well-lit image with the full QR code visible.");
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("format", "QR_CODE");
+        result.put("decodedText", decodedText);
+        result.put("decodedAt", java.time.Instant.now().toString());
+        return result;
+    }
+
+    private static String decodeQrText(BufferedImage source) {
+        Map<DecodeHintType, Object> hints = new HashMap<>();
+        hints.put(DecodeHintType.POSSIBLE_FORMATS, List.of(BarcodeFormat.QR_CODE));
+        hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+        hints.put(DecodeHintType.CHARACTER_SET, StandardCharsets.UTF_8.name());
+
+        for (int rotation : new int[] {0, 90, 180, 270}) {
+            BufferedImage candidate = rotation == 0 ? source : rotateForQr(source, rotation);
+            for (boolean inverted : new boolean[] {false, true}) {
+                try {
+                    var luminance = new BufferedImageLuminanceSource(candidate);
+                    if (inverted) luminance = luminance.invert();
+                    BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(luminance));
+                    Result result = new MultiFormatReader().decode(bitmap, hints);
+                    if (result != null && result.getText() != null && !result.getText().isBlank()) {
+                        return result.getText().trim();
+                    }
+                } catch (NotFoundException ignored) {
+                    // Try the next orientation and contrast polarity.
+                }
+            }
+        }
+        return null;
+    }
+
+    private static BufferedImage rotateForQr(BufferedImage source, int degrees) {
+        int width = source.getWidth();
+        int height = source.getHeight();
+        boolean quarterTurn = degrees == 90 || degrees == 270;
+        BufferedImage rotated = new BufferedImage(
+                quarterTurn ? height : width,
+                quarterTurn ? width : height,
+                BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = rotated.createGraphics();
+        try {
+            if (degrees == 90) {
+                graphics.translate(height, 0);
+                graphics.rotate(Math.PI / 2);
+            } else if (degrees == 180) {
+                graphics.translate(width, height);
+                graphics.rotate(Math.PI);
+            } else if (degrees == 270) {
+                graphics.translate(0, width);
+                graphics.rotate(-Math.PI / 2);
+            }
+            graphics.drawImage(source, 0, 0, null);
+        } finally {
+            graphics.dispose();
+        }
+        return rotated;
     }
 
     @GetMapping("/api/mobile-design-upload/{token}")
