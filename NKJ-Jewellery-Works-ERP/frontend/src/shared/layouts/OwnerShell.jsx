@@ -164,10 +164,6 @@ export function Nav({ active = "home" }) {
 
           <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home">
             <img className="nkj-owner-logo-image" src="/nkj-sidebar-logo-ornate.png" alt="Nandikishor Jewellery Works NKJ logo" />
-            <span className="nkj-owner-brand-copy">
-              <b>Nandikishor</b>
-              <small>Jewellery Works</small>
-            </span>
           </Link>
 
           <nav
