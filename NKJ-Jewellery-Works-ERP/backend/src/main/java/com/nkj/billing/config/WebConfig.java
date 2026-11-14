@@ -22,7 +22,6 @@ public class WebConfig implements WebMvcConfigurer {
     private final AuthInterceptor auth;
     private final RealtimeMutationInterceptor realtimeMutationInterceptor;
     private final String[] allowedOrigins;
-    private final boolean allowPrivateHttpMobileUploads;
     private final JewelleryDesignImageStorageService imageStorage;
 
     public WebConfig(
@@ -34,7 +33,6 @@ public class WebConfig implements WebMvcConfigurer {
         this.auth = auth;
         this.realtimeMutationInterceptor = realtimeMutationInterceptor;
         this.imageStorage = imageStorage;
-        this.allowPrivateHttpMobileUploads = allowPrivateHttpMobileUploads;
         String[] configuredOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
