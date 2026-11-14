@@ -25,8 +25,7 @@ REQUIREMENTS
 - Keep the PC and phone connected to the same trusted Wi-Fi network.
 - On Windows, run `ipconfig` and find the PC's Wi-Fi adapter IPv4 Address (usually 192.168.x.x).
 - Open the ERP on the PC using `http://YOUR-PC-WIFI-IP:5173` (example: `http://192.168.1.10:5173`), not localhost. Vite listens on the LAN interface.
-- In backend/.env, set `NKJ_DESIGNS_MOBILE_UPLOAD_ALLOW_PRIVATE_HTTP=true`.
-- Update the existing `CORS_ALLOWED_ORIGINS` line in backend/.env to include private-LAN origins, e.g. `http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.*:*`. Do not add a duplicate CORS variable.
+- In backend/.env, set `NKJ_DESIGNS_MOBILE_UPLOAD_ALLOW_PRIVATE_HTTP=true`. When this is enabled, the backend automatically permits private Wi-Fi browser origins for CORS; no CORS variable edit is required.
 - Leave `DESIGNS_MOBILE_UPLOAD_BASE_URL` blank so the QR uses the browser origin (the PC Wi-Fi IP).
 - Restart backend and Vite after changing configuration, then open the ERP using the PC Wi-Fi IP and generate a NEW QR code.
 - Scan with the phone camera. The phone opens the PC's Vite page; API calls are proxied to the backend on port 8086.
