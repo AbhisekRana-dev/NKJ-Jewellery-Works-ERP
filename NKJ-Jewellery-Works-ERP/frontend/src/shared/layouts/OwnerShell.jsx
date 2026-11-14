@@ -244,18 +244,21 @@ export function Nav({ active = "home" }) {
   }
 
   return (
-    <header className={`topbar${calculatorOwnerWorkspace ? " nkj-owner-calculator-topbar" : ""}`}>
-      <Link to="/" className="brand">
+    <header className={`topbar${calculatorOwnerWorkspace ? " nkj-owner-topbar nkj-reference-navbar" : ""}`}>
+      <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
         <div className="logo">NKJ</div>
-        <div><b>Nandikishor Jewellery Works</b><small>{calculatorOwnerWorkspace ? <><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</> : "Sasra, Gopiballavpur, Jhargram"}</small></div>
+        <div className="nkj-navbar-brand-copy">
+          <b>Nandikishor Jewellery Works</b>
+          <small><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</small>
+        </div>
       </Link>
       <nav aria-label="Main navigation">
-        <Link className={active === "home" ? "active" : ""} to="/"><HomeIcon />Home</Link>
-        <Link className={active === "designs" ? "active" : ""} to="/designs"><Gem />Jewellery Designs</Link>
-        <Link className={active === "calculator" ? "active" : ""} to="/calculator"><CalculatorIcon />Calculator</Link>
-        <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
+        <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
+        <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
+        <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+        <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
         {calculatorOwnerWorkspace
-          ? <span className="nkj-calculator-owner-user"><User size={24} /> {user || "admin"}</span>
+          ? <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b></span>
           : isAdmin ? <>
             <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
             <Link className={active === "dashboard" ? "active" : ""} to="/dashboard"><LayoutDashboard />Dashboard</Link>
