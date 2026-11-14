@@ -789,7 +789,7 @@ export default function JewelleryDesignsPage() {
                         <span>{design.subcategoryName}</span>
                         <small className="nkj-design-id-badge" title={design.designId || design.designCode}>
                           <span>DESIGN ID</span>
-                          <b>{design.designId || design.designCode}</b>
+                          <b>{design.designId || design.designCode || "Not assigned"}</b>
                         </small>
                       </div>
                       <h3>{design.designName}</h3>
