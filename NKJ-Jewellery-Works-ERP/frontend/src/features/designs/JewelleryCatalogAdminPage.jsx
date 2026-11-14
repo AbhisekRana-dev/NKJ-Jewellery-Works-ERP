@@ -716,6 +716,9 @@ export default function JewelleryCatalogAdminPage() {
     : selectedPendingPhoto
       ? null
       : currentImages.find((image) => Number(image.displayOrder) === 0) || currentImages[0] || null;
+  const selectedPhotoAdjustment = selectedPendingPhoto
+    ? imageAdjustments[selectedPendingPhoto.key] || { rotation: 0, cropZoom: 1 }
+    : null;
 
   return (
     <Page active="design-catalog">
@@ -1014,6 +1017,7 @@ export default function JewelleryCatalogAdminPage() {
                         <img
                           src={selectedPendingPhoto?.url || assetUrl(selectedStoredPhoto.displayUrl || selectedStoredPhoto.thumbnailUrl)}
                           alt={selectedPendingPhoto?.file.name || selectedStoredPhoto?.altText || form.designName || "Design preview"}
+                          style={selectedPendingPhoto ? { transform: `rotate(${selectedPhotoAdjustment.rotation}deg) scale(${selectedPhotoAdjustment.cropZoom})` } : undefined}
                         />
                         <span className="nkj-catalog-photo-stage-hint"><ImagePlus size={15} /> Add or drop more photographs</span>
                       </span>
@@ -1037,7 +1041,11 @@ export default function JewelleryCatalogAdminPage() {
                     {imagePreviews.map((preview, index) => (
                       <div className={"nkj-catalog-photo-thumb" + ((!activeStoredImageId && (activeUploadPreviewKey ? activeUploadPreviewKey === preview.key : index === 0)) ? " active" : "")} key={preview.key}>
                         <button type="button" className="nkj-catalog-photo-thumb-image" onClick={() => setActiveUploadPreviewKey(preview.key)} title={preview.file.name}>
-                          <img src={preview.url} alt={preview.file.name} />
+                          <img
+                            src={preview.url}
+                            alt={preview.file.name}
+                            style={{ transform: `rotate(${(imageAdjustments[preview.key] || {}).rotation || 0}deg) scale(${(imageAdjustments[preview.key] || {}).cropZoom || 1})` }}
+                          />
                         </button>
                         {index === 0 ? <span className="nkj-catalog-photo-primary">★ Primary</span> : null}
                         <button type="button" className="nkj-catalog-photo-thumb-remove" onClick={() => removePendingImage(preview)} aria-label={"Remove " + preview.file.name}><X size={13} /></button>
@@ -1094,6 +1102,27 @@ export default function JewelleryCatalogAdminPage() {
                         }}
                       ><Trash2 size={17} /> Remove</button>
                     </div>
+                  )}
+                  {selectedPendingPhoto && (
+                    <details className="nkj-catalog-photo-adjustments">
+                      <summary>Photo Adjustments · rotate and crop</summary>
+                      <div className="nkj-catalog-photo-adjustment-actions">
+                        <button type="button" onClick={() => setImageAdjustments((current) => ({
+                          ...current,
+                          [selectedPendingPhoto.key]: { ...selectedPhotoAdjustment, rotation: (selectedPhotoAdjustment.rotation + 270) % 360 },
+                        }))}><RotateCcw size={14} /> Rotate Left</button>
+                        <button type="button" onClick={() => setImageAdjustments((current) => ({
+                          ...current,
+                          [selectedPendingPhoto.key]: { ...selectedPhotoAdjustment, rotation: (selectedPhotoAdjustment.rotation + 90) % 360 },
+                        }))}><RotateCw size={14} /> Rotate Right</button>
+                      </div>
+                      <label>Crop / Zoom · {Number(selectedPhotoAdjustment.cropZoom).toFixed(1)}×
+                        <input type="range" min="1" max="2" step="0.1" value={selectedPhotoAdjustment.cropZoom} onChange={(event) => setImageAdjustments((current) => ({
+                          ...current,
+                          [selectedPendingPhoto.key]: { ...selectedPhotoAdjustment, cropZoom: Number(event.target.value) },
+                        }))} />
+                      </label>
+                    </details>
                   )}
                   <p className="nkj-catalog-photo-note">Original photographs are preserved. Add multiple JPG, PNG or WebP images; the first selected photo is primary unless changed above.</p>
                 </aside>
