@@ -1832,3 +1832,89 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.top
     font-size: 10px !important;
   }
 }
+
+
+/* Calculator uses the same full-width shared owner navbar as other pages.
+   It has no owner sidebar, so remove the sidebar offset used by workspace routes. */
+@media (min-width: 901px) {
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar {
+    box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, .92fr) minmax(0, 1.35fr) !important;
+    align-items: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 88px !important;
+    min-height: 88px !important;
+    max-height: 88px !important;
+    margin: 0 !important;
+    padding: 9px clamp(18px, 2.5vw, 38px) !important;
+    overflow: hidden !important;
+  }
+
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > nav {
+    justify-content: flex-end !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    flex-wrap: nowrap !important;
+    gap: clamp(7px, .72vw, 13px) !important;
+  }
+
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    min-height: 54px !important;
+    height: 54px !important;
+    padding-inline: clamp(10px, 1.05vw, 17px) !important;
+  }
+
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+  }
+}
+
+@media (max-width: 900px) {
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 10px 12px 9px !important;
+    gap: 9px !important;
+    overflow: hidden !important;
+  }
+
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > .brand {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > nav {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 6px !important;
+  }
+
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > nav > a {
+    flex: 0 0 auto !important;
+    min-height: 40px !important;
+    height: 40px !important;
+    padding: 7px 10px !important;
+  }
+
+  body.nkj-owner-calculator-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar > nav > .nkj-navbar-user {
+    min-height: 36px !important;
+  }
+}
