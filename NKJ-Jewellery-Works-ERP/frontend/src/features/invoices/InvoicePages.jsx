@@ -464,351 +464,6 @@ function createInvoiceDraftKey() {
   return `nkj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/**
- * Print only the invoice sheet in an isolated same-origin document.
- *
- * The previous implementation called window.print() on the full ERP page.
- * Its print CSS used visibility:hidden for unrelated application elements;
- * visibility preserves layout space, so the owner shell/sidebar could create
- * blank pages before the invoice. An iframe removes the shell from the print
- * document entirely while reusing the existing invoice markup and CSS.
- */
-async function printInvoiceAsPdf({ onAfterPrint } = {}) {
-  const source = document.getElementById("invoice-print");
-  if (!source) {
-    throw new Error("The invoice is not available for printing. Open the invoice and try again.");
-  }
-
-  const frame = document.createElement("iframe");
-  frame.title = "Invoice PDF print";
-  frame.setAttribute("aria-hidden", "true");
-  frame.setAttribute("tabindex", "-1");
-  // Render in a real A4-landscape iframe viewport. Keep the frame opaque and
-  // move it off-canvas; opacity:0 on the iframe can make some Chromium print
-  // paths rasterize the child document as a blank page.
-  Object.assign(frame.style, {
-    position: "fixed",
-    left: "-310mm",
-    top: "0",
-    width: "297mm",
-    height: "210mm",
-    border: "0",
-    opacity: "1",
-    pointerEvents: "none",
-    zIndex: "-1",
-  });
-  document.body.appendChild(frame);
-
-  const printWindow = frame.contentWindow;
-  const printDocument = frame.contentDocument;
-  if (!printWindow || !printDocument) {
-    frame.remove();
-    throw new Error("The browser could not prepare the invoice print document.");
-  }
-
-  let cleanupTimer = null;
-  let cleanedUp = false;
-  const cleanup = () => {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    window.removeEventListener("afterprint", cleanup);
-    printWindow.removeEventListener("afterprint", cleanup);
-    if (cleanupTimer !== null) window.clearTimeout(cleanupTimer);
-    frame.remove();
-    onAfterPrint?.();
-  };
-
-  try {
-    printDocument.open();
-    printDocument.write("<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Invoice</title></head><body></body></html>");
-    printDocument.close();
-
-    const base = printDocument.createElement("base");
-    base.href = document.baseURI;
-    printDocument.head.prepend(base);
-
-    // Copy the app's existing stylesheets; no PDF library or duplicate invoice
-    // template is required.
-    const stylesheetLoads = [];
-    document.querySelectorAll('link[rel="stylesheet"]').forEach((originalLink) => {
-      const link = originalLink.cloneNode(true);
-      link.href = new URL(originalLink.getAttribute("href") || originalLink.href, document.baseURI).href;
-      stylesheetLoads.push(new Promise((resolve) => {
-        let settled = false;
-        const finish = () => {
-          if (settled) return;
-          settled = true;
-          resolve();
-        };
-        link.addEventListener("load", finish, { once: true });
-        link.addEventListener("error", finish, { once: true });
-        printDocument.head.appendChild(link);
-        if (link.sheet) finish();
-        window.setTimeout(finish, 4000);
-      }));
-    });
-
-    document.querySelectorAll("style").forEach((style) => {
-      printDocument.head.appendChild(style.cloneNode(true));
-    });
-
-    const invoiceClone = source.cloneNode(true);
-    printDocument.body.appendChild(invoiceClone);
-
-    const invoiceNumber = source.querySelector(".inv-meta span strong")?.textContent?.trim() || "Invoice";
-    const itemTables = Array.from(invoiceClone.querySelectorAll(".items-table"));
-    const itemRowCount = itemTables.reduce(
-      (total, table) => total + table.querySelectorAll("tbody tr").length,
-      0,
-    );
-
-    // Repeated table headers identify the invoice on every printed page.
-    itemTables.forEach((table) => {
-      const header = table.tHead;
-      if (!header) return;
-      const columnCount = header.querySelectorAll("tr:last-child th").length || 1;
-      const continuationRow = printDocument.createElement("tr");
-      continuationRow.className = "nkj-pdf-repeat-header";
-      const continuationCell = printDocument.createElement("th");
-      continuationCell.colSpan = columnCount;
-      continuationCell.textContent = `INVOICE ${invoiceNumber}  •  ITEM DETAILS`;
-      continuationRow.appendChild(continuationCell);
-      header.insertBefore(continuationRow, header.firstChild);
-    });
-
-    // Very long item lists use a continuous vertical flow so the table can
-    // paginate naturally instead of forcing a tall CSS grid onto one sheet.
-    if (itemRowCount > 8) {
-      invoiceClone.classList.add("nkj-pdf-long-invoice");
-    }
-
-    // cloneNode does not copy current DOM properties for form controls.
-    const originalControls = source.querySelectorAll("input, textarea, select");
-    const clonedControls = invoiceClone.querySelectorAll("input, textarea, select");
-    originalControls.forEach((control, index) => {
-      const clone = clonedControls[index];
-      if (!clone) return;
-      if (control instanceof HTMLInputElement) {
-        clone.value = control.value;
-        clone.checked = control.checked;
-      } else if (control instanceof HTMLTextAreaElement) {
-        clone.value = control.value;
-      } else if (control instanceof HTMLSelectElement) {
-        clone.value = control.value;
-      }
-    });
-
-    const printStyle = printDocument.createElement("style");
-    printStyle.textContent = `
-      @page {
-        /* Explicit physical dimensions prevent an A4 portrait page with a
-           sideways landscape invoice when printer defaults are remembered. */
-        size: 297mm 210mm;
-        margin: 3mm;
-      }
-
-      @media print {
-        html,
-        body {
-          display: block !important;
-          visibility: visible !important;
-          width: 291mm !important;
-          min-width: 291mm !important;
-          max-width: 291mm !important;
-          height: auto !important;
-          min-height: 0 !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          overflow: visible !important;
-          background: #fff !important;
-        }
-
-        /* The iframe contains only the invoice, so nothing needs to be hidden.
-           Override legacy body:has(...){visibility:hidden} print selectors. */
-        body:has(#invoice-print) * {
-          visibility: visible !important;
-        }
-
-        body:has(#invoice-print) #invoice-print,
-        body:has(#invoice-print) #invoice-print * {
-          visibility: visible !important;
-        }
-
-        body:has(#invoice-print) #invoice-print {
-          display: block !important;
-          position: relative !important;
-          inset: auto !important;
-          width: 291mm !important;
-          min-width: 291mm !important;
-          max-width: 291mm !important;
-          height: auto !important;
-          min-height: 0 !important;
-          max-height: none !important;
-          margin: 0 !important;
-          padding: 2mm !important;
-          box-sizing: border-box !important;
-          zoom: 1 !important;
-          transform: none !important;
-          transform-origin: top left !important;
-          rotate: 0deg !important;
-          translate: none !important;
-          writing-mode: horizontal-tb !important;
-          direction: ltr !important;
-          visibility: visible !important;
-          overflow: visible !important;
-          background: #fff !important;
-          float: none !important;
-          clear: both !important;
-          border: 0.35mm solid #c98a2a !important;
-          border-radius: 0 !important;
-          box-shadow: none !important;
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print,
-        #invoice-print * {
-          writing-mode: horizontal-tb !important;
-          direction: ltr !important;
-        }
-
-        /* Avoid percentage tracks plus gaps overflowing the page at the right edge. */
-        #invoice-print .inv-bottom {
-          grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
-          gap: 2mm !important;
-          width: 100% !important;
-        }
-
-        #invoice-print .inv-meta span {
-          grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
-          gap: 1mm !important;
-        }
-
-        #invoice-print .invoice-actions,
-        #invoice-print .nkj-invoice-detail-actions,
-        #invoice-print .no-print,
-        #invoice-print button,
-        #invoice-print .icon-btn {
-          display: none !important;
-        }
-
-        #invoice-print .table-wrap {
-          width: 100% !important;
-          max-width: 100% !important;
-          overflow: visible !important;
-        }
-
-        #invoice-print table,
-        #invoice-print .items-table,
-        #invoice-print .new-items-table,
-        #invoice-print .old-items-table {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          table-layout: fixed !important;
-        }
-
-        #invoice-print .items-table thead {
-          display: table-header-group !important;
-        }
-
-        #invoice-print .items-table tbody {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print .items-table tr {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-
-        #invoice-print .ornament-panel {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        #invoice-print .items-table .nkj-pdf-repeat-header th {
-          display: table-cell !important;
-          padding: 0.7mm 1mm !important;
-          background: #fff7e8 !important;
-          color: #7a1029 !important;
-          font: 700 7pt/1.1 Georgia, "Times New Roman", serif !important;
-          text-align: left !important;
-          letter-spacing: 0.2px !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .inv-main {
-          display: block !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .inv-left {
-          width: 100% !important;
-          max-width: 100% !important;
-        }
-
-        #invoice-print.nkj-pdf-long-invoice .totals {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          margin-top: 2mm !important;
-        }
-
-        #invoice-print img {
-          max-width: 100% !important;
-          object-fit: contain !important;
-        }
-
-        #invoice-print .total-paid-row,
-        #invoice-print .due-amount-row,
-        #invoice-print .inv-head,
-        #invoice-print .inv-two,
-        #invoice-print .description-panel,
-        #invoice-print .words-panel {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-
-        /* Let ornament sections flow across pages while each table row stays intact. */
-        #invoice-print .ornament-panel {
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-    `;
-    printDocument.head.appendChild(printStyle);
-
-    await Promise.all(stylesheetLoads);
-    if (printDocument.fonts?.ready) {
-      await Promise.race([
-        printDocument.fonts.ready.catch(() => {}),
-        new Promise((resolve) => window.setTimeout(resolve, 1500)),
-      ]);
-    }
-    await Promise.all(Array.from(invoiceClone.querySelectorAll("img")).map((image) => {
-      if (image.complete) return Promise.resolve();
-      return new Promise((resolve) => {
-        image.addEventListener("load", resolve, { once: true });
-        image.addEventListener("error", resolve, { once: true });
-        window.setTimeout(resolve, 2500);
-      });
-    }));
-
-    window.addEventListener("afterprint", cleanup, { once: true });
-    printWindow.addEventListener("afterprint", cleanup, { once: true });
-    cleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
-    printWindow.focus();
-    printWindow.print();
-  } catch (error) {
-    cleanup();
-    throw error;
-  }
-}
-
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1468,22 +1123,26 @@ export function InvoicePage() {
   }
 
   async function printCurrentInvoice(ticket) {
+    setIsPrintPreparing(true);
+    setError("");
     try {
       await request("/invoices/consume-print-ticket", {
         method: "POST",
         body: JSON.stringify({ ticket, invoiceId }),
       });
       setShowInvoicePin(false);
-      window.setTimeout(() => {
-        printInvoiceAsPdf({ onAfterPrint: () => setIsPrintPreparing(false) }).catch((error) => {
-          setIsPrintPreparing(false);
-          setError(error.message || "Could not prepare the invoice PDF.");
-        });
-      }, 120);
+
+      // Generate a real landscape PDF instead of opening the browser print
+      // dialog. This prevents saved Portrait settings and browser URL/date
+      // headers from being embedded in the invoice file.
+      const file = await createInvoiceSharePdfFile({ id: invoiceId, invoiceNo });
+      downloadInvoicePdfFile(file);
+      setSuccessMessage(`Invoice ${invoiceNo} downloaded as an upright A4 landscape PDF. Open the downloaded PDF to print it.`);
     } catch (error) {
       setShowInvoicePin(false);
+      setError(error.message || "Could not prepare the invoice PDF.");
+    } finally {
       setIsPrintPreparing(false);
-      setError(error.message || "Could not authorize invoice printing.");
     }
   }
 
@@ -2297,9 +1956,9 @@ export function InvoicePage() {
           className="secondary"
           onClick={requestPrintPin}
           disabled={saving || showInvoicePin}
-          title="Save this invoice to PostgreSQL before opening Print or Save as PDF"
+          title="Save this invoice before generating a clean A4 landscape PDF"
         >
-          <Printer /> {saving ? "Saving..." : "Print Invoice / Save as PDF"}
+          <Printer /> {saving ? "Saving..." : "Download / Print Invoice PDF"}
         </button>
 
       </div>
@@ -3146,19 +2805,22 @@ export function SavedInvoices() {
   if (!isAdmin) return null;
 
   const printSavedInvoice = async (ticket) => {
-    if (!selectedInvoice?.id) {
-      throw new Error("Open a saved invoice before printing.");
+    if (!selectedInvoice?.id || !selectedInvoice?.invoiceNo) {
+      throw new Error("Open a saved invoice before downloading its PDF.");
     }
     await request("/invoices/consume-print-ticket", {
       method: "POST",
       body: JSON.stringify({ ticket, invoiceId: selectedInvoice.id }),
     });
     setShowPrintPin(false);
-    window.setTimeout(() => {
-      printInvoiceAsPdf().catch((error) => {
-        setErr(error.message || "Could not prepare the invoice PDF.");
-      });
-    }, 120);
+    try {
+      const file = sharePdfFile || await createInvoiceSharePdfFile(selectedInvoice);
+      downloadInvoicePdfFile(file);
+      setDetailError("");
+    } catch (error) {
+      setErr(error.message || "Could not prepare the invoice PDF.");
+      throw error;
+    }
   };
 
   const shareInvoiceOnWhatsApp = async () => {
