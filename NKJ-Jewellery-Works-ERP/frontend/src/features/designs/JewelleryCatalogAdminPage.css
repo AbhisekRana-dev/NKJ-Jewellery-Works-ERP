@@ -1314,3 +1314,55 @@
     flex: 1 1 100%;
   }
 }
+
+
+.nkj-catalog-photo-adjustments {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 164, 102, .28);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.nkj-catalog-photo-adjustments > summary {
+  color: #edcf83;
+  font-size: 9px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.nkj-catalog-photo-adjustment-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.nkj-catalog-photo-adjustment-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 29px;
+  padding: 5px 8px;
+  border: 1px solid rgba(207, 167, 88, .38);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .045);
+  color: #f1e2c2;
+  font-size: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.nkj-catalog-photo-adjustments > label {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  color: #d8c7a7;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.nkj-catalog-photo-adjustments input[type="range"] {
+  width: 100%;
+  accent-color: #e5ba4c;
+}
