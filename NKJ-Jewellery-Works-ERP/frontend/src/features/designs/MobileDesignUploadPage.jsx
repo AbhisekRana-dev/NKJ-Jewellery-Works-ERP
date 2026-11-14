@@ -37,8 +37,8 @@ function parseQrFields(decodedText) {
     // Not a URL; parse one field per line below.
   }
   const fields = {};
-  text.split(/[\\r\\n;|]+/).forEach((line) => {
-    const match = line.match(/^\\s*([a-zA-Z][a-zA-Z _-]{1,40})\\s*[:=]\\s*(.*?)\\s*$/);
+  text.split(/[\r\n;|]+/).forEach((line) => {
+    const match = line.match(/^\s*([a-zA-Z][a-zA-Z _-]{1,40})\s*[:=]\s*(.*?)\s*$/);
     if (match) fields[match[1].trim()] = match[2].trim();
   });
   return fields;
