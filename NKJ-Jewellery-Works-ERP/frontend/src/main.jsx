@@ -3,7 +3,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {BrowserRouter} from 'react-router-dom'
 import App from './app/App'
-import './shared/styles/desktop-density.css'
 import {AuthProvider} from './core/auth/AuthProvider'
 import RealtimeProvider from './core/realtime/RealtimeProvider'
 class AppErrorBoundary extends React.Component {
