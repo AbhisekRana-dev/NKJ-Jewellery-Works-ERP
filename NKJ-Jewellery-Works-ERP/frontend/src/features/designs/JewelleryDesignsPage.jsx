@@ -425,18 +425,17 @@ export default function JewelleryDesignsPage() {
     setAdminActionMessage("");
     setEditForm({
       designName: selected.designName || "",
-      description: selected.description || "",
       styleLabel: selected.styleLabel || "",
-      keywords: selected.keywords || "",
-      purity: selected.purity || "",
-      regionalInspiration: selected.regionalInspiration || "",
       materialLabel: selected.materialLabel || "",
       weightGrams: selected.weightGrams == null ? "" : String(selected.weightGrams),
-      priceInr: selected.priceInr == null ? "" : String(selected.priceInr),
-      isActive: selected.isActive !== false,
-      isFeatured: Boolean(selected.isFeatured),
     });
     setEditMode(true);
+  };
+
+  const cancelEditingDetails = () => {
+    setEditForm({});
+    setEditMode(false);
+    setAdminActionError("");
   };
 
   const saveDesignDetails = async (event) => {
@@ -451,18 +450,20 @@ export default function JewelleryDesignsPage() {
     setAdminActionMessage("");
     try {
       const payload = {
+        // Preserve every field that is not part of the compact detail editor.
+        // The existing record is updated in place; no create endpoint is called.
         categoryId: selected.categoryId,
         designName: editForm.designName.trim(),
-        description: editForm.description,
-        styleLabel: editForm.styleLabel,
-        keywords: editForm.keywords,
-        purity: editForm.purity,
-        regionalInspiration: editForm.regionalInspiration,
-        materialLabel: editForm.materialLabel,
+        description: selected.description || "",
+        styleLabel: editForm.styleLabel || "",
+        keywords: selected.keywords || "",
+        purity: selected.purity || "",
+        regionalInspiration: selected.regionalInspiration || "",
+        materialLabel: editForm.materialLabel || "",
         weightGrams: editForm.weightGrams === "" ? null : Number(editForm.weightGrams),
-        priceInr: editForm.priceInr === "" ? null : Number(editForm.priceInr),
-        isActive: Boolean(editForm.isActive),
-        isFeatured: Boolean(editForm.isFeatured),
+        priceInr: selected.priceInr == null ? null : Number(selected.priceInr),
+        isActive: selected.isActive !== false,
+        isFeatured: Boolean(selected.isFeatured),
       };
       const updated = await request(`/admin/designs/${selected.id}`, {
         method: "PUT",
@@ -869,19 +870,36 @@ export default function JewelleryDesignsPage() {
 
               <div className="nkj-design-modal-content" ref={modalContentRef}>
                 <div className="nkj-design-modal-content-scroll nkj-design-modal-compact-details">
-                  <h2 id="nkj-design-modal-title">{selected.designName || "Untitled Design"}</h2>
+                  {editMode ? (
+                    <label className="nkj-design-inline-name">Design name
+                      <input id="nkj-design-modal-title" maxLength={160} required value={editForm.designName || ""} onChange={(event) => setEditForm((current) => ({ ...current, designName: event.target.value }))} />
+                    </label>
+                  ) : <h2 id="nkj-design-modal-title">{selected.designName || "Untitled Design"}</h2>}
                   <div className="nkj-design-modal-id-highlight" aria-label={`Design ID ${selected.designId || selected.designCode || "Not assigned"}`}>
                     <span><QrCode size={15} /> DESIGN ID</span>
                     <strong>{selected.designId || selected.designCode || "Not assigned"}</strong>
                   </div>
-                  <section className="nkj-design-modal-detail-section" aria-label="Design details">
+                  <section className={"nkj-design-modal-detail-section" + (editMode ? " is-editing" : "")} aria-label="Design details">
                     <h3>DETAIL</h3>
                     <dl>
                       <div><dt>Jewellery type</dt><dd>{selected.subcategoryName || "—"}</dd></div>
-                      <div><dt>Style</dt><dd>{selected.styleLabel || "—"}</dd></div>
-                      <div><dt>Material</dt><dd>{selected.materialLabel || "—"}</dd></div>
-                      <div><dt>Weight</dt><dd>{selected.weightGrams != null ? Number(selected.weightGrams).toLocaleString("en-IN") + " g" : "—"}</dd></div>
+                      <div><dt>Style</dt><dd>{editMode
+                        ? <input aria-label="Style" maxLength={80} value={editForm.styleLabel ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, styleLabel: event.target.value }))} />
+                        : (selected.styleLabel || "—")}</dd></div>
+                      <div><dt>Material</dt><dd>{editMode
+                        ? <input aria-label="Material" maxLength={120} value={editForm.materialLabel ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, materialLabel: event.target.value }))} />
+                        : (selected.materialLabel || "—")}</dd></div>
+                      <div><dt>Weight</dt><dd>{editMode
+                        ? <input aria-label="Weight in grams" type="number" min="0" step="0.001" value={editForm.weightGrams ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, weightGrams: event.target.value }))} />
+                        : (selected.weightGrams != null ? Number(selected.weightGrams).toLocaleString("en-IN") + " g" : "—")}</dd></div>
                     </dl>
+                    {editMode && <div className="nkj-design-inline-edit-actions">
+                      <button type="button" className="nkj-design-admin-button" onClick={cancelEditingDetails} disabled={savingDetails}><X size={14} /> Cancel</button>
+                      <button type="button" className="nkj-design-admin-button primary" onClick={saveDesignDetails} disabled={savingDetails}>
+                        {savingDetails ? <LoaderCircle size={14} className="spin" /> : <Save size={14} />}
+                        {savingDetails ? "Saving…" : "Save Changes"}
+                      </button>
+                    </div>}
                   </section>
 
                   {selected.images?.length > 0 && (
@@ -917,9 +935,9 @@ export default function JewelleryDesignsPage() {
                         <Lock size={16} />
                       </div>
                       <div className="nkj-design-admin-action-row">
-                        <button type="button" onClick={() => editMode ? setEditMode(false) : beginEditingDetails()} className="nkj-design-admin-button">
-                          <Pencil size={14} /> {editMode ? "Close Edit" : "Edit Details"}
-                        </button>
+                        {!editMode && <button type="button" onClick={beginEditingDetails} className="nkj-design-admin-button">
+                          <Pencil size={14} /> Edit Details
+                        </button>}
                         <button type="button" onClick={archiveSelectedDesign} className="nkj-design-admin-button danger">
                           <Trash2 size={14} /> Delete / Archive
                         </button>
@@ -928,48 +946,6 @@ export default function JewelleryDesignsPage() {
                           Upload from Mobile (QR Code)
                         </button>
                       </div>
-
-                      {editMode && (
-                        <form className="nkj-design-edit-form" onSubmit={saveDesignDetails}>
-                          <div className="nkj-design-edit-grid">
-                            <label className="wide">Design Name
-                              <input maxLength={160} required value={editForm.designName || ""} onChange={(event) => setEditForm((current) => ({ ...current, designName: event.target.value }))} />
-                            </label>
-                            <label>Style
-                              <input maxLength={80} value={editForm.styleLabel || ""} onChange={(event) => setEditForm((current) => ({ ...current, styleLabel: event.target.value }))} />
-                            </label>
-                            <label>Purity / Fineness
-                              <input maxLength={40} value={editForm.purity || ""} onChange={(event) => setEditForm((current) => ({ ...current, purity: event.target.value }))} />
-                            </label>
-                            <label>Regional Inspiration
-                              <input maxLength={80} value={editForm.regionalInspiration || ""} onChange={(event) => setEditForm((current) => ({ ...current, regionalInspiration: event.target.value }))} />
-                            </label>
-                            <label>Material
-                              <input maxLength={120} value={editForm.materialLabel || ""} onChange={(event) => setEditForm((current) => ({ ...current, materialLabel: event.target.value }))} />
-                            </label>
-                            <label>Weight (grams)
-                              <input type="number" min="0" step="0.001" value={editForm.weightGrams ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, weightGrams: event.target.value }))} />
-                            </label>
-                            <label>Reference Price (₹)
-                              <input type="number" min="0" step="0.01" value={editForm.priceInr ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, priceInr: event.target.value }))} />
-                            </label>
-                            <label className="wide">Keywords
-                              <input maxLength={800} value={editForm.keywords || ""} onChange={(event) => setEditForm((current) => ({ ...current, keywords: event.target.value }))} />
-                            </label>
-                            <label className="wide">Description
-                              <textarea rows={3} maxLength={5000} value={editForm.description || ""} onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))} />
-                            </label>
-                          </div>
-                          <div className="nkj-design-edit-toggles">
-                            <label><input type="checkbox" checked={Boolean(editForm.isActive)} onChange={(event) => setEditForm((current) => ({ ...current, isActive: event.target.checked }))} /> Publish in public catalogue</label>
-                            <label><input type="checkbox" checked={Boolean(editForm.isFeatured)} onChange={(event) => setEditForm((current) => ({ ...current, isFeatured: event.target.checked }))} /> Featured design</label>
-                          </div>
-                          <div className="nkj-design-admin-action-row">
-                            <button type="button" className="nkj-design-admin-button" onClick={() => setEditMode(false)}><X size={14} /> Cancel</button>
-                            <button type="submit" className="nkj-design-admin-button primary" disabled={savingDetails}>{savingDetails ? <LoaderCircle size={14} className="spin" /> : <Save size={14} />} Save Details</button>
-                          </div>
-                        </form>
-                      )}
 
                       <div className="nkj-design-upload-tools">
                         <div>
