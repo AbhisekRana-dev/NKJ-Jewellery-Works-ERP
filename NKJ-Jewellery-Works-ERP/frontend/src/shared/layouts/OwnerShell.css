@@ -3697,3 +3697,9 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .nkj-owner-topbar.nkj
     font-size: 11.5px !important;
   }
 }
+
+
+/* Remove the vertical gold separator beside the owner navbar brand. */
+.nkj-owner-topbar.nkj-reference-navbar > .brand {
+  border-left: 0 !important;
+}
