@@ -951,13 +951,4 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
   }
-
-  .app-content > main.container * {
-    min-width: 0;
-  }
-
-  .app-content > main.container .invoice-sheet,
-  .app-content > main.container .invoice-sheet * {
-    min-width: revert;
-  }
 }
