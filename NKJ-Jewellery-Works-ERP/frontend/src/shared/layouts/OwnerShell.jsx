@@ -225,7 +225,6 @@ export function Nav({ active = "home" }) {
 
         <header className="topbar nkj-owner-topbar nkj-reference-navbar">
           <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
-            <div className="logo">NKJ</div>
             <div className="nkj-navbar-brand-copy">
               <b>Nandikishor Jewellery Works</b>
               <small><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</small>
@@ -266,7 +265,6 @@ export function Nav({ active = "home" }) {
   return (
     <header className="topbar">
       <Link to="/" className="brand">
-        <div className="logo">NKJ</div>
         <div><b>Nandikishor Jewellery Works</b><small>Sasra, Gopiballavpur, Jhargram</small></div>
       </Link>
       <nav aria-label="Main navigation">
