@@ -7843,3 +7843,57 @@ main.container:has(.nkj-calculator-page) {
     font-size: clamp(20px, 5vw, 26px) !important;
   }
 }
+
+
+/* Clean calculator section titles: remove decorative divider lines and flourishes. */
+.nkj-calculator-page .nkj-calculator-workspace-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  min-height: 64px !important;
+  margin: 0 !important;
+  padding: 4px 8px 12px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.nkj-calculator-page .nkj-calculator-workspace-title::before,
+.nkj-calculator-page .nkj-calculator-workspace-title::after {
+  content: none !important;
+  display: none !important;
+}
+.nkj-calculator-page .nkj-calculator-workspace-title > svg {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: clamp(25px, 2vw, 34px) !important;
+  height: clamp(25px, 2vw, 34px) !important;
+  color: #e5bd61 !important;
+}
+.nkj-calculator-page .nkj-calculator-workspace-title h2 {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  color: #fff0d8 !important;
+  font: 800 clamp(23px, 2vw, 34px)/1.16 Georgia, "Times New Roman", serif !important;
+  letter-spacing: .1px !important;
+  white-space: normal !important;
+}
+.nkj-calculator-page--manual .nkj-calculator-workspace-title {
+  justify-content: center !important;
+  text-align: center !important;
+}
+.nkj-calculator-page--diamond .nkj-calculator-workspace-title {
+  justify-content: flex-start !important;
+  padding-left: 10px !important;
+}
+@media (max-width: 560px) {
+  .nkj-calculator-page .nkj-calculator-workspace-title {
+    min-height: 52px !important;
+    gap: 9px !important;
+    padding: 2px 4px 9px !important;
+  }
+  .nkj-calculator-page .nkj-calculator-workspace-title h2 {
+    font-size: clamp(20px, 5vw, 25px) !important;
+  }
+}
