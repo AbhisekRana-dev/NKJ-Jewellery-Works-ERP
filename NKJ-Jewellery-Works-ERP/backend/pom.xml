@@ -82,7 +82,7 @@
         <!-- Decode QR codes embedded in owner-uploaded mobile images. -->
         <dependency>
             <groupId>com.google.zxing</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>javase</artifactId>
             <version>3.5.3</version>
         </dependency>
 
