@@ -24,8 +24,6 @@ public class MetalRate {
     private BigDecimal gold22kRate = new BigDecimal("11045.00");
     @Column(name = "silver_rate", nullable = false, precision = 14, scale = 2)
     private BigDecimal silverRate = new BigDecimal("134.00");
-    @Column(name = "diamond_rate", nullable = false, precision = 14, scale = 2)
-    private BigDecimal diamondRate = BigDecimal.ZERO;
     @Column(name = "rate_mode", nullable = false, length = 20)
     private String rateMode = "MANUAL";
     @Column(name = "rate_source", nullable = false, length = 160)
@@ -59,8 +57,6 @@ public class MetalRate {
     public void setGold22kRate(BigDecimal value) { gold22kRate = value; }
     public BigDecimal getSilverRate() { return silverRate; }
     public void setSilverRate(BigDecimal value) { silverRate = value; }
-    public BigDecimal getDiamondRate() { return diamondRate; }
-    public void setDiamondRate(BigDecimal value) { diamondRate = value; }
     public String getRateMode() { return rateMode; }
     public void setRateMode(String value) { rateMode = value; }
     public String getRateSource() { return rateSource; }
