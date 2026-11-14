@@ -5,7 +5,7 @@ import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
-  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem, MapPin,
+  Wrench, ChevronRight, ChevronDown, ArrowLeftRight, Calculator as CalculatorIcon, Gem, MapPin,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
@@ -227,7 +227,7 @@ export function Nav({ active = "home" }) {
           <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
             <div className="nkj-navbar-brand-copy">
               <b>Nandikishor Jewellery Works</b>
-              <small><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</small>
+              <small><MapPin size={14} /> Sasra, Gopiballavpur, Jhargram</small>
             </div>
           </Link>
           <nav aria-label="Main navigation">
@@ -235,7 +235,7 @@ export function Nav({ active = "home" }) {
             <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
             <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
             <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
-            <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b></span>
+            <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b><ChevronDown size={15} aria-hidden="true" /></span>
           </nav>
         </header>
       </>
@@ -248,7 +248,7 @@ export function Nav({ active = "home" }) {
         <Link to="/" className="brand nkj-navbar-brand-no-logo" aria-label="Nandikishor Jewellery Works home">
           <div className="nkj-navbar-brand-copy">
             <b>Nandikishor Jewellery Works</b>
-            <small><MapPin size={14} /> Saora, Gopiballavpur, Jhargram</small>
+            <small><MapPin size={14} /> Sasra, Gopiballavpur, Jhargram</small>
           </div>
         </Link>
         <nav aria-label="Main navigation">
@@ -256,7 +256,7 @@ export function Nav({ active = "home" }) {
           <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
           <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
           <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
-          <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b></span>
+          <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b><ChevronDown size={15} aria-hidden="true" /></span>
         </nav>
       </header>
     );
