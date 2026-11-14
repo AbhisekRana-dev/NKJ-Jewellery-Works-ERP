@@ -1262,7 +1262,8 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
    - Does not rotate or transform the invoice
    ========================================================= */
 @page {
-  size: A4 landscape;
+  /* Keep Edge/Chrome's PDF page landscape even if Portrait was selected earlier. */
+  size: 297mm 210mm;
   margin: 3mm;
 }
 
@@ -2281,11 +2282,20 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     box-sizing: border-box !important;
     zoom: 1 !important;
     transform: none !important;
-    rotate: none !important;
+    transform-origin: top left !important;
+    rotate: 0deg !important;
     translate: none !important;
+    writing-mode: horizontal-tb !important;
+    direction: ltr !important;
     overflow: visible !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  #invoice-print,
+  #invoice-print * {
+    writing-mode: horizontal-tb !important;
+    direction: ltr !important;
   }
 
   #invoice-print .inv-bottom {
