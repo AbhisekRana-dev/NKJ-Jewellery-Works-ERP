@@ -232,10 +232,10 @@ export function Nav({ active = "home" }) {
             </div>
           </Link>
           <nav aria-label="Main navigation">
-            <Link className="nkj-navbar-link" to="/"><HomeIcon /> <span>Home</span></Link>
-            <Link className="nkj-navbar-link" to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
-            <Link className="nkj-navbar-link" to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
-            <Link className="nkj-navbar-link nkj-navbar-invoice" to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
+            <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
+            <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
+            <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+            <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
             <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b></span>
           </nav>
         </header>
