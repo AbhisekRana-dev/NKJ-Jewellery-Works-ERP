@@ -1,6 +1,7 @@
 package com.nkj.billing.config;
 
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import com.nkj.billing.realtime.RealtimeMutationInterceptor;
 import com.nkj.billing.service.JewelleryDesignImageStorageService;
@@ -21,20 +22,34 @@ public class WebConfig implements WebMvcConfigurer {
     private final AuthInterceptor auth;
     private final RealtimeMutationInterceptor realtimeMutationInterceptor;
     private final String[] allowedOrigins;
+    private final boolean allowPrivateHttpMobileUploads;
     private final JewelleryDesignImageStorageService imageStorage;
 
     public WebConfig(
             AuthInterceptor auth,
             RealtimeMutationInterceptor realtimeMutationInterceptor,
             JewelleryDesignImageStorageService imageStorage,
-            @Value("${nkj.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}") String allowedOrigins) {
+            @Value("${nkj.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}") String allowedOrigins,
+            @Value("${nkj.designs.mobile-upload-allow-private-http:false}") boolean allowPrivateHttpMobileUploads) {
         this.auth = auth;
         this.realtimeMutationInterceptor = realtimeMutationInterceptor;
         this.imageStorage = imageStorage;
-        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+        this.allowPrivateHttpMobileUploads = allowPrivateHttpMobileUploads;
+        String[] configuredOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .toArray(String[]::new);
+        String[] privateLanOrigins = {
+                "http://192.168.*:*", "http://10.*:*",
+                "http://172.16.*:*", "http://172.17.*:*", "http://172.18.*:*", "http://172.19.*:*",
+                "http://172.20.*:*", "http://172.21.*:*", "http://172.22.*:*", "http://172.23.*:*",
+                "http://172.24.*:*", "http://172.25.*:*", "http://172.26.*:*", "http://172.27.*:*",
+                "http://172.28.*:*", "http://172.29.*:*", "http://172.30.*:*", "http://172.31.*:*"
+        };
+        this.allowedOrigins = allowPrivateHttpMobileUploads
+                ? Stream.concat(Arrays.stream(configuredOrigins), Arrays.stream(privateLanOrigins))
+                        .distinct().toArray(String[]::new)
+                : configuredOrigins;
     }
 
     @Bean
