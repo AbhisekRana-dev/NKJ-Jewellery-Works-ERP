@@ -2628,7 +2628,7 @@ async function createInvoiceSharePdfFile(invoice) {
     if (!(pageWidth > pageHeight && pageWidth >= 840 && pageHeight >= 590)) {
       throw new Error("PDF was not generated in full A4 landscape. Nothing was shared; please update the app and try again.");
     }
-    const rotationEntry = pdfHeader.match(/\\/Rotate\\s+(-?\\d+)\\b/);
+    const rotationEntry = pdfHeader.match(/\/Rotate\s+(-?\d+)\b/);
     const pageRotation = rotationEntry ? ((Number(rotationEntry[1]) % 360) + 360) % 360 : 0;
     if (pageRotation !== 0) {
       throw new Error("The PDF contains rotated page metadata. Nothing was downloaded; please retry after refreshing the application.");
