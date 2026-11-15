@@ -1172,9 +1172,11 @@
     overflow: visible !important;
   }
 
+  /* Large decorative corner rings extend beyond the viewport on narrow phones.
+     They are visual-only, so disable them on mobile rather than clipping content. */
   .nkj-calculator-page::before,
   .nkj-calculator-page::after {
-    pointer-events: none;
+    display: none !important;
   }
 
   .nkj-calculator-heading {
