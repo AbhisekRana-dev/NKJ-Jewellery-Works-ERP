@@ -2,6 +2,8 @@ package com.nkj.billing.controller;
 
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +28,7 @@ public class AuthController {
 
     record Login(String username, String password) {}
     record Verify(String challengeId, String code) {}
+    record SessionManagerUnlock(String password) {}
     record SetupEmailStart(String username, String password) {}
     record SetupEmailVerify(String challengeId, String code) {}
 
@@ -34,8 +37,9 @@ public class AuthController {
         return Map.of("challengeId", auth.login(x.username(), x.password()), "requiresTotp", true);
     }
     @PostMapping("/verify")
-    public Map<String,Object> verify(@RequestBody Verify x) {
-        return Map.of("token", auth.verify(x.challengeId(), x.code()), "username", auth.getUsername());
+    public Map<String,Object> verify(@RequestBody Verify x, HttpServletRequest request) {
+        return Map.of("token", auth.verify(x.challengeId(), x.code(),
+                request.getHeader("User-Agent"), clientIp(request)), "username", auth.getUsername());
     }
     @PostMapping("/logout")
     public Map<String,Object> logout(@RequestHeader(value="Authorization", required=false) String h) {
@@ -56,6 +60,69 @@ public class AuthController {
             auth.logout(token);
         }
         return Map.of("success", true);
+    }
+
+    @GetMapping("/sessions/summary")
+    public Map<String,Object> sessionSummary(@RequestHeader(value="Authorization", required=false) String header) {
+        return auth.sessionSummary(ownerToken(header));
+    }
+
+    @PostMapping("/sessions/unlock")
+    public Map<String,Object> unlockSessionManagement(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestBody SessionManagerUnlock body,
+            HttpServletRequest request) {
+        String managerToken = auth.unlockSessionManager(ownerToken(header), body.password(), clientIp(request));
+        return Map.of("managerToken", managerToken, "expiresInSeconds", 300);
+    }
+
+    @GetMapping("/sessions")
+    public Map<String,Object> loginHistory(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestHeader(value="X-Owner-Session-Manager", required=false) String managerToken) {
+        return Map.of("sessions", auth.listLoginHistory(ownerToken(header), managerToken));
+    }
+
+    @PostMapping("/sessions/{sessionId}/logout")
+    public Map<String,Object> logoutLoginSession(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestHeader(value="X-Owner-Session-Manager", required=false) String managerToken,
+            @PathVariable String sessionId) {
+        boolean current = auth.logoutLoginSession(ownerToken(header), managerToken, sessionId);
+        revokePendingQrUploads();
+        if (current) return Map.of("success", true, "currentSession", true);
+        return Map.of("success", true, "currentSession", false);
+    }
+
+    @PostMapping("/sessions/logout-others")
+    public Map<String,Object> logoutOtherSessions(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestHeader(value="X-Owner-Session-Manager", required=false) String managerToken) {
+        int loggedOut = auth.logoutOtherLoginSessions(ownerToken(header), managerToken);
+        revokePendingQrUploads();
+        return Map.of("success", true, "loggedOutCount", loggedOut);
+    }
+
+    private String ownerToken(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) return "";
+        return authorization.substring(7);
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) return forwarded.split(",")[0].trim();
+        return request.getRemoteAddr();
+    }
+
+    private void revokePendingQrUploads() {
+        jdbc.update("""
+            UPDATE public.jewellery_design_upload_sessions
+               SET revoked_at=NOW()
+             WHERE created_by=?
+               AND consumed_at IS NULL
+               AND revoked_at IS NULL
+               AND expires_at > NOW()
+            """, auth.getUsername());
     }
 
     /** Password verification only starts the email OTP challenge; it does not create a session. */
