@@ -157,26 +157,19 @@ async function checkViewport(page, path, viewport) {
   }
 }
 
-async function testOwnerSidebar(browser) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const page = await context.newPage();
-  await installApiMocks(page);
-  try {
-    await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
-    await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
-    const ownerShell = await page.locator("#nkj-owner-sidebar").count();
-    const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
-    assert(ownerShell === 1 && Boolean(authToken), "Owner session did not render the owner navigation shell.");
-    await page.locator(".nkj-mobile-menu-button").waitFor({ state: "visible", timeout: 10000 });
-    await page.locator(".nkj-mobile-menu-button").click();
-    await page.locator(".nkj-owner-sidebar:not(.is-collapsed)").waitFor({ state: "visible", timeout: 5000 });
-    await page.locator('.nkj-owner-nav a[href="/profile"]').click();
-    await page.waitForURL("**/profile");
-    await page.locator(".nkj-owner-sidebar.is-collapsed").waitFor({ state: "attached", timeout: 5000 });
-    process.stdout.write("PASS owner mobile drawer opens, navigates, and closes\\n");
-  } finally {
-    await context.close();
-  }
+async function testOwnerSidebar(page) {
+  await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+  await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+  const ownerShell = await page.locator("#nkj-owner-sidebar").count();
+  const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
+  assert(ownerShell === 1 && Boolean(authToken), "Owner route was not authenticated before sidebar testing.");
+  await page.locator(".nkj-mobile-menu-button").waitFor({ state: "visible", timeout: 10000 });
+  await page.locator(".nkj-mobile-menu-button").click();
+  await page.locator(".nkj-owner-sidebar:not(.is-collapsed)").waitFor({ state: "visible", timeout: 5000 });
+  await page.locator('.nkj-owner-nav a[href="/profile"]').click();
+  await page.waitForURL("**/profile");
+  await page.locator(".nkj-owner-sidebar.is-collapsed").waitFor({ state: "attached", timeout: 5000 });
+  process.stdout.write("PASS owner mobile drawer opens, navigates, and closes\\n");
 }
 
 async function testPublicNavigation(browser) {
