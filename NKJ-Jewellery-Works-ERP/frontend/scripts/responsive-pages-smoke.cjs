@@ -1,0 +1,243 @@
+const { chromium } = require("playwright");
+const { spawn } = require("node:child_process");
+const { setTimeout: delay } = require("node:timers/promises");
+
+const BASE_URL = "http://127.0.0.1:4173";
+const viewports = [
+  { name: "small-mobile", width: 320, height: 568 },
+  { name: "mobile", width: 390, height: 844 },
+  { name: "tablet", width: 768, height: 1024 },
+  { name: "large-tablet", width: 1024, height: 1366 },
+  { name: "laptop", width: 1366, height: 768 },
+  { name: "large-desktop", width: 1920, height: 1080 },
+];
+
+const ownerRoutes = [
+  "/dashboard", "/saved-invoices", "/customers", "/profile", "/rates",
+  "/inventory", "/stock-movements", "/staff", "/attendance", "/salary",
+  "/salary-payments", "/leaves", "/expenses", "/bookings", "/installments",
+  "/suppliers", "/purchases", "/payments", "/transactions", "/old-gold",
+  "/karigars", "/repairs", "/reports", "/reports/sales", "/reports/profit",
+  "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
+];
+
+const publicRoutes = ["/", "/invoice", "/designs", "/login", "/setup-totp"];
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+async function waitForServer(server) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    if (server.exitCode !== null) throw new Error("Vite server exited before becoming ready.");
+    try {
+      const response = await fetch(BASE_URL + "/dashboard");
+      if (response.ok) return;
+    } catch {
+      // The development server is still starting.
+    }
+    await delay(500);
+  }
+  throw new Error("Vite development server did not become ready.");
+}
+
+function apiPayload(path, method) {
+  if (path === "/api/auth/session") return { username: "admin2026" };
+  if (path === "/api/admin/profile") {
+    return {
+      fullName: "Responsive Test Owner",
+      username: "admin2026",
+      email: "",
+      phone: "",
+      designation: "Administrator",
+      company: "Nandikishor Jewellery Works",
+      address: "Jhargram",
+      about: "",
+      photoDataUrl: "",
+    };
+  }
+  if (path === "/api/auth/sessions/summary") return { activeCount: 1, historyCount: 1, maxActive: 0 };
+  if (path === "/api/rates") {
+    return { gold24kRate: 7000, gold22kRate: 6420, silverRate: 90, diamondRatePerCarat: 0 };
+  }
+  if (path === "/api/admin/attendance/dashboard") return { summary: {}, records: [], staff: [] };
+  if (path === "/api/admin/designs" && method === "GET") return { items: [], total: 0, page: 0 };
+  if (path === "/api/admin/designs/categories" || path === "/api/designs/categories") return [];
+  if (path === "/api/designs") return { items: [], total: 0, page: 0 };
+  if (path === "/api/invoices/date-support") return { enabled: true, supported: true };
+  if (path === "/api/invoices") return [];
+  if (path === "/api/admin/transactions/summary") return {};
+  if (path === "/api/admin/installments/plans" || path === "/api/admin/installments/payments") return [];
+  if (path === "/api/admin/reports/summary" || path === "/api/admin/dashboard") return {};
+  if (path === "/api/admin/database/status") return {};
+  if (path.startsWith("/api/admin/modules/")) return [];
+  if (path.startsWith("/api/admin/transactions")) return [];
+  if (path.startsWith("/api/admin/rates/")) return [];
+  if (path.startsWith("/api/admin/installments/")) return [];
+  if (path.startsWith("/api/admin/audit-logs")) return [];
+  if (path.startsWith("/api/admin/designs/")) return {};
+  if (method !== "GET") return { success: true };
+  return {};
+}
+
+async function installApiMocks(page) {
+  await page.addInitScript(() => {
+    localStorage.setItem("nkj_token", "responsive-layout-test-token");
+    localStorage.setItem("nkj_user", "admin2026");
+  });
+
+  await page.route("**/api/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === "/api/events" || url.pathname === "/api/events/public") {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        headers: { "cache-control": "no-cache" },
+        body: ": responsive-smoke-connected\\n\\n",
+      });
+      return;
+    }
+    const body = apiPayload(url.pathname, request.method().toUpperCase());
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+}
+
+async function checkViewport(page, path, viewport) {
+  const errors = [];
+  const onPageError = (error) => errors.push("pageerror: " + error.message);
+  page.on("pageerror", onPageError);
+  try {
+    const response = await page.goto(BASE_URL + path, { waitUntil: "domcontentloaded" });
+    assert(response && response.ok(), path + " did not return an HTML page.");
+    await page.locator("#root").waitFor({ state: "attached", timeout: 10000 });
+    await page.waitForTimeout(80);
+
+    const result = await page.evaluate(() => {
+      const width = document.documentElement.clientWidth;
+      const root = document.getElementById("root");
+      const app = document.querySelector(".app-content");
+      const containers = Array.from(document.querySelectorAll(".container, .nkj-module-page, .nkj-dashboard, .nkj-calculator-page"));
+      const outOfBounds = containers.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          className: element.className,
+          left: Math.round(rect.left * 10) / 10,
+          right: Math.round(rect.right * 10) / 10,
+          width: Math.round(rect.width * 10) / 10,
+        };
+      }).filter((item) => item.left < -1 || item.right > width + 1).slice(0, 6);
+      return {
+        width,
+        documentWidth: document.documentElement.scrollWidth,
+        bodyWidth: document.body.scrollWidth,
+        rootWidth: root?.scrollWidth || 0,
+        appWidth: app?.scrollWidth || 0,
+        outOfBounds,
+      };
+    });
+
+    assert(
+      result.documentWidth <= result.width + 1 && result.bodyWidth <= result.width + 1,
+      path + " overflows at " + viewport.name + ": " + JSON.stringify(result)
+    );
+    assert(
+      result.outOfBounds.length === 0,
+      path + " has a page/container outside the viewport at " + viewport.name + ": " + JSON.stringify(result.outOfBounds)
+    );
+    assert(errors.length === 0, path + " caused browser runtime errors at " + viewport.name + ": " + errors.join(" | "));
+  } finally {
+    page.removeListener("pageerror", onPageError);
+  }
+}
+
+async function testOwnerSidebar(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  try {
+    await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await page.locator(".nkj-mobile-menu-button").waitFor({ state: "visible", timeout: 10000 });
+    await page.locator(".nkj-mobile-menu-button").click();
+    await page.locator(".nkj-owner-sidebar:not(.is-collapsed)").waitFor({ state: "visible", timeout: 5000 });
+    await page.locator('.nkj-owner-nav a[href="/profile"]').click();
+    await page.waitForURL("**/profile");
+    await page.locator(".nkj-owner-sidebar.is-collapsed").waitFor({ state: "attached", timeout: 5000 });
+    process.stdout.write("PASS owner mobile drawer opens, navigates, and closes\\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testPublicNavigation(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
+  try {
+    await page.locator(".nkj-public-menu-button").waitFor({ state: "visible", timeout: 10000 });
+    await page.locator(".nkj-public-menu-button").click();
+    await page.locator(".nkj-public-topbar > nav.is-open").waitFor({ state: "visible", timeout: 5000 });
+    await page.locator('.nkj-public-topbar a[href="/designs"]').click();
+    await page.waitForURL("**/designs");
+    await page.locator(".nkj-public-topbar > nav:not(.is-open)").waitFor({ state: "attached", timeout: 5000 });
+    process.stdout.write("PASS public mobile menu opens, navigates, and closes\\n");
+  } finally {
+    await context.close();
+  }
+}
+
+(async () => {
+  const server = spawn(
+    process.platform === "win32" ? "npm.cmd" : "npm",
+    ["run", "dev", "--", "--host", "127.0.0.1", "--port", "4173", "--strictPort"],
+    { cwd: process.cwd(), stdio: "inherit", env: process.env }
+  );
+  let browser;
+  try {
+    await waitForServer(server);
+    browser = await chromium.launch({ headless: true });
+
+    for (const viewport of viewports) {
+      const context = await browser.newContext({ viewport });
+      const page = await context.newPage();
+      await installApiMocks(page);
+      try {
+        for (const path of ownerRoutes) {
+          await checkViewport(page, path, viewport);
+        }
+      } finally {
+        await context.close();
+      }
+      process.stdout.write("PASS all " + ownerRoutes.length + " owner routes at " + viewport.name + " " + viewport.width + "x" + viewport.height + "\\n");
+    }
+
+    const publicContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const publicPage = await publicContext.newPage();
+    await publicPage.route("**/api/**", async (route) => {
+      const url = new URL(route.request().url());
+      const body = apiPayload(url.pathname, route.request().method().toUpperCase());
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+    });
+    try {
+      for (const path of publicRoutes) {
+        await checkViewport(publicPage, path, { name: "public-mobile", width: 390, height: 844 });
+      }
+    } finally {
+      await publicContext.close();
+    }
+
+    await testOwnerSidebar(browser);
+    await testPublicNavigation(browser);
+    process.stdout.write("All owner/public page responsive smoke checks passed.\\n");
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  } finally {
+    if (browser) await browser.close();
+    server.kill("SIGTERM");
+  }
+})();
