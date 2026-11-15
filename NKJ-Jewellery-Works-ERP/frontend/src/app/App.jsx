@@ -23,6 +23,7 @@ import CalculatorPage from "../features/calculator/CalculatorPage";
 import JewelleryDesignsPage from "../features/designs/JewelleryDesignsPage";
 import JewelleryCatalogAdminPage from "../features/designs/JewelleryCatalogAdminPage";
 import MobileDesignUploadPage from "../features/designs/MobileDesignUploadPage";
+import "./Responsive.css";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();

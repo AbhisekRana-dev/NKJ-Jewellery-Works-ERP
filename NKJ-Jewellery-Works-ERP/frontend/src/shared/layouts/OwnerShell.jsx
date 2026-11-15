@@ -6,6 +6,7 @@ import {
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
   Wrench, ChevronRight, ChevronDown, ArrowLeftRight, Calculator as CalculatorIcon, Gem, MapPin,
+  Menu, X as CloseIcon,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
@@ -15,6 +16,7 @@ const SIDEBAR_NAV_CLICK_KEY = "nkj-owner-sidebar-nav-last-click";
 const SIDEBAR_DOUBLE_CLICK_MS = 450;
 function initialSidebarState() {
   try {
+    if (window.matchMedia?.("(max-width: 760px)").matches) return true;
     const saved = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
     if (saved !== null) return saved === "true";
     return window.matchMedia?.("(max-width: 1100px)").matches ?? false;
@@ -77,6 +79,7 @@ export function Nav({ active = "home" }) {
   const ownerWorkspace = isAdmin && active !== "login";
   const persistSidebarState = (collapsed) => {
     try {
+      if (window.matchMedia?.("(max-width: 760px)").matches) return;
       window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
     } catch {
       // Keep the sidebar interactive if browser storage is unavailable.
@@ -125,15 +128,50 @@ export function Nav({ active = "home" }) {
     body.classList.toggle("nkj-owner-layout", ownerWorkspace);
     body.classList.toggle("nkj-owner-sidebar-collapsed", ownerWorkspace && sidebarCollapsed);
     body.classList.toggle("invoice-page", active === "invoice");
+    const mobileMenuOpen = ownerWorkspace
+      && window.matchMedia?.("(max-width: 760px)").matches
+      && !sidebarCollapsed;
+    const previousBodyOverflow = body.style.overflow;
+    body.classList.toggle("nkj-mobile-sidebar-open", Boolean(mobileMenuOpen));
+    if (mobileMenuOpen) body.style.overflow = "hidden";
 
-    if (ownerWorkspace) {
+    if (ownerWorkspace && !window.matchMedia?.("(max-width: 760px)").matches) {
       try {
         window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
       } catch {
         // The sidebar remains usable when browser storage is unavailable.
       }
     }
+
+    return () => {
+      body.classList.remove("nkj-mobile-sidebar-open");
+      body.style.overflow = previousBodyOverflow;
+    };
   }, [active, ownerWorkspace, sidebarCollapsed]);
+
+  useLayoutEffect(() => {
+    if (!ownerWorkspace) return undefined;
+    const media = window.matchMedia?.("(max-width: 760px)");
+    if (!media) return undefined;
+    const syncSidebarToViewport = () => setSidebarCollapsed(media.matches ? true : initialSidebarState());
+    if (media.addEventListener) media.addEventListener("change", syncSidebarToViewport);
+    else media.addListener?.(syncSidebarToViewport);
+    return () => {
+      if (media.removeEventListener) media.removeEventListener("change", syncSidebarToViewport);
+      else media.removeListener?.(syncSidebarToViewport);
+    };
+  }, [ownerWorkspace]);
+
+  useLayoutEffect(() => {
+    if (!ownerWorkspace || !window.matchMedia?.("(max-width: 760px)").matches || sidebarCollapsed) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key !== "Escape") return;
+      setSidebarCollapsed(true);
+      document.querySelector(".nkj-mobile-menu-button")?.focus();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [ownerWorkspace, sidebarCollapsed]);
 
   useLayoutEffect(() => {
     if (!ownerWorkspace || !sidebarNavRef.current) return;
@@ -148,7 +186,14 @@ export function Nav({ active = "home" }) {
   if (ownerWorkspace) {
     return (
       <>
-        <aside className={`nkj-owner-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`} aria-label="Owner navigation">
+        <button
+          type="button"
+          className="nkj-mobile-sidebar-backdrop"
+          aria-label="Close navigation menu"
+          tabIndex={sidebarCollapsed ? -1 : 0}
+          onClick={() => setSidebarCollapsed(true)}
+        />
+        <aside id="nkj-owner-sidebar" className={`nkj-owner-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`} aria-label="Owner navigation">
           <button
             type="button"
             className="nkj-sidebar-toggle"
@@ -190,7 +235,10 @@ export function Nav({ active = "home" }) {
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
                       data-nav-key={key}
-                      onClick={() => handleSidebarNavigationClick(key)}
+                      onClick={() => {
+                        handleSidebarNavigationClick(key);
+                        if (window.matchMedia?.("(max-width: 760px)").matches) setSidebarCollapsed(true);
+                      }}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span className="nkj-owner-nav-full-label">{label}</span>
@@ -218,6 +266,16 @@ export function Nav({ active = "home" }) {
         </aside>
 
         <header className="topbar nkj-owner-topbar nkj-reference-navbar">
+          <button
+            type="button"
+            className="nkj-mobile-menu-button"
+            aria-label={sidebarCollapsed ? "Open navigation menu" : "Close navigation menu"}
+            aria-controls="nkj-owner-sidebar"
+            aria-expanded={!sidebarCollapsed}
+            onClick={() => setSidebarCollapsed((current) => !current)}
+          >
+            {sidebarCollapsed ? <Menu size={22} aria-hidden="true" /> : <CloseIcon size={22} aria-hidden="true" />}
+          </button>
           <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
             <div className="nkj-navbar-brand-copy">
               <b>Nandikishor Jewellery Works</b>
