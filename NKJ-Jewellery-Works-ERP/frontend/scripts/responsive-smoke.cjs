@@ -66,7 +66,8 @@ async function runViewportTest(browser, viewport) {
   const page = await context.newPage();
   const pageErrors = [];
 
-  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("pageerror", (error) => pageErrors.push("pageerror: " + error.stack));
+  page.on("requestfailed", (request) => pageErrors.push("requestfailed: " + request.url() + " " + request.failure()?.errorText));
   page.on("console", (message) => {
     if (message.type() === "error") pageErrors.push("console: " + message.text());
   });
@@ -81,10 +82,17 @@ async function runViewportTest(browser, viewport) {
     try {
       await page.locator(".nkj-calculator-page").waitFor({ state: "visible", timeout: 10000 });
     } catch {
-      const bodyText = await page.locator("body").innerText().catch(() => "");
+      const diagnostics = await page.evaluate(() => ({
+        url: location.href,
+        title: document.title,
+        bodyHtml: document.body.innerHTML.slice(0, 5000),
+        rootHtml: document.getElementById("root")?.innerHTML.slice(0, 5000) || "no-root",
+        scripts: Array.from(document.scripts).map((item) => item.src),
+        modules: performance.getEntriesByType("resource").filter((item) => item.name.includes("/src/") || item.name.includes("@vite")).map((item) => item.name).slice(0, 40),
+      })).catch((error) => ({ diagnosticsError: error.message }));
       throw new Error("Calculator did not render at " + viewport.name +
         ". HTTP " + (response ? response.status() : "no response") +
-        ". Page text: " + bodyText.slice(0, 2500) +
+        ". Diagnostics: " + JSON.stringify(diagnostics).slice(0, 8000) +
         ". Browser errors: " + pageErrors.join(" | "));
     }
     await page.locator(".nkj-calculator-options button[data-calculator-mode]").first().waitFor();
