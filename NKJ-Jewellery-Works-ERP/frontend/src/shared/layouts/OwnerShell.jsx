@@ -94,6 +94,33 @@ export function Nav({ active = "home" }) {
     });
   };
 
+  useLayoutEffect(() => {
+    if (!publicMenuOpen || ownerWorkspace) return undefined;
+    const media = window.matchMedia?.("(max-width: 760px)");
+    const closeOnEscape = (event) => {
+      if (event.key !== "Escape") return;
+      setPublicMenuOpen(false);
+      document.querySelector(".nkj-public-menu-button")?.focus();
+    };
+    const closeOutside = (event) => {
+      const header = document.querySelector(".nkj-public-topbar");
+      if (header && !header.contains(event.target)) setPublicMenuOpen(false);
+    };
+    const closeOnDesktop = () => {
+      if (media && !media.matches) setPublicMenuOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOutside);
+    if (media?.addEventListener) media.addEventListener("change", closeOnDesktop);
+    else media?.addListener?.(closeOnDesktop);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOutside);
+      if (media?.removeEventListener) media.removeEventListener("change", closeOnDesktop);
+      else media?.removeListener?.(closeOnDesktop);
+    };
+  }, [publicMenuOpen, ownerWorkspace]);
+
   // Track two quick clicks on the same navigation item in sessionStorage.
   // This survives route navigation, where React may remount the sidebar between
   // the first and second click. A single click never changes the sidebar state.
