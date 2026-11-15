@@ -1,3 +1,4 @@
+@media screen {
 /* NKJ responsive foundation. Screen-only rules stay independent of PDF/print CSS. */
 html{min-width:320px}
 body,#root,.app-layout,.app-content{min-width:0;max-width:100%}
@@ -69,3 +70,104 @@ body.nkj-owner-layout .jewellery-footer,body.nkj-owner-layout:has(.nkj-owner-sid
 }
 @media screen and (min-width:1440px){.container.nkj-owner-container{padding-inline:clamp(24px,2.2vw,44px)}}
 @media screen and (min-width:1920px){.container{max-width:1800px;margin-inline:auto}}
+
+}
+
+/* Page-specific screen layouts. Kept under screen media so PDF/print output is untouched. */
+@media screen and (max-width: 1023px) {
+  .nkj-db-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nkj-module-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nkj-inventory-editor-grid { grid-template-columns: minmax(0, 1fr); }
+  .nkj-installment-customer-invoice { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nkj-owner-dashboard .nkj-stat-grid.nkj-owner-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .nkj-dashboard .nkj-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nkj-staff-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media screen and (max-width: 760px) {
+  .nkj-owner-layout .invoice-container.nkj-owner-invoice-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12px 10px 20px !important;
+    min-width: 0 !important;
+  }
+  .nkj-owner-layout .nk-profile {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 18px 12px 28px !important;
+  }
+  .nkj-owner-dashboard .nkj-stat-grid.nkj-owner-kpis,
+  .nkj-dashboard .nkj-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nkj-module-heading { flex-direction: column; align-items: stretch; }
+  .nkj-module-actions { width: 100%; }
+  .nkj-module-actions > button { flex: 1 1 auto; }
+  .nkj-module-form { padding: 12px; }
+  .nkj-module-form-actions { flex-wrap: wrap; }
+  .nkj-module-form-actions > button { flex: 1 1 130px; }
+  .nkj-inventory-editor { padding: 12px; }
+  .nkj-inventory-editor-head { flex-direction: column; align-items: stretch; }
+  .nkj-inventory-editor-actions { flex-wrap: wrap; }
+  .nkj-inventory-editor-actions > button { flex: 1 1 140px; }
+  .nkj-attendance-table-toolbar { align-items: stretch; flex-direction: column; }
+  .nkj-attendance-table-toolbar label { width: 100%; max-width: 100%; }
+  .nkj-attendance-toolbar-right { justify-content: flex-start; }
+  .nkj-transactions-toolbar { align-items: stretch; flex-direction: column; }
+  .nkj-transactions-search { width: 100%; min-width: 0; }
+  .nkj-transactions-search input { width: 100%; }
+  .nkj-refund-overlay,
+  .nkj-receipt-confirm-overlay,
+  .nkj-catalog-modal-backdrop,
+  .nkj-pin-overlay { padding: 10px !important; }
+  .nkj-refund-modal,
+  .nkj-receipt-confirm-modal,
+  .nkj-catalog-modal,
+  .nkj-pin-dialog { width: 100%; max-width: 100%; max-height: calc(100dvh - 20px); overflow-y: auto; }
+  .nkj-catalog-modal { padding: 12px; }
+  .nkj-catalog-subcategory-form { grid-template-columns: minmax(0, 1fr); }
+  .nkj-catalog-subcategory-list { grid-template-columns: minmax(0, 1fr); }
+  .nkj-staff-form-modal { width: min(100%, 620px); max-height: calc(100dvh - 20px); overflow-y: auto; }
+  .nkj-refund-grid { grid-template-columns: minmax(0, 1fr); }
+  .nkj-refund-modal form > footer { flex-wrap: wrap; }
+  .nkj-refund-modal form > footer button { flex: 1 1 130px; }
+  .nkj-rate-history-panel,
+  .nkj-transactions-table-wrap,
+  .nkj-attendance-table-scroll,
+  .nkj-staff-note-table-wrap,
+  .nkj-module-table .table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .nkj-module-table table,
+  .nkj-installment-page .nkj-module-table table,
+  .nkj-notebook-ledger table,
+  .nkj-due-group table { width: max-content; min-width: 760px; }
+  .nkj-installment-tabs { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+}
+@media screen and (max-width: 575px) {
+  .nkj-db-grid,
+  .nkj-module-kpis { grid-template-columns: minmax(0, 1fr); }
+  .nkj-module-fields { grid-template-columns: minmax(0, 1fr); }
+  .nkj-installment-customer-invoice { grid-template-columns: minmax(0, 1fr); }
+  .nkj-owner-dashboard .nkj-stat-grid.nkj-owner-kpis,
+  .nkj-dashboard .nkj-stat-grid { grid-template-columns: minmax(0, 1fr); }
+  .nkj-dashboard-heading h2 { font-size: clamp(21px, 6vw, 27px); }
+  .nkj-dashboard .nkj-stat-grid > * { min-width: 0; }
+  .nkj-staff-summary strong { overflow-wrap: anywhere; }
+  .nkj-attendance-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nkj-catalog-pagination { flex-direction: column; align-items: stretch; }
+  .nkj-catalog-pagination > div { width: 100%; }
+  .nkj-catalog-pagination button { flex: 1; }
+  .nkj-catalog-modal > footer { flex-direction: column-reverse; }
+  .nkj-catalog-modal > footer button { width: 100%; }
+  .nkj-refund-modal > header { padding: 13px; }
+  .nkj-refund-modal form { padding: 13px; }
+  .nkj-refund-modal form > footer { flex-direction: column-reverse; }
+  .nkj-refund-modal form > footer button { width: 100%; }
+  .nkj-profile-heading { flex-direction: column; align-items: flex-start; }
+  .nkj-invoice-toolbar { justify-content: flex-start; }
+}
+@media screen and (max-width: 374px) {
+  .nkj-owner-dashboard .nkj-stat-grid.nkj-owner-kpis,
+  .nkj-dashboard .nkj-stat-grid { grid-template-columns: minmax(0, 1fr); }
+  .nkj-attendance-summary { grid-template-columns: minmax(0, 1fr); }
+  .nkj-invoice-toolbar { gap: 7px; }
+  .nkj-gstin-toggle { max-width: 100%; font-size: 11px; }
+}
