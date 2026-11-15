@@ -16,6 +16,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -324,7 +325,7 @@ public class AuthService {
             String status;
             if (loggedOutAt != null) status = "LOGGED_OUT";
             else if (activeState != null) status = "ACTIVE";
-            else if (expiresAt instanceof Timestamp timestamp && timestamp.getTime() < System.currentTimeMillis()) status = "EXPIRED";
+            else if (isExpiredTimestamp(expiresAt)) status = "EXPIRED";
             else status = "ENDED";
 
             Map<String, Object> item = new LinkedHashMap<>();
@@ -414,8 +415,19 @@ public class AuthService {
         return browser + " on " + os;
     }
 
+    private boolean isExpiredTimestamp(Object value) {
+        if (value instanceof Timestamp timestamp) return timestamp.getTime() < System.currentTimeMillis();
+        if (value instanceof OffsetDateTime timestamp) return timestamp.isBefore(OffsetDateTime.now());
+        if (value instanceof Instant timestamp) return timestamp.isBefore(Instant.now());
+        try { return value != null && OffsetDateTime.parse(String.valueOf(value)).isBefore(OffsetDateTime.now()); }
+        catch (Exception ignored) { return false; }
+    }
+
     private String isoTimestamp(Object value) {
-        return value instanceof Timestamp timestamp ? timestamp.toInstant().toString() : null;
+        if (value instanceof Timestamp timestamp) return timestamp.toInstant().toString();
+        if (value instanceof OffsetDateTime timestamp) return timestamp.toInstant().toString();
+        if (value instanceof Instant timestamp) return timestamp.toString();
+        return value == null ? null : String.valueOf(value);
     }
 
     private String nullableText(String value) { return hasText(value) ? value : null; }
