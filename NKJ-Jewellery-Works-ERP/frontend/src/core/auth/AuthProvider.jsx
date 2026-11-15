@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState("");
   const [pending, setPending] = useState("");
   const [authReady, setAuthReady] = useState(false);
+  const pendingRef = useRef("");
   const lastActivityRef = useRef(0);
   const lastServerActivityRef = useRef(0);
   const logoutStartedRef = useRef(false);
@@ -26,6 +27,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(ACTIVITY_KEY);
     setUser("");
     setPending("");
+    pendingRef.current = "";
     setAuthReady(true);
     window.dispatchEvent(new Event("nkj:session-expired"));
   };
@@ -151,15 +153,17 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
+    pendingRef.current = result.challengeId;
     setPending(result.challengeId);
     return result;
   }
 
   async function verify(code) {
-    if (!pending) throw new Error("Your login challenge expired. Please sign in again.");
+    const challengeId = pendingRef.current || pending;
+    if (!challengeId) throw new Error("Your login challenge expired. Please sign in again.");
     const result = await request("/auth/verify", {
       method: "POST",
-      body: JSON.stringify({ challengeId: pending, code }),
+      body: JSON.stringify({ challengeId, code }),
     });
     localStorage.setItem("nkj_token", result.token);
     localStorage.setItem("nkj_user", result.username);
@@ -169,6 +173,7 @@ export function AuthProvider({ children }) {
     logoutStartedRef.current = false;
     setUser(result.username);
     setPending("");
+    pendingRef.current = "";
     setAuthReady(true);
     return result;
   }
