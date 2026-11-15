@@ -235,12 +235,32 @@ public class AuthService {
 
     public boolean valid(String token) {
         if (token == null || token.isBlank()) return false;
-        Long expiresAt = sessions.get(token);
-        if (expiresAt == null) return false;
-        if (expiresAt < System.currentTimeMillis()) { sessions.remove(token, expiresAt); return false; }
+        SessionState state = sessions.get(token);
+        if (state == null) return false;
+        long now = System.currentTimeMillis();
+        if (state.expiresAt < now) {
+            sessions.remove(token, state);
+            sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
+            return false;
+        }
+        if (now - state.lastActivityPersistedAt >= SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS) {
+            jdbc.update("UPDATE owner_login_sessions SET last_active_at=NOW() WHERE id=? AND logged_out_at IS NULL",
+                    UUID.fromString(state.id));
+            state.lastActivityPersistedAt = now;
+        }
         return true;
     }
-    public void logout(String token) { if (token != null && !token.isBlank()) sessions.remove(token); }
+
+    public void logout(String token) {
+        if (token == null || token.isBlank()) return;
+        SessionState state = sessions.remove(token);
+        if (state != null) {
+            jdbc.update("UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW() WHERE id=?",
+                    UUID.fromString(state.id));
+            sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
+        }
+    }
+
     public String getUsername() { return username; }
 
     /**
