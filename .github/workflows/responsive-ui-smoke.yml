@@ -3,7 +3,7 @@ name: NKJ Responsive UI Smoke Test
 on:
   push:
     branches:
-      - "feature/responsive-calculator-all-pages"
+      - "feature/**"
   pull_request:
     branches:
       - main
