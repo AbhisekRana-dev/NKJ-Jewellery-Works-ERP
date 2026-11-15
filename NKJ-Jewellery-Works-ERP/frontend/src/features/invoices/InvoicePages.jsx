@@ -683,30 +683,6 @@ export function InvoicePage() {
     return () => window.removeEventListener("keydown", onCalculatorKeyDown, true);
   }, [calculatorOpen, isPrintPreparing, calculatorExpression, calculatorResult]);
 
-  // Disable the browser print shortcut only while the New Invoice page is mounted.
-  useEffect(() => {
-    const blockInvoicePrintShortcut = (event) => {
-      const isPrintShortcut = (event.ctrlKey || event.metaKey) &&
-        (String(event.key).toLowerCase() === "p" || event.code === "KeyP");
-
-      if (!isPrintShortcut) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      if (typeof event.stopImmediatePropagation === "function") {
-        event.stopImmediatePropagation();
-      }
-    };
-
-    window.addEventListener("keydown", blockInvoicePrintShortcut, true);
-    document.addEventListener("keydown", blockInvoicePrintShortcut, true);
-
-    return () => {
-      window.removeEventListener("keydown", blockInvoicePrintShortcut, true);
-      document.removeEventListener("keydown", blockInvoicePrintShortcut, true);
-    };
-  }, []);
-
   const initialReloadResetHandledRef = useRef(false);
 
   useEffect(() => {
@@ -1121,29 +1097,6 @@ export function InvoicePage() {
     setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN to print or save as PDF.`);
     setShowInvoicePin(true);
   }
-
-  // Ctrl+P / Cmd+P uses the same save + security PIN + direct PDF flow
-  // as the visible invoice button. Do not open Chromium's native page printer.
-  useEffect(() => {
-    const handleInvoicePrintShortcut = (event) => {
-      const isShortcut = (event.ctrlKey || event.metaKey) &&
-        !event.altKey &&
-        String(event.key).toLowerCase() === "p";
-
-      if (!isShortcut) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (typeof event.stopImmediatePropagation === "function") {
-        event.stopImmediatePropagation();
-      }
-
-      if (event.repeat || showInvoicePin || isPrintPreparing || saving) return;
-      requestPrintPin();
-    };
-
-    window.addEventListener("keydown", handleInvoicePrintShortcut, true);
-    return () => window.removeEventListener("keydown", handleInvoicePrintShortcut, true);
-  }, [showInvoicePin, isPrintPreparing, saving]);
 
   async function printCurrentInvoice(ticket) {
     setIsPrintPreparing(true);
@@ -2621,32 +2574,6 @@ export function SavedInvoices() {
   const [sharePreparing, setSharePreparing] = useState(false);
   const [sharingInvoice, setSharingInvoice] = useState(false);
   const shareInProgressRef = useRef(false);
-
-  // Ctrl+P / Cmd+P on an open saved invoice opens the same security
-  // PIN dialog as the Print / Save PDF action instead of the browser printer.
-  useEffect(() => {
-    if (!selectedInvoice) return undefined;
-
-    const handleSavedInvoicePrintShortcut = (event) => {
-      const isShortcut = (event.ctrlKey || event.metaKey) &&
-        !event.altKey &&
-        String(event.key).toLowerCase() === "p";
-
-      if (!isShortcut) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      if (typeof event.stopImmediatePropagation === "function") {
-        event.stopImmediatePropagation();
-      }
-
-      if (event.repeat || showPrintPin || detailLoading) return;
-      setShowPrintPin(true);
-    };
-
-    window.addEventListener("keydown", handleSavedInvoicePrintShortcut, true);
-    return () => window.removeEventListener("keydown", handleSavedInvoicePrintShortcut, true);
-  }, [selectedInvoice, showPrintPin, detailLoading]);
 
   const load = async () => {
     setLoading(true);
