@@ -520,3 +520,272 @@
           .nk-contact { font-size: 14px; }
           .nk-security-btn { min-width: 0; }
         }
+
+
+/* Protected owner login history and device management */
+.nk-session-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  overflow-y: auto;
+  background: rgba(20, 18, 24, .58);
+  backdrop-filter: blur(4px);
+}
+.nk-session-modal {
+  width: min(900px, 100%);
+  max-height: min(88vh, 900px);
+  overflow: auto;
+  padding: 25px;
+  border: 1px solid #eee2db;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(0,0,0,.25);
+}
+.nk-session-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #eee5dc;
+}
+.nk-session-title-icon,
+.nk-session-lock-icon,
+.nk-session-device-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: #a00b31;
+  background: #fff1dc;
+  border-radius: 50%;
+}
+.nk-session-title-icon { width: 48px; height: 48px; }
+.nk-session-heading h2 {
+  margin: 0;
+  color: #920b2d;
+  font: 700 26px Georgia, "Times New Roman", serif;
+}
+.nk-session-heading p { margin: 5px 0 0; color: #626779; font-size: 14px; }
+.nk-session-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #394153;
+  cursor: pointer;
+}
+.nk-session-close:hover { background: #f6edf0; color: #970b30; }
+.nk-session-unlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 460px;
+  margin: 28px auto 12px;
+  text-align: center;
+}
+.nk-session-lock-icon { width: 66px; height: 66px; margin-bottom: 13px; }
+.nk-session-unlock h3 { margin: 0 0 7px; color: #202436; font-size: 20px; }
+.nk-session-unlock p { margin: 0 0 20px; color: #667084; font-size: 14px; line-height: 1.5; }
+.nk-session-unlock label {
+  align-self: stretch;
+  margin: 0 0 6px;
+  color: #202436;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+.nk-session-password-wrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #d7dce6;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.nk-session-password-wrap:focus-within { border-color: #a00b31; box-shadow: 0 0 0 3px rgba(160,11,49,.08); }
+.nk-session-password-wrap input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #202436;
+  font-size: 15px;
+}
+.nk-session-password-wrap button {
+  align-self: stretch;
+  padding: 0 14px;
+  border: 0;
+  border-left: 1px solid #e8e9ed;
+  background: #faf8f7;
+  color: #900b2b;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nk-session-primary,
+.nk-session-danger,
+.nk-session-logout,
+.nk-session-summary button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nk-session-primary {
+  width: 100%;
+  min-height: 47px;
+  margin-top: 15px;
+  border: 1px solid #970b30;
+  background: #970b30;
+  color: #fff;
+}
+.nk-session-primary:disabled,
+.nk-session-danger:disabled,
+.nk-session-logout:disabled,
+.nk-session-summary button:disabled { opacity: .55; cursor: not-allowed; }
+.nk-session-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+}
+.nk-session-summary > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 15px;
+  border: 1px solid #e9eee9;
+  border-radius: 12px;
+  background: #f7fcf8;
+}
+.nk-session-summary strong { color: #087b2c; font-size: 24px; }
+.nk-session-summary span { color: #596477; font-size: 12px; }
+.nk-session-summary button {
+  min-height: 42px;
+  padding: 0 13px;
+  border: 1px solid #d6dce6;
+  background: #fff;
+  color: #465064;
+}
+.nk-session-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+.nk-session-toolbar > div { display: flex; flex-direction: column; gap: 4px; }
+.nk-session-toolbar strong { color: #1f2638; font-size: 15px; }
+.nk-session-toolbar span { color: #697386; font-size: 12px; }
+.nk-session-danger {
+  min-height: 39px;
+  padding: 0 12px;
+  border: 1px solid #dca3a8;
+  background: #fff5f5;
+  color: #a31c32;
+}
+.nk-session-list { display: flex; flex-direction: column; gap: 9px; }
+.nk-session-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid #ece5e2;
+  border-radius: 13px;
+  background: #fff;
+}
+.nk-session-device-icon { width: 46px; height: 46px; background: #edf6ff; color: #1976b9; }
+.nk-session-device { flex: 1; min-width: 0; }
+.nk-session-device-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.nk-session-device-title strong { color: #202436; font-size: 14px; }
+.nk-session-current,
+.nk-session-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: #e8f8ec;
+  color: #087b2c;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.nk-session-status.logged-out,
+.nk-session-status.expired,
+.nk-session-status.ended { background: #f0f1f4; color: #626779; }
+.nk-session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
+  color: #687184;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.nk-session-logout {
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid #e0aab0;
+  background: #fff6f6;
+  color: #a31c32;
+  white-space: nowrap;
+}
+.nk-session-empty {
+  padding: 25px 12px;
+  color: #697386;
+  text-align: center;
+  font-size: 14px;
+}
+.nk-session-message {
+  margin-top: 13px;
+  padding: 10px 12px;
+  border: 1px solid #f0d9b7;
+  border-radius: 9px;
+  background: #fff8e9;
+  color: #85530d;
+  font-size: 13px;
+}
+.nk-session-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 13px;
+  border-top: 1px solid #eee5dc;
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.nk-session-footer svg { flex: 0 0 auto; color: #a00b31; }
+
+@media (max-width: 620px) {
+  .nk-session-overlay { align-items: flex-start; padding: 8px; }
+  .nk-session-modal { max-height: calc(100dvh - 16px); padding: 16px; border-radius: 16px; }
+  .nk-session-heading h2 { font-size: 21px; }
+  .nk-session-heading p { font-size: 12px; }
+  .nk-session-summary { flex-wrap: wrap; }
+  .nk-session-summary > div { min-width: calc(50% - 8px); }
+  .nk-session-summary button { flex: 1; }
+  .nk-session-toolbar { align-items: flex-start; flex-direction: column; }
+  .nk-session-danger { width: 100%; }
+  .nk-session-item { align-items: flex-start; flex-wrap: wrap; }
+  .nk-session-device { min-width: calc(100% - 60px); }
+  .nk-session-logout { margin-left: 58px; }
+  .nk-session-meta { flex-direction: column; gap: 2px; }
+}
