@@ -42,6 +42,7 @@ const money = (value) => Number(value || 0).toLocaleString("en-IN", {
 
 const numberInput = (value, setter) => ({
   type: "number",
+  inputMode: "decimal",
   min: "0",
   step: "0.01",
   value,
