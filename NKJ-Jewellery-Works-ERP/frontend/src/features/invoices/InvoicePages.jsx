@@ -2371,7 +2371,7 @@ async function createInvoiceSharePdfFile(invoice) {
        shift the first grid column outside the PDF page. */
     #invoice-print.nkj-pdf-export-root .inv-head {
       display: grid !important;
-      grid-template-columns: 30mm minmax(0, 1fr) 68mm !important;
+      grid-template-columns: 30mm minmax(0, 1fr) 72mm !important;
       width: 100% !important;
       min-width: 0 !important;
       margin-left: 0 !important;
@@ -2411,7 +2411,7 @@ async function createInvoiceSharePdfFile(invoice) {
     }
     #invoice-print.nkj-pdf-export-root .inv-main {
       display: grid !important;
-      grid-template-columns: minmax(0, 1fr) 68mm !important;
+      grid-template-columns: minmax(0, 1fr) 95mm !important;
       gap: 2mm !important;
       width: 100% !important;
       min-width: 0 !important;
