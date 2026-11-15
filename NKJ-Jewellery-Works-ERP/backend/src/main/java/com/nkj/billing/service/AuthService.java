@@ -313,7 +313,7 @@ public class AuthService {
         requireCurrentSession(ownerToken);
         long now = System.currentTimeMillis();
         int activeCount = (int) sessions.values().stream()
-                .filter(state -> state.expiresAt >= now)
+                .filter(state -> state.expiresAt > now && now - state.lastActivityAt < INACTIVITY_TTL_MILLIS)
                 .map(state -> state.id).distinct().count();
         Long historyCount = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM owner_login_sessions WHERE username=? AND created_at >= NOW() - INTERVAL '24 hours'",
@@ -370,7 +370,7 @@ public class AuthService {
             String status;
             if (loggedOutAt != null) status = "LOGGED_OUT";
             else if (activeState != null) status = "ACTIVE";
-            else if (isExpiredTimestamp(expiresAt)) status = "EXPIRED";
+            else if (isExpiredTimestamp(expiresAt) || isIdleTimestamp(row.get("last_active_at"))) status = "EXPIRED";
             else status = "ENDED";
 
             Map<String, Object> item = new LinkedHashMap<>();
@@ -384,7 +384,14 @@ public class AuthService {
             item.put("loggedOutAt", isoTimestamp(loggedOutAt));
             item.put("logoutReason", row.get("logout_reason"));
             Instant started = toInstant(row.get("created_at"));
-            Instant ended = loggedOutAt == null ? toInstant(row.get("last_active_at")) : toInstant(loggedOutAt);
+            Instant lastActive = toInstant(row.get("last_active_at"));
+            Instant ended = toInstant(loggedOutAt);
+            if (ended == null && lastActive != null && activeState == null) {
+                Instant idleDeadline = lastActive.plusMillis(INACTIVITY_TTL_MILLIS);
+                Instant fixedDeadline = toInstant(expiresAt);
+                ended = fixedDeadline == null || idleDeadline.isBefore(fixedDeadline) ? idleDeadline : fixedDeadline;
+            }
+            if (ended == null) ended = lastActive;
             item.put("durationSeconds", started == null || ended == null ? 0L : Math.max(0L, java.time.Duration.between(started, ended).getSeconds()));
             item.put("status", status);
             item.put("current", current.id.equals(id));
@@ -452,8 +459,14 @@ public class AuthService {
     private SessionState findActiveSessionById(String id) {
         long now = System.currentTimeMillis();
         return sessions.values().stream()
-                .filter(state -> state.id.equals(id) && state.expiresAt >= now)
+                .filter(state -> state.id.equals(id) && state.expiresAt > now
+                        && now - state.lastActivityAt < INACTIVITY_TTL_MILLIS)
                 .findFirst().orElse(null);
+    }
+
+    private boolean isIdleTimestamp(Object value) {
+        Instant lastActive = toInstant(value);
+        return lastActive != null && lastActive.toEpochMilli() <= System.currentTimeMillis() - INACTIVITY_TTL_MILLIS;
     }
 
     private String describeDevice(String userAgent) {
