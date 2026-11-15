@@ -215,6 +215,10 @@ async function testPublicNavigation(browser) {
         for (const path of ownerRoutes) {
           await checkViewport(page, path, viewport);
         }
+        if (viewport.width === 390) {
+          // Reuse the authenticated owner context already verified above.
+          await testOwnerSidebar(page);
+        }
       } finally {
         await context.close();
       }
@@ -236,7 +240,6 @@ async function testPublicNavigation(browser) {
       await publicContext.close();
     }
 
-    await testOwnerSidebar(browser);
     await testPublicNavigation(browser);
     process.stdout.write("All owner/public page responsive smoke checks passed.\\n");
   } catch (error) {
