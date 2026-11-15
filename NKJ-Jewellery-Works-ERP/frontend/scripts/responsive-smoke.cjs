@@ -71,10 +71,10 @@ async function runViewportTest(browser, viewport) {
   page.on("console", (message) => {
     if (message.type() === "error") pageErrors.push("console: " + message.text());
   });
-  await page.route("**/api/**", (route) => route.fulfill({
-    status: 503,
-    contentType: "application/json",
-    body: JSON.stringify({ message: "Responsive smoke test: backend is intentionally not connected." }),
+  await page.route("**/api/events/public", (route) => route.fulfill({
+    status: 200,
+    contentType: "text/event-stream",
+    body: "",
   }));
 
   try {
