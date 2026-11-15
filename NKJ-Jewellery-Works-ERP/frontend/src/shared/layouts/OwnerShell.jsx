@@ -15,6 +15,7 @@ const SIDEBAR_NAV_CLICK_KEY = "nkj-owner-sidebar-nav-last-click";
 const SIDEBAR_DOUBLE_CLICK_MS = 450;
 function initialSidebarState() {
   try {
+    if (window.matchMedia?.("(max-width: 760px)").matches) return true;
     const saved = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
     if (saved !== null) return saved === "true";
     return window.matchMedia?.("(max-width: 1100px)").matches ?? false;
