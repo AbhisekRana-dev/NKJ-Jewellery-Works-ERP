@@ -158,8 +158,22 @@ async function checkViewport(page, path, viewport) {
 }
 
 async function testOwnerSidebar(page) {
+  await page.evaluate(() => {
+    localStorage.setItem("nkj_token", "responsive-layout-test-token");
+    localStorage.setItem("nkj_user", "admin2026");
+  });
   await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
-  await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+  try {
+    await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      path: location.pathname,
+      tokenPresent: Boolean(localStorage.getItem("nkj_token")),
+      bodyText: (document.body.innerText || "").slice(0, 700),
+      rootMarkup: document.getElementById("root")?.innerHTML.slice(0, 1400) || "",
+    }));
+    throw new Error("Owner drawer did not render: " + JSON.stringify(diagnostic) + "; " + error.message);
+  }
   const ownerShell = await page.locator("#nkj-owner-sidebar").count();
   const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
   assert(ownerShell === 1 && Boolean(authToken), "Owner route was not authenticated before sidebar testing.");
