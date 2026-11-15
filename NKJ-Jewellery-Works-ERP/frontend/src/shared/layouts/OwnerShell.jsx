@@ -136,6 +136,19 @@ export function Nav({ active = "home" }) {
   }, [active, ownerWorkspace, sidebarCollapsed]);
 
   useLayoutEffect(() => {
+    if (!ownerWorkspace) return undefined;
+    const body = document.body;
+    const mobileOpen = window.matchMedia?.("(max-width: 760px)").matches && !sidebarCollapsed;
+    body.classList.toggle("nkj-mobile-sidebar-open", Boolean(mobileOpen));
+    const previousOverflow = body.style.overflow;
+    if (mobileOpen) body.style.overflow = "hidden";
+    return () => {
+      body.classList.remove("nkj-mobile-sidebar-open");
+      body.style.overflow = previousOverflow;
+    };
+  }, [ownerWorkspace, sidebarCollapsed]);
+
+  useLayoutEffect(() => {
     if (!ownerWorkspace || !sidebarNavRef.current) return;
     try {
       const savedScroll = Number(window.sessionStorage.getItem(SIDEBAR_SCROLL_KEY) || 0);
@@ -148,6 +161,7 @@ export function Nav({ active = "home" }) {
   if (ownerWorkspace) {
     return (
       <>
+        <button type="button" className="nkj-mobile-sidebar-backdrop" aria-label="Close navigation menu" tabIndex={sidebarCollapsed ? -1 : 0} onClick={() => setSidebarCollapsed(true)} />
         <aside className={`nkj-owner-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`} aria-label="Owner navigation">
           <button
             type="button"
@@ -194,7 +208,7 @@ export function Nav({ active = "home" }) {
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
                       data-nav-key={key}
-                      onClick={() => handleSidebarNavigationClick(key)}
+                      onClick={() => { handleSidebarNavigationClick(key); if (window.matchMedia?.("(max-width: 760px)").matches) setSidebarCollapsed(true); }}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span className="nkj-owner-nav-full-label">{label}</span>
@@ -222,6 +236,7 @@ export function Nav({ active = "home" }) {
         </aside>
 
         <header className="nkj-owner-topbar">
+          <button type="button" className="nkj-mobile-menu-button" aria-label="Open navigation menu" aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed(false)}>☰</button>
           <div className="nkj-owner-top-title">
             <span className="eyebrow">OWNER WORKSPACE</span>
             <b>Nandikishor Jewellery Works</b>
