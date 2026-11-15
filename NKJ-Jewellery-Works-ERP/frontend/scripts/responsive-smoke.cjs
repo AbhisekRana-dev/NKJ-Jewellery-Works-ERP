@@ -144,6 +144,10 @@ async function runViewportTest(browser, viewport) {
     let total = await panel.locator(".nkj-calc-result-hero strong").innerText();
     assert(total.includes("10,000.00"), viewport.name + ": New Ornaments result is not visible or incorrect: " + total);
     await assertNoHorizontalOverflow(page, viewport, "new ornaments");
+    if (viewport.width <= 767) {
+      const inputMode = await panel.locator(".nkj-calc-fields input").first().getAttribute("inputmode");
+      assert(inputMode === "decimal", viewport.name + ": numeric input does not request a decimal keypad.");
+    }
 
     // Old ornaments: net value uses entered weight, purity percentage and rate.
     await page.locator('[data-calculator-mode="old"]').click();
@@ -181,8 +185,6 @@ async function runViewportTest(browser, viewport) {
     await assertNoHorizontalOverflow(page, viewport, "manual calculator");
 
     if (viewport.width <= 767) {
-      const inputMode = await page.locator(".nkj-calculator-panel:not([hidden]) .nkj-calc-fields input").first().getAttribute("inputmode");
-      assert(inputMode === "decimal", viewport.name + ": numeric input does not request a decimal keypad.");
       const keypadButtons = await keys.count();
       assert(keypadButtons === 20, viewport.name + ": manual keypad is missing buttons.");
       const smallestButton = await keys.first().boundingBox();
