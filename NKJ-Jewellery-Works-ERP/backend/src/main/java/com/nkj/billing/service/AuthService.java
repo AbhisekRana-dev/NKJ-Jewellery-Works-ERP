@@ -33,6 +33,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class AuthService {
     private static final long CHALLENGE_TTL_MILLIS = 2 * 60 * 1000L;
     private static final long SESSION_TTL_MILLIS = 8 * 60 * 60 * 1000L;
+    private static final long INACTIVITY_TTL_MILLIS = 30 * 60 * 1000L;
     private static final long SETUP_OTP_TTL_MILLIS = 5 * 60 * 1000L;
     private static final long SETUP_TOKEN_TTL_MILLIS = 10 * 60 * 1000L;
     private static final long SESSION_MANAGER_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
@@ -73,10 +74,12 @@ public class AuthService {
         private final String id;
         private final long expiresAt;
         private volatile long lastActivityPersistedAt;
+        private volatile long lastActivityAt;
         private SessionState(String id, long expiresAt, long now) {
             this.id = id;
             this.expiresAt = expiresAt;
             this.lastActivityPersistedAt = now;
+            this.lastActivityAt = now;
         }
     }
     private static final class ManagerAttempt {
@@ -239,11 +242,23 @@ public class AuthService {
         SessionState state = sessions.get(token);
         if (state == null) return false;
         long now = System.currentTimeMillis();
-        if (state.expiresAt < now) {
-            sessions.remove(token, state);
-            sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
+        if (state.expiresAt <= now) {
+            endSession(token, state, "SESSION_EXPIRED", Instant.ofEpochMilli(state.expiresAt));
             return false;
         }
+        if (now - state.lastActivityAt >= INACTIVITY_TTL_MILLIS) {
+            endSession(token, state, "INACTIVITY_TIMEOUT", Instant.ofEpochMilli(state.lastActivityAt + INACTIVITY_TTL_MILLIS));
+            return false;
+        }
+        return true;
+    }
+
+    /** Called only for genuine browser interaction, not background session checks. */
+    public boolean recordActivity(String token) {
+        if (!valid(token)) return false;
+        SessionState state = sessions.get(token);
+        long now = System.currentTimeMillis();
+        state.lastActivityAt = now;
         if (now - state.lastActivityPersistedAt >= SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS) {
             jdbc.update("UPDATE owner_login_sessions SET last_active_at=NOW() WHERE id=? AND logged_out_at IS NULL",
                     UUID.fromString(state.id));
@@ -253,13 +268,42 @@ public class AuthService {
     }
 
     public void logout(String token) {
+        logout(token, "MANUAL_LOGOUT");
+    }
+
+    public void logout(String token, String reason) {
         if (token == null || token.isBlank()) return;
         SessionState state = sessions.remove(token);
+        String safeReason = Set.of("MANUAL_LOGOUT", "INACTIVITY_TIMEOUT", "SESSION_EXPIRED").contains(reason)
+                ? reason : "MANUAL_LOGOUT";
         if (state != null) {
-            jdbc.update("UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW() WHERE id=?",
-                    UUID.fromString(state.id));
+            jdbc.update("""
+                UPDATE owner_login_sessions
+                   SET logged_out_at=COALESCE(logged_out_at,NOW()),
+                       last_active_at=GREATEST(last_active_at,NOW()),
+                       logout_reason=COALESCE(logout_reason,?)
+                 WHERE id=?
+                """, safeReason, UUID.fromString(state.id));
             sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
+        } else {
+            jdbc.update("""
+                UPDATE owner_login_sessions
+                   SET logged_out_at=COALESCE(logged_out_at,NOW()),
+                       logout_reason=COALESCE(logout_reason,?)
+                 WHERE token_hash=? AND logged_out_at IS NULL
+                """, safeReason, sha256(token));
         }
+    }
+
+    private void endSession(String token, SessionState state, String reason, Instant endedAt) {
+        if (!sessions.remove(token, state)) return;
+        jdbc.update("""
+            UPDATE owner_login_sessions
+               SET logged_out_at=COALESCE(logged_out_at,?),
+                   logout_reason=COALESCE(logout_reason,?)
+             WHERE id=?
+            """, Timestamp.from(endedAt), reason, UUID.fromString(state.id));
+        sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
     }
 
     public String getUsername() { return username; }
@@ -271,7 +315,7 @@ public class AuthService {
                 .filter(state -> state.expiresAt >= now)
                 .map(state -> state.id).distinct().count();
         Long historyCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM owner_login_sessions WHERE username=? AND created_at >= NOW() - INTERVAL '30 days'",
+                "SELECT COUNT(*) FROM owner_login_sessions WHERE username=? AND created_at >= NOW() - INTERVAL '24 hours'",
                 Long.class, username);
         return Map.of("activeCount", activeCount, "historyCount", historyCount == null ? 0L : historyCount, "maxActive", 0);
     }
@@ -311,7 +355,7 @@ public class AuthService {
         List<Map<String, Object>> result = new ArrayList<>();
         List<Map<String, Object>> rows = jdbc.queryForList("""
             SELECT id, username, device_label, ip_address, created_at, last_active_at,
-                   expires_at, logged_out_at
+                   expires_at, logged_out_at, logout_reason
               FROM owner_login_sessions
              WHERE username=?
              ORDER BY created_at DESC
@@ -337,6 +381,10 @@ public class AuthService {
             item.put("lastActiveAt", isoTimestamp(row.get("last_active_at")));
             item.put("expiresAt", isoTimestamp(expiresAt));
             item.put("loggedOutAt", isoTimestamp(loggedOutAt));
+            item.put("logoutReason", row.get("logout_reason"));
+            Instant started = toInstant(row.get("created_at"));
+            Instant ended = loggedOutAt == null ? toInstant(row.get("last_active_at")) : toInstant(loggedOutAt);
+            item.put("durationSeconds", started == null || ended == null ? 0L : Math.max(0L, java.time.Duration.between(started, ended).getSeconds()));
             item.put("status", status);
             item.put("current", current.id.equals(id));
             result.add(item);
@@ -357,7 +405,7 @@ public class AuthService {
         boolean currentSession = current.id.equals(sessionId);
         sessions.entrySet().removeIf(entry -> entry.getValue().id.equals(sessionId));
         sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(sessionId));
-        jdbc.update("UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW() WHERE id=? AND username=?",
+        jdbc.update("UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW(), logout_reason=COALESCE(logout_reason,'REVOKED_BY_OWNER') WHERE id=? AND username=?",
                 id, username);
         return currentSession;
     }
@@ -372,10 +420,17 @@ public class AuthService {
         sessionManagerGrants.entrySet().removeIf(entry -> !entry.getValue().ownerSessionId().equals(current.id));
         jdbc.update("""
             UPDATE owner_login_sessions
-               SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW()
+               SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW(), logout_reason=COALESCE(logout_reason,'REVOKED_BY_OWNER')
              WHERE username=? AND id<>? AND logged_out_at IS NULL
             """, username, UUID.fromString(current.id));
         return activeBefore;
+    }
+
+    private Instant toInstant(Object value) {
+        if (value instanceof Timestamp timestamp) return timestamp.toInstant();
+        if (value instanceof java.time.OffsetDateTime offset) return offset.toInstant();
+        if (value instanceof Instant instant) return instant;
+        return null;
     }
 
     private SessionState requireCurrentSession(String ownerToken) {
