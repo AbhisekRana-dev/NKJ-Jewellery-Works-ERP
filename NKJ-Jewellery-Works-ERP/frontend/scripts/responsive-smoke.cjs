@@ -38,7 +38,8 @@ async function waitForServer(server) {
 async function assertNoHorizontalOverflow(page, viewport, stage) {
   const metrics = await page.evaluate(() => {
     const width = document.documentElement.clientWidth;
-    const offenders = Array.from(document.body.querySelectorAll("*")).map((element) => {
+    const elements = Array.from(document.body.querySelectorAll("*"));
+    const describe = (element) => {
       const rect = element.getBoundingClientRect();
       const style = getComputedStyle(element);
       return {
@@ -48,17 +49,27 @@ async function assertNoHorizontalOverflow(page, viewport, stage) {
         left: Math.round(rect.left * 10) / 10,
         right: Math.round(rect.right * 10) / 10,
         width: Math.round(rect.width * 10) / 10,
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
         position: style.position,
         overflowX: style.overflowX,
+        before: getComputedStyle(element, "::before").content,
+        after: getComputedStyle(element, "::after").content,
         text: (element.innerText || "").slice(0, 70),
       };
-    }).filter((item) => item.right > width + 1 || item.left < -1)
+    };
+    const offenders = elements.map(describe).filter((item) => item.right > width + 1 || item.left < -1)
       .sort((a, b) => b.right - a.right).slice(0, 18);
+    const scrollNodes = elements.filter((element) => element.scrollWidth > element.clientWidth + 1)
+      .map(describe).slice(0, 24);
     return {
       viewport: width,
       document: document.documentElement.scrollWidth,
       body: document.body.scrollWidth,
+      bodyMetrics: describe(document.body),
+      rootMetrics: describe(document.getElementById("root")),
       offenders,
+      scrollNodes,
     };
   });
   assert(
