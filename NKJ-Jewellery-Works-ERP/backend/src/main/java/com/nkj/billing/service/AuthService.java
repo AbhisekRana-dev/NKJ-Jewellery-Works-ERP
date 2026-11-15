@@ -100,17 +100,35 @@ public class AuthService {
     }
 
     public String verify(String challengeId, String code) {
+        return verify(challengeId, code, "", "");
+    }
+
+    public String verify(String challengeId, String code, String userAgent, String ipAddress) {
         requireConfigured();
         if (challengeId == null || challengeId.isBlank()) throw new IllegalArgumentException("Your login challenge is missing. Please sign in again.");
-        Long expiresAt = challenges.remove(challengeId);
-        if (expiresAt == null || expiresAt < System.currentTimeMillis()) throw new IllegalArgumentException("Login challenge expired. Please sign in again.");
+        Long challengeExpiresAt = challenges.remove(challengeId);
+        long now = System.currentTimeMillis();
+        if (challengeExpiresAt == null || challengeExpiresAt < now) throw new IllegalArgumentException("Login challenge expired. Please sign in again.");
         if (code == null || !code.matches("\\d{6}")) throw new IllegalArgumentException("Enter a valid 6-digit authenticator code.");
         final int otp;
         try { otp = Integer.parseInt(code); }
         catch (NumberFormatException ex) { throw new IllegalArgumentException("Enter a valid 6-digit authenticator code."); }
         if (!authenticator.authorize(secret, otp)) throw new IllegalArgumentException("Incorrect or expired authenticator code.");
+
         String token = randomToken();
-        sessions.put(token, System.currentTimeMillis() + SESSION_TTL_MILLIS);
+        UUID sessionId = UUID.randomUUID();
+        long expiresAt = now + SESSION_TTL_MILLIS;
+        String safeAgent = limitText(userAgent, 512);
+        jdbc.update("""
+            INSERT INTO owner_login_sessions
+                (id, token_hash, username, device_label, ip_address, user_agent,
+                 created_at, last_active_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
+            """,
+            sessionId, sha256(token), username, describeDevice(safeAgent),
+            nullableText(limitText(ipAddress, 64)), nullableText(safeAgent),
+            Timestamp.from(Instant.ofEpochMilli(expiresAt)));
+        sessions.put(token, new SessionState(sessionId.toString(), expiresAt, now));
         return token;
     }
 
