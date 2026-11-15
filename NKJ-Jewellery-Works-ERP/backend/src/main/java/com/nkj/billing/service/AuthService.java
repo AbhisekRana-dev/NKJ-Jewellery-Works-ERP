@@ -14,12 +14,19 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Service
 public class AuthService {
@@ -27,9 +34,14 @@ public class AuthService {
     private static final long SESSION_TTL_MILLIS = 8 * 60 * 60 * 1000L;
     private static final long SETUP_OTP_TTL_MILLIS = 5 * 60 * 1000L;
     private static final long SETUP_TOKEN_TTL_MILLIS = 10 * 60 * 1000L;
+    private static final long SESSION_MANAGER_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
+    private static final long SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS = 30 * 1000L;
+    private static final long SESSION_MANAGER_LOCK_MILLIS = 15 * 60 * 1000L;
+    private static final int MAX_SESSION_MANAGER_ATTEMPTS = 5;
 
     @Value("${nkj.admin.username:admin2026}") private String username;
     @Value("${nkj.admin.password:}") private String password;
+    @Value("${nkj.admin.session-manager-password:}") private String sessionManagerPassword;
     @Value("${nkj.totp.secret:}") private String secret;
     @Value("${nkj.setup.email:rabhisek2030@gmail.com}") private String setupEmail;
     @Value("${nkj.setup.mail-from:}") private String mailFrom;
@@ -42,19 +54,39 @@ public class AuthService {
     private final GoogleAuthenticator authenticator = new GoogleAuthenticator();
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final ObjectMapper objectMapper;
+    private final JdbcTemplate jdbc;
     private final HttpClient emailHttpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10)).build();
     private final Map<String, Long> challenges = new ConcurrentHashMap<>();
-    private final Map<String, Long> sessions = new ConcurrentHashMap<>();
+    private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
     private final Map<String, SetupOtp> setupOtps = new ConcurrentHashMap<>();
     private final Map<String, Long> setupTokens = new ConcurrentHashMap<>();
+    private final Map<String, ManagerGrant> sessionManagerGrants = new ConcurrentHashMap<>();
+    private final Map<String, ManagerAttempt> sessionManagerAttempts = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
 
     private record SetupOtp(String codeHash, long expiresAt) {}
+    private record ManagerGrant(String ownerSessionId, long expiresAt) {}
 
-    public AuthService(ObjectProvider<JavaMailSender> mailSenderProvider, ObjectMapper objectMapper) {
+    private static final class SessionState {
+        private final String id;
+        private final long expiresAt;
+        private volatile long lastActivityPersistedAt;
+        private SessionState(String id, long expiresAt, long now) {
+            this.id = id;
+            this.expiresAt = expiresAt;
+            this.lastActivityPersistedAt = now;
+        }
+    }
+    private static final class ManagerAttempt {
+        private int failures;
+        private long lockedUntil;
+    }
+
+    public AuthService(ObjectProvider<JavaMailSender> mailSenderProvider, ObjectMapper objectMapper, JdbcTemplate jdbc) {
         this.mailSenderProvider = mailSenderProvider;
         this.objectMapper = objectMapper;
+        this.jdbc = jdbc;
     }
 
     public String login(String suppliedUsername, String suppliedPassword) {
