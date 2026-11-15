@@ -1,5 +1,5 @@
 import "./AuthPages.css";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   CalendarDays, Diamond, ShieldCheck, Users, LockKeyhole, User,
@@ -108,11 +108,22 @@ export function Login() {
   const [error, setError] = useState("");
 
   const [busy, setBusy] = useState(false);
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    const notice = sessionStorage.getItem("nkj_login_notice");
+    if (notice) {
+      setError(notice);
+      sessionStorage.removeItem("nkj_login_notice");
+    }
+  }, []);
 
   if (isAdmin) return <NavigateHome />;
 
   async function submit(e) {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     setError("");
 
@@ -131,6 +142,7 @@ export function Login() {
     } catch (x) {
       setError(x.message);
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   }
