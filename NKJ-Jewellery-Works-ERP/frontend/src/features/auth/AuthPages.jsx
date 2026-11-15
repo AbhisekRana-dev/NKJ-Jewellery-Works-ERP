@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "../../core/auth/AuthProvider";
+import { request } from "../../core/api/client";
 import { Nav } from "../../shared/layouts/OwnerShell";
 
 export function TotpSetup() {
@@ -23,12 +24,11 @@ export function TotpSetup() {
   async function sendOtp(e) {
     e.preventDefault(); setError(""); setBusy(true);
     try {
-      const response = await fetch("/api/auth/setup-email/start", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+      const data = await request("/auth/setup-email/start", {
+        method: "POST",
+        publicRequest: true,
         body: JSON.stringify({ username, password }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Could not send setup OTP.");
       setChallengeId(data.challengeId); setDestination(data.destination || "your owner email");
       setSetupToken(""); setUri(""); setCode("");
     } catch (e2) { setError(e2.message); }
@@ -38,16 +38,16 @@ export function TotpSetup() {
   async function verifyOtp(e) {
     e.preventDefault(); setError(""); setBusy(true);
     try {
-      const response = await fetch("/api/auth/setup-email/verify", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+      const data = await request("/auth/setup-email/verify", {
+        method: "POST",
+        publicRequest: true,
         body: JSON.stringify({ challengeId, code }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Email OTP verification failed.");
       setSetupToken(data.setupToken);
-      const qrResponse = await fetch("/api/auth/setup-uri", { headers: { "X-Setup-Token": data.setupToken } });
-      const qrData = await qrResponse.json();
-      if (!qrResponse.ok) throw new Error(qrData.message || "Could not generate authenticator setup QR.");
+      const qrData = await request("/auth/setup-uri", {
+        publicRequest: true,
+        headers: { "X-Setup-Token": data.setupToken },
+      });
       setUri(qrData.otpauthUri);
     } catch (e2) { setError(e2.message); }
     finally { setBusy(false); }
