@@ -2,7 +2,7 @@ const { chromium } = require("playwright");
 const { spawn } = require("node:child_process");
 const { setTimeout: delay } = require("node:timers/promises");
 
-const BASE_URL = "http://127.0.0.1:4173";
+const BASE_URL = "http://127.0.0.1:4174";
 const viewports = [
   { name: "small-mobile", width: 320, height: 568 },
   { name: "mobile", width: 390, height: 844 },
@@ -42,7 +42,7 @@ async function waitForServer(server) {
 }
 
 function apiPayload(path, method) {
-  if (path === "/api/auth/session") return { username: "admin2026" };
+  if (path.endsWith("/auth/session")) return { username: "admin2026" };
   if (path === "/api/admin/profile") {
     return {
       fullName: "Responsive Test Owner",
@@ -115,7 +115,9 @@ async function checkViewport(page, path, viewport) {
     const response = await page.goto(BASE_URL + path, { waitUntil: "domcontentloaded" });
     assert(response && response.ok(), path + " did not return an HTML page.");
     await page.locator("#root").waitFor({ state: "attached", timeout: 10000 });
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(100);
+    const currentPath = await page.evaluate(() => window.location.pathname);
+    assert(currentPath === path, path + " was redirected to " + currentPath + "; owner-session mock did not authenticate the route.");
 
     const result = await page.evaluate(() => {
       const width = document.documentElement.clientWidth;
@@ -161,6 +163,10 @@ async function testOwnerSidebar(browser) {
   await installApiMocks(page);
   try {
     await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+    const ownerShell = await page.locator("#nkj-owner-sidebar").count();
+    const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
+    assert(ownerShell === 1 && Boolean(authToken), "Owner session did not render the owner navigation shell.");
     await page.locator(".nkj-mobile-menu-button").waitFor({ state: "visible", timeout: 10000 });
     await page.locator(".nkj-mobile-menu-button").click();
     await page.locator(".nkj-owner-sidebar:not(.is-collapsed)").waitFor({ state: "visible", timeout: 5000 });
@@ -193,8 +199,8 @@ async function testPublicNavigation(browser) {
 (async () => {
   const server = spawn(
     process.platform === "win32" ? "npm.cmd" : "npm",
-    ["run", "dev", "--", "--host", "127.0.0.1", "--port", "4173", "--strictPort"],
-    { cwd: process.cwd(), stdio: "inherit", env: process.env }
+    ["run", "dev", "--", "--host", "127.0.0.1", "--port", "4174", "--strictPort"],
+    { cwd: process.cwd(), stdio: "inherit", env: { ...process.env, VITE_API_BASE_URL: "/api" } }
   );
   let browser;
   try {
