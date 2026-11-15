@@ -275,7 +275,7 @@ public class AuthService {
     public void logout(String token, String reason) {
         if (token == null || token.isBlank()) return;
         SessionState state = sessions.remove(token);
-        String safeReason = Set.of("MANUAL_LOGOUT", "INACTIVITY_TIMEOUT", "SESSION_EXPIRED").contains(reason)
+        String safeReason = reason != null && Set.of("MANUAL_LOGOUT", "INACTIVITY_TIMEOUT", "SESSION_EXPIRED").contains(reason)
                 ? reason : "MANUAL_LOGOUT";
         if (state != null) {
             jdbc.update("""
@@ -367,11 +367,28 @@ public class AuthService {
             SessionState activeState = findActiveSessionById(id);
             Object loggedOutAt = row.get("logged_out_at");
             Object expiresAt = row.get("expires_at");
+            boolean idleExpired = loggedOutAt == null && activeState == null && isIdleTimestamp(row.get("last_active_at"));
+            boolean fixedExpired = loggedOutAt == null && isExpiredTimestamp(expiresAt);
             String status;
             if (loggedOutAt != null) status = "LOGGED_OUT";
             else if (activeState != null) status = "ACTIVE";
-            else if (isExpiredTimestamp(expiresAt) || isIdleTimestamp(row.get("last_active_at"))) status = "EXPIRED";
+            else if (idleExpired || fixedExpired) status = "EXPIRED";
             else status = "ENDED";
+
+            Instant started = toInstant(row.get("created_at"));
+            Instant lastActive = toInstant(row.get("last_active_at"));
+            Instant ended = toInstant(loggedOutAt);
+            if (ended == null && lastActive != null && activeState == null) {
+                Instant idleDeadline = lastActive.plusMillis(INACTIVITY_TTL_MILLIS);
+                Instant fixedDeadline = toInstant(expiresAt);
+                ended = fixedExpired && fixedDeadline != null ? fixedDeadline
+                        : idleExpired && (fixedDeadline == null || idleDeadline.isBefore(fixedDeadline)) ? idleDeadline : null;
+            }
+            if (ended == null && activeState != null) ended = lastActive;
+
+            Object logoutReason = row.get("logout_reason");
+            if (logoutReason == null && idleExpired) logoutReason = "INACTIVITY_TIMEOUT";
+            else if (logoutReason == null && fixedExpired) logoutReason = "SESSION_EXPIRED";
 
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("sessionId", id);
@@ -381,17 +398,8 @@ public class AuthService {
             item.put("loginAt", isoTimestamp(row.get("created_at")));
             item.put("lastActiveAt", isoTimestamp(row.get("last_active_at")));
             item.put("expiresAt", isoTimestamp(expiresAt));
-            item.put("loggedOutAt", isoTimestamp(loggedOutAt));
-            item.put("logoutReason", row.get("logout_reason"));
-            Instant started = toInstant(row.get("created_at"));
-            Instant lastActive = toInstant(row.get("last_active_at"));
-            Instant ended = toInstant(loggedOutAt);
-            if (ended == null && lastActive != null && activeState == null) {
-                Instant idleDeadline = lastActive.plusMillis(INACTIVITY_TTL_MILLIS);
-                Instant fixedDeadline = toInstant(expiresAt);
-                ended = fixedDeadline == null || idleDeadline.isBefore(fixedDeadline) ? idleDeadline : fixedDeadline;
-            }
-            if (ended == null) ended = lastActive;
+            item.put("loggedOutAt", ended == null ? null : ended.toString());
+            item.put("logoutReason", logoutReason);
             item.put("durationSeconds", started == null || ended == null ? 0L : Math.max(0L, java.time.Duration.between(started, ended).getSeconds()));
             item.put("status", status);
             item.put("current", current.id.equals(id));
