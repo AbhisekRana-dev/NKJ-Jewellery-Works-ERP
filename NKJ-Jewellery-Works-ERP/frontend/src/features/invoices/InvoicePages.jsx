@@ -2309,7 +2309,7 @@ async function createInvoiceSharePdfFile(invoice) {
   const host = document.createElement("div");
   host.setAttribute("aria-hidden", "true");
   host.style.cssText = [
-    "position:fixed", "left:0", "top:0", "width:291mm", "height:auto",
+    "position:fixed", "left:0", "top:0", "width:277mm", "height:auto",
     "overflow:visible", "pointer-events:none", "z-index:2147482999",
     "background:#fff",
   ].join(";");
@@ -2321,9 +2321,9 @@ async function createInvoiceSharePdfFile(invoice) {
     ["display", "block"],
     ["position", "relative"],
     ["inset", "auto"],
-    ["width", "291mm"],
-    ["min-width", "291mm"],
-    ["max-width", "291mm"],
+    ["width", "277mm"],
+    ["min-width", "277mm"],
+    ["max-width", "277mm"],
     ["height", "auto"],
     ["min-height", "0"],
     ["max-height", "none"],
@@ -2349,9 +2349,9 @@ async function createInvoiceSharePdfFile(invoice) {
       display: block !important;
       position: relative !important;
       inset: auto !important;
-      width: 291mm !important;
-      min-width: 291mm !important;
-      max-width: 291mm !important;
+      width: 277mm !important;
+      min-width: 277mm !important;
+      max-width: 277mm !important;
       height: auto !important;
       min-height: 0 !important;
       max-height: none !important;
@@ -2371,7 +2371,7 @@ async function createInvoiceSharePdfFile(invoice) {
        shift the first grid column outside the PDF page. */
     #invoice-print.nkj-pdf-export-root .inv-head {
       display: grid !important;
-      grid-template-columns: 30mm minmax(0, 1fr) 68mm !important;
+      grid-template-columns: 30mm minmax(0, 1fr) 72mm !important;
       width: 100% !important;
       min-width: 0 !important;
       margin-left: 0 !important;
@@ -2411,7 +2411,7 @@ async function createInvoiceSharePdfFile(invoice) {
     }
     #invoice-print.nkj-pdf-export-root .inv-main {
       display: grid !important;
-      grid-template-columns: minmax(0, 1fr) 68mm !important;
+      grid-template-columns: minmax(0, 1fr) 75mm !important;
       gap: 2mm !important;
       width: 100% !important;
       min-width: 0 !important;
@@ -2425,6 +2425,91 @@ async function createInvoiceSharePdfFile(invoice) {
       min-width: 0 !important;
       margin-left: 0 !important;
       box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-meta {
+      min-width: 0 !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-meta span {
+      display: grid !important;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) !important;
+      gap: 1mm !important;
+      min-width: 0 !important;
+      padding: 1mm 1.5mm !important;
+      box-sizing: border-box !important;
+      font-size: 7pt !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-meta span label,
+    #invoice-print.nkj-pdf-export-root .inv-meta span strong {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      font-size: 7pt !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals {
+      width: 75mm !important;
+      min-width: 0 !important;
+      max-width: 75mm !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, auto) !important;
+      gap: 1mm !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row span {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      font-size: 7pt !important;
+      line-height: 1.15 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row b {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: nowrap !important;
+      font-size: 8pt !important;
+      line-height: 1.15 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .grand {
+      grid-template-columns: minmax(0, 1fr) minmax(0, auto) !important;
+      gap: 1mm !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .grand span {
+      min-width: 0 !important;
+      white-space: normal !important;
+      font-size: 8pt !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .grand b {
+      min-width: 0 !important;
+      white-space: nowrap !important;
+      font-size: 8pt !important;
+    }
+    #invoice-print.nkj-pdf-export-root .words-sign {
+      grid-template-columns: minmax(0, 1fr) 95mm !important;
+      min-width: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .signatures {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      gap: 1mm !important;
+      min-width: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .signatures span {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      padding: 1mm .5mm 0 !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      font-size: 7pt !important;
+      line-height: 1.15 !important;
+      text-align: center !important;
     }
     #invoice-print.nkj-pdf-export-root .form-grid label {
       display: grid !important;
@@ -2498,18 +2583,23 @@ async function createInvoiceSharePdfFile(invoice) {
     }
 
     const invoiceRect = clone.getBoundingClientRect();
-    const printableHeight = 204 * 96 / 25.4;
-    if (invoiceRect.width < 1060 || invoiceRect.width > 1130 || invoiceRect.height > printableHeight) {
+    const printableWidth = 277 * 96 / 25.4;
+    const printableHeight = 190 * 96 / 25.4;
+    if (
+      invoiceRect.width < printableWidth - 24 ||
+      invoiceRect.width > printableWidth + 24 ||
+      invoiceRect.height > printableHeight
+    ) {
       throw new Error("The invoice does not fit on one A4 page with the website's print layout. PDF sharing was stopped.");
     }
 
     const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
     const blob = await html2pdf().set({
-      // Render the full-width invoice inside a 279mm content area on the
-      // 297mm A4 landscape page. The extra 9mm side margins let html2pdf
-      // scale the whole invoice proportionally instead of clipping the
-      // rightmost totals/signature columns at the page edge.
-      margin: [4, 9, 4, 9],
+      // The invoice clone is exactly 277mm wide, matching the usable width
+      // of A4 landscape after 10mm margins on both sides. Matching the
+      // DOM width to the PDF content box prevents right-edge cropping and
+      // guarantees visible white space around all four sides.
+      margin: [10, 10, 10, 10],
       filename: fileName,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
@@ -2542,7 +2632,7 @@ async function createInvoiceSharePdfFile(invoice) {
       throw new Error("The generated file is not a valid PDF. Nothing was shared.");
     }
 
-    // Do not let a portrait PDF escape: it would shrink the 291mm invoice
+    // Do not let a portrait PDF escape: it would shrink the invoice
     // into a narrow column and recreate the exact WhatsApp problem.
     const mediaBox = pdfHeader.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
     if (!mediaBox) {
