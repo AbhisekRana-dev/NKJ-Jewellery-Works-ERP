@@ -487,8 +487,10 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
     position: "fixed",
     right: "0",
     bottom: "0",
-    width: "1px",
-    height: "1px",
+    left: "-10000px",
+    top: "0",
+    width: "297mm",
+    height: "210mm",
     border: "0",
     opacity: "0",
     pointerEvents: "none",
@@ -597,7 +599,7 @@ async function printInvoiceAsPdf({ onAfterPrint } = {}) {
     const printStyle = printDocument.createElement("style");
     printStyle.textContent = `
       @page {
-        size: A4 landscape;
+        size: 297mm 210mm;
         margin: 3mm;
       }
 
