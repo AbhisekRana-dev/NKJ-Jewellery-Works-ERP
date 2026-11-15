@@ -75,6 +75,7 @@ const ownerNavigation = [
 export function Nav({ active = "home" }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
+  const [publicMenuOpen, setPublicMenuOpen] = useState(false);
   const sidebarNavRef = useRef(null);
   const ownerWorkspace = isAdmin && active !== "login";
   const persistSidebarState = (collapsed) => {
@@ -92,6 +93,33 @@ export function Nav({ active = "home" }) {
       return next;
     });
   };
+
+  useLayoutEffect(() => {
+    if (!publicMenuOpen || ownerWorkspace) return undefined;
+    const media = window.matchMedia?.("(max-width: 760px)");
+    const closeOnEscape = (event) => {
+      if (event.key !== "Escape") return;
+      setPublicMenuOpen(false);
+      document.querySelector(".nkj-public-menu-button")?.focus();
+    };
+    const closeOutside = (event) => {
+      const header = document.querySelector(".nkj-public-topbar");
+      if (header && !header.contains(event.target)) setPublicMenuOpen(false);
+    };
+    const closeOnDesktop = () => {
+      if (media && !media.matches) setPublicMenuOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOutside);
+    if (media?.addEventListener) media.addEventListener("change", closeOnDesktop);
+    else media?.addListener?.(closeOnDesktop);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOutside);
+      if (media?.removeEventListener) media.removeEventListener("change", closeOnDesktop);
+      else media?.removeListener?.(closeOnDesktop);
+    };
+  }, [publicMenuOpen, ownerWorkspace]);
 
   // Track two quick clicks on the same navigation item in sessionStorage.
   // This survives route navigation, where React may remount the sidebar between
@@ -295,21 +323,31 @@ export function Nav({ active = "home" }) {
   }
 
   return (
-    <header className="topbar">
-      <Link to="/" className="brand">
+    <header className="topbar nkj-public-topbar">
+      <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home" onClick={() => setPublicMenuOpen(false)}>
         <div><b>Nandikishor Jewellery Works</b><small>Sasra, Gopiballavpur, Jhargram</small></div>
       </Link>
-      <nav aria-label="Main navigation">
-        <Link className={active === "home" ? "active" : ""} to="/"><HomeIcon />Home</Link>
-        <Link className={active === "designs" ? "active" : ""} to="/designs"><Gem />Jewellery Designs</Link>
-        <Link className={active === "calculator" ? "active" : ""} to="/calculator"><CalculatorIcon />Calculator</Link>
-        <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }}><FileText />New Invoice</Link>
+      <button
+        type="button"
+        className="nkj-public-menu-button"
+        aria-label={publicMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-controls="nkj-public-navigation"
+        aria-expanded={publicMenuOpen}
+        onClick={() => setPublicMenuOpen((open) => !open)}
+      >
+        {publicMenuOpen ? <CloseIcon size={21} aria-hidden="true" /> : <Menu size={21} aria-hidden="true" />}
+      </button>
+      <nav id="nkj-public-navigation" className={publicMenuOpen ? "is-open" : ""} aria-label="Main navigation">
+        <Link className={active === "home" ? "active" : ""} to="/" onClick={() => setPublicMenuOpen(false)}><HomeIcon />Home</Link>
+        <Link className={active === "designs" ? "active" : ""} to="/designs" onClick={() => setPublicMenuOpen(false)}><Gem />Jewellery Designs</Link>
+        <Link className={active === "calculator" ? "active" : ""} to="/calculator" onClick={() => setPublicMenuOpen(false)}><CalculatorIcon />Calculator</Link>
+        <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }} onClick={() => setPublicMenuOpen(false)}><FileText />New Invoice</Link>
         {isAdmin ? <>
-          <Link className={active === "saved" ? "active" : ""} to="/saved-invoices"><Files />All Invoices</Link>
-          <Link className={active === "dashboard" ? "active" : ""} to="/dashboard"><LayoutDashboard />Dashboard</Link>
-          <Link className={active === "profile" ? "active" : ""} to="/profile"><User />Profile</Link>
-          <button className="navbtn" onClick={logout}><LogOut />Logout</button>
-        </> : <Link className={active === "login" ? "active" : ""} to="/login"><LogIn />Owner Login</Link>}
+          <Link className={active === "saved" ? "active" : ""} to="/saved-invoices" onClick={() => setPublicMenuOpen(false)}><Files />All Invoices</Link>
+          <Link className={active === "dashboard" ? "active" : ""} to="/dashboard" onClick={() => setPublicMenuOpen(false)}><LayoutDashboard />Dashboard</Link>
+          <Link className={active === "profile" ? "active" : ""} to="/profile" onClick={() => setPublicMenuOpen(false)}><User />Profile</Link>
+          <button className="navbtn" onClick={() => { setPublicMenuOpen(false); logout(); }}><LogOut />Logout</button>
+        </> : <Link className={active === "login" ? "active" : ""} to="/login" onClick={() => setPublicMenuOpen(false)}><LogIn />Owner Login</Link>}
       </nav>
     </header>
   );
