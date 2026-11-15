@@ -6,8 +6,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -28,9 +34,16 @@ public class AuthService {
     @Value("${nkj.setup.email:rabhisek2030@gmail.com}") private String setupEmail;
     @Value("${nkj.setup.mail-from:}") private String mailFrom;
     @Value("${spring.mail.username:}") private String smtpUsername;
+    @Value("${nkj.setup.emailjs.public-key:}") private String emailJsPublicKey;
+    @Value("${nkj.setup.emailjs.private-key:}") private String emailJsPrivateKey;
+    @Value("${nkj.setup.emailjs.service-id:}") private String emailJsServiceId;
+    @Value("${nkj.setup.emailjs.template-id:}") private String emailJsTemplateId;
 
     private final GoogleAuthenticator authenticator = new GoogleAuthenticator();
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
+    private final ObjectMapper objectMapper;
+    private final HttpClient emailHttpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10)).build();
     private final Map<String, Long> challenges = new ConcurrentHashMap<>();
     private final Map<String, Long> sessions = new ConcurrentHashMap<>();
     private final Map<String, SetupOtp> setupOtps = new ConcurrentHashMap<>();
@@ -39,8 +52,9 @@ public class AuthService {
 
     private record SetupOtp(String codeHash, long expiresAt) {}
 
-    public AuthService(ObjectProvider<JavaMailSender> mailSenderProvider) {
+    public AuthService(ObjectProvider<JavaMailSender> mailSenderProvider, ObjectMapper objectMapper) {
         this.mailSenderProvider = mailSenderProvider;
+        this.objectMapper = objectMapper;
     }
 
     public String login(String suppliedUsername, String suppliedPassword) {
@@ -72,27 +86,75 @@ public class AuthService {
     public Map<String,String> sendSetupEmailOtp(String suppliedUsername, String suppliedPassword) {
         validateCredentials(suppliedUsername, suppliedPassword);
         requireTotpSecret();
-        JavaMailSender sender = mailSenderProvider.getIfAvailable();
-        if (sender == null || smtpUsername == null || smtpUsername.isBlank()) {
-            throw new IllegalStateException("Email OTP is not configured. Add SMTP_HOST, SMTP_USERNAME and SMTP_PASSWORD to backend/.env, then restart the backend.");
+        boolean anyEmailJsSetting = hasText(emailJsPublicKey) || hasText(emailJsPrivateKey)
+                || hasText(emailJsServiceId) || hasText(emailJsTemplateId);
+        boolean emailJsConfigured = hasText(emailJsPublicKey) && hasText(emailJsPrivateKey)
+                && hasText(emailJsServiceId) && hasText(emailJsTemplateId);
+        if (anyEmailJsSetting && !emailJsConfigured) {
+            throw new IllegalStateException("EmailJS configuration is incomplete. Set EMAILJS_PUBLIC_KEY, EMAILJS_PRIVATE_KEY, EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID.");
         }
+
+        JavaMailSender sender = null;
+        if (!emailJsConfigured) {
+            sender = mailSenderProvider.getIfAvailable();
+            if (sender == null || !hasText(smtpUsername)) {
+                throw new IllegalStateException("Email OTP is not configured. Configure EmailJS over HTTPS or SMTP for local development.");
+            }
+        }
+
         String code = String.format("%06d", random.nextInt(1_000_000));
         String challengeId = randomToken();
         long expiresAt = System.currentTimeMillis() + SETUP_OTP_TTL_MILLIS;
         setupOtps.put(challengeId, new SetupOtp(sha256(code), expiresAt));
         setupOtps.entrySet().removeIf(entry -> entry.getValue().expiresAt() < System.currentTimeMillis());
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(mailFrom == null || mailFrom.isBlank() ? smtpUsername : mailFrom);
-            message.setTo(setupEmail);
-            message.setSubject("Nandikishor Jewellery Works - First-time security setup OTP");
-            message.setText("Your first-time security setup OTP is " + code + ". It expires in 5 minutes. If you did not request this, ignore this email.");
-            sender.send(message);
+            if (emailJsConfigured) {
+                sendSetupOtpWithEmailJs(code);
+            } else {
+                SimpleMailMessage message = new SimpleMailMessage();
+                message.setFrom(hasText(mailFrom) ? mailFrom : smtpUsername);
+                message.setTo(setupEmail);
+                message.setSubject("Nandikishor Jewellery Works - First-time security setup OTP");
+                message.setText("Your first-time security setup OTP is " + code + ". It expires in 5 minutes. If you did not request this, ignore this email.");
+                sender.send(message);
+            }
         } catch (Exception ex) {
             setupOtps.remove(challengeId);
-            throw new IllegalStateException("Could not send the setup OTP. Check SMTP settings and try again.", ex);
+            throw new IllegalStateException("Could not send the setup OTP. Check the configured email provider and try again.", ex);
         }
         return Map.of("challengeId", challengeId, "destination", maskEmail(setupEmail), "expiresInSeconds", "300");
+    }
+
+    private void sendSetupOtpWithEmailJs(String code) throws Exception {
+        Map<String, Object> templateParams = Map.of(
+                "to_email", setupEmail,
+                "otp_code", code,
+                "shop_name", "Nandikishor Jewellery Works",
+                "expiry_minutes", "5"
+        );
+        Map<String, Object> payload = Map.of(
+                "service_id", emailJsServiceId,
+                "template_id", emailJsTemplateId,
+                "user_id", emailJsPublicKey,
+                "accessToken", emailJsPrivateKey,
+                "template_params", templateParams
+        );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.emailjs.com/api/v1.0/email/send"))
+                .timeout(Duration.ofSeconds(20))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
+                .build();
+        HttpResponse<String> response = emailHttpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IllegalStateException("EmailJS rejected the setup OTP request (HTTP "
+                    + response.statusCode() + "). Check the EmailJS service, template and keys.");
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     public String verifySetupEmailOtp(String challengeId, String code) {
