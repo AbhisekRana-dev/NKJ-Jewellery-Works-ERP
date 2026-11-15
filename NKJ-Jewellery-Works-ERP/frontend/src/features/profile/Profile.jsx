@@ -21,10 +21,16 @@ import {
   Info,
   CheckCircle2,
   Building2,
+  History,
+  MonitorSmartphone,
+  LogOut,
+  RefreshCw,
+  Eye,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const fileRef = useRef(null);
 
   const username =
@@ -37,6 +43,15 @@ export default function Profile() {
   const [savedForm, setSavedForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sessionSummary, setSessionSummary] = useState({ activeCount: 0, historyCount: 0 });
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+  const [managerPassword, setManagerPassword] = useState("");
+  const [managerToken, setManagerToken] = useState("");
+  const [loginSessions, setLoginSessions] = useState([]);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionBusy, setSessionBusy] = useState("");
+  const [sessionMessage, setSessionMessage] = useState("");
+  const [showManagerPassword, setShowManagerPassword] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "Abhisek Rana",
@@ -75,6 +90,138 @@ export default function Profile() {
       active = false;
     };
   }, [username]);
+
+  useEffect(() => {
+    let active = true;
+    request("/auth/sessions/summary")
+      .then((data) => {
+        if (active) setSessionSummary({
+          activeCount: Number(data?.activeCount || 0),
+          historyCount: Number(data?.historyCount || 0),
+        });
+      })
+      .catch(() => {
+        if (active) setSessionSummary({ activeCount: 0, historyCount: 0 });
+      });
+    return () => { active = false; };
+  }, [username]);
+
+  const refreshSessionSummary = async () => {
+    try {
+      const data = await request("/auth/sessions/summary");
+      setSessionSummary({
+        activeCount: Number(data?.activeCount || 0),
+        historyCount: Number(data?.historyCount || 0),
+      });
+    } catch {
+      // The current profile remains usable if the session summary is unavailable.
+    }
+  };
+
+  const loadLoginSessions = async (grant = managerToken) => {
+    if (!grant) return;
+    setSessionLoading(true);
+    setSessionMessage("");
+    try {
+      const data = await request("/auth/sessions", {
+        headers: { "X-Owner-Session-Manager": grant },
+      });
+      setLoginSessions(Array.isArray(data?.sessions) ? data.sessions : []);
+      await refreshSessionSummary();
+    } catch (error) {
+      setSessionMessage(error.message || "Could not load owner login history.");
+    } finally {
+      setSessionLoading(false);
+    }
+  };
+
+  const openLoginDetails = () => {
+    setSessionDialogOpen(true);
+    setManagerPassword("");
+    setManagerToken("");
+    setLoginSessions([]);
+    setSessionMessage("");
+    setShowManagerPassword(false);
+  };
+
+  const unlockLoginDetails = async (event) => {
+    event.preventDefault();
+    if (!managerPassword) {
+      setSessionMessage("Enter the owner login-management password.");
+      return;
+    }
+    setSessionBusy("unlock");
+    setSessionMessage("");
+    try {
+      const result = await request("/auth/sessions/unlock", {
+        method: "POST",
+        body: JSON.stringify({ password: managerPassword }),
+      });
+      setManagerToken(result.managerToken);
+      setManagerPassword("");
+      await loadLoginSessions(result.managerToken);
+    } catch (error) {
+      setSessionMessage(error.message || "Owner login details could not be unlocked.");
+    } finally {
+      setSessionBusy("");
+    }
+  };
+
+  const revokeLoginSession = async (session) => {
+    if (!managerToken || !session?.sessionId) return;
+    const target = session.current ? "this device" : "this device session";
+    if (!window.confirm("Log out " + target + "? The device will need to sign in again.")) return;
+    setSessionBusy(session.sessionId);
+    setSessionMessage("");
+    try {
+      const result = await request("/auth/sessions/" + encodeURIComponent(session.sessionId) + "/logout", {
+        method: "POST",
+        headers: { "X-Owner-Session-Manager": managerToken },
+      });
+      if (result.currentSession) {
+        await logout();
+        return;
+      }
+      await loadLoginSessions(managerToken);
+    } catch (error) {
+      setSessionMessage(error.message || "Could not log out that device.");
+    } finally {
+      setSessionBusy("");
+    }
+  };
+
+  const revokeOtherLoginSessions = async () => {
+    if (!managerToken) return;
+    if (!window.confirm("Log out every other owner device? This device will stay signed in.")) return;
+    setSessionBusy("others");
+    setSessionMessage("");
+    try {
+      const result = await request("/auth/sessions/logout-others", {
+        method: "POST",
+        headers: { "X-Owner-Session-Manager": managerToken },
+      });
+      setSessionMessage((result.loggedOutCount || 0) + " other active device(s) signed out.");
+      await loadLoginSessions(managerToken);
+    } catch (error) {
+      setSessionMessage(error.message || "Could not sign out other devices.");
+    } finally {
+      setSessionBusy("");
+    }
+  };
+
+  const closeLoginDetails = () => {
+    setSessionDialogOpen(false);
+    setManagerPassword("");
+    setManagerToken("");
+    setLoginSessions([]);
+    setSessionMessage("");
+  };
+
+  const formatSessionDate = (value) => {
+    if (!value) return "Not available";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "Not available" : date.toLocaleString();
+  };
 
   const refreshProfile = async () => {
     if (editing) return;
@@ -489,11 +636,144 @@ export default function Profile() {
                     TOTP Setup
                   </Link>
                 </div>
+
+                <div className="nk-security-row">
+                  <div className="nk-security-icon">
+                    <History size={27} />
+                  </div>
+                  <div className="nk-security-info">
+                    <strong>Owner Login History</strong>
+                    <span>
+                      {sessionSummary.activeCount} active login(s) · {sessionSummary.historyCount} record(s) in the last 30 days
+                    </span>
+                  </div>
+                  <button type="button" className="nk-security-btn" onClick={openLoginDetails}>
+                    <Eye size={16} /> View Details
+                  </button>
+                </div>
               </section>
             </div>
           </main>
         </div>
       </div>
+
+      {sessionDialogOpen && (
+        <div className="nk-session-overlay" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) closeLoginDetails();
+        }}>
+          <section className="nk-session-modal" role="dialog" aria-modal="true" aria-labelledby="nk-session-title">
+            <header className="nk-session-heading">
+              <div className="nk-session-title-icon"><History size={25} /></div>
+              <div>
+                <h2 id="nk-session-title">Owner Login Details</h2>
+                <p>Review login history and manage active devices.</p>
+              </div>
+              <button type="button" className="nk-session-close" onClick={closeLoginDetails} aria-label="Close login history">
+                <X size={22} />
+              </button>
+            </header>
+
+            {!managerToken ? (
+              <form className="nk-session-unlock" onSubmit={unlockLoginDetails}>
+                <div className="nk-session-lock-icon"><LockKeyhole size={30} /></div>
+                <h3>Verify owner access</h3>
+                <p>Enter the separate owner login-management password to view history or sign out devices.</p>
+                <label htmlFor="owner-session-manager-password">Owner management password</label>
+                <div className="nk-session-password-wrap">
+                  <input
+                    id="owner-session-manager-password"
+                    type={showManagerPassword ? "text" : "password"}
+                    value={managerPassword}
+                    onChange={(event) => setManagerPassword(event.target.value)}
+                    autoComplete="current-password"
+                    placeholder="Enter management password"
+                    required
+                  />
+                  <button type="button" onClick={() => setShowManagerPassword((value) => !value)}>
+                    {showManagerPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <button className="nk-session-primary" type="submit" disabled={sessionBusy === "unlock"}>
+                  <ShieldCheck size={17} />
+                  {sessionBusy === "unlock" ? "Verifying…" : "Unlock Login History"}
+                </button>
+              </form>
+            ) : (
+              <div className="nk-session-content">
+                <div className="nk-session-summary">
+                  <div>
+                    <strong>{sessionSummary.activeCount}</strong>
+                    <span>Active login(s)</span>
+                  </div>
+                  <div>
+                    <strong>{loginSessions.length}</strong>
+                    <span>Recent history records</span>
+                  </div>
+                  <button type="button" onClick={() => loadLoginSessions()} disabled={sessionLoading}>
+                    <RefreshCw size={16} /> Refresh
+                  </button>
+                </div>
+                <div className="nk-session-toolbar">
+                  <div>
+                    <strong>Login activity</strong>
+                    <span>Latest 50 login records · access unlock expires after 5 minutes</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="nk-session-danger"
+                    onClick={revokeOtherLoginSessions}
+                    disabled={sessionBusy === "others" || sessionSummary.activeCount <= 1}
+                  >
+                    <LogOut size={16} /> {sessionBusy === "others" ? "Signing out…" : "Logout other devices"}
+                  </button>
+                </div>
+
+                {sessionLoading && <div className="nk-session-empty">Loading login history…</div>}
+                {!sessionLoading && loginSessions.length === 0 && (
+                  <div className="nk-session-empty">No login history has been recorded yet. New logins will appear here.</div>
+                )}
+                <div className="nk-session-list">
+                  {loginSessions.map((session) => (
+                    <article className="nk-session-item" key={session.sessionId}>
+                      <div className="nk-session-device-icon"><MonitorSmartphone size={24} /></div>
+                      <div className="nk-session-device">
+                        <div className="nk-session-device-title">
+                          <strong>{session.device || "Unknown device"}</strong>
+                          {session.current && <span className="nk-session-current">This device</span>}
+                          <span className={"nk-session-status " + String(session.status || "ENDED").toLowerCase().replaceAll("_", "-")}>
+                            {String(session.status || "ENDED").replaceAll("_", " ")}
+                          </span>
+                        </div>
+                        <div className="nk-session-meta">
+                          <span>IP: {session.ipAddress || "Not available"}</span>
+                          <span>Login: {formatSessionDate(session.loginAt)}</span>
+                          <span>Last active: {formatSessionDate(session.lastActiveAt)}</span>
+                        </div>
+                      </div>
+                      {session.status === "ACTIVE" && (
+                        <button
+                          type="button"
+                          className="nk-session-logout"
+                          onClick={() => revokeLoginSession(session)}
+                          disabled={Boolean(sessionBusy)}
+                        >
+                          <LogOut size={16} /> {sessionBusy === session.sessionId ? "Signing out…" : "Logout"}
+                        </button>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sessionMessage && <div className="nk-session-message" role="status">{sessionMessage}</div>}
+            <footer className="nk-session-footer">
+              <ShieldAlert size={16} />
+              <span>Only this authenticated owner account can view or revoke its login sessions. Never share this management password.</span>
+            </footer>
+          </section>
+        </div>
+      )}
     </>
   );
 }
