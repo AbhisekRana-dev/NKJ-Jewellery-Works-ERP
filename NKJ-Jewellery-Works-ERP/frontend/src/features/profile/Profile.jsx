@@ -220,7 +220,26 @@ export default function Profile() {
   const formatSessionDate = (value) => {
     if (!value) return "Not available";
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? "Not available" : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? "Not available" : new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short",
+    }).format(date);
+  };
+
+  const formatSessionDuration = (seconds) => {
+    const total = Math.max(0, Number(seconds) || 0);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const remainingSeconds = total % 60;
+    if (hours) return hours + "h " + minutes + "m";
+    if (minutes) return minutes + "m " + remainingSeconds + "s";
+    return remainingSeconds + "s";
+  };
+
+  const formatLogoutReason = (reason, status) => {
+    if (reason === "INACTIVITY_TIMEOUT") return "Automatic Logout (30 min inactivity)";
+    if (reason === "SESSION_EXPIRED" || status === "EXPIRED") return "Session Expired";
+    if (reason === "MANUAL_LOGOUT" || reason === "REVOKED_BY_OWNER") return "Manual Logout";
+    return status === "ACTIVE" ? "Currently Active" : "Not recorded";
   };
 
   const refreshProfile = async () => {
@@ -716,7 +735,7 @@ export default function Profile() {
                 <div className="nk-session-toolbar">
                   <div>
                     <strong>Login activity</strong>
-                    <span>Latest 50 login records · access unlock expires after 5 minutes</span>
+                    <span>Login records retained for 24 hours · access unlock expires after 5 minutes</span>
                   </div>
                   <button
                     type="button"
@@ -748,6 +767,9 @@ export default function Profile() {
                           <span>IP: {session.ipAddress || "Not available"}</span>
                           <span>Login: {formatSessionDate(session.loginAt)}</span>
                           <span>Last active: {formatSessionDate(session.lastActiveAt)}</span>
+                          <span>Logout: {formatSessionDate(session.loggedOutAt)}</span>
+                          <span>Duration: {formatSessionDuration(session.durationSeconds)}</span>
+                          <span>Reason: {formatLogoutReason(session.logoutReason, session.status)}</span>
                         </div>
                       </div>
                       {session.status === "ACTIVE" && (
