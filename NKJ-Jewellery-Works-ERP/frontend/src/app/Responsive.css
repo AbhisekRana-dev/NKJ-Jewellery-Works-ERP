@@ -161,7 +161,7 @@ body.nkj-owner-layout .jewellery-footer,body.nkj-owner-layout:has(.nkj-owner-sid
   .nkj-refund-modal form { padding: 13px; }
   .nkj-refund-modal form > footer { flex-direction: column-reverse; }
   .nkj-refund-modal form > footer button { width: 100%; }
-  .nkj-profile-heading { flex-direction: column; align-items: flex-start; }
+  .nk-profile-heading { flex-direction: column; align-items: flex-start; }
   .nkj-invoice-toolbar { justify-content: flex-start; }
 }
 @media screen and (max-width: 374px) {
