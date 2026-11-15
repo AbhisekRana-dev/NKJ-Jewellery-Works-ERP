@@ -821,3 +821,53 @@
     max-height: calc(100dvh - 62px) !important;
   }
 }
+
+
+/* Touch controls and mobile form ergonomics. */
+@media screen and (max-width: 760px) {
+  :where(input, select, textarea) {
+    min-width: 0;
+    max-width: 100%;
+    font-size: max(16px, 1em) !important;
+  }
+
+  :where(button:not(.icon-btn):not(.nkj-modal-close):not(.nkj-owner-sidebar-bottom button),
+    .primary, .secondary, .small-action, a[role="button"]) {
+    min-height: 42px;
+    touch-action: manipulation;
+  }
+
+  :where(button, a, input, select, textarea):focus-visible {
+    outline-offset: 3px;
+  }
+
+  .nkj-calc-manual-keypad-area {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .nkj-calc-with-history,
+  .nkj-calc-ornament-layout,
+  .nkj-calc-diamond-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .nkj-calc-manual {
+    width: 100%;
+    max-width: 430px;
+    margin-inline: auto;
+  }
+
+  .nkj-calculator-options {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .nkj-calculator-options > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
