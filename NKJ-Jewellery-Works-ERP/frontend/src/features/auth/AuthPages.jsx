@@ -111,11 +111,18 @@ export function Login() {
   const submittingRef = useRef(false);
 
   useEffect(() => {
-    const notice = sessionStorage.getItem("nkj_login_notice");
-    if (notice) {
+    const showNotice = (notice) => {
+      if (!notice) return;
       setError(notice);
+      localStorage.removeItem("nkj_login_notice");
       sessionStorage.removeItem("nkj_login_notice");
-    }
+    };
+    showNotice(localStorage.getItem("nkj_login_notice") || sessionStorage.getItem("nkj_login_notice"));
+    const onStorage = (event) => {
+      if (event.key === "nkj_login_notice" && event.newValue) showNotice(event.newValue);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   if (isAdmin) return <NavigateHome />;
