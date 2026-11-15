@@ -101,24 +101,16 @@ async function run() {
         body: "",
       }));
 
-      // First check public/login screens with no owner credential.
-      await context.clearCookies();
-      await page.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
-      try {
-        await page.waitForFunction(() => {
-          const root = document.getElementById("root");
-          return Boolean(root && root.children.length > 0);
-        }, { timeout: 8000 });
-      } catch {
-        const details = await page.evaluate(() => ({
-          path: location.pathname,
-          rootHtml: document.getElementById("root")?.innerHTML.slice(0, 3500) || "empty root",
-          bodyText: document.body.innerText.slice(0, 1200),
-          scripts: Array.from(document.scripts).map((item) => item.src),
-        })).catch((error) => ({ diagnosticsError: error.message }));
-        throw new Error("Login page did not mount at " + viewport.name + ": " +
-          JSON.stringify(details) + " React errors: " + pageErrors.join(" | "));
-      }
+      // Boot from the known public Calculator route, then navigate to Login
+      // inside BrowserRouter so this checks the actual SPA login screen.
+      await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => document.getElementById("root")?.children.length > 0, { timeout: 8000 });
+      await page.evaluate(() => {
+        window.history.pushState({}, "", "/login");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+      await page.waitForFunction(() => location.pathname === "/login" &&
+        document.getElementById("root")?.innerText?.includes("Account Login"), { timeout: 8000 });
       await page.waitForTimeout(120);
       try {
         await inspectPage(page, "/login", viewport);
@@ -126,12 +118,15 @@ async function run() {
         failures.push(error.message);
       }
 
-      // Install a fake CI-only token so owner routes pass the client-side Guard.
+      // Install a fake CI-only token and reload so AuthProvider validates it
+      // through the mocked session endpoint before owner route checks.
       await page.evaluate(() => {
         localStorage.setItem("nkj_token", "responsive-ci-only-token");
         localStorage.setItem("nkj_user", "responsive-ci-owner");
         localStorage.setItem("nkj_last_activity", String(Date.now()));
       });
+      await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => document.getElementById("root")?.innerText?.length > 0, { timeout: 8000 });
 
       for (const route of publicRoutes.filter((item) => item !== "/login")) {
         try {
