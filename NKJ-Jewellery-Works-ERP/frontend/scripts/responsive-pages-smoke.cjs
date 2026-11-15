@@ -80,6 +80,7 @@ async function run() {
       const page = await context.newPage();
       const pageErrors = [];
       page.setDefaultTimeout(8000);
+      page.on("pageerror", (error) => pageErrors.push(error.stack || error.message));
       page.on("pageerror", (error) => pageErrors.push(error.message));
 
       // Register the broad offline mock first. Playwright gives newer matching
@@ -103,7 +104,21 @@ async function run() {
       // First check public/login screens with no owner credential.
       await context.clearCookies();
       await page.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
-      await page.locator("#root > *").first().waitFor({ state: "visible" });
+      try {
+        await page.waitForFunction(() => {
+          const root = document.getElementById("root");
+          return Boolean(root && root.children.length > 0);
+        }, { timeout: 8000 });
+      } catch {
+        const details = await page.evaluate(() => ({
+          path: location.pathname,
+          rootHtml: document.getElementById("root")?.innerHTML.slice(0, 3500) || "empty root",
+          bodyText: document.body.innerText.slice(0, 1200),
+          scripts: Array.from(document.scripts).map((item) => item.src),
+        })).catch((error) => ({ diagnosticsError: error.message }));
+        throw new Error("Login page did not mount at " + viewport.name + ": " +
+          JSON.stringify(details) + " React errors: " + pageErrors.join(" | "));
+      }
       await page.waitForTimeout(120);
       try {
         await inspectPage(page, "/login", viewport);
@@ -121,7 +136,7 @@ async function run() {
       for (const route of publicRoutes.filter((item) => item !== "/login")) {
         try {
           await page.goto(BASE_URL + route, { waitUntil: "domcontentloaded" });
-          await page.locator("#root > *").first().waitFor({ state: "visible" });
+          await page.waitForFunction(() => document.getElementById("root")?.children.length > 0, { timeout: 8000 });
           await page.waitForTimeout(120);
           await inspectPage(page, route, viewport);
         } catch (error) {
