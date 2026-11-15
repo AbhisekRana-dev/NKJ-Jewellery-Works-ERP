@@ -163,6 +163,17 @@ export function Nav({ active = "home" }) {
   }, [ownerWorkspace]);
 
   useLayoutEffect(() => {
+    if (!ownerWorkspace || !window.matchMedia?.("(max-width: 760px)").matches || sidebarCollapsed) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key !== "Escape") return;
+      setSidebarCollapsed(true);
+      document.querySelector(".nkj-mobile-menu-button")?.focus();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [ownerWorkspace, sidebarCollapsed]);
+
+  useLayoutEffect(() => {
     if (!ownerWorkspace || !sidebarNavRef.current) return;
     try {
       const savedScroll = Number(window.sessionStorage.getItem(SIDEBAR_SCROLL_KEY) || 0);
