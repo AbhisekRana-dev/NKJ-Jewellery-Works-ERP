@@ -1262,7 +1262,7 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
    - Does not rotate or transform the invoice
    ========================================================= */
 @page {
-  size: A4 landscape;
+  size: 297mm 210mm;
   margin: 3mm;
 }
 
@@ -1946,7 +1946,7 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
    Single print geometry shared by new and saved invoices.
    ========================================================= */
 @page {
-  size: A4 landscape;
+  size: 297mm 210mm;
   margin: 3mm;
 }
 
