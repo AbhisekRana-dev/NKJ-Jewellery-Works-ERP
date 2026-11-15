@@ -82,6 +82,13 @@ async function run() {
       page.setDefaultTimeout(8000);
       page.on("pageerror", (error) => pageErrors.push(error.message));
 
+      // Register the broad offline mock first. Playwright gives newer matching
+      // routes precedence, so specific auth/event fixtures must follow it.
+      await page.route("**/api/**", (route) => route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Responsive smoke test: backend is intentionally offline." }),
+      }));
       await page.route("**/api/auth/session", (route) => route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -91,11 +98,6 @@ async function run() {
         status: 200,
         contentType: "text/event-stream",
         body: "",
-      }));
-      await page.route("**/api/**", (route) => route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({ message: "Responsive smoke test: backend is intentionally offline." }),
       }));
 
       // First check public/login screens with no owner credential.
