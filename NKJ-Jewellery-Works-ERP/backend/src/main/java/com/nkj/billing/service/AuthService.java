@@ -38,7 +38,7 @@ public class AuthService {
     private static final long SETUP_OTP_TTL_MILLIS = 5 * 60 * 1000L;
     private static final long SETUP_TOKEN_TTL_MILLIS = 10 * 60 * 1000L;
     private static final long SESSION_MANAGER_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
-    private static final long SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS = 30 * 1000L;
+    private static final long SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS = 10 * 1000L;
     private static final long SESSION_MANAGER_LOCK_MILLIS = 15 * 60 * 1000L;
     private static final int MAX_SESSION_MANAGER_ATTEMPTS = 5;
 
