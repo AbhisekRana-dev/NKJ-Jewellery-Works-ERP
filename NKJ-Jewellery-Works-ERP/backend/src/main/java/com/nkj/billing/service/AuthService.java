@@ -271,7 +271,12 @@ public class AuthService {
                 .filter(state -> state.expiresAt >= now)
                 .map(state -> state.id).distinct().count();
         Long historyCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM owner_login_sessions WHERE username=? AND created_at >= NOW() - INTERVAL '30 days'",
+                """
+                SELECT COUNT(*) FROM owner_login_sessions
+                 WHERE username=?
+                   AND created_at >= NOW() - INTERVAL '30 days'
+                   AND (logged_out_at IS NULL OR logged_out_at >= NOW() - INTERVAL '24 hours')
+                """,
                 Long.class, username);
         return Map.of("activeCount", activeCount, "historyCount", historyCount == null ? 0L : historyCount, "maxActive", 0);
     }
@@ -314,6 +319,7 @@ public class AuthService {
                    expires_at, logged_out_at
               FROM owner_login_sessions
              WHERE username=?
+               AND (logged_out_at IS NULL OR logged_out_at >= NOW() - INTERVAL '24 hours')
              ORDER BY created_at DESC
              LIMIT 50
             """, username);
