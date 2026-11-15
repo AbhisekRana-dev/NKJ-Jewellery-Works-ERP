@@ -491,4 +491,6 @@ body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed)
   }
 }
 
-@media screen and (max-width:760px){body.nkj-owner-layout .jewellery-footer,body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .jewellery-footer{width:100%!important;max-width:100%!important;margin-left:0!important}}
+@media screen and (max-width:760px){
+body.nkj-owner-layout .jewellery-footer,body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .jewellery-footer{width:100%!important;max-width:100%!important;margin-left:0!important}
+}

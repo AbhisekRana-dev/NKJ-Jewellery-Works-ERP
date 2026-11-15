@@ -7,6 +7,7 @@ import {
   BarChart3,
   Crown,
   Diamond,
+  Gem,
   FileText,
   FolderClosed,
   Headset,
@@ -27,6 +28,7 @@ const defaultMetalRates = {
   gold24kRate: 0,
   gold22kRate: 0,
   silverRate: 0,
+  diamondRate: 0,
   rateMode: "MANUAL",
   rateSource: "Legacy rate - verify before use",
   newspaperVerified: false,
@@ -49,6 +51,7 @@ export function Home() {
     gold24kRate: "",
     gold22kRate: "",
     silverRate: "",
+    diamondRate: "",
   });
   const [showRateEditor, setShowRateEditor] = useState(false);
   const [rateSaving, setRateSaving] = useState(false);
@@ -66,7 +69,7 @@ export function Home() {
 
   useEffect(() => {
     let active = true;
-    request("/rates")
+    request("/rates", { cache: "no-store" })
       .then((data) => {
         if (!active || !data) return;
         const nextRates = { ...defaultMetalRates, ...data };
@@ -76,6 +79,7 @@ export function Home() {
           gold24kRate: configured ? String(Number(nextRates.gold24kRate || 0) * 10 || "") : "",
           gold22kRate: configured ? String(Number(nextRates.gold22kRate || 0) * 10 || "") : "",
           silverRate: configured ? String(Number(nextRates.silverRate || 0) * 10 || "") : "",
+          diamondRate: Number(nextRates.diamondRate) > 0 ? String(Number(nextRates.diamondRate)) : "",
         });
       })
       .catch((error) => {
@@ -88,7 +92,7 @@ export function Home() {
 
   const refreshRates = async () => {
     try {
-      const data = await request("/rates");
+      const data = await request("/rates", { cache: "no-store" });
       if (!data) return;
       const nextRates = { ...defaultMetalRates, ...data };
       setRates(nextRates);
@@ -98,6 +102,7 @@ export function Home() {
           gold24kRate: configured ? String(Number(nextRates.gold24kRate || 0) * 10 || "") : "",
           gold22kRate: configured ? String(Number(nextRates.gold22kRate || 0) * 10 || "") : "",
           silverRate: configured ? String(Number(nextRates.silverRate || 0) * 10 || "") : "",
+          diamondRate: Number(nextRates.diamondRate) > 0 ? String(Number(nextRates.diamondRate)) : "",
         });
       }
     } catch (error) {
@@ -108,6 +113,8 @@ export function Home() {
   useRealtimeRefresh(refreshRates, ["rates"]);
 
   const ratesConfigured = Boolean(rates.ownerVerified || rates.newspaperVerified) && Number(rates.gold24kRate) > 0 && Number(rates.gold22kRate) > 0 && Number(rates.silverRate) > 0;
+  const diamondRateConfigured = Number(rates.diamondRate) > 0;
+  const rateIsLive = rates.rateMode === "AUTO" && Boolean(rates.rateFreshToday);
 
   const openRateEditor = () => {
     if (!isAdmin) {
@@ -118,6 +125,7 @@ export function Home() {
       gold24kRate: ratesConfigured && Number(rates.gold24kRate) > 0 ? String(Number(rates.gold24kRate) * 10) : "",
       gold22kRate: ratesConfigured ? String(Number(rates.gold22kRate) * 10) : "",
       silverRate: ratesConfigured ? String(Number(rates.silverRate) * 10) : "",
+      diamondRate: Number(rates.diamondRate) > 0 ? String(Number(rates.diamondRate)) : "",
     });
     setRateMessage("");
     setRateError("");
@@ -132,11 +140,13 @@ export function Home() {
     const gold24kRate = rateForm.gold24kRate === "" ? null : Number(rateForm.gold24kRate);
     const gold22kRate = Number(rateForm.gold22kRate);
     const silverRate = Number(rateForm.silverRate);
+    const diamondRate = Number(rateForm.diamondRate);
     if (
-      !Number.isFinite(gold24kRate) || !Number.isFinite(gold22kRate) || !Number.isFinite(silverRate) ||
-      gold24kRate <= 0 || gold22kRate <= 0 || silverRate <= 0
+      !Number.isFinite(gold24kRate) || !Number.isFinite(gold22kRate) ||
+      !Number.isFinite(silverRate) || !Number.isFinite(diamondRate) ||
+      gold24kRate <= 0 || gold22kRate <= 0 || silverRate <= 0 || diamondRate <= 0
     ) {
-      setRateError("Enter valid positive 24K, 22K and 999 silver rates per 10 grams.");
+      setRateError("Enter valid positive gold and silver rates per 10 grams and a Diamond rate per carat.");
       return;
     }
 
@@ -148,11 +158,33 @@ export function Home() {
           gold24kRate: gold24kRate / 10,
           gold22kRate: gold22kRate / 10,
           silverRate: silverRate / 10,
+          diamondRate,
         }),
       });
-      setRates({ ...defaultMetalRates, ...updated });
+
+      // Always read the current database-backed value after the PUT. Bypass
+      // browser/proxy caches so a stale GET cannot mask a successful update.
+      const confirmedRates = await request("/rates", { cache: "no-store" });
+      const returnedDiamondRate = Number(updated?.diamondRate);
+      const savedDiamondRate = Number(confirmedRates?.diamondRate);
+      if (!Number.isFinite(savedDiamondRate) || Math.abs(savedDiamondRate - diamondRate) >= 0.005) {
+        const putValue = Number.isFinite(returnedDiamondRate) ? returnedDiamondRate.toFixed(2) : "missing";
+        const readValue = Number.isFinite(savedDiamondRate) ? savedDiamondRate.toFixed(2) : "missing";
+        throw new Error(
+          `Diamond rate save could not be verified. PUT response: ₹${putValue}; fresh GET /rates: ₹${readValue}. `
+          + "The running backend may be outdated or connected to a different database. Check the backend port (Vite proxy default: 8086), confirm Flyway V47 is applied to that database, and restart the backend from this branch."
+        );
+      }
+
+      setRates({ ...defaultMetalRates, ...confirmedRates });
+      setRateForm({
+        gold24kRate: String(gold24kRate),
+        gold22kRate: String(gold22kRate),
+        silverRate: String(silverRate),
+        diamondRate: String(savedDiamondRate),
+      });
       setShowRateEditor(false);
-      setRateMessage("Gold and silver rates updated successfully.");
+      setRateMessage("Gold, silver and diamond rates updated and verified successfully.");
     } catch (error) {
       setRateError(error.message || "Could not update metal rates.");
     } finally {
@@ -186,42 +218,54 @@ export function Home() {
           <section className="nkj-public-market-services">
             <div className="nkj-public-rate-card nkj-rate-premium">
               <div className="nkj-public-card-heading nkj-public-rate-heading">
-                <h3><BarChart3 size={22} /> Gold &amp; Silver Rate</h3>
-                <div className="nkj-rate-source">
-                  {rates.newspaperVerified ? <span className="nkj-rate-live-dot"/> : <span className="nkj-rate-manual-dot"/>}
-                  {rates.newspaperVerified ? "TODAY'S PAPER RATE" : rates.rateSource === "Anandabazar Patrika" && rates.rateDate ? "LAST PUBLISHED RATE" : rates.rateMode === "AUTO" ? "AUTO MODE · WAITING FOR TODAY'S ISSUE" : ratesConfigured ? "MANUAL RATE" : "RATE NOT VERIFIED"}
-                  <span>·</span> ₹ / 10 grams
+                <h3><BarChart3 size={22} /> Gold, Silver &amp; Diamond Rate</h3>
+                <div className="nkj-rate-board-status">
+                  <span className={rateIsLive ? "nkj-rate-live-dot" : "nkj-rate-manual-dot"} />
+                  <b>KOLKATA RATE</b>
+                  <i>•</i>
+                  <b>{rateIsLive ? "LIVE UPDATE" : ratesConfigured ? "MANUAL UPDATE" : "RATE NOT VERIFIED"}</b>
                 </div>
                 {isAdmin && <button
                   type="button"
                   className="nkj-public-edit-rate"
                   onClick={openRateEditor}
-                  aria-label="Edit gold and silver rates"
-                  title="Edit gold and silver rates"
+                  aria-label="Edit gold, silver and diamond rates"
+                  title="Edit gold, silver and diamond rates"
                 >
                   <span aria-hidden="true">✎</span> Edit Rate
                 </button>}
               </div>
-              <div className="nkj-public-rate-values nkj-public-rate-values-three">
+              <div className="nkj-public-rate-values nkj-public-rate-values-four">
                 <div className="nkj-public-rate-item nkj-public-gold-rate">
                   <span className="nkj-public-metal-bars nkj-public-gold-bars" aria-hidden="true"><i /><i /><i /></span>
                   <div className="nkj-public-rate-copy">
                     <b>Gold (24K)</b>
-                    <strong>{ratesConfigured ? `₹ ${displayRate(Number(rates.gold24kRate) * 10)}` : "—"} <small>/ 10 gram</small></strong>
+                    <strong>{ratesConfigured ? `₹ ${displayRate(Number(rates.gold24kRate) * 10)}` : "—"}</strong>
+                    <small>/ 10 gm</small>
                   </div>
                 </div>
                 <div className="nkj-public-rate-item nkj-public-gold-rate">
                   <span className="nkj-public-metal-bars nkj-public-gold-bars" aria-hidden="true"><i /><i /><i /></span>
                   <div className="nkj-public-rate-copy">
                     <b>Gold (22K)</b>
-                    <strong>{ratesConfigured ? `₹ ${displayRate(Number(rates.gold22kRate) * 10)}` : "—"} <small>/ 10 gram</small></strong>
+                    <strong>{ratesConfigured ? `₹ ${displayRate(Number(rates.gold22kRate) * 10)}` : "—"}</strong>
+                    <small>/ 10 gm</small>
                   </div>
                 </div>
                 <div className="nkj-public-rate-item nkj-public-silver-rate">
                   <span className="nkj-public-metal-bars nkj-public-silver-bars" aria-hidden="true"><i /><i /><i /></span>
                   <div className="nkj-public-rate-copy">
                     <b>Silver (999)</b>
-                    <strong>{ratesConfigured ? `₹ ${displayRate(Number(rates.silverRate) * 10)}` : "—"} <small>/ 10 gram</small></strong>
+                    <strong>{ratesConfigured ? `₹ ${displayRate(Number(rates.silverRate) * 10)}` : "—"}</strong>
+                    <small>/ 10 gm</small>
+                  </div>
+                </div>
+                <div className="nkj-public-rate-item nkj-public-diamond-rate">
+                  <span className="nkj-public-diamond-icon" aria-hidden="true"><Gem size={36} /></span>
+                  <div className="nkj-public-rate-copy">
+                    <b>Diamond</b>
+                    <strong>{diamondRateConfigured ? `₹ ${displayRate(rates.diamondRate)}` : "—"}</strong>
+                    <small>/ Carat</small>
                   </div>
                 </div>
               </div>
@@ -320,8 +364,8 @@ export function Home() {
             <div className="nkj-rate-editor-heading">
               <div>
                 <span className="eyebrow">ADMINISTRATOR ONLY</span>
-                <h2 id="nkj-rate-editor-title">Update Gold &amp; Silver Rates</h2>
-                <p>Enter the newspaper/shop rate per 10 grams. Manual updates are not labelled as newspaper live rates.</p>
+                <h2 id="nkj-rate-editor-title">Update Gold, Silver &amp; Diamond Rates</h2>
+                <p>Enter gold and silver rates per 10 grams and the Diamond rate per carat. Manual updates are not labelled as newspaper live rates.</p>
               </div>
               <button type="button" className="nkj-rate-editor-close" onClick={() => setShowRateEditor(false)} disabled={rateSaving} aria-label="Close rate editor">
                 <X size={20} />
@@ -340,6 +384,10 @@ export function Home() {
               <label>
                 <span>Silver (999) — ₹ per 10 grams</span>
                 <input type="number" min="0.01" step="0.01" value={rateForm.silverRate} onChange={(event) => setRateForm((current) => ({ ...current, silverRate: event.target.value }))} required />
+              </label>
+              <label>
+                <span>Diamond — ₹ per carat</span>
+                <input type="number" min="0.01" step="0.01" value={rateForm.diamondRate} onChange={(event) => setRateForm((current) => ({ ...current, diamondRate: event.target.value }))} required placeholder="Enter Diamond rate per carat" />
               </label>
               {rateError && <p className="error">{rateError}</p>}
               <div className="nkj-rate-editor-actions">

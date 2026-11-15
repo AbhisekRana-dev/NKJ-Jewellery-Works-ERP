@@ -5,7 +5,8 @@ import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
-  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem,
+  Wrench, ChevronRight, ChevronDown, ArrowLeftRight, Calculator as CalculatorIcon, Gem, MapPin,
+  Menu, X as CloseIcon,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
@@ -78,6 +79,7 @@ export function Nav({ active = "home" }) {
   const ownerWorkspace = isAdmin && active !== "login";
   const persistSidebarState = (collapsed) => {
     try {
+      if (window.matchMedia?.("(max-width: 760px)").matches) return;
       window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
     } catch {
       // Keep the sidebar interactive if browser storage is unavailable.
@@ -126,28 +128,39 @@ export function Nav({ active = "home" }) {
     body.classList.toggle("nkj-owner-layout", ownerWorkspace);
     body.classList.toggle("nkj-owner-sidebar-collapsed", ownerWorkspace && sidebarCollapsed);
     body.classList.toggle("invoice-page", active === "invoice");
+    const mobileMenuOpen = ownerWorkspace
+      && window.matchMedia?.("(max-width: 760px)").matches
+      && !sidebarCollapsed;
+    const previousBodyOverflow = body.style.overflow;
+    body.classList.toggle("nkj-mobile-sidebar-open", Boolean(mobileMenuOpen));
+    if (mobileMenuOpen) body.style.overflow = "hidden";
 
-    if (ownerWorkspace) {
+    if (ownerWorkspace && !window.matchMedia?.("(max-width: 760px)").matches) {
       try {
         window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
       } catch {
         // The sidebar remains usable when browser storage is unavailable.
       }
     }
+
+    return () => {
+      body.classList.remove("nkj-mobile-sidebar-open");
+      body.style.overflow = previousBodyOverflow;
+    };
   }, [active, ownerWorkspace, sidebarCollapsed]);
 
   useLayoutEffect(() => {
     if (!ownerWorkspace) return undefined;
-    const body = document.body;
-    const mobileOpen = window.matchMedia?.("(max-width: 760px)").matches && !sidebarCollapsed;
-    body.classList.toggle("nkj-mobile-sidebar-open", Boolean(mobileOpen));
-    const previousOverflow = body.style.overflow;
-    if (mobileOpen) body.style.overflow = "hidden";
+    const media = window.matchMedia?.("(max-width: 760px)");
+    if (!media) return undefined;
+    const syncSidebarToViewport = () => setSidebarCollapsed(media.matches ? true : initialSidebarState());
+    if (media.addEventListener) media.addEventListener("change", syncSidebarToViewport);
+    else media.addListener?.(syncSidebarToViewport);
     return () => {
-      body.classList.remove("nkj-mobile-sidebar-open");
-      body.style.overflow = previousOverflow;
+      if (media.removeEventListener) media.removeEventListener("change", syncSidebarToViewport);
+      else media.removeListener?.(syncSidebarToViewport);
     };
-  }, [ownerWorkspace, sidebarCollapsed]);
+  }, [ownerWorkspace]);
 
   useLayoutEffect(() => {
     if (!ownerWorkspace || !sidebarNavRef.current) return;
@@ -162,8 +175,14 @@ export function Nav({ active = "home" }) {
   if (ownerWorkspace) {
     return (
       <>
-        <button type="button" className="nkj-mobile-sidebar-backdrop" aria-label="Close navigation menu" tabIndex={sidebarCollapsed ? -1 : 0} onClick={() => setSidebarCollapsed(true)} />
-        <aside className={`nkj-owner-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`} aria-label="Owner navigation">
+        <button
+          type="button"
+          className="nkj-mobile-sidebar-backdrop"
+          aria-label="Close navigation menu"
+          tabIndex={sidebarCollapsed ? -1 : 0}
+          onClick={() => setSidebarCollapsed(true)}
+        />
+        <aside id="nkj-owner-sidebar" className={`nkj-owner-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`} aria-label="Owner navigation">
           <button
             type="button"
             className="nkj-sidebar-toggle"
@@ -176,11 +195,7 @@ export function Nav({ active = "home" }) {
           </button>
 
           <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home">
-            <span className="nkj-owner-logo">NKJ</span>
-            <span className="nkj-owner-brand-copy">
-              <b>Nandikishor</b>
-              <small>Jewellery Works</small>
-            </span>
+            <img className="nkj-owner-logo-image" src="/nkj-sidebar-logo-ornate.png" alt="Nandikishor Jewellery Works NKJ logo" />
           </Link>
 
           <nav
@@ -209,7 +224,10 @@ export function Nav({ active = "home" }) {
                       aria-label={label}
                       aria-current={selected ? "page" : undefined}
                       data-nav-key={key}
-                      onClick={() => { handleSidebarNavigationClick(key); if (window.matchMedia?.("(max-width: 760px)").matches) setSidebarCollapsed(true); }}
+                      onClick={() => {
+                        handleSidebarNavigationClick(key);
+                        if (window.matchMedia?.("(max-width: 760px)").matches) setSidebarCollapsed(true);
+                      }}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span className="nkj-owner-nav-full-label">{label}</span>
@@ -236,25 +254,30 @@ export function Nav({ active = "home" }) {
           </div>
         </aside>
 
-        <header className="nkj-owner-topbar">
-          <button type="button" className="nkj-mobile-menu-button" aria-label="Open navigation menu" aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed(false)}>☰</button>
-          <div className="nkj-owner-top-title">
-            <span className="eyebrow">OWNER WORKSPACE</span>
-            <b>Nandikishor Jewellery Works</b>
-          </div>
-          <div className="nkj-owner-top-actions">
-            <Link to="/" className="nkj-calculator-link nkj-home-link" aria-label="Open home">
-              <HomeIcon size={17} /> <span>Home</span>
-            </Link>
-            <Link to="/designs" className="nkj-calculator-link nkj-designs-link" aria-label="Open jewellery designs">
-              <Gem size={17} /> <span>Jewellery Designs</span>
-            </Link>
-            <Link to="/calculator" className="nkj-calculator-link" aria-label="Open calculator">
-              <CalculatorIcon size={17} /> <span>Calculator</span>
-            </Link>
-            <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
-            <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
-          </div>
+        <header className="topbar nkj-owner-topbar nkj-reference-navbar">
+          <button
+            type="button"
+            className="nkj-mobile-menu-button"
+            aria-label={sidebarCollapsed ? "Open navigation menu" : "Close navigation menu"}
+            aria-controls="nkj-owner-sidebar"
+            aria-expanded={!sidebarCollapsed}
+            onClick={() => setSidebarCollapsed((current) => !current)}
+          >
+            {sidebarCollapsed ? <Menu size={22} aria-hidden="true" /> : <CloseIcon size={22} aria-hidden="true" />}
+          </button>
+          <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
+            <div className="nkj-navbar-brand-copy">
+              <b>Nandikishor Jewellery Works</b>
+              <small><MapPin size={14} /> Sasra, Gopiballavpur, Jhargram</small>
+            </div>
+          </Link>
+          <nav aria-label="Main navigation">
+            <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
+            <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
+            <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+            <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
+            <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b><ChevronDown size={15} aria-hidden="true" /></span>
+          </nav>
         </header>
       </>
     );
@@ -263,7 +286,6 @@ export function Nav({ active = "home" }) {
   return (
     <header className="topbar">
       <Link to="/" className="brand">
-        <div className="logo">NKJ</div>
         <div><b>Nandikishor Jewellery Works</b><small>Sasra, Gopiballavpur, Jhargram</small></div>
       </Link>
       <nav aria-label="Main navigation">

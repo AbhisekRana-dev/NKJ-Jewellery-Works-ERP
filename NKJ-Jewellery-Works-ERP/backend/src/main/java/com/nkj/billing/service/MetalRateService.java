@@ -54,6 +54,7 @@ public class MetalRateService {
                    new_gold_24k_rate AS "newGold24kRate",
                    new_gold_22k_rate AS "newGold22kRate",
                    new_silver_rate AS "newSilverRate",
+                   new_diamond_rate AS "newDiamondRate",
                    change_type AS "changeType",
                    change_note AS "changeNote",
                    COALESCE(new_rate_source, rate_source) AS "rateSource",
@@ -75,18 +76,34 @@ public class MetalRateService {
         BigDecimal silver = normalize(request.silverRate(), "999 silver");
         lockRateRow();
         MetalRate current = getOrCreate();
+        BigDecimal diamond = request.diamondRate() == null ? current.getDiamondRate() : normalize(request.diamondRate(), "diamond per carat");
         RateSnapshot before = snapshotOf(current);
 
         current.setGold24kRate(gold24);
         current.setGold22kRate(gold22);
         current.setSilverRate(silver);
+        current.setDiamondRate(diamond);
         current.setRateMode("MANUAL");
         current.setOwnerVerified(true);
         current.setRateSource("Manual Admin Entry");
         current.setSourceReference(null);
         current.setSourcePublishedAt(null);
         current.setRateDate(LocalDate.now(SHOP_ZONE));
-        MetalRate saved = repository.save(current);
+        // Flush the JPA write, then verify the persisted value directly from
+        // the same PostgreSQL row used by the public /rates endpoint.
+        MetalRate saved = repository.saveAndFlush(current);
+        int diamondRows = jdbc.update(
+                "UPDATE public.metal_rates SET diamond_rate = ? WHERE id = ?",
+                diamond, RATE_ROW_ID);
+        if (diamondRows != 1) {
+            throw new IllegalStateException("Diamond rate was not saved: expected one metal_rates row, updated " + diamondRows + ".");
+        }
+        BigDecimal persistedDiamond = readPersistedDiamondRate();
+        if (persistedDiamond.compareTo(diamond) != 0) {
+            throw new IllegalStateException("Diamond rate database verification failed. Submitted "
+                    + diamond.toPlainString() + " but PostgreSQL returned " + persistedDiamond.toPlainString() + ".");
+        }
+        saved.setDiamondRate(persistedDiamond);
 
         appendHistory(before, snapshotOf(saved), "MANUAL_RATE_UPDATE", "Manual rate update by administrator", auth.getUsername());
         publishRatesChangedAfterCommit();
@@ -120,7 +137,7 @@ public class MetalRateService {
 
     private void restoreLatestAutomaticSnapshot(MetalRate current) {
         List<Map<String, Object>> snapshots = jdbc.queryForList("""
-            SELECT new_gold_24k_rate, new_gold_22k_rate, new_silver_rate,
+            SELECT new_gold_24k_rate, new_gold_22k_rate, new_silver_rate, new_diamond_rate,
                    COALESCE(new_rate_source, rate_source) AS rate_source,
                    COALESCE(new_source_reference, source_reference) AS source_reference,
                    new_rate_date, new_source_published_at
@@ -136,12 +153,26 @@ public class MetalRateService {
         current.setGold24kRate(asBigDecimal(latest.get("new_gold_24k_rate")));
         current.setGold22kRate(asBigDecimal(latest.get("new_gold_22k_rate")));
         current.setSilverRate(asBigDecimal(latest.get("new_silver_rate")));
+        if (latest.get("new_diamond_rate") != null) current.setDiamondRate(asBigDecimal(latest.get("new_diamond_rate")));
         current.setRateSource(String.valueOf(latest.get("rate_source")));
         current.setSourceReference((String) latest.get("source_reference"));
         current.setRateDate(asLocalDate(latest.get("new_rate_date")));
         current.setSourcePublishedAt(asLocalDateTime(latest.get("new_source_published_at")));
         current.setLastAutoSourceDate(current.getRateDate());
         current.setOwnerVerified(true);
+    }
+
+    private BigDecimal readPersistedDiamondRate() {
+        try {
+            BigDecimal value = jdbc.queryForObject(
+                    "SELECT diamond_rate FROM public.metal_rates WHERE id = ?",
+                    BigDecimal.class, RATE_ROW_ID);
+            return value == null ? BigDecimal.ZERO : value;
+        } catch (org.springframework.dao.DataAccessException exception) {
+            throw new IllegalStateException(
+                    "Diamond rate storage is unavailable in public.metal_rates. Confirm Flyway migration V47 is applied to the database configured by backend/.env.",
+                    exception);
+        }
     }
 
     private BigDecimal asBigDecimal(Object value) {
@@ -284,7 +315,7 @@ public class MetalRateService {
     }
 
     private RateSnapshot snapshotOf(MetalRate rate) {
-        return new RateSnapshot(rate.getGold24kRate(), rate.getGold22kRate(), rate.getSilverRate(),
+        return new RateSnapshot(rate.getGold24kRate(), rate.getGold22kRate(), rate.getSilverRate(), rate.getDiamondRate(),
                 rate.getRateMode(), rate.getRateSource(), rate.getSourceReference(),
                 rate.getRateDate(), rate.getSourcePublishedAt());
     }
@@ -293,14 +324,14 @@ public class MetalRateService {
         jdbc.update("""
             INSERT INTO metal_rate_history(
                 gold_24k_rate, gold_22k_rate, silver_rate, rate_mode, rate_source, source_reference, changed_by,
-                previous_gold_24k_rate, previous_gold_22k_rate, previous_silver_rate,
-                new_gold_24k_rate, new_gold_22k_rate, new_silver_rate,
+                previous_gold_24k_rate, previous_gold_22k_rate, previous_silver_rate, previous_diamond_rate,
+                new_gold_24k_rate, new_gold_22k_rate, new_silver_rate, new_diamond_rate,
                 change_type, change_note, previous_rate_date, new_rate_date,
                 previous_source_published_at, new_source_published_at, new_rate_source, new_source_reference)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             before.gold24(), before.gold22(), before.silver(), before.mode(), before.source(), before.reference(), changedBy,
-            before.gold24(), before.gold22(), before.silver(), after.gold24(), after.gold22(), after.silver(),
+            before.gold24(), before.gold22(), before.silver(), before.diamond(), after.gold24(), after.gold22(), after.silver(), after.diamond(),
             type, note, before.rateDate(), after.rateDate(), before.publishedAt(), after.publishedAt(), after.source(), after.reference());
     }
 
@@ -309,6 +340,7 @@ public class MetalRateService {
         out.put("gold24kRate", rate.getGold24kRate());
         out.put("gold22kRate", rate.getGold22kRate());
         out.put("silverRate", rate.getSilverRate());
+        out.put("diamondRate", readPersistedDiamondRate());
         out.put("rateMode", rate.getRateMode());
         out.put("rateSource", rate.getRateSource());
         out.put("ownerVerified", rate.isOwnerVerified());
@@ -331,7 +363,7 @@ public class MetalRateService {
         return out;
     }
 
-    private record RateSnapshot(BigDecimal gold24, BigDecimal gold22, BigDecimal silver,
+    private record RateSnapshot(BigDecimal gold24, BigDecimal gold22, BigDecimal silver, BigDecimal diamond,
                                 String mode, String source, String reference,
                                 LocalDate rateDate, LocalDateTime publishedAt) {}
 }
