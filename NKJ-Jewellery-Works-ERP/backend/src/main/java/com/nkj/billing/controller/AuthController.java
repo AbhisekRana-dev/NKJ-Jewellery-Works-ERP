@@ -41,8 +41,18 @@ public class AuthController {
         return Map.of("token", auth.verify(x.challengeId(), x.code(),
                 request.getHeader("User-Agent"), clientIp(request)), "username", auth.getUsername());
     }
+    @PostMapping("/activity")
+    public Map<String,Object> activity(@RequestHeader(value="Authorization", required=false) String header) {
+        if (!auth.recordActivity(ownerToken(header))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Administrator session expired. Please sign in again.");
+        }
+        return Map.of("success", true);
+    }
+
     @PostMapping("/logout")
-    public Map<String,Object> logout(@RequestHeader(value="Authorization", required=false) String h) {
+    public Map<String,Object> logout(
+            @RequestHeader(value="Authorization", required=false) String h,
+            @RequestHeader(value="X-Logout-Reason", required=false) String reason) {
         if (h != null && h.startsWith("Bearer ")) {
             String token = h.substring(7);
             if (auth.valid(token)) {
@@ -57,7 +67,7 @@ public class AuthController {
                        AND expires_at > NOW()
                     """, auth.getUsername());
             }
-            auth.logout(token);
+            auth.logout(token, reason == null ? "MANUAL_LOGOUT" : reason);
         }
         return Map.of("success", true);
     }
