@@ -42,3 +42,7 @@ jobs:
       - name: Test calculator at mobile, tablet, laptop and desktop sizes
         run: node scripts/responsive-smoke.cjs
         working-directory: NKJ-Jewellery-Works-ERP/frontend
+
+      - name: Test all ERP page layouts and mobile navigation
+        run: node scripts/responsive-pages-smoke.cjs
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
