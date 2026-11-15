@@ -263,6 +263,168 @@ public class AuthService {
 
     public String getUsername() { return username; }
 
+    public Map<String, Object> sessionSummary(String ownerToken) {
+        requireCurrentSession(ownerToken);
+        long now = System.currentTimeMillis();
+        int activeCount = (int) sessions.values().stream()
+                .filter(state -> state.expiresAt >= now)
+                .map(state -> state.id).distinct().count();
+        Long historyCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM owner_login_sessions WHERE username=? AND created_at >= NOW() - INTERVAL '30 days'",
+                Long.class, username);
+        return Map.of("activeCount", activeCount, "historyCount", historyCount == null ? 0L : historyCount, "maxActive", 0);
+    }
+
+    public String unlockSessionManager(String ownerToken, String suppliedPassword, String attemptKey) {
+        SessionState ownerSession = requireCurrentSession(ownerToken);
+        if (sessionManagerPassword == null || sessionManagerPassword.isBlank()) {
+            throw new IllegalStateException("Owner session management password is not configured on the backend.");
+        }
+        String key = username + "|" + (hasText(attemptKey) ? attemptKey : "unknown-client");
+        ManagerAttempt attempt = sessionManagerAttempts.computeIfAbsent(key, ignored -> new ManagerAttempt());
+        long now = System.currentTimeMillis();
+        synchronized (attempt) {
+            if (attempt.lockedUntil > now) {
+                throw new IllegalArgumentException("Too many incorrect attempts. Try again in 15 minutes.");
+            }
+            if (!constantTimeEquals(sessionManagerPassword, suppliedPassword)) {
+                attempt.failures++;
+                if (attempt.failures >= MAX_SESSION_MANAGER_ATTEMPTS) {
+                    attempt.failures = 0;
+                    attempt.lockedUntil = now + SESSION_MANAGER_LOCK_MILLIS;
+                }
+                throw new IllegalArgumentException("Incorrect owner login-management password.");
+            }
+            attempt.failures = 0;
+            attempt.lockedUntil = 0;
+        }
+        sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().expiresAt() < now);
+        String grant = randomToken();
+        sessionManagerGrants.put(grant, new ManagerGrant(ownerSession.id, now + SESSION_MANAGER_GRANT_TTL_MILLIS));
+        return grant;
+    }
+
+    public List<Map<String, Object>> listLoginHistory(String ownerToken, String managerToken) {
+        requireSessionManager(ownerToken, managerToken);
+        SessionState current = requireCurrentSession(ownerToken);
+        List<Map<String, Object>> result = new ArrayList<>();
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+            SELECT id, username, device_label, ip_address, created_at, last_active_at,
+                   expires_at, logged_out_at
+              FROM owner_login_sessions
+             WHERE username=?
+             ORDER BY created_at DESC
+             LIMIT 50
+            """, username);
+        for (Map<String, Object> row : rows) {
+            String id = String.valueOf(row.get("id"));
+            SessionState activeState = findActiveSessionById(id);
+            Object loggedOutAt = row.get("logged_out_at");
+            Object expiresAt = row.get("expires_at");
+            String status;
+            if (loggedOutAt != null) status = "LOGGED_OUT";
+            else if (activeState != null) status = "ACTIVE";
+            else if (expiresAt instanceof Timestamp timestamp && timestamp.getTime() < System.currentTimeMillis()) status = "EXPIRED";
+            else status = "ENDED";
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("sessionId", id);
+            item.put("username", row.get("username"));
+            item.put("device", row.get("device_label"));
+            item.put("ipAddress", row.get("ip_address"));
+            item.put("loginAt", isoTimestamp(row.get("created_at")));
+            item.put("lastActiveAt", isoTimestamp(row.get("last_active_at")));
+            item.put("expiresAt", isoTimestamp(expiresAt));
+            item.put("loggedOutAt", isoTimestamp(loggedOutAt));
+            item.put("status", status);
+            item.put("current", current.id.equals(id));
+            result.add(item);
+        }
+        return result;
+    }
+
+    public boolean logoutLoginSession(String ownerToken, String managerToken, String sessionId) {
+        requireSessionManager(ownerToken, managerToken);
+        final UUID id;
+        try { id = UUID.fromString(sessionId); }
+        catch (Exception ex) { throw new IllegalArgumentException("Invalid login session."); }
+        Integer exists = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM owner_login_sessions WHERE id=? AND username=?",
+                Integer.class, id, username);
+        if (exists == null || exists == 0) throw new IllegalArgumentException("Login session was not found.");
+        SessionState current = requireCurrentSession(ownerToken);
+        boolean currentSession = current.id.equals(sessionId);
+        sessions.entrySet().removeIf(entry -> entry.getValue().id.equals(sessionId));
+        sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(sessionId));
+        jdbc.update("UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW() WHERE id=? AND username=?",
+                id, username);
+        return currentSession;
+    }
+
+    public int logoutOtherLoginSessions(String ownerToken, String managerToken) {
+        requireSessionManager(ownerToken, managerToken);
+        SessionState current = requireCurrentSession(ownerToken);
+        int activeBefore = (int) sessions.values().stream()
+                .filter(state -> !state.id.equals(current.id) && state.expiresAt >= System.currentTimeMillis())
+                .map(state -> state.id).distinct().count();
+        sessions.entrySet().removeIf(entry -> !entry.getValue().id.equals(current.id));
+        sessionManagerGrants.entrySet().removeIf(entry -> !entry.getValue().ownerSessionId().equals(current.id));
+        jdbc.update("""
+            UPDATE owner_login_sessions
+               SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW()
+             WHERE username=? AND id<>? AND logged_out_at IS NULL
+            """, username, UUID.fromString(current.id));
+        return activeBefore;
+    }
+
+    private SessionState requireCurrentSession(String ownerToken) {
+        if (!valid(ownerToken)) throw new IllegalArgumentException("Your owner login has expired. Sign in again.");
+        return sessions.get(ownerToken);
+    }
+
+    private void requireSessionManager(String ownerToken, String managerToken) {
+        SessionState ownerSession = requireCurrentSession(ownerToken);
+        ManagerGrant grant = managerToken == null ? null : sessionManagerGrants.get(managerToken);
+        if (grant == null || grant.expiresAt() < System.currentTimeMillis()
+                || !grant.ownerSessionId().equals(ownerSession.id)) {
+            if (managerToken != null) sessionManagerGrants.remove(managerToken);
+            throw new IllegalArgumentException("Unlock owner login management again to continue.");
+        }
+    }
+
+    private SessionState findActiveSessionById(String id) {
+        long now = System.currentTimeMillis();
+        return sessions.values().stream()
+                .filter(state -> state.id.equals(id) && state.expiresAt >= now)
+                .findFirst().orElse(null);
+    }
+
+    private String describeDevice(String userAgent) {
+        if (!hasText(userAgent)) return "Unknown device";
+        String ua = userAgent.toLowerCase();
+        String browser = ua.contains("edg/") ? "Microsoft Edge"
+                : ua.contains("firefox/") ? "Firefox"
+                : ua.contains("chrome/") && !ua.contains("chromium") ? "Chrome"
+                : ua.contains("safari/") && !ua.contains("chrome/") ? "Safari" : "Browser";
+        String os = ua.contains("windows") ? "Windows"
+                : ua.contains("android") ? "Android"
+                : ua.contains("iphone") || ua.contains("ipad") ? "iOS"
+                : ua.contains("mac os") || ua.contains("macintosh") ? "macOS"
+                : ua.contains("linux") ? "Linux" : "Unknown OS";
+        return browser + " on " + os;
+    }
+
+    private String isoTimestamp(Object value) {
+        return value instanceof Timestamp timestamp ? timestamp.toInstant().toString() : null;
+    }
+
+    private String nullableText(String value) { return hasText(value) ? value : null; }
+
+    private String limitText(String value, int maxLength) {
+        if (value == null) return "";
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+
     /**
      * Re-authenticate the administrator before posting a sensitive financial
      * receipt. The password is compared in constant time and is never stored.
