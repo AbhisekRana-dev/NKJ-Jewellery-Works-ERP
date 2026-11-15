@@ -1664,3 +1664,26 @@
     padding-inline: 9px;
   }
 }
+
+
+/* Copyright text must wrap inside the footer at the narrowest phone widths. */
+@media screen and (max-width: 500px) {
+  .jewellery-footer {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .jewellery-footer .footer-copyright {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-inline: 0 !important;
+    padding: 8px 8px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+  }
+}
