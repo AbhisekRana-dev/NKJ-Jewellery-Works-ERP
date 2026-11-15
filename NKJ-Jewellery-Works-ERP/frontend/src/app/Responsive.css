@@ -10,15 +10,15 @@ button,[role="button"],.primary,.secondary,.small-action{touch-action:manipulati
 :where(.page-title h1,.page-title h2,.section-head h1,.section-head h2,.nkj-page-heading h1,.nkj-page-heading h2){overflow-wrap:anywhere}
 :where(.table-wrap,.table-responsive,.nkj-table-wrap,.panel){min-width:0}
 :where(.table-wrap,.table-responsive,.nkj-table-wrap){max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
-:where(.table-wrap,.table-responsive,.nkj-table-wrap)>table{width:max-content;min-width:100%;border-collapse:collapse}
+:where(.table-wrap,.table-responsive,.nkj-table-wrap)>table{width:100%;min-width:100%;border-collapse:collapse}
 :where(.table-wrap,.table-responsive,.nkj-table-wrap) th,:where(.table-wrap,.table-responsive,.nkj-table-wrap) td{overflow-wrap:anywhere}
 :where(.form-grid,.form-row,.nkj-form-grid,.nkj-form-row,.filter-row,.nkj-filter-row){min-width:0}
 :where(.form-grid,.nkj-form-grid)>*,:where(.form-row,.nkj-form-row)>*{min-width:0}
 :where(.form-grid,.nkj-form-grid) input,:where(.form-grid,.nkj-form-grid) select,:where(.form-grid,.nkj-form-grid) textarea,:where(.form-row,.nkj-form-row) input,:where(.form-row,.nkj-form-row) select,:where(.form-row,.nkj-form-row) textarea{width:100%;min-width:0}
-:where(.modal,.modal-content,.dialog,[role="dialog"],.nkj-modal,.nkj-pin-dialog,.nkj-rate-editor){min-width:0;max-width:min(100%,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
+:where(.modal,.modal-content,.dialog,[role="dialog"],.nkj-modal,.nkj-pin-dialog,.nkj-rate-editor){min-width:0;max-width:min(100%,calc(100vw - 24px))}
 :where(.modal-backdrop,.modal-overlay,.nkj-modal-backdrop,.nkj-pin-overlay){padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
-:where(button,[role="button"],.primary,.secondary,.small-action){min-height:38px}
-:where(input,select,textarea){font-size:max(16px,1em)}
+
+
 :where(.stat,.nkj-stat-card,.nkj-dashboard-stat-link,.panel,.card){min-width:0}
 :where(.stat strong,.nkj-stat-value,.amount,.currency-value){overflow-wrap:anywhere}
 @media screen and (max-width:1023px){
@@ -29,7 +29,7 @@ button,[role="button"],.primary,.secondary,.small-action{touch-action:manipulati
 :where(.filter-row,.nkj-filter-row,.toolbar,.nkj-toolbar){flex-wrap:wrap}
 :where(.filter-row,.nkj-filter-row,.toolbar,.nkj-toolbar)>*{min-width:0}
 }
-@media screen and (max-width:767px){
+@media screen and (max-width:767px){:where(input,select,textarea){font-size:max(16px,1em)}:where(button,[role="button"],.primary,.secondary,.small-action){min-height:40px}:where(.modal,.modal-content,.dialog,[role="dialog"],.nkj-modal,.nkj-pin-dialog,.nkj-rate-editor){max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}:where(.table-wrap,.table-responsive,.nkj-table-wrap)>table{width:max-content;min-width:100%}
 html,body{width:100%;min-width:320px;overflow-x:clip}
 .container{padding-inline:14px}
 :where(.page-title,.section-head,.nkj-page-heading,.nkj-panel-head){align-items:flex-start;flex-wrap:wrap;gap:10px}
