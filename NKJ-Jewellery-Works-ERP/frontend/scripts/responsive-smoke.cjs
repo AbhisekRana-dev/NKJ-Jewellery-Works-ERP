@@ -67,6 +67,9 @@ async function runViewportTest(browser, viewport) {
   const pageErrors = [];
 
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") pageErrors.push("console: " + message.text());
+  });
   await page.route("**/api/**", (route) => route.fulfill({
     status: 503,
     contentType: "application/json",
@@ -74,8 +77,16 @@ async function runViewportTest(browser, viewport) {
   }));
 
   try {
-    await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
-    await page.locator(".nkj-calculator-page").waitFor({ state: "visible" });
+    const response = await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
+    try {
+      await page.locator(".nkj-calculator-page").waitFor({ state: "visible", timeout: 10000 });
+    } catch {
+      const bodyText = await page.locator("body").innerText().catch(() => "");
+      throw new Error("Calculator did not render at " + viewport.name +
+        ". HTTP " + (response ? response.status() : "no response") +
+        ". Page text: " + bodyText.slice(0, 2500) +
+        ". Browser errors: " + pageErrors.join(" | "));
+    }
     await page.locator(".nkj-calculator-options button[data-calculator-mode]").first().waitFor();
 
     const tabs = page.locator(".nkj-calculator-options button[data-calculator-mode]");
