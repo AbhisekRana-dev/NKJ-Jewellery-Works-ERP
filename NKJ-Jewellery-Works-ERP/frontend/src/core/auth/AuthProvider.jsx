@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("nkj_user");
       setAuthReady(true);
     } else if (Date.now() - lastActivity >= IDLE_LIMIT_MS) {
-      sessionStorage.setItem("nkj_login_notice", EXPIRY_MESSAGE);
+      localStorage.setItem("nkj_login_notice", EXPIRY_MESSAGE);
       request("/auth/logout", {
         method: "POST",
         headers: { "X-Logout-Reason": "INACTIVITY_TIMEOUT" },
@@ -127,7 +127,7 @@ export function AuthProvider({ children }) {
     const timer = window.setInterval(() => {
       if (Date.now() - lastActivityRef.current >= IDLE_LIMIT_MS && !logoutStartedRef.current) {
         logoutStartedRef.current = true;
-        sessionStorage.setItem("nkj_login_notice", EXPIRY_MESSAGE);
+        localStorage.setItem("nkj_login_notice", EXPIRY_MESSAGE);
         request("/auth/logout", {
           method: "POST",
           headers: { "X-Logout-Reason": "INACTIVITY_TIMEOUT" },
