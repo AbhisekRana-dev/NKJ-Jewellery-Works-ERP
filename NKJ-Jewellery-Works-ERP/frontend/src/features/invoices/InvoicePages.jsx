@@ -2505,7 +2505,11 @@ async function createInvoiceSharePdfFile(invoice) {
 
     const fileName = String(invoice.invoiceNo).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
     const blob = await html2pdf().set({
-      margin: [3, 3, 3, 3],
+      // Render the full-width invoice inside a 279mm content area on the
+      // 297mm A4 landscape page. The extra 9mm side margins let html2pdf
+      // scale the whole invoice proportionally instead of clipping the
+      // rightmost totals/signature columns at the page edge.
+      margin: [4, 9, 4, 9],
       filename: fileName,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
