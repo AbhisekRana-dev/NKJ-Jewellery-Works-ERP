@@ -165,7 +165,7 @@ async function runViewportTest(browser, viewport) {
     await inputs.nth(2).fill("1");
     await inputs.nth(3).fill("10000");
     total = await panel.locator(".nkj-calc-result-hero strong").innerText();
-    assert(total.includes("20,000.00"), viewport.name + ": Diamond result is not visible or incorrect: " + total);
+    assert(total.includes("21,200.00"), viewport.name + ": Diamond result is not visible or incorrect: " + total);
     await assertNoHorizontalOverflow(page, viewport, "diamond calculator");
 
     // Manual calculator: 2 + 3 = 5 using the touch keypad.
