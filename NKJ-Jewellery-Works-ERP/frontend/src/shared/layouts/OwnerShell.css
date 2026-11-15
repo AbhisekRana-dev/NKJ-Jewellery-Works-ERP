@@ -1318,3 +1318,33 @@ body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) .nkj-owner-sidebar {widt
   }
   .nkj-owner-top-actions .nkj-calculator-link span {display:none;}
 }
+
+.nkj-mobile-sidebar-backdrop,.nkj-mobile-menu-button{display:none}
+@media screen and (max-width:760px){
+.nkj-owner-sidebar{width:min(300px,86vw)!important;max-width:86vw;transform:translateX(0);transition:transform .22s ease;box-shadow:12px 0 36px rgba(28,0,10,.28)}
+.nkj-owner-sidebar.is-collapsed{width:min(300px,86vw)!important;transform:translateX(-105%)}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-brand-copy,.nkj-owner-sidebar.is-collapsed .nkj-owner-user>span:last-child,.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-title,.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a span,.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-arrow{display:initial}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-brand{justify-content:flex-start;padding:19px 16px 17px}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-user{justify-content:flex-start;margin:13px 12px 5px;padding:10px 11px}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav{padding:6px 10px 12px}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a{justify-content:flex-start;padding:9px 10px}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button.nkj-owner-logout{flex-direction:row!important;min-height:44px!important;padding:9px 10px!important}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button.nkj-owner-logout span.nkj-owner-logout-label{display:inline!important;width:auto!important;font-size:11px!important;text-align:left!important}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom button.nkj-owner-logout span.nkj-owner-logout-icon{width:30px!important;height:30px!important;flex-basis:30px!important}
+.nkj-sidebar-toggle{display:none!important}
+.nkj-mobile-sidebar-backdrop{display:block;position:fixed;inset:0;z-index:3100;border:0;background:rgba(18,8,12,.48);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility .22s ease}
+body.nkj-mobile-sidebar-open .nkj-mobile-sidebar-backdrop{opacity:1;visibility:visible;pointer-events:auto}
+.nkj-mobile-menu-button{display:inline-grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border:1px solid #ead8bd;border-radius:9px;background:#fff8eb;color:#74102d;font-size:21px;line-height:1}
+.nkj-owner-topbar{display:flex;width:100%!important;min-height:58px;margin-left:0!important;padding:8px 10px;gap:9px}
+.nkj-owner-top-title{flex:1 1 auto;min-width:0}
+.nkj-owner-top-title b{max-width:100%;white-space:normal!important;font-size:clamp(12px,3.5vw,15px)!important}
+.nkj-owner-top-title .eyebrow{font-size:7px!important}
+.nkj-owner-top-actions{flex:0 0 auto;gap:5px!important}
+.nkj-owner-top-actions .nkj-home-link,.nkj-owner-top-actions .nkj-designs-link{display:none!important}
+.nkj-owner-top-actions .nkj-calculator-link{min-height:36px;width:36px;padding:7px!important}
+.nkj-owner-top-actions .nkj-calculator-link span{display:none}
+.nkj-owner-top-actions .primary{min-height:36px;width:36px;padding:7px!important;font-size:0!important;gap:0}
+.nkj-owner-top-actions .primary svg{width:18px;height:18px}
+.container.nkj-owner-container,body.nkj-owner-layout .jewellery-footer,body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .jewellery-footer{width:100%!important;max-width:100%!important;margin-left:0!important}
+.container.nkj-owner-container{padding:14px 12px 24px!important}
+}
