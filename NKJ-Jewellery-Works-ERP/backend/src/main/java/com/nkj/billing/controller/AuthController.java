@@ -72,7 +72,8 @@ public class AuthController {
             @RequestHeader(value="Authorization", required=false) String header,
             @RequestBody SessionManagerUnlock body,
             HttpServletRequest request) {
-        String managerToken = auth.unlockSessionManager(ownerToken(header), body.password(), clientIp(request));
+        // The direct peer address is used for the attempt limiter; the forwarded header is only metadata.
+        String managerToken = auth.unlockSessionManager(ownerToken(header), body.password(), request.getRemoteAddr());
         return Map.of("managerToken", managerToken, "expiresInSeconds", 300);
     }
 
