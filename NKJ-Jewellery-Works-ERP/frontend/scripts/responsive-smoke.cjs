@@ -36,11 +36,31 @@ async function waitForServer(server) {
 }
 
 async function assertNoHorizontalOverflow(page, viewport, stage) {
-  const metrics = await page.evaluate(() => ({
-    viewport: document.documentElement.clientWidth,
-    document: document.documentElement.scrollWidth,
-    body: document.body.scrollWidth,
-  }));
+  const metrics = await page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    const offenders = Array.from(document.body.querySelectorAll("*")).map((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        tag: element.tagName,
+        className: typeof element.className === "string" ? element.className : "",
+        id: element.id || "",
+        left: Math.round(rect.left * 10) / 10,
+        right: Math.round(rect.right * 10) / 10,
+        width: Math.round(rect.width * 10) / 10,
+        position: style.position,
+        overflowX: style.overflowX,
+        text: (element.innerText || "").slice(0, 70),
+      };
+    }).filter((item) => item.right > width + 1 || item.left < -1)
+      .sort((a, b) => b.right - a.right).slice(0, 18);
+    return {
+      viewport: width,
+      document: document.documentElement.scrollWidth,
+      body: document.body.scrollWidth,
+      offenders,
+    };
+  });
   assert(
     metrics.document <= metrics.viewport + 1 && metrics.body <= metrics.viewport + 1,
     viewport.name + " (" + viewport.width + "x" + viewport.height + ") " + stage +
