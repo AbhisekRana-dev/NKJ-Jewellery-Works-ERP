@@ -1,0 +1,71 @@
+/* NKJ responsive foundation. Screen-only rules stay independent of PDF/print CSS. */
+html{min-width:320px}
+body,#root,.app-layout,.app-content{min-width:0;max-width:100%}
+.app-content,.app-content>*,main,.container,.nkj-owner-container{min-width:0}
+img,video,canvas,svg{max-width:100%}
+input,select,textarea{max-width:100%;min-width:0}
+button,[role="button"],.primary,.secondary,.small-action{touch-action:manipulation}
+:where(.page-title,.section-head,.nkj-page-heading,.nkj-panel-head,.toolbar,.nkj-toolbar,.actions,.form-actions){min-width:0}
+:where(.page-title,.section-head,.nkj-page-heading,.nkj-panel-head)>*{min-width:0}
+:where(.page-title h1,.page-title h2,.section-head h1,.section-head h2,.nkj-page-heading h1,.nkj-page-heading h2){overflow-wrap:anywhere}
+:where(.table-wrap,.table-responsive,.nkj-table-wrap,.panel){min-width:0}
+:where(.table-wrap,.table-responsive,.nkj-table-wrap){max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+:where(.table-wrap,.table-responsive,.nkj-table-wrap)>table{width:max-content;min-width:100%;border-collapse:collapse}
+:where(.table-wrap,.table-responsive,.nkj-table-wrap) th,:where(.table-wrap,.table-responsive,.nkj-table-wrap) td{overflow-wrap:anywhere}
+:where(.form-grid,.form-row,.nkj-form-grid,.nkj-form-row,.filter-row,.nkj-filter-row){min-width:0}
+:where(.form-grid,.nkj-form-grid)>*,:where(.form-row,.nkj-form-row)>*{min-width:0}
+:where(.form-grid,.nkj-form-grid) input,:where(.form-grid,.nkj-form-grid) select,:where(.form-grid,.nkj-form-grid) textarea,:where(.form-row,.nkj-form-row) input,:where(.form-row,.nkj-form-row) select,:where(.form-row,.nkj-form-row) textarea{width:100%;min-width:0}
+:where(.modal,.modal-content,.dialog,[role="dialog"],.nkj-modal,.nkj-pin-dialog,.nkj-rate-editor){min-width:0;max-width:min(100%,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
+:where(.modal-backdrop,.modal-overlay,.nkj-modal-backdrop,.nkj-pin-overlay){padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+:where(button,[role="button"],.primary,.secondary,.small-action){min-height:38px}
+:where(input,select,textarea){font-size:max(16px,1em)}
+:where(.stat,.nkj-stat-card,.nkj-dashboard-stat-link,.panel,.card){min-width:0}
+:where(.stat strong,.nkj-stat-value,.amount,.currency-value){overflow-wrap:anywhere}
+@media screen and (max-width:1023px){
+.container{width:100%;max-width:100%}
+.nkj-owner-container{width:100%}
+:where(.nkj-stat-grid,.nkj-owner-kpis,.stats,.trust-row,.quick){grid-template-columns:repeat(2,minmax(0,1fr))}
+:where(.nkj-dashboard-lower,.nkj-dashboard-grid){grid-template-columns:minmax(0,1fr)}
+:where(.filter-row,.nkj-filter-row,.toolbar,.nkj-toolbar){flex-wrap:wrap}
+:where(.filter-row,.nkj-filter-row,.toolbar,.nkj-toolbar)>*{min-width:0}
+}
+@media screen and (max-width:767px){
+html,body{width:100%;min-width:320px;overflow-x:clip}
+.container{padding-inline:14px}
+:where(.page-title,.section-head,.nkj-page-heading,.nkj-panel-head){align-items:flex-start;flex-wrap:wrap;gap:10px}
+:where(.page-title h2,.section-head h2,.nkj-page-heading h2){font-size:clamp(19px,5vw,25px)}
+:where(.nkj-stat-grid,.nkj-owner-kpis,.stats,.trust-row,.quick){grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+:where(.nkj-dashboard-lower,.nkj-dashboard-grid){grid-template-columns:minmax(0,1fr)}
+:where(.form-grid,.nkj-form-grid){grid-template-columns:minmax(0,1fr)!important}
+:where(.form-row,.nkj-form-row){flex-wrap:wrap}
+:where(.form-row,.nkj-form-row)>*{flex:1 1 100%}
+:where(.toolbar,.nkj-toolbar,.filter-row,.nkj-filter-row){width:100%;max-width:100%}
+:where(.toolbar input,.nkj-toolbar input,.filter-row input,.filter-row select,.nkj-filter-row input,.nkj-filter-row select){flex:1 1 160px}
+:where(.actions,.form-actions,.nkj-actions){flex-wrap:wrap}
+:where(.actions,.form-actions,.nkj-actions)>button,:where(.actions,.form-actions,.nkj-actions)>a{flex:1 1 auto}
+:where(.modal,.modal-content,.dialog,[role="dialog"],.nkj-modal,.nkj-rate-editor){width:100%;max-width:100%}
+.login-screen{min-height:100dvh;grid-template-columns:minmax(0,1fr);padding:18px;gap:16px}
+.profile{padding:24px 14px}
+.topbar{min-width:0}
+.topbar nav{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;width:100%;max-width:100%;padding-bottom:4px}
+.topbar nav a,.topbar nav button{flex:0 0 auto;min-height:42px}
+.nkj-owner-topbar{width:100%;margin-left:0}
+.container.nkj-owner-container{width:100%;margin-left:0}
+body.nkj-owner-layout .jewellery-footer,body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .jewellery-footer{width:100%;max-width:100%;margin-left:0}
+}
+@media screen and (max-width:575px){
+.container{padding-inline:12px}
+:where(.nkj-stat-grid,.nkj-owner-kpis,.stats,.trust-row,.quick){grid-template-columns:minmax(0,1fr)}
+:where(.page-title,.section-head,.nkj-page-heading,.nkj-panel-head){flex-direction:column;align-items:stretch}
+:where(.page-title>.primary,.section-head>.primary,.nkj-page-heading>.primary,.nkj-panel-head>a){align-self:flex-start}
+:where(.nkj-modal-actions,.modal-actions,.dialog-actions){flex-direction:column-reverse}
+:where(.nkj-modal-actions,.modal-actions,.dialog-actions)>*{width:100%}
+.nkj-pin-dialog{width:100%;max-width:100%;padding:22px 16px}
+}
+@media screen and (max-width:374px){
+.container{padding-inline:10px}
+:where(.nkj-stat-grid,.nkj-owner-kpis,.stats,.trust-row,.quick){gap:8px}
+:where(button,[role="button"],.primary,.secondary){padding-inline:10px}
+}
+@media screen and (min-width:1440px){.container.nkj-owner-container{padding-inline:clamp(24px,2.2vw,44px)}}
+@media screen and (min-width:1920px){.container{max-width:1800px;margin-inline:auto}}
