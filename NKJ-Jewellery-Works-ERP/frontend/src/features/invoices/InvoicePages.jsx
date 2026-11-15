@@ -2411,7 +2411,7 @@ async function createInvoiceSharePdfFile(invoice) {
     }
     #invoice-print.nkj-pdf-export-root .inv-main {
       display: grid !important;
-      grid-template-columns: minmax(0, 1fr) 95mm !important;
+      grid-template-columns: minmax(0, 1fr) 75mm !important;
       gap: 2mm !important;
       width: 100% !important;
       min-width: 0 !important;
@@ -2425,6 +2425,91 @@ async function createInvoiceSharePdfFile(invoice) {
       min-width: 0 !important;
       margin-left: 0 !important;
       box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-meta {
+      min-width: 0 !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-meta span {
+      display: grid !important;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) !important;
+      gap: 1mm !important;
+      min-width: 0 !important;
+      padding: 1mm 1.5mm !important;
+      box-sizing: border-box !important;
+      font-size: 7pt !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-meta span label,
+    #invoice-print.nkj-pdf-export-root .inv-meta span strong {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      font-size: 7pt !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals {
+      width: 75mm !important;
+      min-width: 0 !important;
+      max-width: 75mm !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, auto) !important;
+      gap: 1mm !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row span {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      font-size: 7pt !important;
+      line-height: 1.15 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row b {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: nowrap !important;
+      font-size: 8pt !important;
+      line-height: 1.15 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .grand {
+      grid-template-columns: minmax(0, 1fr) minmax(0, auto) !important;
+      gap: 1mm !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .grand span {
+      min-width: 0 !important;
+      white-space: normal !important;
+      font-size: 8pt !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .grand b {
+      min-width: 0 !important;
+      white-space: nowrap !important;
+      font-size: 8pt !important;
+    }
+    #invoice-print.nkj-pdf-export-root .words-sign {
+      grid-template-columns: minmax(0, 1fr) 95mm !important;
+      min-width: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .signatures {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      gap: 1mm !important;
+      min-width: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .signatures span {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      padding: 1mm .5mm 0 !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      font-size: 7pt !important;
+      line-height: 1.15 !important;
+      text-align: center !important;
     }
     #invoice-print.nkj-pdf-export-root .form-grid label {
       display: grid !important;
