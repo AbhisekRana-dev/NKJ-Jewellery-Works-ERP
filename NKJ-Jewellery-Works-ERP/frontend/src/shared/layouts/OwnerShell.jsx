@@ -5,7 +5,7 @@ import {
   Home as HomeIcon, FileText, Files, Users, User, ChartNoAxesColumn,
   LogOut, LogIn, Plus, Receipt, LayoutDashboard, Boxes, Coins, Contact,
   Wallet, CalendarCheck, ClipboardList, Banknote, Database, ScrollText,
-  Wrench, ChevronRight, ArrowLeftRight, Calculator as CalculatorIcon, Gem,
+  Wrench, ChevronRight, ChevronDown, ArrowLeftRight, Calculator as CalculatorIcon, Gem, MapPin,
 } from "lucide-react";
 import { useAuth } from "../../core/auth/AuthProvider";
 
@@ -161,11 +161,7 @@ export function Nav({ active = "home" }) {
           </button>
 
           <Link to="/" className="nkj-owner-brand" aria-label="Nandikishor Jewellery Works home">
-            <span className="nkj-owner-logo">NKJ</span>
-            <span className="nkj-owner-brand-copy">
-              <b>Nandikishor</b>
-              <small>Jewellery Works</small>
-            </span>
+            <img className="nkj-owner-logo-image" src="/nkj-sidebar-logo-ornate.png" alt="Nandikishor Jewellery Works NKJ logo" />
           </Link>
 
           <nav
@@ -221,24 +217,20 @@ export function Nav({ active = "home" }) {
           </div>
         </aside>
 
-        <header className="nkj-owner-topbar">
-          <div className="nkj-owner-top-title">
-            <span className="eyebrow">OWNER WORKSPACE</span>
-            <b>Nandikishor Jewellery Works</b>
-          </div>
-          <div className="nkj-owner-top-actions">
-            <Link to="/" className="nkj-calculator-link nkj-home-link" aria-label="Open home">
-              <HomeIcon size={17} /> <span>Home</span>
-            </Link>
-            <Link to="/designs" className="nkj-calculator-link nkj-designs-link" aria-label="Open jewellery designs">
-              <Gem size={17} /> <span>Jewellery Designs</span>
-            </Link>
-            <Link to="/calculator" className="nkj-calculator-link" aria-label="Open calculator">
-              <CalculatorIcon size={17} /> <span>Calculator</span>
-            </Link>
-            <Link to="/invoice" state={{ startNewInvoice: true }} className="primary"><Plus size={16} /> New Invoice</Link>
-            <span className="nkj-owner-top-user"><User size={16} /> {user || "Owner"}</span>
-          </div>
+        <header className="topbar nkj-owner-topbar nkj-reference-navbar">
+          <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
+            <div className="nkj-navbar-brand-copy">
+              <b>Nandikishor Jewellery Works</b>
+              <small><MapPin size={14} /> Sasra, Gopiballavpur, Jhargram</small>
+            </div>
+          </Link>
+          <nav aria-label="Main navigation">
+            <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
+            <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
+            <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+            <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
+            <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b><ChevronDown size={15} aria-hidden="true" /></span>
+          </nav>
         </header>
       </>
     );
@@ -247,7 +239,6 @@ export function Nav({ active = "home" }) {
   return (
     <header className="topbar">
       <Link to="/" className="brand">
-        <div className="logo">NKJ</div>
         <div><b>Nandikishor Jewellery Works</b><small>Sasra, Gopiballavpur, Jhargram</small></div>
       </Link>
       <nav aria-label="Main navigation">

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone, RotateCcw, RotateCw, Info, ArrowRightLeft } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, EyeOff, Star, Upload, ImagePlus, X, LoaderCircle, Save, Layers3, QrCode, RefreshCw, Copy, CheckCircle2, Clock3, Smartphone, RotateCcw, RotateCw, Info, ArrowRightLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Gem, Package, Weight, LockKeyhole } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Page } from "../../shared/layouts/OwnerShell";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -118,6 +118,11 @@ export default function JewelleryCatalogAdminPage() {
   const [deletingDesign, setDeletingDesign] = useState(false);
   const [viewingDesign, setViewingDesign] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
+  const [detailImageZoom, setDetailImageZoom] = useState(1);
+  const [detailPhotoExpanded, setDetailPhotoExpanded] = useState(false);
+  const [detailsActionBusy, setDetailsActionBusy] = useState(false);
+  const [detailsActionError, setDetailsActionError] = useState("");
   const [bulkFiles, setBulkFiles] = useState([]);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -131,6 +136,10 @@ export default function JewelleryCatalogAdminPage() {
   const [qrError, setQrError] = useState("");
   const [qrNow, setQrNow] = useState(Date.now());
   const [qrCopied, setQrCopied] = useState(false);
+  const [activeUploadPreviewKey, setActiveUploadPreviewKey] = useState("");
+  const [activeStoredImageId, setActiveStoredImageId] = useState(null);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+  const initialFormRef = useRef(blankForm());
   const imagePreviews = useMemo(
     () => imageFiles.map((file) => ({
       file,
@@ -298,13 +307,18 @@ export default function JewelleryCatalogAdminPage() {
 
   const openNewForm = () => {
     const categoryId = metalCategories[0]?.id || categories[0]?.id || "";
+    const nextForm = blankForm(categoryId, metal);
     setEditingId(null);
     setCurrentDesignId("");
     setMoveCategoryId("");
-    setForm(blankForm(categoryId, metal));
+    setForm(nextForm);
+    initialFormRef.current = nextForm;
     setImageFiles([]);
     setImageAdjustments({});
     setCurrentImages([]);
+    setActiveUploadPreviewKey("");
+    setActiveStoredImageId(null);
+    setPreviewPhoto(null);
     setShowForm(true);
     setError("");
   };
@@ -316,7 +330,7 @@ export default function JewelleryCatalogAdminPage() {
       setEditingId(design.id);
       setCurrentDesignId(detail.designId || "");
       setMoveCategoryId("");
-      setForm({
+      const nextForm = {
         categoryId: String(detail.categoryId),
         metalType: detail.metalType || "GOLD",
         designName: detail.designName || "",
@@ -330,8 +344,13 @@ export default function JewelleryCatalogAdminPage() {
         priceInr: detail.priceInr ?? "",
         isActive: Boolean(detail.isActive),
         isFeatured: Boolean(detail.isFeatured),
-      });
+      };
+      setForm(nextForm);
+      initialFormRef.current = nextForm;
       setCurrentImages(Array.isArray(detail.images) ? detail.images : []);
+      setActiveStoredImageId((detail.images || []).find((image) => Number(image.displayOrder) === 0)?.id || detail.images?.[0]?.id || null);
+      setActiveUploadPreviewKey("");
+      setPreviewPhoto(null);
       setImageFiles([]);
       setImageAdjustments({});
       setShowForm(true);
@@ -405,6 +424,59 @@ export default function JewelleryCatalogAdminPage() {
     const action = nextActive ? "activate" : "deactivate";
     if (!window.confirm("Are you sure you want to " + action + " " + category.subcategoryName + "?")) return;
     updateSubcategory(category, { isActive: nextActive });
+  };
+
+  const addPendingImages = (files) => {
+    const incoming = Array.from(files || []).filter((file) =>
+      file && (/^image\/(jpeg|png|webp)$/i.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name || ""))
+    );
+    if (!incoming.length) return;
+    setActiveStoredImageId(null);
+    setActiveUploadPreviewKey(`${incoming[0].name}::${incoming[0].size}::${incoming[0].lastModified}`);
+    setImageFiles((current) => {
+      const seen = new Set(current.map((file) => `${file.name}::${file.size}::${file.lastModified}`));
+      const merged = [...current];
+      incoming.forEach((file) => {
+        const key = `${file.name}::${file.size}::${file.lastModified}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(file);
+        }
+      });
+      return merged;
+    });
+    setImageAdjustments((current) => {
+      const next = { ...current };
+      incoming.forEach((file) => {
+        const key = `${file.name}::${file.size}::${file.lastModified}`;
+        if (!next[key]) next[key] = { rotation: 0, cropZoom: 1 };
+      });
+      return next;
+    });
+  };
+
+  const resetDesignForm = () => {
+    setForm({ ...initialFormRef.current });
+    setImageFiles([]);
+    setImageAdjustments({});
+    setActiveUploadPreviewKey("");
+    setPreviewPhoto(null);
+  };
+
+  const removePendingImage = (preview) => {
+    setImageFiles((current) => current.filter((file) => file !== preview.file));
+    setImageAdjustments((current) => {
+      const next = { ...current };
+      delete next[preview.key];
+      return next;
+    });
+    setActiveUploadPreviewKey((current) => current === preview.key ? "" : current);
+  };
+
+  const makePendingImagePrimary = (preview) => {
+    setActiveStoredImageId(null);
+    setImageFiles((current) => [preview.file, ...current.filter((file) => file !== preview.file)]);
+    setActiveUploadPreviewKey(preview.key);
   };
 
   const saveDesign = async (event) => {
@@ -511,12 +583,61 @@ export default function JewelleryCatalogAdminPage() {
     setError("");
     try {
       const detail = await request(`/admin/designs/${design.id}`);
+      setDetailImageIndex(0);
+      setDetailImageZoom(1);
+      setDetailPhotoExpanded(false);
+      setDetailsActionError("");
       setViewingDesign(detail);
     } catch (err) {
       setError(err.message || "Could not load design details.");
     } finally {
       setDetailsLoading(false);
     }
+  };
+
+  const setViewedPrimaryImage = async (image) => {
+    if (!viewingDesign?.id || !image?.id || detailsActionBusy || Number(image.displayOrder) === 0) return;
+    setDetailsActionBusy(true);
+    setDetailsActionError("");
+    try {
+      const result = await request(`/admin/designs/${viewingDesign.id}/images/${image.id}/primary`, { method: "PUT" });
+      const updatedImages = Array.isArray(result.images) ? result.images : (viewingDesign.images || []).map((item) => ({
+        ...item,
+        displayOrder: String(item.id) === String(image.id) ? 0 : item.displayOrder,
+      }));
+      setViewingDesign((current) => current ? { ...current, images: updatedImages } : current);
+      setDetailImageIndex(Math.max(0, updatedImages.findIndex((item) => String(item.id) === String(image.id))));
+      await loadDesigns(page);
+    } catch (err) {
+      setDetailsActionError(err.message || "Could not set the primary photograph.");
+    } finally {
+      setDetailsActionBusy(false);
+    }
+  };
+
+  const removeViewedImage = async (image) => {
+    if (!viewingDesign?.id || !image?.id || detailsActionBusy) return;
+    if (!window.confirm("Remove this photograph from the design?")) return;
+    setDetailsActionBusy(true);
+    setDetailsActionError("");
+    try {
+      const result = await request(`/admin/designs/${viewingDesign.id}/images/${image.id}`, { method: "DELETE" });
+      const updatedImages = Array.isArray(result.images) ? result.images : (viewingDesign.images || []).filter((item) => String(item.id) !== String(image.id));
+      setViewingDesign((current) => current ? { ...current, images: updatedImages } : current);
+      setDetailImageIndex((current) => Math.max(0, Math.min(current, updatedImages.length - 1)));
+      await loadDesigns(page);
+    } catch (err) {
+      setDetailsActionError(err.message || "Could not remove this photograph.");
+    } finally {
+      setDetailsActionBusy(false);
+    }
+  };
+
+  const openMobileUploadFromDetails = () => {
+    setViewingDesign(null);
+    setQrError("");
+    setQrOpen(true);
+    generateQrSession();
   };
 
   const moveDesign = async () => {
@@ -641,6 +762,18 @@ export default function JewelleryCatalogAdminPage() {
       setBulkRunning(false);
     }
   };
+
+  const selectedPendingPhoto = activeStoredImageId
+    ? null
+    : imagePreviews.find((preview) => preview.key === activeUploadPreviewKey) || imagePreviews[0] || null;
+  const selectedStoredPhoto = activeStoredImageId
+    ? currentImages.find((image) => String(image.id) === String(activeStoredImageId)) || null
+    : selectedPendingPhoto
+      ? null
+      : currentImages.find((image) => Number(image.displayOrder) === 0) || currentImages[0] || null;
+  const selectedPhotoAdjustment = selectedPendingPhoto
+    ? imageAdjustments[selectedPendingPhoto.key] || { rotation: 0, cropZoom: 1 }
+    : null;
 
   return (
     <Page active="design-catalog">
@@ -843,42 +976,190 @@ export default function JewelleryCatalogAdminPage() {
         )}
 
         {viewingDesign && (
-          <div className="nkj-catalog-modal-backdrop nkj-catalog-details-backdrop" role="presentation" onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setViewingDesign(null);
+          <div className="nkj-catalog-modal-backdrop nkj-catalog-details-backdrop nkj-catalog-view-backdrop" role="presentation" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setViewingDesign(null);
+              setDetailPhotoExpanded(false);
+            }
           }}>
-            <section className="nkj-catalog-details-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-catalog-admin-details-title">
-              <header>
-                <div><span>JEWELLERY DESIGN DETAILS</span><h2 id="nkj-catalog-admin-details-title">{viewingDesign.designName}</h2></div>
-                <button type="button" onClick={() => setViewingDesign(null)} aria-label="Close details"><X size={19} /></button>
-              </header>
-              <div className="nkj-catalog-details-id">{viewingDesign.designId || viewingDesign.designCode}</div>
-              <div className="nkj-catalog-details-photos">
-                {(viewingDesign.images || []).map((image) => (
-                  <img key={image.id} src={assetUrl(image.displayUrl || image.thumbnailUrl)} alt={image.altText || viewingDesign.designName} loading="lazy" />
-                ))}
-                {!viewingDesign.images?.length && <div>No photograph uploaded yet.</div>}
+            <section className="nkj-catalog-details-modal nkj-catalog-view-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-catalog-admin-details-title">
+              <button
+                type="button"
+                className="nkj-catalog-view-close"
+                onClick={() => { setViewingDesign(null); setDetailPhotoExpanded(false); }}
+                aria-label="Close design details"
+              ><X size={23} /></button>
+
+              <div className="nkj-catalog-view-layout">
+                <section className="nkj-catalog-view-gallery" aria-label="Design photographs">
+                  <div className="nkj-catalog-view-main-photo">
+                    {viewingDesign.images?.length ? (
+                      <>
+                        <img
+                          className="nkj-catalog-view-main-image"
+                          src={assetUrl(viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.displayUrl
+                            || viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.originalUrl
+                            || viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.thumbnailUrl)}
+                          alt={viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.altText || viewingDesign.designName}
+                          style={{ transform: `scale(${detailImageZoom})` }}
+                          onError={(event) => {
+                            const image = viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)];
+                            const fallback = assetUrl(image?.thumbnailUrl);
+                            if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                          }}
+                        />
+                        <span className="nkj-catalog-view-image-count">{Math.min(detailImageIndex + 1, viewingDesign.images.length)} / {viewingDesign.images.length}</span>
+                        <div className="nkj-catalog-view-image-tools">
+                          <button type="button" aria-label="Zoom in" onClick={() => setDetailImageZoom((value) => Math.min(2.5, Number((value + 0.25).toFixed(2))))}><ZoomIn size={19} /></button>
+                          <button type="button" aria-label="Zoom out" onClick={() => setDetailImageZoom((value) => Math.max(1, Number((value - 0.25).toFixed(2))))} disabled={detailImageZoom <= 1}><ZoomOut size={19} /></button>
+                          <button type="button" aria-label="View photograph full screen" onClick={() => setDetailPhotoExpanded(true)}><Maximize2 size={19} /></button>
+                        </div>
+                        {viewingDesign.images.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              className="nkj-catalog-view-image-arrow previous"
+                              aria-label="Previous photograph"
+                              onClick={() => { setDetailImageIndex((value) => (value - 1 + viewingDesign.images.length) % viewingDesign.images.length); setDetailImageZoom(1); }}
+                            ><ChevronLeft size={25} /></button>
+                            <button
+                              type="button"
+                              className="nkj-catalog-view-image-arrow next"
+                              aria-label="Next photograph"
+                              onClick={() => { setDetailImageIndex((value) => (value + 1) % viewingDesign.images.length); setDetailImageZoom(1); }}
+                            ><ChevronRight size={25} /></button>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <div className="nkj-catalog-view-no-photo"><ImagePlus size={48} /><b>No photograph uploaded</b><span>Edit this design to add product photographs.</span></div>
+                    )}
+                  </div>
+
+                  <div className="nkj-catalog-view-gallery-thumbs">
+                    {(viewingDesign.images || []).map((image, index) => (
+                      <button
+                        type="button"
+                        key={image.id}
+                        className={index === detailImageIndex ? "active" : ""}
+                        onClick={() => { setDetailImageIndex(index); setDetailImageZoom(1); }}
+                        aria-label={`View photograph ${index + 1}`}
+                      >
+                        <img src={assetUrl(image.thumbnailUrl || image.displayUrl || image.originalUrl)} alt={image.altText || `Design photograph ${index + 1}`} />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="nkj-catalog-view-information">
+                  <header className="nkj-catalog-view-title-row">
+                    <div>
+                      <span className="nkj-catalog-view-category">{viewingDesign.metalType || "JEWELLERY"} DESIGN</span>
+                      <h2 id="nkj-catalog-admin-details-title">
+                        {viewingDesign.designName || viewingDesign.subcategoryName}
+                      </h2>
+                    </div>
+                  </header>
+
+                  <div className="nkj-catalog-view-id">
+                    <QrCode size={18} />
+                    <span>DESIGN ID</span>
+                    <b>{viewingDesign.designId || viewingDesign.designCode}</b>
+                  </div>
+
+                  <section className="nkj-catalog-view-card nkj-catalog-view-detail-card">
+                    <h3><Info size={19} /> DETAIL</h3>
+                    <div className="nkj-catalog-view-detail-rows">
+                      <div><Gem size={22} /><span>Jewellery type</span><b>{viewingDesign.subcategoryName || viewingDesign.regionalInspiration || "—"}</b></div>
+                      <div><Layers3 size={22} /><span>Style</span><b>{viewingDesign.styleLabel || "—"}</b></div>
+                      <div><Package size={22} /><span>Material</span><b>{viewingDesign.materialLabel || viewingDesign.metalType || "—"}</b></div>
+                      <div><Weight size={22} /><span>Weight</span><b>{viewingDesign.weightGrams == null ? "—" : Number(viewingDesign.weightGrams).toLocaleString("en-IN") + " g"}</b></div>
+                    </div>
+                    <div className="nkj-catalog-view-extra-details">
+                      <span>Purity <b>{viewingDesign.purity || "Not specified"}</b></span>
+                      <span>Price <b>{viewingDesign.priceInr == null ? "Not set" : "₹" + Number(viewingDesign.priceInr).toLocaleString("en-IN")}</b></span>
+                      <span>Status <b className={viewingDesign.isActive ? "is-active" : "is-inactive"}>{viewingDesign.isActive ? "Active" : "Inactive"}</b></span>
+                      {viewingDesign.regionalInspiration && <span>Regional inspiration <b>{viewingDesign.regionalInspiration}</b></span>}
+                    </div>
+                    {viewingDesign.description && <p className="nkj-catalog-view-description">{viewingDesign.description}</p>}
+                  </section>
+
+                  <section className="nkj-catalog-view-card nkj-catalog-view-photos-card">
+                    <header>
+                      <h3><ImagePlus size={19} /> Design photographs</h3>
+                      <span>{viewingDesign.images?.length || 0} saved</span>
+                    </header>
+                    <div className="nkj-catalog-view-photo-management">
+                      <div className="nkj-catalog-view-photo-strip">
+                        {(viewingDesign.images || []).map((image, index) => (
+                          <button
+                            type="button"
+                            key={image.id}
+                            className={index === detailImageIndex ? "active" : ""}
+                            onClick={() => { setDetailImageIndex(index); setDetailImageZoom(1); }}
+                            aria-label={`Select saved photograph ${index + 1}`}
+                          >
+                            <img src={assetUrl(image.thumbnailUrl || image.displayUrl || image.originalUrl)} alt={image.altText || `Saved photograph ${index + 1}`} />
+                          </button>
+                        ))}
+                        {!viewingDesign.images?.length && <span className="nkj-catalog-view-no-saved">No saved photographs</span>}
+                      </div>
+                      <div className="nkj-catalog-view-photo-actions">
+                        <button
+                          type="button"
+                          className="primary-photo"
+                          disabled={!viewingDesign.images?.length || detailsActionBusy || Number(viewingDesign.images?.[detailImageIndex]?.displayOrder) === 0}
+                          onClick={() => setViewedPrimaryImage(viewingDesign.images[detailImageIndex])}
+                        ><Star size={16} fill="currentColor" /> Primary</button>
+                        <button
+                          type="button"
+                          className="remove-photo"
+                          disabled={!viewingDesign.images?.length || detailsActionBusy}
+                          onClick={() => removeViewedImage(viewingDesign.images[detailImageIndex])}
+                          aria-label="Remove selected photograph"
+                        >{detailsActionBusy ? <LoaderCircle className="spin" size={16} /> : <Trash2 size={17} />}</button>
+                      </div>
+                    </div>
+                    {detailsActionError && <div className="nkj-catalog-view-action-error" role="alert">{detailsActionError}</div>}
+                  </section>
+
+                  <section className="nkj-catalog-view-card nkj-catalog-owner-controls">
+                    <div className="nkj-catalog-owner-controls-heading">
+                      <div><LockKeyhole size={21} /><span><small>OWNER CONTROLS</small><b>Manage this design</b></span></div>
+                      <LockKeyhole size={22} />
+                    </div>
+                    <div className="nkj-catalog-owner-control-actions">
+                      <button type="button" className="edit" onClick={() => {
+                        const selectedDesign = viewingDesign;
+                        setViewingDesign(null);
+                        openEditForm({ id: selectedDesign.id });
+                      }}><Pencil size={18} /> Edit Details</button>
+                      <button type="button" className="archive" onClick={() => {
+                        const selectedDesign = viewingDesign;
+                        setViewingDesign(null);
+                        deleteDesign(selectedDesign);
+                      }}><Trash2 size={18} /> Delete / Archive</button>
+                      <button type="button" className="mobile-upload" onClick={openMobileUploadFromDetails}><QrCode size={19} /> Upload from Mobile (QR Code)</button>
+                    </div>
+                  </section>
+                </section>
               </div>
-              <dl>
-                <div><dt>Main category</dt><dd>{viewingDesign.metalType}</dd></div>
-                <div><dt>Subcategory</dt><dd>{viewingDesign.subcategoryName}</dd></div>
-                <div><dt>Design name</dt><dd>{viewingDesign.designName}</dd></div>
-                <div><dt>Style</dt><dd>{viewingDesign.styleLabel || "—"}</dd></div>
-                <div><dt>Purity / fineness</dt><dd>{viewingDesign.purity || "—"}</dd></div>
-                <div><dt>Weight</dt><dd>{viewingDesign.weightGrams == null ? "—" : Number(viewingDesign.weightGrams).toLocaleString("en-IN") + " g"}</dd></div>
-                <div><dt>Price</dt><dd>{viewingDesign.priceInr == null ? "Not set" : "₹" + Number(viewingDesign.priceInr).toLocaleString("en-IN")}</dd></div>
-                <div><dt>Status</dt><dd>{viewingDesign.isActive ? "Active" : "Inactive"}</dd></div>
-                <div><dt>Images</dt><dd>{viewingDesign.images?.length || 0}</dd></div>
-                <div><dt>Record type</dt><dd>{viewingDesign.isSample ? "Sample inspiration" : "Owner photograph"}</dd></div>
-              </dl>
-              <p>{viewingDesign.description || "No design description added."}</p>
-              <footer>
-                <button type="button" onClick={() => setViewingDesign(null)}>Close</button>
-                <button type="button" className="primary" onClick={() => {
-                  const selectedDesign = viewingDesign;
-                  setViewingDesign(null);
-                  openEditForm({ id: selectedDesign.id });
-                }}><Pencil size={15} /> Edit Design</button>
+
+              <footer className="nkj-catalog-view-footer">
+                <button type="button" onClick={() => { setViewingDesign(null); setDetailPhotoExpanded(false); }}>Close</button>
               </footer>
+
+              {detailPhotoExpanded && viewingDesign.images?.length > 0 && (
+                <div className="nkj-catalog-view-lightbox" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailPhotoExpanded(false); }}>
+                  <button type="button" className="close" onClick={() => setDetailPhotoExpanded(false)} aria-label="Close full-screen photo"><X size={23} /></button>
+                  <img
+                    src={assetUrl(viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.displayUrl
+                      || viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.originalUrl
+                      || viewingDesign.images[Math.min(detailImageIndex, viewingDesign.images.length - 1)]?.thumbnailUrl)}
+                    alt={viewingDesign.designName}
+                  />
+                </div>
+              )}
             </section>
           </div>
         )}
@@ -909,133 +1190,254 @@ export default function JewelleryCatalogAdminPage() {
         )}
 
         {showForm && (
-          <div className="nkj-catalog-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
-            <form className="nkj-catalog-modal" onSubmit={saveDesign}>
-              <header><div><span>OWNER CATALOGUE</span><h2>{editingId ? "Edit Jewellery Design" : "Add New Design"}</h2></div><button type="button" onClick={() => setShowForm(false)} aria-label="Close"><X size={19} /></button></header>
-              <div className="nkj-catalog-form-grid">
-                <label className="wide">Design ID (generated automatically · read-only)
-                  <input value={editingId ? currentDesignId : "Generated after saving"} readOnly aria-readonly="true" />
-                </label>
-                <label>Main Category
-                  <select required disabled={Boolean(editingId)} value={form.metalType} onChange={(event) => {
-                    const nextMetal = event.target.value;
-                    const first = categories.find((item) => item.metalType === nextMetal && item.isActive !== false);
-                    setForm((current) => ({ ...current, metalType: nextMetal, categoryId: first ? String(first.id) : "", purity: "" }));
-                  }}>
-                    <option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="DIAMOND">Diamond</option>
-                  </select>
-                </label>
-                <label>Subcategory
-                  <select required disabled={Boolean(editingId)} value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
-                    <option value="">Choose subcategory</option>
-                    {formMetalCategories.map((item) => <option key={item.id} value={item.id}>{item.subcategoryName}</option>)}
-                  </select>
-                  {editingId && <small>A Design ID never changes. Use the safe move option below to create a new ID and archive this original record.</small>}
-                </label>
-                {editingId && (
-                  <div className="wide nkj-catalog-move-panel">
-                    <div>
-                      <b>Move to another subcategory</b>
-                      <small>The original Design ID remains archived. Design details and photo references transfer to the new record.</small>
-                    </div>
-                    <div className="nkj-catalog-move-controls">
-                      <select value={moveCategoryId} onChange={(event) => setMoveCategoryId(event.target.value)} aria-label="Destination subcategory">
-                        <option value="">Choose destination subcategory</option>
-                        {formMetalCategories.filter((item) => String(item.id) !== String(form.categoryId)).map((item) => (
-                          <option key={item.id} value={item.id}>{item.subcategoryName}</option>
-                        ))}
-                      </select>
-                      <button type="button" disabled={!moveCategoryId || movingDesign || saving} onClick={moveDesign}>
-                        {movingDesign ? <LoaderCircle className="spin" size={14} /> : <ArrowRightLeft size={14} />}
-                        {movingDesign ? "Moving…" : "Move and generate new ID"}
-                      </button>
-                    </div>
+          <div className="nkj-catalog-modal-backdrop nkj-catalog-design-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
+            <form className="nkj-catalog-modal nkj-catalog-design-modal" onSubmit={saveDesign}>
+              <header className="nkj-catalog-design-header">
+                <div>
+                  <span>OWNER CATALOGUE</span>
+                  <h2>{editingId ? "Edit Jewellery Design" : "Add New Design"}</h2>
+                </div>
+                <button type="button" onClick={() => setShowForm(false)} aria-label="Close" disabled={saving}><X size={22} /></button>
+              </header>
+
+              {error && <div className="nkj-catalog-design-error" role="alert">{error}</div>}
+
+              <div className="nkj-catalog-design-editor-grid">
+                <aside className="nkj-catalog-photo-panel">
+                  <label
+                    className={"nkj-catalog-photo-dropzone" + (imagePreviews.length || currentImages.length ? " has-photo" : "")}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => { event.preventDefault(); addPendingImages(event.dataTransfer.files); }}
+                  >
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                      multiple
+                      onChange={(event) => { addPendingImages(event.target.files); event.target.value = ""; }}
+                    />
+                    {selectedPendingPhoto?.url || selectedStoredPhoto ? (
+                      <span className="nkj-catalog-photo-stage">
+                        <img
+                          src={selectedPendingPhoto?.url || assetUrl(selectedStoredPhoto.displayUrl || selectedStoredPhoto.thumbnailUrl)}
+                          alt={selectedPendingPhoto?.file.name || selectedStoredPhoto?.altText || form.designName || "Design preview"}
+                          style={selectedPendingPhoto ? { transform: `rotate(${selectedPhotoAdjustment.rotation}deg) scale(${selectedPhotoAdjustment.cropZoom})` } : undefined}
+                        />
+                        <span className="nkj-catalog-photo-stage-hint"><ImagePlus size={15} /> Add or drop more photographs</span>
+                      </span>
+                    ) : (
+                      <span className="nkj-catalog-photo-empty">
+                        <Upload size={48} strokeWidth={1.65} />
+                        <b>Upload Design Photographs</b>
+                        <small>Drag &amp; drop images here or click to browse</small>
+                        <span className="nkj-catalog-choose-files"><Upload size={16} /> Choose Files</span>
+                        <em>JPG, PNG, WEBP (Max 10 MB each)</em>
+                      </span>
+                    )}
+                  </label>
+
+                  <div className="nkj-catalog-photo-gallery-head">
+                    <b>Design Photographs</b>
+                    <span>{imageFiles.length + currentImages.length} {imageFiles.length + currentImages.length === 1 ? "photo" : "photos"}</span>
                   </div>
-                )}
-                <label className="wide">Design name<input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" /></label>
-                <label>Style / design type<input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" /></label>
-                <label>Regional inspiration<input maxLength={80} value={form.regionalInspiration} onChange={(event) => setForm((current) => ({ ...current, regionalInspiration: event.target.value }))} placeholder="e.g. Bengali / Rajasthani / Pan-Indian" /></label>
-                <label className="wide">Material description<input maxLength={120} value={form.materialLabel} onChange={(event) => setForm((current) => ({ ...current, materialLabel: event.target.value }))} placeholder="e.g. Gold concept · actual karat not specified" /></label>
-                <label>Purity / fineness
-                  <select value={form.purity} onChange={(event) => setForm((current) => ({ ...current, purity: event.target.value }))}>
-                    <option value="">Not specified</option>
-                    {hasLegacyPurity && <option value={form.purity}>Existing saved value (kept): {form.purity}</option>}
-                    {formPurityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
-                  {hasLegacyPurity && <small className="nkj-catalog-purity-legacy">This saved value is outside the current {form.metalType} options. It is preserved until you choose a valid value above.</small>}
-                </label>
-                <label>Search keywords<input maxLength={800} value={form.keywords} onChange={(event) => setForm((current) => ({ ...current, keywords: event.target.value }))} placeholder="Motif, finish, occasion…" /></label>
-                <label>Weight (grams)<input type="number" min="0" step="0.001" value={form.weightGrams} onChange={(event) => setForm((current) => ({ ...current, weightGrams: event.target.value }))} placeholder="Optional" /></label>
-                <label>Price (₹)<input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" /></label>
-                <label className="wide">Description<textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" /></label>
-                <label className="wide nkj-catalog-upload-box"><ImagePlus size={18} /> Upload From Computer · multiple design photographs
-                  <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => { setImageFiles(Array.from(event.target.files || [])); setImageAdjustments({}); event.target.value = ""; }} />
-                  <small>HD photo required: longest side 1200 px minimum and shortest side 600 px minimum · JPG/JPEG/PNG/WebP · Maximum 10 MB. Original bytes are preserved; display and thumbnail copies are generated. You can rotate and crop before saving. Photo upload is optional: save without a photo and this design will show “Photo pending” until the owner uploads a verified photograph.</small>
-                </label>
+
+                  <div className="nkj-catalog-photo-thumbnails">
+                    {imagePreviews.map((preview, index) => (
+                      <div className={"nkj-catalog-photo-thumb" + ((!activeStoredImageId && (activeUploadPreviewKey ? activeUploadPreviewKey === preview.key : index === 0)) ? " active" : "")} key={preview.key}>
+                        <button type="button" className="nkj-catalog-photo-thumb-image" onClick={() => { setActiveStoredImageId(null); setActiveUploadPreviewKey(preview.key); }} title={preview.file.name}>
+                          <img
+                            src={preview.url}
+                            alt={preview.file.name}
+                            style={{ transform: `rotate(${(imageAdjustments[preview.key] || {}).rotation || 0}deg) scale(${(imageAdjustments[preview.key] || {}).cropZoom || 1})` }}
+                          />
+                        </button>
+                        {index === 0 ? <span className="nkj-catalog-photo-primary">★ Primary</span> : null}
+                        <button type="button" className="nkj-catalog-photo-thumb-remove" onClick={() => removePendingImage(preview)} aria-label={"Remove " + preview.file.name}><X size={13} /></button>
+                      </div>
+                    ))}
+
+                    {currentImages.map((image) => (
+                      <div className={"nkj-catalog-photo-thumb" + (Number(image.displayOrder) === 0 ? " is-primary" : "") + ((String(activeStoredImageId) === String(image.id) || (!activeStoredImageId && !imagePreviews.length && Number(image.displayOrder) === 0)) ? " active" : "")} key={image.id}>
+                        <button type="button" className="nkj-catalog-photo-thumb-image" onClick={() => { setActiveStoredImageId(image.id); setActiveUploadPreviewKey(""); }} title={image.altText || form.designName}>
+                          <img src={assetUrl(image.thumbnailUrl || image.displayUrl)} alt={image.altText || form.designName} />
+                        </button>
+                        {Number(image.displayOrder) === 0 ? <span className="nkj-catalog-photo-primary">★ Primary</span> : <button type="button" className="nkj-catalog-photo-set-primary" onClick={() => { setPrimaryImage(image); setActiveStoredImageId(image.id); setActiveUploadPreviewKey(""); }}>Set Primary</button>}
+                        <button type="button" className="nkj-catalog-photo-thumb-remove" onClick={() => removeImage(image)} aria-label="Remove image"><X size={13} /></button>
+                      </div>
+                    ))}
+
+                    <label className="nkj-catalog-photo-add-more">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                        multiple
+                        onChange={(event) => { addPendingImages(event.target.files); event.target.value = ""; }}
+                      />
+                      <Plus size={27} />
+                      <span>Add More</span>
+                    </label>
+                  </div>
+
+                  {(imagePreviews.length > 0 || currentImages.length > 0) && (
+                    <div className="nkj-catalog-photo-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedPendingPhoto) {
+                            makePendingImagePrimary(selectedPendingPhoto);
+                          } else if (selectedStoredPhoto) {
+                            setPrimaryImage(selectedStoredPhoto);
+                          }
+                        }}
+                      ><CheckCircle2 size={17} /> Primary</button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const src = selectedPendingPhoto?.url || (selectedStoredPhoto ? assetUrl(selectedStoredPhoto.displayUrl || selectedStoredPhoto.thumbnailUrl) : "");
+                          if (src) setPreviewPhoto({ src, alt: selectedPendingPhoto?.file.name || selectedStoredPhoto?.altText || form.designName || "Jewellery design" });
+                        }}
+                      ><Eye size={17} /> Preview</button>
+                      <button
+                        type="button"
+                        className="remove"
+                        onClick={() => {
+                          if (selectedPendingPhoto) removePendingImage(selectedPendingPhoto);
+                          else if (selectedStoredPhoto) removeImage(selectedStoredPhoto);
+                        }}
+                      ><Trash2 size={17} /> Remove</button>
+                    </div>
+                  )}
+                  {selectedPendingPhoto && (
+                    <details className="nkj-catalog-photo-adjustments">
+                      <summary>Photo Adjustments · rotate and crop</summary>
+                      <div className="nkj-catalog-photo-adjustment-actions">
+                        <button type="button" onClick={() => setImageAdjustments((current) => ({
+                          ...current,
+                          [selectedPendingPhoto.key]: { ...selectedPhotoAdjustment, rotation: (selectedPhotoAdjustment.rotation + 270) % 360 },
+                        }))}><RotateCcw size={14} /> Rotate Left</button>
+                        <button type="button" onClick={() => setImageAdjustments((current) => ({
+                          ...current,
+                          [selectedPendingPhoto.key]: { ...selectedPhotoAdjustment, rotation: (selectedPhotoAdjustment.rotation + 90) % 360 },
+                        }))}><RotateCw size={14} /> Rotate Right</button>
+                      </div>
+                      <label>Crop / Zoom · {Number(selectedPhotoAdjustment.cropZoom).toFixed(1)}×
+                        <input type="range" min="1" max="2" step="0.1" value={selectedPhotoAdjustment.cropZoom} onChange={(event) => setImageAdjustments((current) => ({
+                          ...current,
+                          [selectedPendingPhoto.key]: { ...selectedPhotoAdjustment, cropZoom: Number(event.target.value) },
+                        }))} />
+                      </label>
+                    </details>
+                  )}
+                  <p className="nkj-catalog-photo-note">Original photographs are preserved. Add multiple JPG, PNG or WebP images; the first selected photo is primary unless changed above.</p>
+                </aside>
+
+                <div className="nkj-catalog-design-fields">
+                  <section className="nkj-catalog-form-section">
+                    <h3>BASIC INFORMATION</h3>
+                    <div className="nkj-catalog-basic-grid">
+                      <label>Design ID (auto-generated)
+                        <input className="nkj-catalog-id-field" value={editingId ? currentDesignId : "Generated after saving"} readOnly aria-readonly="true" />
+                      </label>
+                      <label>Main Category <i>*</i>
+                        <select required disabled={Boolean(editingId)} value={form.metalType} onChange={(event) => {
+                          const nextMetal = event.target.value;
+                          const first = categories.find((item) => item.metalType === nextMetal && item.isActive !== false);
+                          setForm((current) => ({ ...current, metalType: nextMetal, categoryId: first ? String(first.id) : "", purity: "" }));
+                        }}>
+                          <option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="DIAMOND">Diamond</option>
+                        </select>
+                      </label>
+                      <label>Subcategory <i>*</i>
+                        <select required disabled={Boolean(editingId)} value={form.categoryId} onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}>
+                          <option value="">Choose subcategory</option>
+                          {formMetalCategories.map((item) => <option key={item.id} value={item.id}>{item.subcategoryName}</option>)}
+                        </select>
+                      </label>
+                      <label className="full">Design Name <i>*</i>
+                        <input required maxLength={160} value={form.designName} onChange={(event) => setForm((current) => ({ ...current, designName: event.target.value }))} placeholder="Enter a distinct design name" />
+                      </label>
+                    </div>
+                    {editingId && (
+                      <div className="nkj-catalog-move-panel">
+                        <div><b>Move to another subcategory</b><small>The original Design ID remains archived. Design details and photo references transfer to the new record.</small></div>
+                        <div className="nkj-catalog-move-controls">
+                          <select value={moveCategoryId} onChange={(event) => setMoveCategoryId(event.target.value)} aria-label="Destination subcategory">
+                            <option value="">Choose destination subcategory</option>
+                            {formMetalCategories.filter((item) => String(item.id) !== String(form.categoryId)).map((item) => (
+                              <option key={item.id} value={item.id}>{item.subcategoryName}</option>
+                            ))}
+                          </select>
+                          <button type="button" disabled={!moveCategoryId || movingDesign || saving} onClick={moveDesign}>
+                            {movingDesign ? <LoaderCircle size={14} className="spin" /> : <ArrowRightLeft size={14} />}
+                            {movingDesign ? "Moving…" : "Move and generate new ID"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="nkj-catalog-form-section">
+                    <h3>DESIGN SPECIFICATIONS</h3>
+                    <div className="nkj-catalog-spec-grid">
+                      <label>Jewellery Type
+                        <input maxLength={80} value={form.regionalInspiration} onChange={(event) => setForm((current) => ({ ...current, regionalInspiration: event.target.value }))} placeholder="e.g. Bengali / Rajasthani / Pan-Indian" />
+                      </label>
+                      <label>Style / Design Type
+                        <input maxLength={80} value={form.styleLabel} onChange={(event) => setForm((current) => ({ ...current, styleLabel: event.target.value }))} placeholder="e.g. Bengali Nakshi" />
+                      </label>
+                      <label className="full">Material Description
+                        <input maxLength={120} value={form.materialLabel} onChange={(event) => setForm((current) => ({ ...current, materialLabel: event.target.value }))} placeholder="e.g. Gold concept · actual karat not specified" />
+                      </label>
+                      <label>Purity / Fineness
+                        <select value={form.purity} onChange={(event) => setForm((current) => ({ ...current, purity: event.target.value }))}>
+                          <option value="">Not specified</option>
+                          {hasLegacyPurity && <option value={form.purity}>Existing saved value (kept): {form.purity}</option>}
+                          {formPurityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                        </select>
+                        {hasLegacyPurity && <small className="nkj-catalog-purity-legacy">This saved value is outside the current {form.metalType} options. It is preserved until you choose a valid value above.</small>}
+                      </label>
+                      <label>Weight (grams)
+                        <input type="number" min="0" step="0.001" value={form.weightGrams} onChange={(event) => setForm((current) => ({ ...current, weightGrams: event.target.value }))} placeholder="Optional" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section className="nkj-catalog-form-section">
+                    <h3>ADDITIONAL INFORMATION</h3>
+                    <div className="nkj-catalog-additional-grid">
+                      <label>Search Keywords
+                        <input maxLength={800} value={form.keywords} onChange={(event) => setForm((current) => ({ ...current, keywords: event.target.value }))} placeholder="Motif, finish, occasion…" />
+                      </label>
+                      <label>Price (₹)
+                        <input type="number" min="0" step="0.01" value={form.priceInr} onChange={(event) => setForm((current) => ({ ...current, priceInr: event.target.value }))} placeholder="Optional" />
+                      </label>
+                      <label className="full">Description
+                        <textarea maxLength={5000} rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Describe the design details…" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
               </div>
-              {imageFiles.length > 0 && (
-                <>
-                  <div className="nkj-catalog-selected-files">{imageFiles.length} image(s) selected for upload</div>
-                  <div className="nkj-catalog-image-previews" aria-label="Selected image previews">
-                    {imagePreviews.map((preview) => {
-                      const adjustment = imageAdjustments[preview.key] || { rotation: 0, cropZoom: 1 };
-                      return (
-                        <figure key={preview.url}>
-                          <div className="nkj-catalog-preview-frame">
-                            <img
-                              src={preview.url}
-                              alt={preview.file.name}
-                              style={{ transform: `rotate(${adjustment.rotation}deg) scale(${adjustment.cropZoom})` }}
-                            />
-                          </div>
-                          <figcaption title={preview.file.name}>{preview.file.name}</figcaption>
-                          <div className="nkj-catalog-desktop-image-tools">
-                            <button type="button" onClick={() => setImageAdjustments((current) => ({
-                              ...current,
-                              [preview.key]: { ...adjustment, rotation: (adjustment.rotation + 270) % 360 },
-                            }))}><RotateCcw size={13} /> Left</button>
-                            <button type="button" onClick={() => setImageAdjustments((current) => ({
-                              ...current,
-                              [preview.key]: { ...adjustment, rotation: (adjustment.rotation + 90) % 360 },
-                            }))}><RotateCw size={13} /> Right</button>
-                          </div>
-                          <label className="nkj-catalog-desktop-crop">Crop / zoom · {Number(adjustment.cropZoom).toFixed(1)}×
-                            <input type="range" min="1" max="2" step="0.1" value={adjustment.cropZoom} onChange={(event) => setImageAdjustments((current) => ({
-                              ...current,
-                              [preview.key]: { ...adjustment, cropZoom: Number(event.target.value) },
-                            }))} />
-                          </label>
-                          <button type="button" className="nkj-catalog-remove-pending" onClick={() => {
-                            setImageFiles((current) => current.filter((file) => file !== preview.file));
-                            setImageAdjustments((current) => {
-                              const next = { ...current };
-                              delete next[preview.key];
-                              return next;
-                            });
-                          }} aria-label={"Remove " + preview.file.name}><X size={13} /> Remove</button>
-                        </figure>
-                      );
-                    })}
+
+              <footer className="nkj-catalog-design-footer">
+                <div className="nkj-catalog-design-status">
+                  <label><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Publish / active</label>
+                  <label><input type="checkbox" checked={form.isFeatured} onChange={(event) => setForm((current) => ({ ...current, isFeatured: event.target.checked }))} /> Featured design</label>
+                </div>
+                <div className="nkj-catalog-design-footer-actions">
+                  <button type="button" className="cancel" disabled={saving} onClick={() => setShowForm(false)}><X size={17} /> Cancel</button>
+                  <button type="button" className="reset" disabled={saving} onClick={resetDesignForm}><RefreshCw size={17} /> Reset Form</button>
+                  <button type="submit" className="primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={17} /> : <Save size={17} />}{saving ? "Saving…" : "Save Design"}</button>
+                </div>
+              </footer>
+
+              {previewPhoto && (
+                <div className="nkj-catalog-photo-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewPhoto(null); }}>
+                  <div className="nkj-catalog-photo-preview" role="dialog" aria-modal="true" aria-label="Photograph preview">
+                    <button type="button" onClick={() => setPreviewPhoto(null)} aria-label="Close preview"><X size={20} /></button>
+                    <img src={previewPhoto.src} alt={previewPhoto.alt} />
                   </div>
-                </>
+                </div>
               )}
-              {editingId && currentImages.length > 0 && <div className="nkj-catalog-current-images">
-                <b>Current images · choose the primary photograph</b>
-                <div>{currentImages.map((image) => (
-                  <span key={image.id} className={Number(image.displayOrder) === 0 ? "is-primary" : ""}>
-                    <img src={assetUrl(image.thumbnailUrl)} alt={image.altText || form.designName} />
-                    {Number(image.displayOrder) === 0
-                      ? <small className="nkj-catalog-primary-label">Primary</small>
-                      : <button type="button" className="nkj-catalog-set-primary" onClick={() => setPrimaryImage(image)}>Set primary</button>}
-                    <button type="button" onClick={() => removeImage(image)} aria-label="Remove image"><X size={13} /></button>
-                  </span>
-                ))}</div>
-              </div>}
-              <div className="nkj-catalog-checkboxes">
-                <label><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Publish / active</label>
-                <label><input type="checkbox" checked={form.isFeatured} onChange={(event) => setForm((current) => ({ ...current, isFeatured: event.target.checked }))} /> Featured design</label>
-              </div>
-              <footer><button type="button" className="secondary" disabled={saving} onClick={() => setShowForm(false)}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}{saving ? "Saving…" : "Save Design"}</button></footer>
             </form>
           </div>
         )}

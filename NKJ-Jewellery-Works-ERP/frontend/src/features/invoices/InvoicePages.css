@@ -1381,289 +1381,6 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     max-width: 100% !important;
   }
 }
-/* =========================================
-   FINAL FIX: STRAIGHT A4 LANDSCAPE INVOICE
-   NO ROTATION
-   ========================================= */
-
-@page {
-    size: 297mm 210mm;
-    margin: 3mm;
-}
-
-@media print {
-
-    html,
-    body,
-    #root {
-        width: 291mm !important;
-        min-width: 0 !important;
-        max-width: 291mm !important;
-
-        height: auto !important;
-        min-height: 0 !important;
-
-        margin: 0 !important;
-        padding: 0 !important;
-
-        overflow: visible !important;
-        background: #fff !important;
-    }
-
-    /* Reset all invoice parent containers */
-    body:has(#invoice-print) #root,
-    body:has(#invoice-print) main,
-    body:has(#invoice-print) .invoice-container,
-    body:has(#invoice-print) .nkj-owner-layout,
-    body:has(#invoice-print) .nkj-invoice-detail-overlay,
-    body:has(#invoice-print) .nkj-invoice-detail-sheet,
-    body:has(#invoice-print) .nkj-full-invoice-modal {
-
-        display: block !important;
-
-        width: 291mm !important;
-        min-width: 0 !important;
-        max-width: 291mm !important;
-
-        height: auto !important;
-        min-height: 0 !important;
-        max-height: none !important;
-
-        position: static !important;
-        inset: auto !important;
-
-        margin: 0 !important;
-        padding: 0 !important;
-
-        transform: none !important;
-        transform-origin: center center !important;
-
-        rotate: none !important;
-        translate: none !important;
-
-        filter: none !important;
-        perspective: none !important;
-        contain: none !important;
-
-        overflow: visible !important;
-        box-shadow: none !important;
-        background: #fff !important;
-    }
-
-    /* Hide everything except the invoice */
-    body:has(#invoice-print) * {
-        visibility: hidden !important;
-    }
-
-    body:has(#invoice-print) #invoice-print,
-    body:has(#invoice-print) #invoice-print * {
-        visibility: visible !important;
-    }
-
-    /* THE MAIN FIX: KEEP INVOICE STRAIGHT */
-    body:has(#invoice-print) #invoice-print {
-
-        display: block !important;
-        position: static !important;
-
-        width: 291mm !important;
-        min-width: 291mm !important;
-        max-width: 291mm !important;
-
-        height: auto !important;
-        min-height: 0 !important;
-        max-height: none !important;
-
-        margin: 0 !important;
-        padding: 2mm !important;
-
-        box-sizing: border-box !important;
-
-        transform: none !important;
-        transform-origin: center center !important;
-
-        rotate: none !important;
-        translate: none !important;
-
-        writing-mode: horizontal-tb !important;
-        direction: ltr !important;
-
-        zoom: 1 !important;
-
-        overflow: visible !important;
-
-        border: 0.35mm solid #c98a2a !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-    }
-
-    /* Keep the invoice design unchanged */
-    #invoice-print,
-    #invoice-print * {
-        writing-mode: horizontal-tb !important;
-        direction: ltr !important;
-    }
-
-    /* Hide action buttons */
-    #invoice-print button,
-    #invoice-print .icon-btn,
-    #invoice-print .invoice-actions,
-    #invoice-print .no-print,
-    #invoice-print .nkj-invoice-detail-actions {
-        display: none !important;
-    }
-
-    /* Tables fit landscape width */
-    #invoice-print .table-wrap {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow: visible !important;
-    }
-
-    #invoice-print table,
-    #invoice-print .items-table,
-    #invoice-print .new-items-table,
-    #invoice-print .old-items-table {
-
-        width: 100% !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-
-        table-layout: fixed !important;
-    }
-
-    #invoice-print img {
-        max-width: 100% !important;
-    }
-
-}
-/* ==========================================
-   NKJ INVOICE
-   A4 PORTRAIT - ORIGINAL DESIGN PRESERVED
-   NO ROTATION / NO GRID REARRANGEMENT
-========================================== */
-
-@page {
-    size: 297mm 210mm;
-    margin: 4mm;
-}
-
-@media print {
-
-    html, body, #root {
-        width: 202mm !important;
-        min-width: 0 !important;
-        max-width: 202mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: visible !important;
-        background: #fff !important;
-    }
-
-    body:has(#invoice-print) #root,
-    body:has(#invoice-print) main,
-    body:has(#invoice-print) .invoice-container,
-    body:has(#invoice-print) .nkj-owner-layout {
-        display: block !important;
-        position: static !important;
-        width: 202mm !important;
-        max-width: 202mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        transform: none !important;
-        rotate: none !important;
-        overflow: visible !important;
-    }
-
-    body:has(#invoice-print) * {
-        visibility: hidden !important;
-    }
-
-    body:has(#invoice-print) #invoice-print,
-    body:has(#invoice-print) #invoice-print * {
-        visibility: visible !important;
-    }
-
-    /* Preserve original invoice dimensions and scale as one sheet */
-    body:has(#invoice-print) #invoice-print {
-        display: block !important;
-        position: relative !important;
-
-        width: 291mm !important;
-        min-width: 291mm !important;
-        max-width: 291mm !important;
-
-        height: auto !important;
-        margin: 0 !important;
-        padding: 2mm !important;
-
-        box-sizing: border-box !important;
-
-        zoom: 0.69 !important;
-
-        transform: none !important;
-        rotate: none !important;
-        translate: none !important;
-
-        writing-mode: horizontal-tb !important;
-        direction: ltr !important;
-
-        box-shadow: none !important;
-
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-    }
-
-    /* Original three-column header */
-    #invoice-print .inv-head {
-        grid-template-columns: 30mm minmax(0,1fr) 68mm !important;
-    }
-
-    /* Original side-by-side customer and payment sections */
-    #invoice-print .inv-two {
-        grid-template-columns: 1fr 1fr !important;
-    }
-
-    /* Original ornaments left and totals right */
-    #invoice-print .inv-main {
-        grid-template-columns: minmax(0,1fr) 68mm !important;
-        gap: 2mm !important;
-    }
-
-    /* Original bottom layout */
-    #invoice-print .inv-bottom {
-        grid-template-columns: 40% minmax(0,1fr) !important;
-    }
-
-    #invoice-print .words-sign {
-        grid-template-columns: minmax(0,1fr) 75mm !important;
-    }
-
-    #invoice-print .table-wrap {
-        overflow: visible !important;
-        width: 100% !important;
-    }
-
-    #invoice-print table {
-        width: 100% !important;
-        min-width: 0 !important;
-        table-layout: fixed !important;
-    }
-
-    #invoice-print .invoice-actions,
-    #invoice-print button,
-    #invoice-print .icon-btn,
-    #invoice-print .no-print {
-        display: none !important;
-    }
-
-    #invoice-print img {
-        object-fit: contain !important;
-    }
-}
 /* GSTIN - compact shop header badge */
 
 .inv-shop {
@@ -2225,9 +1942,8 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 
 
 /* =========================================================
-   AUTHORITATIVE SAVED-INVOICE PRINT OVERRIDE
-   Keep the full 291mm invoice on A4 landscape without zooming.
-   This intentionally comes after legacy portrait print rules.
+   AUTHORITATIVE INVOICE PRINT — A4 LANDSCAPE
+   Single print geometry shared by new and saved invoices.
    ========================================================= */
 @page {
   size: 297mm 210mm;
@@ -2246,6 +1962,7 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
+    background: #fff !important;
   }
 
   body:has(#invoice-print) #root,
@@ -2255,23 +1972,40 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   body:has(#invoice-print) .nkj-invoice-detail-overlay,
   body:has(#invoice-print) .nkj-invoice-detail-sheet,
   body:has(#invoice-print) .nkj-full-invoice-modal {
+    display: block !important;
+    position: static !important;
     width: 291mm !important;
     min-width: 0 !important;
     max-width: 291mm !important;
+    height: auto !important;
+    max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
     transform: none !important;
+    rotate: none !important;
+    translate: none !important;
     filter: none !important;
     perspective: none !important;
     contain: none !important;
     overflow: visible !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body:has(#invoice-print) * {
+    visibility: hidden !important;
+  }
+
+  body:has(#invoice-print) #invoice-print,
+  body:has(#invoice-print) #invoice-print * {
+    visibility: visible !important;
   }
 
   body:has(#invoice-print) #invoice-print {
-    position: relative !important;
     display: block !important;
+    position: relative !important;
     width: 291mm !important;
-    min-width: 291mm !important;
+    min-width: 0 !important;
     max-width: 291mm !important;
     height: auto !important;
     min-height: 0 !important;
@@ -2283,9 +2017,39 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     transform: none !important;
     rotate: none !important;
     translate: none !important;
+    writing-mode: horizontal-tb !important;
+    direction: ltr !important;
     overflow: visible !important;
+    box-shadow: none !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  #invoice-print,
+  #invoice-print * {
+    writing-mode: horizontal-tb !important;
+    direction: ltr !important;
+  }
+
+  #invoice-print .invoice-actions,
+  #invoice-print button,
+  #invoice-print .icon-btn,
+  #invoice-print .no-print,
+  #invoice-print .nkj-invoice-detail-actions {
+    display: none !important;
+  }
+
+  #invoice-print .inv-head {
+    grid-template-columns: 30mm minmax(0, 1fr) 68mm !important;
+  }
+
+  #invoice-print .inv-two {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+
+  #invoice-print .inv-main {
+    grid-template-columns: minmax(0, 1fr) 68mm !important;
+    gap: 2mm !important;
   }
 
   #invoice-print .inv-bottom {
@@ -2297,5 +2061,25 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   #invoice-print .inv-meta span {
     grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important;
     gap: 1mm !important;
+  }
+
+  #invoice-print .table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  #invoice-print table,
+  #invoice-print .items-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  #invoice-print img {
+    max-width: 100% !important;
+    object-fit: contain !important;
   }
 }

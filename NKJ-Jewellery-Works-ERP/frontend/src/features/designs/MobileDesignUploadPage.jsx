@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Camera, CheckCircle2, Clock3, ImagePlus, LoaderCircle, RotateCw,
-  X, UploadCloud, Smartphone, ShieldCheck, AlertTriangle, Star,
+  X, UploadCloud, Smartphone, ShieldCheck, AlertTriangle, Star, QrCode, ScanLine,
 } from "lucide-react";
 import { request } from "../../core/api/client";
 import { getRealtimeClientId } from "../../core/realtime/realtime";
@@ -19,6 +19,43 @@ function photoId() {
     : `photo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function parseQrFields(decodedText) {
+  const text = String(decodedText || "").trim();
+  if (!text) return {};
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  } catch {
+    // Plain text and key/value QR payloads are also supported.
+  }
+  try {
+    const url = new URL(text);
+    if ([...url.searchParams.keys()].length) {
+      return Object.fromEntries(url.searchParams.entries());
+    }
+  } catch {
+    // Not a URL; parse one field per line below.
+  }
+  const fields = {};
+  text.split(/[\r\n;|]+/).forEach((line) => {
+    const match = line.match(/^\s*([a-zA-Z][a-zA-Z _-]{1,40})\s*[:=]\s*(.*?)\s*$/);
+    if (match) fields[match[1].trim()] = match[2].trim();
+  });
+  return fields;
+}
+
+function qrValue(fields, ...keys) {
+  const normalized = new Map(Object.entries(fields || {}).map(([key, value]) => [
+    key.toLowerCase().replace(/[^a-z0-9]/g, ""),
+    value,
+  ]));
+  for (const key of keys) {
+    const value = normalized.get(key.toLowerCase().replace(/[^a-z0-9]/g, ""));
+    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
+  }
+  return "";
+}
+
 export default function MobileDesignUploadPage() {
   const { token = "" } = useParams();
   const [session, setSession] = useState(null);
@@ -30,6 +67,8 @@ export default function MobileDesignUploadPage() {
   const [categoryId, setCategoryId] = useState("");
   const [designName, setDesignName] = useState("");
   const [description, setDescription] = useState("");
+  const [styleLabel, setStyleLabel] = useState("");
+  const [materialLabel, setMaterialLabel] = useState("");
   const [purity, setPurity] = useState("");
   const [weightGrams, setWeightGrams] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -45,10 +84,14 @@ export default function MobileDesignUploadPage() {
   const [reservedDesignId, setReservedDesignId] = useState("");
   const [designIdLoading, setDesignIdLoading] = useState(false);
   const [designIdError, setDesignIdError] = useState("");
+  const [qrScanning, setQrScanning] = useState(false);
+  const [qrScanError, setQrScanError] = useState("");
+  const [qrScanResult, setQrScanResult] = useState("");
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const galleryRef = useRef(null);
+  const qrImageRef = useRef(null);
   const cameraFallbackRef = useRef(null);
   const saveInFlightRef = useRef(false);
   const previewUrlsRef = useRef([]);
@@ -249,6 +292,76 @@ export default function MobileDesignUploadPage() {
     };
   }, [cameraOpen]);
 
+  const scanQrImage = async (file) => {
+    if (!file || qrScanning || saving) return;
+    setQrScanning(true);
+    setQrScanError("");
+    setQrScanResult("");
+    try {
+      if (file.size > MAX_FILE_BYTES) {
+        throw new Error("QR images must be 10 MB or smaller.");
+      }
+      const formData = new FormData();
+      formData.append("file", file, file.name || "qr-image");
+      const response = await fetch(
+        `${API}/mobile-design-upload/${encodeURIComponent(token)}/scan-qr`,
+        { method: "POST", headers: { Accept: "application/json" }, body: formData },
+      );
+      let payload = {};
+      try { payload = await response.json(); } catch { /* handled by status below */ }
+      if (!response.ok) {
+        throw new Error(payload.message || payload.error || `QR scan failed (${response.status}).`);
+      }
+      const decodedText = String(payload.decodedText || "").trim();
+      if (!decodedText) throw new Error("No readable QR code was found in this image.");
+      setQrScanResult(decodedText);
+
+      const fields = parseQrFields(decodedText);
+      const name = qrValue(fields, "designName", "design_name", "name", "productName", "product_name");
+      const details = qrValue(fields, "description", "details", "designDetails");
+      const style = qrValue(fields, "style", "styleLabel", "designStyle");
+      const material = qrValue(fields, "material", "materialLabel", "metalMaterial");
+      const purityValue = qrValue(fields, "purity", "fineness", "karat");
+      const weight = qrValue(fields, "weightGrams", "weight_grams", "weight", "grossWeight");
+      const categoryIdFromQr = qrValue(fields, "categoryId", "category_id", "subcategoryId");
+      const category = qrValue(fields, "subcategory", "jewelleryType", "jewelryType", "category", "subcategoryName");
+      const metalValue = qrValue(fields, "metalType", "metal", "mainCategory").toUpperCase();
+
+      if (!updatingExistingDesign) {
+        if (name) setDesignName(name.slice(0, 160));
+        if (details) setDescription(details.slice(0, 5000));
+        if (style) setStyleLabel(style.slice(0, 80));
+        if (material) setMaterialLabel(material.slice(0, 120));
+        if (!name && !details && !style && !material && !purityValue && !weight && !category && !categoryIdFromQr && decodedText.length <= 5000) {
+          setDescription(decodedText);
+        }
+        if (purityValue) setPurity(purityValue.slice(0, 40));
+        const parsedWeight = Number(String(weight).replace(/,/g, "").match(/\d+(?:\.\d+)?/)?.[0]);
+        if (weight && Number.isFinite(parsedWeight) && parsedWeight >= 0) setWeightGrams(String(parsedWeight));
+        if (metalValue && METALS.includes(metalValue)) setMetal(metalValue);
+        if (category || categoryIdFromQr) {
+          const match = categories.find((item) =>
+            (categoryIdFromQr && String(item.id) === String(categoryIdFromQr))
+            || (category && [item.subcategoryName, item.slug].some((value) =>
+              String(value || "").trim().toLowerCase() === category.toLowerCase(),
+            )),
+          );
+          if (match) {
+            setMetal(match.metalType);
+            setCategoryId(String(match.id));
+          }
+        }
+      }
+      if (!name && !details && !style && !material && !purityValue && !weight && !category && !categoryIdFromQr) {
+        setQrScanError("QR code decoded, but it does not contain recognised design fields. The decoded text is shown below.");
+      }
+    } catch (err) {
+      setQrScanError(err.message || "Could not read a QR code from this image.");
+    } finally {
+      setQrScanning(false);
+    }
+  };
+
   const addPhotos = (fileList) => {
     const incoming = Array.from(fileList || []);
     const remaining = Math.max(0, MAX_PHOTOS - photos.length);
@@ -257,7 +370,7 @@ export default function MobileDesignUploadPage() {
     incoming.slice(0, remaining).forEach((file) => {
       const mime = String(file.type || "").toLowerCase();
       const extensionOk = /\.(jpe?g|png|webp)$/i.test(file.name || "");
-      const mimeOk = ["image/jpeg", "image/png", "image/webp"].includes(mime);
+      const mimeOk = ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp"].includes(mime);
       if (!(mimeOk || extensionOk)) rejected.push(`${file.name}: unsupported format`);
       else if (file.size > MAX_FILE_BYTES) rejected.push(`${file.name}: larger than 10 MB`);
       else {
@@ -273,12 +386,12 @@ export default function MobileDesignUploadPage() {
       }
     });
     if (incoming.length > remaining) rejected.push(`Only ${MAX_PHOTOS} photos are allowed per design.`);
-    if (rejected.length) setError(rejected.join(". "));
     if (accepted.length) {
       setPhotos((current) => [...current, ...accepted].slice(0, MAX_PHOTOS));
       setPrimaryPhotoId((current) => current || accepted[0].id);
-      setError("");
     }
+    if (rejected.length) setError(rejected.join(". "));
+    else if (accepted.length) setError("");
   };
 
   const closeCamera = () => {
@@ -364,7 +477,8 @@ export default function MobileDesignUploadPage() {
       data.append("categoryId", categoryId);
       data.append("designName", designName.trim());
       data.append("description", description);
-      data.append("styleLabel", "Shop photograph");
+      data.append("styleLabel", styleLabel || "Shop photograph");
+      data.append("materialLabel", materialLabel);
       data.append("keywords", designName.trim());
       data.append("purity", purity);
       data.append("weightGrams", weightGrams);
@@ -476,12 +590,21 @@ export default function MobileDesignUploadPage() {
             <button type="button" className="is-primary" onClick={() => galleryRef.current?.click()}>
               <ImagePlus size={20} /><b>Upload from Gallery</b><small>Select multiple photos</small>
             </button>
-            <button type="button" onClick={() => { setCameraError(""); setCameraOpen(true); }}>
+            <button type="button" onClick={() => { setCameraError(""); if (window.isSecureContext && navigator.mediaDevices?.getUserMedia) setCameraOpen(true); else cameraFallbackRef.current?.click(); }}>
               <Camera size={20} /><b>Take Photo</b><small>Use rear camera</small>
             </button>
           </div>
+          {!updatingExistingDesign && <div className="nkj-mobile-qr-scan-tools">
+            <button type="button" onClick={() => qrImageRef.current?.click()} disabled={qrScanning || saving}>
+              {qrScanning ? <LoaderCircle className="spin" size={18} /> : <ScanLine size={18} />}
+              <span><b>{qrScanning ? "Reading QR image…" : "Scan QR from Image"}</b><small>Select a JPG, PNG or WebP image containing a QR code</small></span>
+            </button>
+            <input ref={qrImageRef} className="nkj-mobile-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" onChange={(event) => { scanQrImage(event.target.files?.[0]); event.target.value = ""; }} />
+            {qrScanError && <p className="nkj-mobile-qr-scan-error" role="alert">{qrScanError}</p>}
+            {qrScanResult && <div className="nkj-mobile-qr-scan-result" role="status"><b><QrCode size={14} /> Decoded QR information</b><pre>{qrScanResult}</pre></div>}
+          </div>}
           <input ref={galleryRef} className="nkj-mobile-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => { addPhotos(event.target.files); event.target.value = ""; }} />
-          <input ref={cameraFallbackRef} className="nkj-mobile-hidden-input" type="file" accept="image/*" capture="environment" onChange={(event) => { addPhotos(event.target.files); event.target.value = ""; }} />
+          <input ref={cameraFallbackRef} className="nkj-mobile-hidden-input" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" capture="environment" onChange={(event) => { addPhotos(event.target.files); event.target.value = ""; }} />
 
           {cameraOpen && (
             <div className="nkj-mobile-camera">
@@ -548,6 +671,14 @@ export default function MobileDesignUploadPage() {
           <label>Description
             <textarea rows={3} maxLength={5000} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the jewellery design (optional)" />
           </label>
+          <div className="nkj-mobile-field-row">
+            <label>Style (optional)
+              <input maxLength={80} value={styleLabel} onChange={(event) => setStyleLabel(event.target.value)} placeholder="Traditional / Modern" />
+            </label>
+            <label>Material (optional)
+              <input maxLength={120} value={materialLabel} onChange={(event) => setMaterialLabel(event.target.value)} placeholder="Gold / Silver / Diamond" />
+            </label>
+          </div>
           <div className="nkj-mobile-field-row">
             <label>Purity (optional)
               <input maxLength={40} value={purity} onChange={(event) => setPurity(event.target.value)} placeholder="22K / 18K / 925" />
