@@ -232,6 +232,23 @@ async function checkViewport(page, path, viewport) {
         });
         tableNode = tableNode.parentElement;
       }
+      const invoiceSheetChildren = Array.from(document.querySelector(".invoice-sheet")?.children || []).map((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName,
+          className: typeof element.className === "string" ? element.className : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX,
+          display: style.display,
+          minWidth: style.minWidth,
+          gridTemplateColumns: style.gridTemplateColumns,
+        };
+      });
       const overflowElements = Array.from(document.body.querySelectorAll("*")).map((element) => {
         const rect = element.getBoundingClientRect();
         const style = getComputedStyle(element);
@@ -258,6 +275,7 @@ async function checkViewport(page, path, viewport) {
         outOfBounds,
         overflowElements,
         tableAncestors,
+        invoiceSheetChildren,
       };
     });
 
