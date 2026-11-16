@@ -166,6 +166,19 @@
 
 /* Phones and narrow tablets. */
 @media screen and (max-width: 760px) {
+  /* The legacy topbar rule hides every direct non-primary button.
+     Restore the owner hamburger with a more specific mobile-only selector. */
+  .nkj-owner-topbar.nkj-reference-navbar > .nkj-mobile-menu-button {
+    display: inline-grid !important;
+    place-items: center;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
   html,
   body {
     width: 100%;
