@@ -86,12 +86,7 @@ function apiPayload(path, method) {
   return {};
 }
 
-async function installApiMocks(page) {
-  await page.addInitScript(() => {
-    localStorage.setItem("nkj_token", "responsive-layout-test-token");
-    localStorage.setItem("nkj_user", "admin2026");
-  });
-
+async function installApiRouteMocks(page) {
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -111,6 +106,14 @@ async function installApiMocks(page) {
       body: JSON.stringify(body),
     });
   });
+}
+
+async function installApiMocks(page) {
+  await page.addInitScript(() => {
+    localStorage.setItem("nkj_token", "responsive-layout-test-token");
+    localStorage.setItem("nkj_user", "admin2026");
+  });
+  await installApiRouteMocks(page);
 }
 
 async function checkViewport(page, path, viewport) {
@@ -180,10 +183,13 @@ async function testOwnerSidebar(browser) {
   });
 
   try {
-    // Establish a real same-origin document before touching localStorage.
+    // Install API/event mocks first, then establish the site origin before writing the test session.
+    await installApiRouteMocks(page);
     await page.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
-    await page.locator("#root").waitFor({ state: "attached", timeout: 10000 });
-    await installApiMocks(page);
+    await page.waitForFunction(() => {
+      const root = document.getElementById("root");
+      return Boolean(root && root.children.length > 0);
+    }, { timeout: 10000 });
     await page.evaluate(() => {
       localStorage.setItem("nkj_token", "responsive-layout-test-token");
       localStorage.setItem("nkj_user", "admin2026");
