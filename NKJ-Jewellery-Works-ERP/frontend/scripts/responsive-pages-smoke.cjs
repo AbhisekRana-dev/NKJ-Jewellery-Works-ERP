@@ -21,7 +21,7 @@ const viewports = [
 const ownerRoutes = [
   "/dashboard", "/saved-invoices", "/customers", "/profile", "/rates",
   "/inventory", "/stock-movements", "/staff", "/attendance", "/salary",
-  "/salary-payments", "/leaves", "/expenses", "/bookings", "/installments",
+  "/salary-payments", "/leaves", "/expenses", "/bookings", "/installments", "/installment-payments",
   "/suppliers", "/purchases", "/payments", "/transactions", "/old-gold",
   "/karigars", "/repairs", "/reports", "/reports/sales", "/reports/profit",
   "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
@@ -340,7 +340,7 @@ async function testPublicNavigation(browser) {
       process.stdout.write("PASS all " + ownerRoutes.length + " owner routes at " + viewport.name + " " + viewport.width + "x" + viewport.height + "\\n");
     }
 
-    const publicContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    for (const publicViewport of [\n      { name: "public-small-mobile", width: 320, height: 568 },\n      { name: "public-iphone", width: 390, height: 844 },\n      { name: "public-large-mobile", width: 430, height: 932 },\n    ]) {\n      const publicContext = await browser.newContext({ viewport: publicViewport });
     const publicPage = await publicContext.newPage();
     await publicPage.route("**/*", async (route) => {
       const url = new URL(route.request().url());
@@ -362,13 +362,13 @@ async function testPublicNavigation(browser) {
     });
     try {
       for (const path of publicRoutes) {
-        await checkViewport(publicPage, path, { name: "public-mobile", width: 390, height: 844 });
+        await checkViewport(publicPage, path, publicViewport);
       }
     } finally {
       await publicContext.close();
     }
 
-    await testPublicNavigation(browser);
+      process.stdout.write("PASS all " + publicRoutes.length + " public routes at " + publicViewport.name + " " + publicViewport.width + "x" + publicViewport.height + "\\n");\n    }\n\n    await testPublicNavigation(browser);
     process.stdout.write("All owner/public page responsive smoke checks passed.\\n");
   } catch (error) {
     console.error(error);
