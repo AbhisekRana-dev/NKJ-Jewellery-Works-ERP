@@ -213,6 +213,25 @@ async function checkViewport(page, path, viewport) {
           width: Math.round(rect.width * 10) / 10,
         };
       }).filter((item) => item.left < -1 || item.right > width + 1).slice(0, 6);
+      const tableAncestors = [];
+      let tableNode = document.querySelector(".items-table.new-items-table");
+      while (tableNode && tableAncestors.length < 10) {
+        const rect = tableNode.getBoundingClientRect();
+        const style = getComputedStyle(tableNode);
+        tableAncestors.push({
+          tag: tableNode.tagName,
+          className: typeof tableNode.className === "string" ? tableNode.className : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: tableNode.scrollWidth,
+          clientWidth: tableNode.clientWidth,
+          overflowX: style.overflowX,
+          display: style.display,
+          minWidth: style.minWidth,
+        });
+        tableNode = tableNode.parentElement;
+      }
       const overflowElements = Array.from(document.body.querySelectorAll("*")).map((element) => {
         const rect = element.getBoundingClientRect();
         const style = getComputedStyle(element);
@@ -238,6 +257,7 @@ async function checkViewport(page, path, viewport) {
         appWidth: app?.scrollWidth || 0,
         outOfBounds,
         overflowElements,
+        tableAncestors,
       };
     });
 
