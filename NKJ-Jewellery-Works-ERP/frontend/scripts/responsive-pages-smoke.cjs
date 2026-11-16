@@ -119,7 +119,7 @@ async function installApiMocks(page) {
 async function checkViewport(page, path, viewport) {
   const errors = [];
   const failedResponses = [];
-  const onResponse = async (response) => {
+  const onResponse = (response) => {
     const request = response.request();
     const contentType = response.headers()["content-type"] || "";
     if (response.status() >= 400 || (request.resourceType() === "script" && !contentType.includes("javascript"))) {
@@ -135,18 +135,27 @@ async function checkViewport(page, path, viewport) {
   const onConsoleError = (message) => {
     if (message.type() === "error") errors.push("console: " + message.text());
   };
-  const onRequestFailed = (request) => errors.push("requestfailed: " + request.url() + " " + request.failure()?.errorText);
+  const onRequestFailed = (request) => errors.push(
+    "requestfailed: " + request.url() + " " + request.failure()?.errorText
+  );
+
   page.on("response", onResponse);
   page.on("pageerror", onPageError);
   page.on("console", onConsoleError);
   page.on("requestfailed", onRequestFailed);
+
   try {
     const response = await page.goto(BASE_URL + path, { waitUntil: "domcontentloaded" });
     assert(response && response.ok(), path + " did not return an HTML page.");
     await page.locator("#root").waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(100);
+
     const currentPath = await page.evaluate(() => window.location.pathname);
-    assert(currentPath === path, path + " was redirected to " + currentPath + "; owner-session mock did not authenticate the route.");
+    assert(
+      currentPath === path,
+      path + " was redirected to " + currentPath + "; owner-session mock did not authenticate the route."
+    );
+
     try {
       await page.waitForFunction(() => {
         const root = document.getElementById("root");
@@ -160,17 +169,22 @@ async function checkViewport(page, path, viewport) {
         rootMarkup: document.getElementById("root")?.innerHTML.slice(0, 4000) || "",
         scriptResources: performance.getEntriesByType("resource")
           .filter((entry) => entry.name.includes("/src/") || entry.name.includes("@vite"))
-          .map((entry) => ({ name: entry.name, size: entry.transferSize, duration: Math.round(entry.duration) })),
-      })); 
-      throw new Error("Page content was not visible for " + path + " at " + viewport.name +
-        ": " + JSON.stringify(diagnostic) + "; failed responses: " + JSON.stringify(failedResponses) +
-        "; browser errors: " + errors.join(" | ") + "; " + error.message);
-    }
+          .map((entry) => ({
+            name: entry.name,
+            size: entry.transferSize,
+            duration: Math.round(entry.duration),
+          })),
       })).catch((diagnosticError) => ({ diagnosticError: diagnosticError.message }));
-      throw new Error("Page content was not visible for " + path + " at " + viewport.name +
-        ": " + JSON.stringify(diagnostic) + "; browser errors: " + errors.join(" | ") +
-        "; " + error.message);
+
+      throw new Error(
+        "Page content was not visible for " + path + " at " + viewport.name +
+        ": " + JSON.stringify(diagnostic) +
+        "; failed responses: " + JSON.stringify(failedResponses) +
+        "; browser errors: " + errors.join(" | ") +
+        "; " + error.message
+      );
     }
+
     const renderedText = await page.locator("#root").innerText();
     assert(renderedText.trim().length > 0, path + " rendered an empty application root at " + viewport.name + ".");
 
@@ -178,7 +192,9 @@ async function checkViewport(page, path, viewport) {
       const width = document.documentElement.clientWidth;
       const root = document.getElementById("root");
       const app = document.querySelector(".app-content");
-      const containers = Array.from(document.querySelectorAll(".container, .nkj-module-page, .nkj-dashboard, .nkj-calculator-page"));
+      const containers = Array.from(document.querySelectorAll(
+        ".container, .nkj-module-page, .nkj-dashboard, .nkj-calculator-page"
+      ));
       const outOfBounds = containers.map((element) => {
         const rect = element.getBoundingClientRect();
         return {
@@ -188,6 +204,7 @@ async function checkViewport(page, path, viewport) {
           width: Math.round(rect.width * 10) / 10,
         };
       }).filter((item) => item.left < -1 || item.right > width + 1).slice(0, 6);
+
       return {
         width,
         documentWidth: document.documentElement.scrollWidth,
