@@ -213,6 +213,22 @@ async function checkViewport(page, path, viewport) {
           width: Math.round(rect.width * 10) / 10,
         };
       }).filter((item) => item.left < -1 || item.right > width + 1).slice(0, 6);
+      const overflowElements = Array.from(document.body.querySelectorAll("*")).map((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName,
+          className: typeof element.className === "string" ? element.className.slice(0, 90) : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX,
+        };
+      }).filter((item) => (item.right > width + 1 || item.left < -1)
+        && item.overflowX !== "auto" && item.overflowX !== "scroll")
+        .sort((a, b) => b.right - a.right).slice(0, 18);
 
       return {
         width,
@@ -221,6 +237,7 @@ async function checkViewport(page, path, viewport) {
         rootWidth: root?.scrollWidth || 0,
         appWidth: app?.scrollWidth || 0,
         outOfBounds,
+        overflowElements,
       };
     });
 
