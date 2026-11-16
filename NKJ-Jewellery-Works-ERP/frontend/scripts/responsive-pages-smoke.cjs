@@ -127,10 +127,26 @@ async function checkViewport(page, path, viewport) {
     await page.waitForTimeout(100);
     const currentPath = await page.evaluate(() => window.location.pathname);
     assert(currentPath === path, path + " was redirected to " + currentPath + "; owner-session mock did not authenticate the route.");
-    await page.waitForFunction(() => {
-      const root = document.getElementById("root");
-      return Boolean(root && (root.innerText || "").trim().length > 0);
-    }, { timeout: 10000 });
+    try {
+      await page.waitForFunction(() => {
+        const root = document.getElementById("root");
+        return Boolean(root && (root.innerText || "").trim().length > 0);
+      }, { timeout: 6000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        path: location.pathname,
+        title: document.title,
+        bodyText: (document.body.innerText || "").slice(0, 1000),
+        rootMarkup: document.getElementById("root")?.innerHTML.slice(0, 4000) || "",
+        scriptResources: performance.getEntriesByType("resource")
+          .filter((entry) => entry.name.includes("/src/") || entry.name.includes("@vite"))
+          .map((entry) => ({ name: entry.name, size: entry.transferSize, duration: Math.round(entry.duration) }))
+          .slice(-20),
+      })).catch((diagnosticError) => ({ diagnosticError: diagnosticError.message }));
+      throw new Error("Page content was not visible for " + path + " at " + viewport.name +
+        ": " + JSON.stringify(diagnostic) + "; browser errors: " + errors.join(" | ") +
+        "; " + error.message);
+    }
     const renderedText = await page.locator("#root").innerText();
     assert(renderedText.trim().length > 0, path + " rendered an empty application root at " + viewport.name + ".");
 
@@ -258,6 +274,7 @@ async function testPublicNavigation(browser) {
       await installApiMocks(page);
       try {
         for (const path of ownerRoutes) {
+          process.stdout.write("CHECK " + viewport.name + " " + path + "\\n");
           await checkViewport(page, path, viewport);
         }
         if (viewport.width === 390) {
