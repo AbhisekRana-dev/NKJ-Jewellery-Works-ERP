@@ -140,9 +140,12 @@ async function checkViewport(page, path, viewport) {
   const onConsoleError = (message) => {
     if (message.type() === "error") errors.push("console: " + message.text());
   };
-  const onRequestFailed = (request) => errors.push(
-    "requestfailed: " + request.url() + " " + request.failure()?.errorText
-  );
+  const onRequestFailed = (request) => {
+    // External font/CDN requests may be blocked in CI; fail only for app-origin assets/API.
+    if (new URL(request.url()).origin === new URL(BASE_URL).origin) {
+      errors.push("requestfailed: " + request.url() + " " + request.failure()?.errorText);
+    }
+  };
 
   page.on("response", onResponse);
   page.on("pageerror", onPageError);
