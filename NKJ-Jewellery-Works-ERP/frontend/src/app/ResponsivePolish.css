@@ -1003,19 +1003,7 @@
     max-width: 100%;
   }
 
-  /* Allow result/history content to grow; never crop it inside the workspace. */
-  .nkj-calculator-workspace {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  .nkj-calculator-panel:not([hidden]) {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
+  /* Keep the desktop calculator's compact viewport layout unchanged. */
   .nkj-calc-breakdown-label,
   .nkj-calc-history-expression,
   .nkj-calc-calculation-feedback {
@@ -1061,6 +1049,21 @@
     box-sizing: border-box;
     min-width: 0;
     max-width: min(100%, calc(100vw - 24px));
+  }
+}
+
+/* Tablet and narrower workspaces may grow naturally to keep every result reachable. */
+@media screen and (max-width: 1100px) {
+  .nkj-calculator-workspace {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-panel:not([hidden]) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 }
 
