@@ -5,6 +5,7 @@ import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -93,6 +94,15 @@ public class AuthController {
         revokePendingQrUploads();
         if (current) return Map.of("success", true, "currentSession", true);
         return Map.of("success", true, "currentSession", false);
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public Map<String,Object> deleteLoginHistory(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestHeader(value="X-Owner-Session-Manager", required=false) String managerToken,
+            @PathVariable String sessionId) {
+        auth.deleteLoginHistory(ownerToken(header), managerToken, sessionId);
+        return Map.of("success", true);
     }
 
     @PostMapping("/sessions/logout-others")
