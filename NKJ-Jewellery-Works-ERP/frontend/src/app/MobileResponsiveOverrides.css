@@ -1105,3 +1105,59 @@
     .nkj-rate-editor, .nkj-staff-form-modal, .nkj-staff-confirm-dialog,
     .nk-session-modal) { max-height: calc(100dvh - 12px) !important; }
 }
+
+
+/* Invoice rows with long totals/actions must wrap instead of widening the sheet. */
+@media screen and (max-width: 760px) {
+  .invoice-sheet .row-end {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .invoice-sheet .row-end > b {
+    flex: 1 1 150px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+  }
+
+  .invoice-sheet .row-end > .small-action {
+    flex: 0 1 auto !important;
+    max-width: 100% !important;
+  }
+
+  .invoice-sheet .signatures {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: end !important;
+    justify-content: space-evenly !important;
+    gap: 10px !important;
+  }
+
+  .invoice-sheet .signatures span {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    text-align: center !important;
+  }
+
+  .invoice-sheet .thankyou {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  .invoice-sheet .thankyou > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+  }
+}
