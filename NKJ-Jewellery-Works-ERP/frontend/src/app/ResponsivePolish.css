@@ -1016,6 +1016,7 @@
     max-width: 100%;
   }
 
+  /* Allow result/history content to grow; never crop it inside the workspace. */
   /* Keep the desktop calculator's compact viewport layout unchanged. */
   .nkj-calc-breakdown-label,
   .nkj-calc-history-expression,
