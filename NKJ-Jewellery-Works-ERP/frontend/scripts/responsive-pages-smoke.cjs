@@ -124,6 +124,12 @@ async function checkViewport(page, path, viewport) {
     await page.waitForTimeout(100);
     const currentPath = await page.evaluate(() => window.location.pathname);
     assert(currentPath === path, path + " was redirected to " + currentPath + "; owner-session mock did not authenticate the route.");
+    await page.waitForFunction(() => {
+      const root = document.getElementById("root");
+      return Boolean(root && (root.innerText || "").trim().length > 0);
+    }, { timeout: 10000 });
+    const renderedText = await page.locator("#root").innerText();
+    assert(renderedText.trim().length > 0, path + " rendered an empty application root at " + viewport.name + ".");
 
     const result = await page.evaluate(() => {
       const width = document.documentElement.clientWidth;
