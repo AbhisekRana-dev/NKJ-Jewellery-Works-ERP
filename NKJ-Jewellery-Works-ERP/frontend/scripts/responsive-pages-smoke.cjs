@@ -163,42 +163,46 @@ async function checkViewport(page, path, viewport) {
   }
 }
 
-async function testOwnerSidebar(page) {
+async function testOwnerSidebar(browser) {
+  // Isolate the drawer interaction from the long sequence of route reloads.
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
   const browserErrors = [];
   page.on("pageerror", (error) => browserErrors.push(error.stack || error.message));
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
   });
-  // installApiMocks() seeds the owner token through addInitScript before app code runs.
-  // Navigate first: localStorage is unavailable on Playwright's opaque about:blank origin.
-  await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+
   try {
-    await page.waitForFunction(() => {
-      const root = document.getElementById("root");
-      return Boolean(root && (root.children.length > 0 || document.querySelector("#nkj-owner-sidebar")));
-    }, { timeout: 10000 });
-    await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
-  } catch (error) {
-    const diagnostic = await page.evaluate(() => ({
-      path: location.pathname,
-      tokenPresent: Boolean(localStorage.getItem("nkj_token")),
-      bodyText: (document.body.innerText || "").slice(0, 700),
-      rootMarkup: document.getElementById("root")?.innerHTML.slice(0, 1400) || "",
-      scripts: Array.from(document.scripts).map((item) => item.src),
-    }));
-    throw new Error("Owner drawer did not render: " + JSON.stringify(diagnostic) +
-      "; browser errors: " + browserErrors.join(" | ") + "; " + error.message);
+    await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    try {
+      await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        path: location.pathname,
+        tokenPresent: Boolean(localStorage.getItem("nkj_token")),
+        bodyText: (document.body.innerText || "").slice(0, 700),
+        rootMarkup: document.getElementById("root")?.innerHTML.slice(0, 1400) || "",
+        scripts: Array.from(document.scripts).map((item) => item.src),
+      }));
+      throw new Error("Owner drawer did not render: " + JSON.stringify(diagnostic) +
+        "; browser errors: " + browserErrors.join(" | ") + "; " + error.message);
+    }
+
+    const ownerShell = await page.locator("#nkj-owner-sidebar").count();
+    const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
+    assert(ownerShell === 1 && Boolean(authToken), "Owner route was not authenticated before sidebar testing.");
+    await page.locator(".nkj-mobile-menu-button").waitFor({ state: "visible", timeout: 10000 });
+    await page.locator(".nkj-mobile-menu-button").click();
+    await page.locator(".nkj-owner-sidebar:not(.is-collapsed)").waitFor({ state: "visible", timeout: 5000 });
+    await page.locator('.nkj-owner-nav a[href="/profile"]').click();
+    await page.waitForURL("**/profile");
+    await page.locator(".nkj-owner-sidebar.is-collapsed").waitFor({ state: "attached", timeout: 5000 });
+    process.stdout.write("PASS owner mobile drawer opens, navigates, and closes\\n");
+  } finally {
+    await context.close();
   }
-  const ownerShell = await page.locator("#nkj-owner-sidebar").count();
-  const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
-  assert(ownerShell === 1 && Boolean(authToken), "Owner route was not authenticated before sidebar testing.");
-  await page.locator(".nkj-mobile-menu-button").waitFor({ state: "visible", timeout: 10000 });
-  await page.locator(".nkj-mobile-menu-button").click();
-  await page.locator(".nkj-owner-sidebar:not(.is-collapsed)").waitFor({ state: "visible", timeout: 5000 });
-  await page.locator('.nkj-owner-nav a[href="/profile"]').click();
-  await page.waitForURL("**/profile");
-  await page.locator(".nkj-owner-sidebar.is-collapsed").waitFor({ state: "attached", timeout: 5000 });
-  process.stdout.write("PASS owner mobile drawer opens, navigates, and closes\\n");
 }
 
 async function testPublicNavigation(browser) {
@@ -238,15 +242,7 @@ async function testPublicNavigation(browser) {
           await checkViewport(page, path, viewport);
         }
         if (viewport.width === 390) {
-          // Use a fresh page so route-by-route SPA smoke checks cannot leak UI state
-          // into the independent owner drawer interaction test.
-          const navigationPage = await context.newPage();
-          await installApiMocks(navigationPage);
-          try {
-            await testOwnerSidebar(navigationPage);
-          } finally {
-            await navigationPage.close();
-          }
+          await testOwnerSidebar(browser);
         }
       } finally {
         await context.close();
