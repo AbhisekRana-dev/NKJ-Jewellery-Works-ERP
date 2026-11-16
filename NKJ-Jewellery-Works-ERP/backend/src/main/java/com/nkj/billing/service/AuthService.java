@@ -386,11 +386,15 @@ public class AuthService {
             throw new IllegalArgumentException("Log out this device before deleting its login history.");
         }
 
+        // Session activity is authoritative in the in-memory session registry above.
+        // A record can be displayed as ENDED after a process restart even when its
+        // database logged_out_at is still NULL and expires_at is in the future.
+        // Once it is confirmed absent from the active registry, allow its history row
+        // to be permanently deleted for this authenticated owner.
         int deleted = jdbc.update("""
             DELETE FROM owner_login_sessions
              WHERE id = ?
                AND username = ?
-               AND (logged_out_at IS NOT NULL OR expires_at <= NOW())
             """, id, username);
         if (deleted == 0) {
             throw new IllegalArgumentException("Only logged-out or expired login history can be deleted.");
