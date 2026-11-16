@@ -340,7 +340,12 @@ async function testPublicNavigation(browser) {
       process.stdout.write("PASS all " + ownerRoutes.length + " owner routes at " + viewport.name + " " + viewport.width + "x" + viewport.height + "\\n");
     }
 
-    for (const publicViewport of [\n      { name: "public-small-mobile", width: 320, height: 568 },\n      { name: "public-iphone", width: 390, height: 844 },\n      { name: "public-large-mobile", width: 430, height: 932 },\n    ]) {\n      const publicContext = await browser.newContext({ viewport: publicViewport });
+    for (const publicViewport of [
+      { name: "public-small-mobile", width: 320, height: 568 },
+      { name: "public-iphone", width: 390, height: 844 },
+      { name: "public-large-mobile", width: 430, height: 932 },
+    ]) {
+      const publicContext = await browser.newContext({ viewport: publicViewport });
     const publicPage = await publicContext.newPage();
     await publicPage.route("**/*", async (route) => {
       const url = new URL(route.request().url());
