@@ -1657,3 +1657,50 @@
     table-layout: fixed !important;
   }
 }
+
+
+/* Mobile invoice decorative footer: two wide flourish images must shrink so
+   the centered message fits the invoice sheet instead of widening the page. */
+@media screen and (max-width: 760px) {
+  #invoice-print .thankyou {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px 10px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 5px 0 2px !important;
+    overflow: hidden !important;
+    text-align: center !important;
+  }
+
+  #invoice-print .thankyou > div {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  #invoice-print .thankyou .flourish-img {
+    display: block !important;
+    flex: 0 1 clamp(42px, 16vw, 68px) !important;
+    width: clamp(42px, 16vw, 68px) !important;
+    min-width: 0 !important;
+    max-width: 68px !important;
+    height: clamp(28px, 9vw, 40px) !important;
+    object-fit: contain !important;
+  }
+
+  #invoice-print .thankyou i {
+    font-size: clamp(22px, 6.8vw, 30px) !important;
+    line-height: 1.1 !important;
+  }
+
+  #invoice-print .thankyou b {
+    font-size: clamp(13px, 3.8vw, 16px) !important;
+    line-height: 1.2 !important;
+  }
+}
