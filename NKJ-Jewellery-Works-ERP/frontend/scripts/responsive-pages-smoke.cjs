@@ -5,10 +5,14 @@ const { setTimeout: delay } = require("node:timers/promises");
 const BASE_URL = "http://127.0.0.1:4174";
 const viewports = [
   { name: "small-mobile", width: 320, height: 568 },
-  { name: "mobile", width: 390, height: 844 },
+  { name: "mobile", width: 375, height: 667 },
+  { name: "iphone", width: 390, height: 844 },
+  { name: "large-mobile", width: 430, height: 932 },
   { name: "tablet", width: 768, height: 1024 },
   { name: "large-tablet", width: 1024, height: 1366 },
+  { name: "tablet-landscape", width: 1024, height: 768 },
   { name: "laptop", width: 1366, height: 768 },
+  { name: "desktop", width: 1440, height: 900 },
   { name: "large-desktop", width: 1920, height: 1080 },
 ];
 
