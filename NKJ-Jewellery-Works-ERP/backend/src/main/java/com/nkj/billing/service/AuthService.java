@@ -362,6 +362,44 @@ public class AuthService {
         return currentSession;
     }
 
+    /**
+     * Permanently removes an ended login-history row. Active sessions must be
+     * signed out first so deleting history can never be used to revoke by accident.
+     */
+    public void deleteLoginHistoryEntry(String ownerToken, String managerToken, String sessionId) {
+        requireSessionManager(ownerToken, managerToken);
+        final UUID id;
+        try { id = UUID.fromString(sessionId); }
+        catch (Exception ex) { throw new IllegalArgumentException("Invalid login session."); }
+
+        SessionState current = requireCurrentSession(ownerToken);
+        if (current.id.equals(sessionId)) {
+            throw new IllegalArgumentException("You cannot delete the current login session.");
+        }
+
+        // Remove stale in-memory state for expired sessions before checking whether
+        // the history row is eligible for permanent deletion.
+        long now = System.currentTimeMillis();
+        sessions.entrySet().removeIf(entry ->
+                entry.getValue().id.equals(sessionId) && entry.getValue().expiresAt < now);
+        boolean active = sessions.values().stream()
+                .anyMatch(state -> state.id.equals(sessionId) && state.expiresAt >= now);
+        if (active) {
+            throw new IllegalArgumentException("Log out this device before deleting its login history.");
+        }
+
+        int deleted = jdbc.update("""
+            DELETE FROM owner_login_sessions
+             WHERE id = ?
+               AND username = ?
+               AND (logged_out_at IS NOT NULL OR expires_at <= NOW())
+            """, id, username);
+        if (deleted == 0) {
+            throw new IllegalArgumentException("Only logged-out or expired login history can be deleted.");
+        }
+        sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(sessionId));
+    }
+
     public int logoutOtherLoginSessions(String ownerToken, String managerToken) {
         requireSessionManager(ownerToken, managerToken);
         SessionState current = requireCurrentSession(ownerToken);
