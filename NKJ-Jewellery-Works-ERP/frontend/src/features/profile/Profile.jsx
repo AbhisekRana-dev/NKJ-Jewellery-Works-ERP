@@ -192,7 +192,7 @@ export default function Profile() {
   };
 
   const deleteLoginSession = async (session) => {
-    if (!managerToken || !session?.sessionId || session.current || session.status === "ACTIVE") return;
+    if (!managerToken || !session?.sessionId || String(session.status || "").trim().toUpperCase().replaceAll(" ", "_") === "ACTIVE") return;
     const device = session.device || "this device";
     if (!window.confirm("Permanently delete the login-history record for " + device + "? This will not log out any device.")) return;
 
@@ -773,26 +773,28 @@ export default function Profile() {
                           <span>Last active: {formatSessionDate(session.lastActiveAt)}</span>
                         </div>
                       </div>
-                      {session.status === "ACTIVE" ? (
-                        <button
-                          type="button"
-                          className="nk-session-logout"
-                          onClick={() => revokeLoginSession(session)}
-                          disabled={Boolean(sessionBusy)}
-                        >
-                          <LogOut size={16} /> {sessionBusy === session.sessionId ? "Signing out…" : "Logout"}
-                        </button>
-                      ) : !session.current ? (
-                        <button
-                          type="button"
-                          className="nk-session-delete"
-                          onClick={() => deleteLoginSession(session)}
-                          disabled={Boolean(sessionBusy)}
-                          aria-label={"Delete login history for " + (session.device || "this device")}
-                        >
-                          <Trash2 size={16} /> {sessionBusy === "delete:" + session.sessionId ? "Deleting…" : "Delete"}
-                        </button>
-                      ) : null}
+                      <div className="nk-session-actions">
+                        {String(session.status || "ENDED").trim().toUpperCase().replaceAll(" ", "_") === "ACTIVE" ? (
+                          <button
+                            type="button"
+                            className="nk-session-logout"
+                            onClick={() => revokeLoginSession(session)}
+                            disabled={Boolean(sessionBusy)}
+                          >
+                            <LogOut size={16} /> {sessionBusy === session.sessionId ? "Signing out…" : "Logout"}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="nk-session-delete"
+                            onClick={() => deleteLoginSession(session)}
+                            disabled={Boolean(sessionBusy)}
+                            aria-label={"Delete login history for " + (session.device || "this device")}
+                          >
+                            <Trash2 size={16} /> {sessionBusy === "delete:" + session.sessionId ? "Deleting…" : "Delete"}
+                          </button>
+                        )}
+                      </div>
                     </article>
                   ))}
                 </div>
