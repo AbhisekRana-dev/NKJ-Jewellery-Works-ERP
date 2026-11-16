@@ -19,6 +19,7 @@ const viewports = [
 ];
 
 const ownerRoutes = [
+  "/", "/invoice", "/calculator", "/designs",
   "/dashboard", "/saved-invoices", "/customers", "/profile", "/rates",
   "/inventory", "/stock-movements", "/staff", "/attendance", "/salary",
   "/salary-payments", "/leaves", "/expenses", "/bookings", "/installments",
@@ -27,7 +28,7 @@ const ownerRoutes = [
   "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
 ];
 
-const publicRoutes = ["/", "/invoice", "/designs", "/login", "/setup-totp"];
+const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/login", "/setup-totp"];
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
