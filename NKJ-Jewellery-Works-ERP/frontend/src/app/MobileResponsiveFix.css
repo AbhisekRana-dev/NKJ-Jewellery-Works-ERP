@@ -1617,3 +1617,43 @@
     overflow-wrap: anywhere !important;
   }
 }
+
+
+/* The invoice items table intentionally keeps its desktop column widths.
+   Constrain its grid ancestors so only the table wrapper scrolls, never the page. */
+@media screen and (max-width: 760px) {
+  #invoice-print,
+  #invoice-print .inv-two,
+  #invoice-print .inv-main,
+  #invoice-print .inv-left,
+  #invoice-print .ornament-panel,
+  #invoice-print .table-wrap {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #invoice-print .inv-left {
+    display: block !important;
+    overflow: hidden !important;
+  }
+
+  #invoice-print .table-wrap {
+    display: block !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #invoice-print .items-table,
+  #invoice-print .new-items-table,
+  #invoice-print .old-items-table {
+    width: max-content !important;
+    min-width: 900px !important;
+    max-width: none !important;
+    table-layout: fixed !important;
+  }
+}
