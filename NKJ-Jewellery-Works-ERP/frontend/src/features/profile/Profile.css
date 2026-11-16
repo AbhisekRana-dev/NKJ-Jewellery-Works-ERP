@@ -636,6 +636,7 @@
 .nk-session-primary,
 .nk-session-danger,
 .nk-session-logout,
+.nk-session-delete,
 .nk-session-summary button {
   display: inline-flex;
   align-items: center;
@@ -657,6 +658,7 @@
 .nk-session-primary:disabled,
 .nk-session-danger:disabled,
 .nk-session-logout:disabled,
+.nk-session-delete:disabled,
 .nk-session-summary button:disabled { opacity: .55; cursor: not-allowed; }
 .nk-session-summary {
   display: flex;
@@ -745,6 +747,18 @@
   background: #fff6f6;
   color: #a31c32;
   white-space: nowrap;
+}
+.nk-session-delete {
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid #e99a9f;
+  background: #fff5f5;
+  color: #b42335;
+  white-space: nowrap;
+}
+.nk-session-delete:hover:not(:disabled) {
+  border-color: #c93446;
+  background: #ffe9eb;
 }
 .nk-session-empty {
   padding: 25px 12px;
