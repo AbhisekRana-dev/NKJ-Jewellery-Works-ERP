@@ -808,3 +808,40 @@
   .nk-session-delete { margin-left: 58px; }
   .nk-session-meta { flex-direction: column; gap: 2px; }
 }
+
+
+/* Login history row actions: keep Delete/Logout visible on every device width. */
+.nk-session-actions {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  min-width: 88px;
+  margin-left: auto;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative;
+  z-index: 1;
+}
+.nk-session-actions > .nk-session-logout,
+.nk-session-actions > .nk-session-delete {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 88px;
+  min-height: 40px;
+  margin: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.nk-session-item {
+  min-width: 0;
+}
+@media (max-width: 620px) {
+  .nk-session-actions {
+    margin-left: 58px;
+    width: calc(100% - 58px);
+    justify-content: flex-start;
+  }
+}
