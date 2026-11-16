@@ -119,7 +119,13 @@ async function installApiMocks(page) {
 async function checkViewport(page, path, viewport) {
   const errors = [];
   const onPageError = (error) => errors.push("pageerror: " + error.message);
+  const onConsoleError = (message) => {
+    if (message.type() === "error") errors.push("console: " + message.text());
+  };
+  const onRequestFailed = (request) => errors.push("requestfailed: " + request.url() + " " + request.failure()?.errorText);
   page.on("pageerror", onPageError);
+  page.on("console", onConsoleError);
+  page.on("requestfailed", onRequestFailed);
   try {
     const response = await page.goto(BASE_URL + path, { waitUntil: "domcontentloaded" });
     assert(response && response.ok(), path + " did not return an HTML page.");
@@ -185,6 +191,8 @@ async function checkViewport(page, path, viewport) {
     assert(errors.length === 0, path + " caused browser runtime errors at " + viewport.name + ": " + errors.join(" | "));
   } finally {
     page.removeListener("pageerror", onPageError);
+    page.removeListener("console", onConsoleError);
+    page.removeListener("requestfailed", onRequestFailed);
   }
 }
 
