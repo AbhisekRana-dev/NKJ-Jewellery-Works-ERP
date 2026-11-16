@@ -118,11 +118,25 @@ async function installApiMocks(page) {
 
 async function checkViewport(page, path, viewport) {
   const errors = [];
+  const failedResponses = [];
+  const onResponse = async (response) => {
+    const request = response.request();
+    const contentType = response.headers()["content-type"] || "";
+    if (response.status() >= 400 || (request.resourceType() === "script" && !contentType.includes("javascript"))) {
+      failedResponses.push({
+        url: response.url(),
+        status: response.status(),
+        contentType,
+        resourceType: request.resourceType(),
+      });
+    }
+  };
   const onPageError = (error) => errors.push("pageerror: " + error.message);
   const onConsoleError = (message) => {
     if (message.type() === "error") errors.push("console: " + message.text());
   };
   const onRequestFailed = (request) => errors.push("requestfailed: " + request.url() + " " + request.failure()?.errorText);
+  page.on("response", onResponse);
   page.on("pageerror", onPageError);
   page.on("console", onConsoleError);
   page.on("requestfailed", onRequestFailed);
@@ -146,8 +160,12 @@ async function checkViewport(page, path, viewport) {
         rootMarkup: document.getElementById("root")?.innerHTML.slice(0, 4000) || "",
         scriptResources: performance.getEntriesByType("resource")
           .filter((entry) => entry.name.includes("/src/") || entry.name.includes("@vite"))
-          .map((entry) => ({ name: entry.name, size: entry.transferSize, duration: Math.round(entry.duration) }))
-          .slice(-20),
+          .map((entry) => ({ name: entry.name, size: entry.transferSize, duration: Math.round(entry.duration) })),
+      })); 
+      throw new Error("Page content was not visible for " + path + " at " + viewport.name +
+        ": " + JSON.stringify(diagnostic) + "; failed responses: " + JSON.stringify(failedResponses) +
+        "; browser errors: " + errors.join(" | ") + "; " + error.message);
+    }
       })).catch((diagnosticError) => ({ diagnosticError: diagnosticError.message }));
       throw new Error("Page content was not visible for " + path + " at " + viewport.name +
         ": " + JSON.stringify(diagnostic) + "; browser errors: " + errors.join(" | ") +
@@ -190,6 +208,7 @@ async function checkViewport(page, path, viewport) {
     );
     assert(errors.length === 0, path + " caused browser runtime errors at " + viewport.name + ": " + errors.join(" | "));
   } finally {
+    page.removeListener("response", onResponse);
     page.removeListener("pageerror", onPageError);
     page.removeListener("console", onConsoleError);
     page.removeListener("requestfailed", onRequestFailed);
