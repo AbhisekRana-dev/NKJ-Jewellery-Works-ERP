@@ -164,12 +164,21 @@ async function checkViewport(page, path, viewport) {
 }
 
 async function testOwnerSidebar(page) {
+  const browserErrors = [];
+  page.on("pageerror", (error) => browserErrors.push(error.stack || error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+  });
   await page.evaluate(() => {
     localStorage.setItem("nkj_token", "responsive-layout-test-token");
     localStorage.setItem("nkj_user", "admin2026");
   });
   await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
   try {
+    await page.waitForFunction(() => {
+      const root = document.getElementById("root");
+      return Boolean(root && (root.children.length > 0 || document.querySelector("#nkj-owner-sidebar")));
+    }, { timeout: 10000 });
     await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
   } catch (error) {
     const diagnostic = await page.evaluate(() => ({
@@ -177,8 +186,10 @@ async function testOwnerSidebar(page) {
       tokenPresent: Boolean(localStorage.getItem("nkj_token")),
       bodyText: (document.body.innerText || "").slice(0, 700),
       rootMarkup: document.getElementById("root")?.innerHTML.slice(0, 1400) || "",
+      scripts: Array.from(document.scripts).map((item) => item.src),
     }));
-    throw new Error("Owner drawer did not render: " + JSON.stringify(diagnostic) + "; " + error.message);
+    throw new Error("Owner drawer did not render: " + JSON.stringify(diagnostic) +
+      "; browser errors: " + browserErrors.join(" | ") + "; " + error.message);
   }
   const ownerShell = await page.locator("#nkj-owner-sidebar").count();
   const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
@@ -229,8 +240,15 @@ async function testPublicNavigation(browser) {
           await checkViewport(page, path, viewport);
         }
         if (viewport.width === 390) {
-          // Reuse the authenticated owner context already verified above.
-          await testOwnerSidebar(page);
+          // Use a fresh page so route-by-route SPA smoke checks cannot leak UI state
+          // into the independent owner drawer interaction test.
+          const navigationPage = await context.newPage();
+          await installApiMocks(navigationPage);
+          try {
+            await testOwnerSidebar(navigationPage);
+          } finally {
+            await navigationPage.close();
+          }
         }
       } finally {
         await context.close();
