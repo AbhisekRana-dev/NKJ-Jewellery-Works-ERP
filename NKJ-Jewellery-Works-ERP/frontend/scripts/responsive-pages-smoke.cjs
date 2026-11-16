@@ -167,7 +167,6 @@ async function testOwnerSidebar(browser) {
   // Isolate the drawer interaction from the long sequence of route reloads.
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
-  await installApiMocks(page);
   const browserErrors = [];
   page.on("pageerror", (error) => browserErrors.push(error.stack || error.message));
   page.on("console", (message) => {
@@ -175,6 +174,14 @@ async function testOwnerSidebar(browser) {
   });
 
   try {
+    // Establish a real same-origin document before touching localStorage.
+    await page.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
+    await page.locator("#root").waitFor({ state: "attached", timeout: 10000 });
+    await installApiMocks(page);
+    await page.evaluate(() => {
+      localStorage.setItem("nkj_token", "responsive-layout-test-token");
+      localStorage.setItem("nkj_user", "admin2026");
+    });
     await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
     try {
       await page.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
