@@ -220,6 +220,7 @@ async function checkViewport(page, path, viewport) {
         rootWidth: root?.scrollWidth || 0,
         appWidth: app?.scrollWidth || 0,
         outOfBounds,
+        overflowCandidates: Array.from(document.body.querySelectorAll('*')).map((el) => { const rect = el.getBoundingClientRect(); const style = getComputedStyle(el); return { tag: el.tagName, id: el.id || '', className: typeof el.className === 'string' ? el.className : '', left: Math.round(rect.left), right: Math.round(rect.right), clientWidth: el.clientWidth, scrollWidth: el.scrollWidth, overflowX: style.overflowX, text: (el.innerText || '').slice(0, 50) }; }).filter((item) => item.right > width + 1 || item.left < -1 || (item.scrollWidth > item.clientWidth + 1 && item.overflowX !== 'auto' && item.overflowX !== 'scroll')).slice(0, 20),
       };
     });
 
