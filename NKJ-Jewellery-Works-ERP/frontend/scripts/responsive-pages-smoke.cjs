@@ -10,6 +10,8 @@ const viewports = [
   { name: "large-mobile", width: 430, height: 932 },
   { name: "tablet", width: 768, height: 1024 },
   { name: "large-tablet", width: 1024, height: 1366 },
+  { name: "small-mobile-landscape", width: 568, height: 320 },
+  { name: "mobile-landscape", width: 844, height: 390 },
   { name: "tablet-landscape", width: 1024, height: 768 },
   { name: "laptop", width: 1366, height: 768 },
   { name: "desktop", width: 1440, height: 900 },
