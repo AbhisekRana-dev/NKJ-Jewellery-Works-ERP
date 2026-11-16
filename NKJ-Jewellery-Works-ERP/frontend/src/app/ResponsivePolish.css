@@ -166,6 +166,19 @@
 
 /* Phones and narrow tablets. */
 @media screen and (max-width: 760px) {
+  /* The legacy topbar rule hides every direct non-primary button.
+     Restore the owner hamburger with a more specific mobile-only selector. */
+  .nkj-owner-topbar.nkj-reference-navbar > .nkj-mobile-menu-button {
+    display: inline-grid !important;
+    place-items: center;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
   html,
   body {
     width: 100%;
@@ -1004,18 +1017,7 @@
   }
 
   /* Allow result/history content to grow; never crop it inside the workspace. */
-  .nkj-calculator-workspace {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  .nkj-calculator-panel:not([hidden]) {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
+  /* Keep the desktop calculator's compact viewport layout unchanged. */
   .nkj-calc-breakdown-label,
   .nkj-calc-history-expression,
   .nkj-calc-calculation-feedback {
@@ -1061,6 +1063,21 @@
     box-sizing: border-box;
     min-width: 0;
     max-width: min(100%, calc(100vw - 24px));
+  }
+}
+
+/* Tablet and narrower workspaces may grow naturally to keep every result reachable. */
+@media screen and (max-width: 1100px) {
+  .nkj-calculator-workspace {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-panel:not([hidden]) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 }
 

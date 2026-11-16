@@ -25,7 +25,6 @@ import JewelleryCatalogAdminPage from "../features/designs/JewelleryCatalogAdmin
 import MobileDesignUploadPage from "../features/designs/MobileDesignUploadPage";
 import "./Responsive.css";
 import "./ResponsivePolish.css";
-import "./ResponsiveComplete.css";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
