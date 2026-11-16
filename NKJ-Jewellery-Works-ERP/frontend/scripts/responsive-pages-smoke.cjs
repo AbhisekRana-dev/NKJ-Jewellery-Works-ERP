@@ -169,10 +169,8 @@ async function testOwnerSidebar(page) {
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
   });
-  await page.evaluate(() => {
-    localStorage.setItem("nkj_token", "responsive-layout-test-token");
-    localStorage.setItem("nkj_user", "admin2026");
-  });
+  // installApiMocks() seeds the owner token through addInitScript before app code runs.
+  // Navigate first: localStorage is unavailable on Playwright's opaque about:blank origin.
   await page.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
   try {
     await page.waitForFunction(() => {
