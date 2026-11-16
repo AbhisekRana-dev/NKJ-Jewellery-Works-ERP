@@ -24,6 +24,7 @@ import {
   History,
   MonitorSmartphone,
   LogOut,
+  Trash2,
   RefreshCw,
   Eye,
   ShieldAlert,
@@ -185,6 +186,26 @@ export default function Profile() {
       await loadLoginSessions(managerToken);
     } catch (error) {
       setSessionMessage(error.message || "Could not log out that device.");
+    } finally {
+      setSessionBusy("");
+    }
+  };
+
+  const deleteLoginHistoryEntry = async (session) => {
+    if (!managerToken || !session?.sessionId || session.status === "ACTIVE") return;
+    if (!window.confirm("Permanently delete this login record from history? This will not affect other devices.")) return;
+    setSessionBusy(session.sessionId);
+    setSessionMessage("");
+    try {
+      await request("/auth/sessions/" + encodeURIComponent(session.sessionId), {
+        method: "DELETE",
+        headers: { "X-Owner-Session-Manager": managerToken },
+      });
+      setLoginSessions((current) => current.filter((item) => item.sessionId !== session.sessionId));
+      await refreshSessionSummary();
+      setSessionMessage("Login history record deleted.");
+    } catch (error) {
+      setSessionMessage(error.message || "Could not delete this login history record.");
     } finally {
       setSessionBusy("");
     }
@@ -750,7 +771,7 @@ export default function Profile() {
                           <span>Last active: {formatSessionDate(session.lastActiveAt)}</span>
                         </div>
                       </div>
-                      {session.status === "ACTIVE" && (
+                      {session.status === "ACTIVE" ? (
                         <button
                           type="button"
                           className="nk-session-logout"
@@ -758,6 +779,16 @@ export default function Profile() {
                           disabled={Boolean(sessionBusy)}
                         >
                           <LogOut size={16} /> {sessionBusy === session.sessionId ? "Signing out…" : "Logout"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="nk-session-delete"
+                          onClick={() => deleteLoginHistoryEntry(session)}
+                          disabled={Boolean(sessionBusy)}
+                          aria-label={"Delete login history for " + (session.device || "this device")}
+                        >
+                          <Trash2 size={16} /> {sessionBusy === session.sessionId ? "Deleting…" : "Delete"}
                         </button>
                       )}
                     </article>
