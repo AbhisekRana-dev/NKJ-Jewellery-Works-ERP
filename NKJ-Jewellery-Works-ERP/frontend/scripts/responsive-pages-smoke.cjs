@@ -373,7 +373,10 @@ async function testPublicNavigation(browser) {
       await publicContext.close();
     }
 
-      process.stdout.write("PASS all " + publicRoutes.length + " public routes at " + publicViewport.name + " " + publicViewport.width + "x" + publicViewport.height + "\\n");\n    }\n\n    await testPublicNavigation(browser);
+      process.stdout.write("PASS all " + publicRoutes.length + " public routes at " + publicViewport.name + " " + publicViewport.width + "x" + publicViewport.height + "\\n");
+    }
+
+    await testPublicNavigation(browser);
     process.stdout.write("All owner/public page responsive smoke checks passed.\\n");
   } catch (error) {
     console.error(error);
