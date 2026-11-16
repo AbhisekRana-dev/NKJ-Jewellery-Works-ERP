@@ -87,9 +87,14 @@ function apiPayload(path, method) {
 }
 
 async function installApiRouteMocks(page) {
-  await page.route("**/api/**", async (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    // Do not intercept source modules such as /src/core/api/client.js.
+    if (!url.pathname.startsWith("/api/")) {
+      await route.continue();
+      return;
+    }
     if (url.pathname === "/api/events" || url.pathname === "/api/events/public") {
       await route.fulfill({
         status: 200,
@@ -332,8 +337,21 @@ async function testPublicNavigation(browser) {
 
     const publicContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const publicPage = await publicContext.newPage();
-    await publicPage.route("**/api/**", async (route) => {
+    await publicPage.route("**/*", async (route) => {
       const url = new URL(route.request().url());
+      if (!url.pathname.startsWith("/api/")) {
+        await route.continue();
+        return;
+      }
+      if (url.pathname === "/api/events" || url.pathname === "/api/events/public") {
+        await route.fulfill({
+          status: 200,
+          contentType: "text/event-stream",
+          headers: { "cache-control": "no-cache" },
+          body: ": responsive-smoke-connected\\n\\n",
+        });
+        return;
+      }
       const body = apiPayload(url.pathname, route.request().method().toUpperCase());
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
     });
