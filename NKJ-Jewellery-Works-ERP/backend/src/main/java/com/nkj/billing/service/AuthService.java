@@ -362,6 +362,28 @@ public class AuthService {
         return currentSession;
     }
 
+    public void deleteLoginHistory(String ownerToken, String managerToken, String sessionId) {
+        requireSessionManager(ownerToken, managerToken);
+        final UUID id;
+        try { id = UUID.fromString(sessionId); }
+        catch (Exception ex) { throw new IllegalArgumentException("Invalid login session."); }
+
+        SessionState current = requireCurrentSession(ownerToken);
+        if (current.id.equals(id.toString())) {
+            throw new IllegalArgumentException("The current login session cannot be deleted.");
+        }
+        if (findActiveSessionById(id.toString()) != null) {
+            throw new IllegalArgumentException("This device is still active. Log it out before deleting its history.");
+        }
+
+        int deleted = jdbc.update(
+                "DELETE FROM owner_login_sessions WHERE id=? AND username=?",
+                id, username);
+        if (deleted == 0) throw new IllegalArgumentException("Login-history record was not found.");
+
+        sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(id.toString()));
+    }
+
     public int logoutOtherLoginSessions(String ownerToken, String managerToken) {
         requireSessionManager(ownerToken, managerToken);
         SessionState current = requireCurrentSession(ownerToken);
