@@ -2149,3 +2149,29 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     display: none !important;
   }
 }
+
+
+/* Saved invoice modal print containment.
+   The saved-invoice route uses the owner app's nested flex shell, unlike the
+   standalone New Invoice route. Remove the app-shell min-height/flex sizing
+   while printing the modal so its content does not create an additional page. */
+@media print {
+  body:has(.nkj-invoice-detail-overlay) #root,
+  body:has(.nkj-invoice-detail-overlay) .app-layout,
+  body:has(.nkj-invoice-detail-overlay) .app-content {
+    display: block !important;
+    position: static !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    flex: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+  }
+}
