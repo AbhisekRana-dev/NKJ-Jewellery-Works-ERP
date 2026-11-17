@@ -618,6 +618,7 @@ async function testInvoiceSavePinGate(browser) {
 
   await page.addInitScript(() => {
     window.print = () => { window.__nkjPrintDialogOpened = true; };
+    localStorage.setItem("nkj_user", "admin2026");
   });
 
   await page.route("**/*", async (route) => {
