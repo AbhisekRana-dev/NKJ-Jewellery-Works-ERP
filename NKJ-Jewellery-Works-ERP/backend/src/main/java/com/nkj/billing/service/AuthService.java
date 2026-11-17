@@ -33,6 +33,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class AuthService {
     private static final long CHALLENGE_TTL_MILLIS = 2 * 60 * 1000L;
     private static final long SESSION_TTL_MILLIS = 8 * 60 * 60 * 1000L;
+    private static final long SESSION_IDLE_TIMEOUT_MILLIS = 10 * 60 * 1000L;
     private static final long SETUP_OTP_TTL_MILLIS = 5 * 60 * 1000L;
     private static final long SETUP_TOKEN_TTL_MILLIS = 10 * 60 * 1000L;
     private static final long SESSION_MANAGER_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
@@ -72,10 +73,12 @@ public class AuthService {
     private static final class SessionState {
         private final String id;
         private final long expiresAt;
+        private volatile long lastUserActivityAt;
         private volatile long lastActivityPersistedAt;
         private SessionState(String id, long expiresAt, long now) {
             this.id = id;
             this.expiresAt = expiresAt;
+            this.lastUserActivityAt = now;
             this.lastActivityPersistedAt = now;
         }
     }
@@ -234,22 +237,55 @@ public class AuthService {
         return "otpauth://totp/" + issuer + ":" + account + "?secret=" + secret + "&issuer=" + issuer + "&digits=6&period=30";
     }
 
+    /**
+     * Validates the hard session lifetime and the last genuine user interaction.
+     * Ordinary API traffic (including polling and this session check) deliberately
+     * does not refresh lastUserActivityAt.
+     */
     public boolean valid(String token) {
         if (token == null || token.isBlank()) return false;
         SessionState state = sessions.get(token);
         if (state == null) return false;
         long now = System.currentTimeMillis();
-        if (state.expiresAt < now) {
-            sessions.remove(token, state);
-            sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
+        if (state.expiresAt <= now || isIdleTimeoutReached(now, state.lastUserActivityAt)) {
+            expireSession(token, state);
             return false;
         }
+        return true;
+    }
+
+    /**
+     * Called only from the explicit activity endpoint. Keeping this separate from
+     * valid() prevents dashboard polling, realtime refreshes, and session heartbeats
+     * from keeping an unattended browser session alive.
+     */
+    public void markUserActivity(String token) {
+        if (!valid(token)) {
+            throw new IllegalArgumentException("Your session expired due to inactivity. Please log in again.");
+        }
+        SessionState state = sessions.get(token);
+        if (state == null) {
+            throw new IllegalArgumentException("Your login session is no longer valid. Please log in again.");
+        }
+        long now = System.currentTimeMillis();
+        state.lastUserActivityAt = now;
         if (now - state.lastActivityPersistedAt >= SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS) {
             jdbc.update("UPDATE owner_login_sessions SET last_active_at=NOW() WHERE id=? AND logged_out_at IS NULL",
                     UUID.fromString(state.id));
             state.lastActivityPersistedAt = now;
         }
-        return true;
+    }
+
+    static boolean isIdleTimeoutReached(long now, long lastUserActivityAt) {
+        return lastUserActivityAt <= 0 || now - lastUserActivityAt >= SESSION_IDLE_TIMEOUT_MILLIS;
+    }
+
+    private void expireSession(String token, SessionState state) {
+        if (!sessions.remove(token, state)) return;
+        jdbc.update(
+                "UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW() WHERE id=?",
+                UUID.fromString(state.id));
+        sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
     }
 
     public void logout(String token) {
@@ -268,7 +304,7 @@ public class AuthService {
         requireCurrentSession(ownerToken);
         long now = System.currentTimeMillis();
         int activeCount = (int) sessions.values().stream()
-                .filter(state -> state.expiresAt >= now)
+                .filter(state -> isSessionActive(state, now))
                 .map(state -> state.id).distinct().count();
         Long historyCount = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM owner_login_sessions WHERE username=? AND created_at >= NOW() - INTERVAL '30 days'",
@@ -379,9 +415,9 @@ public class AuthService {
 
         long now = System.currentTimeMillis();
         sessions.entrySet().removeIf(entry ->
-                entry.getValue().id.equals(sessionId) && entry.getValue().expiresAt < now);
+                entry.getValue().id.equals(sessionId) && !isSessionActive(entry.getValue(), now));
         boolean active = sessions.values().stream()
-                .anyMatch(state -> state.id.equals(sessionId) && state.expiresAt >= now);
+                .anyMatch(state -> state.id.equals(sessionId) && isSessionActive(state, now));
         if (active) {
             throw new IllegalArgumentException("Log out this device before deleting its login history.");
         }
@@ -405,8 +441,9 @@ public class AuthService {
     public int logoutOtherLoginSessions(String ownerToken, String managerToken) {
         requireSessionManager(ownerToken, managerToken);
         SessionState current = requireCurrentSession(ownerToken);
+        long now = System.currentTimeMillis();
         int activeBefore = (int) sessions.values().stream()
-                .filter(state -> !state.id.equals(current.id) && state.expiresAt >= System.currentTimeMillis())
+                .filter(state -> !state.id.equals(current.id) && isSessionActive(state, now))
                 .map(state -> state.id).distinct().count();
         sessions.entrySet().removeIf(entry -> !entry.getValue().id.equals(current.id));
         sessionManagerGrants.entrySet().removeIf(entry -> !entry.getValue().ownerSessionId().equals(current.id));
@@ -436,8 +473,12 @@ public class AuthService {
     private SessionState findActiveSessionById(String id) {
         long now = System.currentTimeMillis();
         return sessions.values().stream()
-                .filter(state -> state.id.equals(id) && state.expiresAt >= now)
+                .filter(state -> state.id.equals(id) && isSessionActive(state, now))
                 .findFirst().orElse(null);
+    }
+
+    private boolean isSessionActive(SessionState state, long now) {
+        return state.expiresAt > now && !isIdleTimeoutReached(now, state.lastUserActivityAt);
     }
 
     private String describeDevice(String userAgent) {
