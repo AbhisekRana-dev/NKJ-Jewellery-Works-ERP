@@ -95,6 +95,12 @@ public class InvoiceController {
                 },
                 requestKey
         );
+
+        // Consume the verified SAVE ticket before handling either a new insert
+        // or an idempotent retry. Bind the ticket to this exact request key so
+        // an unused/replayed ticket cannot authorize a different invoice.
+        invoicePins.consumeForSave(invoicePinTicket, servletRequest.getRemoteAddr(), null, requestKey);
+
         Invoice existingInvoice = repo.findByIdempotencyKey(requestKey).orElse(null);
         if (existingInvoice != null) {
             if (existingInvoice.getInvoiceDate() == null
@@ -155,11 +161,6 @@ public class InvoiceController {
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
         }
-
-        // The public invoice-create endpoint still requires a server-issued
-        // one-time SAVE ticket. This check runs after validation/idempotency
-        // handling but before any new invoice row or payment is inserted.
-        invoicePins.consumeForSave(invoicePinTicket, servletRequest.getRemoteAddr(), null);
 
         Invoice invoice = new Invoice();
         invoice.setInvoiceNo("PENDING-" + UUID.randomUUID());
@@ -263,7 +264,7 @@ public class InvoiceController {
         }
 
         // Bind the PIN authorization to the exact invoice being edited.
-        invoicePins.consumeForSave(invoicePinTicket, servletRequest.getRemoteAddr(), id);
+        invoicePins.consumeForSave(invoicePinTicket, servletRequest.getRemoteAddr(), id, null);
 
         invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
         invoice.setCustomerName(customerName);
