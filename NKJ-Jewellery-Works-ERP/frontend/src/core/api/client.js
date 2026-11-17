@@ -43,18 +43,28 @@ export async function request(path, options = {}) {
     }
   }
 
-  if (response.status === 401 && !suppressSessionExpiry) {
-    localStorage.removeItem("nkj_token");
-    localStorage.removeItem("nkj_user");
-    window.dispatchEvent(new Event("nkj:session-expired"));
+  if (response.status === 401 && !suppressSessionExpiry && token) {
+    const username = localStorage.getItem("nkj_user") || "";
+    const message = String(data.message || data.error || "");
+    const reason = /inactivity|inactive|idle timeout/i.test(message)
+      ? "inactivity"
+      : "session";
+    // AuthProvider broadcasts this event to every open tab, then removes the
+    // bearer token. Include identity/reason before localStorage is cleared.
+    window.dispatchEvent(new CustomEvent("nkj:session-expired", {
+      detail: { username, reason },
+    }));
   }
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       data.message ||
       data.error ||
       `Request failed (${response.status})`,
     );
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
 
   return data;
