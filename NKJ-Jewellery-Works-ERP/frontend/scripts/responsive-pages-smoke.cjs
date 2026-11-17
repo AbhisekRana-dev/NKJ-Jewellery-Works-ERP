@@ -19,6 +19,7 @@ const viewports = [
 ];
 
 const ownerRoutes = [
+  "/", "/invoice", "/calculator", "/designs",
   "/dashboard", "/saved-invoices", "/customers", "/profile", "/rates",
   "/inventory", "/stock-movements", "/staff", "/attendance", "/salary",
   "/salary-payments", "/leaves", "/expenses", "/bookings", "/installments",
@@ -27,7 +28,7 @@ const ownerRoutes = [
   "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
 ];
 
-const publicRoutes = ["/", "/invoice", "/designs", "/login", "/setup-totp"];
+const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/login", "/setup-totp"];
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -212,6 +213,58 @@ async function checkViewport(page, path, viewport) {
           width: Math.round(rect.width * 10) / 10,
         };
       }).filter((item) => item.left < -1 || item.right > width + 1).slice(0, 6);
+      const tableAncestors = [];
+      let tableNode = document.querySelector(".items-table.new-items-table");
+      while (tableNode && tableAncestors.length < 10) {
+        const rect = tableNode.getBoundingClientRect();
+        const style = getComputedStyle(tableNode);
+        tableAncestors.push({
+          tag: tableNode.tagName,
+          className: typeof tableNode.className === "string" ? tableNode.className : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: tableNode.scrollWidth,
+          clientWidth: tableNode.clientWidth,
+          overflowX: style.overflowX,
+          display: style.display,
+          minWidth: style.minWidth,
+        });
+        tableNode = tableNode.parentElement;
+      }
+      const invoiceSheetChildren = Array.from(document.querySelector(".invoice-sheet")?.children || []).map((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName,
+          className: typeof element.className === "string" ? element.className : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX,
+          display: style.display,
+          minWidth: style.minWidth,
+          gridTemplateColumns: style.gridTemplateColumns,
+        };
+      });
+      const overflowElements = Array.from(document.body.querySelectorAll("*")).map((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName,
+          className: typeof element.className === "string" ? element.className.slice(0, 90) : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX,
+        };
+      }).filter((item) => (item.right > width + 1 || item.left < -1)
+        && item.overflowX !== "auto" && item.overflowX !== "scroll")
+        .sort((a, b) => b.right - a.right).slice(0, 18);
 
       return {
         width,
@@ -220,6 +273,9 @@ async function checkViewport(page, path, viewport) {
         rootWidth: root?.scrollWidth || 0,
         appWidth: app?.scrollWidth || 0,
         outOfBounds,
+        overflowElements,
+        tableAncestors,
+        invoiceSheetChildren,
       };
     });
 
