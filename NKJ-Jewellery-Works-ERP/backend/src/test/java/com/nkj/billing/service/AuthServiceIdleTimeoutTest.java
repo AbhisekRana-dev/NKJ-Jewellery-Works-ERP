@@ -66,6 +66,9 @@ class AuthServiceIdleTimeoutTest {
 
         assertFalse(service.valid(token));
         assertFalse(sessions.containsKey(token));
+        // Multiple protected requests can fail together; both must still
+        // receive the specific inactivity reason during its short TTL.
+        assertTrue(service.wasIdleExpired(token));
         assertTrue(service.wasIdleExpired(token));
         verify(jdbc).update(anyString(), any(Object[].class));
     }

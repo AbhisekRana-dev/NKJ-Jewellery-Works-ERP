@@ -292,11 +292,21 @@ public class AuthService {
                 && now - state.lastActivityAt < sessionIdleTimeoutMillis;
     }
 
-    /** Returns and consumes the short-lived inactivity reason for the rejected bearer token. */
+    /**
+     * Returns the short-lived inactivity reason for the rejected bearer token.
+     * Keep it readable for the full TTL: multiple in-flight requests can all
+     * receive 401 after the same idle expiry and must report the same reason.
+     */
     public boolean wasIdleExpired(String token) {
         if (token == null || token.isBlank()) return false;
-        Long expiresAt = idleExpiredTokenHashes.remove(sha256(token));
-        return expiresAt != null && expiresAt >= System.currentTimeMillis();
+        String tokenHash = sha256(token);
+        Long expiresAt = idleExpiredTokenHashes.get(tokenHash);
+        if (expiresAt == null) return false;
+        if (expiresAt < System.currentTimeMillis()) {
+            idleExpiredTokenHashes.remove(tokenHash, expiresAt);
+            return false;
+        }
+        return true;
     }
 
     public long getLastActivityAt(String token) {
