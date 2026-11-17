@@ -9,6 +9,12 @@ const LAST_SERVER_ACTIVITY_SYNC_KEY = "nkj.auth.last-server-activity-sync.v1";
 const LOGOUT_BROADCAST_KEY = "nkj.auth.logout-event.v1";
 
 function readLogoutReason() {
+  try {
+    const broadcast = JSON.parse(localStorage.getItem(LOGOUT_BROADCAST_KEY) || "null");
+    if (broadcast?.reason && Date.now() - Number(broadcast.at || 0) < 2 * 60 * 1000) {
+      return broadcast.reason;
+    }
+  } catch {}
   const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || 0);
   return lastActivity > 0 && Date.now() - lastActivity >= IDLE_TIMEOUT_MS
     ? "inactivity"
@@ -24,6 +30,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState("");
   const [pending, setPending] = useState("");
   const [authReady, setAuthReady] = useState(false);
+  const [sessionEndedReason, setSessionEndedReason] = useState("");
   const logoutInProgressRef = useRef(false);
 
   function publishLogout(reason) {
@@ -46,6 +53,7 @@ export function AuthProvider({ children }) {
     setUser("");
     setPending("");
     setAuthReady(true);
+    setSessionEndedReason(reason);
     if (notifyApp) {
       window.dispatchEvent(new CustomEvent("nkj:session-expired", {
         detail: { reason },
@@ -245,7 +253,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem("nkj_user", result.username);
     localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
     localStorage.removeItem(LAST_SERVER_ACTIVITY_SYNC_KEY);
+    localStorage.removeItem(LOGOUT_BROADCAST_KEY);
     logoutInProgressRef.current = false;
+    setSessionEndedReason("");
     setUser(result.username);
     setPending("");
     setAuthReady(true);
@@ -277,7 +287,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin: Boolean(user), authReady, begin, verify, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin: Boolean(user), authReady, sessionEndedReason, begin, verify, logout }}>
       {children}
     </AuthContext.Provider>
   );
