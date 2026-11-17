@@ -513,7 +513,18 @@ async function verifyRealSharedPdf(page) {
     );
   }
 
-  await shareButton.click();
+  // Click synchronously in the same browser evaluation that confirms the
+  // button is enabled. A separate Playwright locator.click can race with a
+  // React re-render that temporarily replaces/disables the prepared-PDF button.
+  await page.waitForFunction(
+    () => {
+      const button = document.querySelector(".nkj-whatsapp-action");
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    },
+    { timeout: 35000 }
+  );
   await page.waitForFunction(() => Boolean(window.__nkjSharedPdfCapture), { timeout: 10000 });
   const captured = await page.evaluate(() => window.__nkjSharedPdfCapture);
   assert(captured?.type === "application/pdf", "The native share flow did not receive an application/pdf file.");
