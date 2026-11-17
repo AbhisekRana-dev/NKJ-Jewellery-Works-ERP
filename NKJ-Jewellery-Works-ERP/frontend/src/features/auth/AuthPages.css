@@ -82,3 +82,15 @@
 .setup-screen {min-height:calc(100vh - 132px)!important}
 
 }
+
+
+.nkj-session-expired-notice {
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  border: 1px solid #e5c78f;
+  border-radius: 8px;
+  background: #fff8e9;
+  color: #6b4817;
+  font-size: 13px;
+  line-height: 1.45;
+}
