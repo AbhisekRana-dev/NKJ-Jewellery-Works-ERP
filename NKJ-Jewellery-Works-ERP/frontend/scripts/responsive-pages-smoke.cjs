@@ -394,7 +394,7 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
   await page.emulateMedia({ media: "print" });
   const printLayout = await page.evaluate(() => {
     const invoice = document.querySelector("#invoice-print");
-    const actions = document.querySelector(".invoice-actions");
+    const actions = document.querySelector(".invoice-actions, .nkj-invoice-detail-actions");
     return {
       width: invoice ? parseFloat(getComputedStyle(invoice).width) : 0,
       actionsDisplay: actions ? getComputedStyle(actions).display : "missing",
