@@ -76,6 +76,9 @@ public class InvoiceController {
                                       @RequestHeader(value = "X-Invoice-Pin-Ticket", required = false) String invoicePinTicket,
                                       jakarta.servlet.http.HttpServletRequest servletRequest) throws Exception {
         String requestKey = clean(idempotencyKey);
+        if (invoicePinTicket == null || invoicePinTicket.isBlank()) {
+            throw new IllegalArgumentException("Verify the invoice security PIN before saving this invoice.");
+        }
         if (!requestKey.matches("[A-Za-z0-9._:-]{1,120}")) {
             throw new IllegalArgumentException("A valid Idempotency-Key is required to save an invoice.");
         }
@@ -245,6 +248,9 @@ public class InvoiceController {
                                       @RequestBody Map<String, Object> body,
                                       @RequestHeader(value = "X-Invoice-Pin-Ticket", required = false) String invoicePinTicket,
                                       HttpServletRequest servletRequest) throws Exception {
+        if (invoicePinTicket == null || invoicePinTicket.isBlank()) {
+            throw new IllegalArgumentException("Verify the invoice security PIN before updating this invoice.");
+        }
         validateInvoiceBody(body);
         validateMobileNumber(body);
 
