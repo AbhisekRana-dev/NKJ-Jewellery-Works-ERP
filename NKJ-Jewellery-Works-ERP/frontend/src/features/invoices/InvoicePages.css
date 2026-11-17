@@ -2149,3 +2149,66 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     display: none !important;
   }
 }
+
+
+/* Confirmed reset for an unfinished invoice draft. */
+.nkj-invoice-reset-button {
+  border-color: #d7b7a0 !important;
+  color: #8a1834 !important;
+}
+.nkj-invoice-reset-button:hover:not(:disabled) {
+  border-color: #9d2442 !important;
+  background: #fff5f3 !important;
+}
+.nkj-invoice-reset-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 13000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(20, 10, 14, .62);
+  backdrop-filter: blur(3px);
+}
+.nkj-invoice-reset-dialog {
+  width: min(440px, 100%);
+  padding: 24px;
+  border: 1px solid #ead8c9;
+  border-radius: 15px;
+  background: #fffdf9;
+  box-shadow: 0 22px 70px rgba(20, 10, 14, .28);
+  color: #3b2028;
+}
+.nkj-invoice-reset-dialog h3 {
+  margin: 0 0 10px;
+  color: #78132f;
+  font-size: 19px;
+}
+.nkj-invoice-reset-dialog p {
+  margin: 0;
+  color: #5d4a4e;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.nkj-invoice-reset-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+.nkj-invoice-reset-actions button {
+  min-width: 112px;
+}
+@media (max-width: 520px) {
+  .nkj-invoice-reset-dialog {
+    padding: 20px 17px;
+  }
+  .nkj-invoice-reset-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .nkj-invoice-reset-actions button {
+    min-width: 0;
+  }
+}
