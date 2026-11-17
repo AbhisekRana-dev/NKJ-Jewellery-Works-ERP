@@ -41,6 +41,7 @@ public class RealtimeMutationInterceptor implements HandlerInterceptor {
         String path = request.getRequestURI();
         if (path == null
                 || path.startsWith("/api/events")
+                || path.equals("/api/auth/activity")
                 || path.endsWith("/verify-pin")
                 || path.endsWith("/consume-print-ticket")) {
             return;
