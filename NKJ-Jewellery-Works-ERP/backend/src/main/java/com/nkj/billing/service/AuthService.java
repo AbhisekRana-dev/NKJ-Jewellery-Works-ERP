@@ -37,6 +37,7 @@ public class AuthService {
     private static final long SETUP_TOKEN_TTL_MILLIS = 10 * 60 * 1000L;
     private static final long SESSION_MANAGER_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
     private static final long SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS = 30 * 1000L;
+    private static final long IDLE_EXPIRY_REASON_TTL_MILLIS = 60 * 1000L;
     private static final long SESSION_MANAGER_LOCK_MILLIS = 15 * 60 * 1000L;
     private static final int MAX_SESSION_MANAGER_ATTEMPTS = 5;
 
@@ -61,6 +62,7 @@ public class AuthService {
             .connectTimeout(Duration.ofSeconds(10)).build();
     private final Map<String, Long> challenges = new ConcurrentHashMap<>();
     private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
+    private final Map<String, Long> idleExpiredTokenHashes = new ConcurrentHashMap<>();
     private final Map<String, SetupOtp> setupOtps = new ConcurrentHashMap<>();
     private final Map<String, Long> setupTokens = new ConcurrentHashMap<>();
     private final Map<String, ManagerGrant> sessionManagerGrants = new ConcurrentHashMap<>();
@@ -246,7 +248,13 @@ public class AuthService {
         SessionState state = sessions.get(token);
         if (state == null) return false;
         long now = System.currentTimeMillis();
-        if (!isSessionActive(state, now)) {
+        if (now > state.expiresAt) {
+            endSession(token, state);
+            return false;
+        }
+        if (now - state.lastActivityAt >= sessionIdleTimeoutMillis) {
+            idleExpiredTokenHashes.entrySet().removeIf(entry -> entry.getValue() < now);
+            idleExpiredTokenHashes.put(sha256(token), now + IDLE_EXPIRY_REASON_TTL_MILLIS);
             endSession(token, state);
             return false;
         }
@@ -282,6 +290,19 @@ public class AuthService {
         return state != null
                 && now <= state.expiresAt
                 && now - state.lastActivityAt < sessionIdleTimeoutMillis;
+    }
+
+    /** Returns and consumes the short-lived inactivity reason for the rejected bearer token. */
+    public boolean wasIdleExpired(String token) {
+        if (token == null || token.isBlank()) return false;
+        Long expiresAt = idleExpiredTokenHashes.remove(sha256(token));
+        return expiresAt != null && expiresAt >= System.currentTimeMillis();
+    }
+
+    public long getLastActivityAt(String token) {
+        if (!valid(token)) return 0L;
+        SessionState state = sessions.get(token);
+        return state == null ? 0L : state.lastActivityAt;
     }
 
     private void endSession(String token, SessionState state) {

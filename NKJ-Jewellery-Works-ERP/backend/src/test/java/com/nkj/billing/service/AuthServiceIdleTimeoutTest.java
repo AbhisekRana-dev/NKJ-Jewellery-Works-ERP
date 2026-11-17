@@ -66,6 +66,7 @@ class AuthServiceIdleTimeoutTest {
 
         assertFalse(service.valid(token));
         assertFalse(sessions.containsKey(token));
+        assertTrue(service.wasIdleExpired(token));
         verify(jdbc).update(anyString(), any(Object[].class));
     }
 
@@ -76,6 +77,7 @@ class AuthServiceIdleTimeoutTest {
 
         assertFalse(service.valid(token));
         assertFalse(sessions.containsKey(token));
+        assertFalse(service.wasIdleExpired(token));
         verify(jdbc).update(anyString(), any(Object[].class));
     }
 
