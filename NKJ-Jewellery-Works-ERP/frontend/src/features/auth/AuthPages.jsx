@@ -96,6 +96,11 @@ export function Login() {
 
   const nav = useNavigate();
   const location = useLocation();
+  const [sessionNotice] = useState(() =>
+    new URLSearchParams(location.search).get("reason") === "inactivity"
+      ? "Your session expired due to inactivity. Please log in again."
+      : ""
+  );
 
   const [username, setUsername] = useState("");
 
@@ -202,6 +207,7 @@ export function Login() {
           <p className="nkj-login-subtitle">
             Login to Nandikishor Jewellery Works
           </p>
+          {sessionNotice && <p className="nkj-session-expired-notice" role="status">{sessionNotice}</p>}
 
           <form onSubmit={submit}>
             <label className="nkj-login-field">
