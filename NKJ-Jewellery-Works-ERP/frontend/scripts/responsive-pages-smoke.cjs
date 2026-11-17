@@ -59,21 +59,27 @@ const responsiveSavedInvoice = {
   invoiceNo: "NKJ-MOBILE-TEST-001",
   invoiceDate: "2026-11-17",
   invoiceTime: "10:15:00",
-  customerName: "Mobile QA Customer",
+  customerName: "Mobile QA Customer With A Long Full Name",
   mobile: "9876543210",
-  address: "Sasra, Gopiballavpur, Jhargram, West Bengal",
-  paymentMode: "Cash",
-  referenceNo: "",
+  address: "Sasra, Gopiballavpur, Jhargram, Paschim Medinipur, West Bengal — PIN 721506, India",
+  paymentMode: "UPI",
+  referenceNo: "UPI-TEST-20261117-001",
   showGstin: true,
-  newItems: [],
-  oldItems: [],
-  newTotal: 1236,
-  oldTotal: 0,
-  gstPercent: 0,
-  gstAmount: 0,
+  newItems: [
+    { description: "22K Gold Necklace with Traditional Filigree Work", purity: "22K / 916", netWeight: 5.25, rate: 6900, makingCharge: 600, stampCharge: 50, extraCharge: 100 },
+    { description: "Gold Earrings Pair", purity: "22K", netWeight: 1.2, rate: 6900, makingCharge: 150, stampCharge: 20, extraCharge: 0 },
+  ],
+  oldItems: [
+    { description: "Old Gold Necklace Exchange", purity: "22K", pureWeight: 2, rate: 6500, amount: 13000 },
+  ],
+  newTotal: 45425,
+  oldTotal: 13000,
+  gstPercent: 3,
+  gstAmount: 1362.75,
   discount: 0,
-  grandTotal: 1236,
-  totalPaid: 1236,
+  grandTotal: 33787.75,
+  totalPaid: 15000,
+  description: "Mobile QA fixture with populated gold rows, exchange value, long customer address, GST and payment balance.",
 };
 
 function apiPayload(path, method) {
@@ -130,7 +136,7 @@ async function installApiRouteMocks(page) {
         status: 200,
         contentType: "text/event-stream",
         headers: { "cache-control": "no-cache" },
-        body: ": responsive-smoke-connected\\n\\n",
+        body: ": responsive-smoke-connected\n\n",
       });
       return;
     }
@@ -390,6 +396,135 @@ async function inspectInvoiceMobileLayout(page, viewport, invoiceKind) {
   );
 }
 
+async function assertInvoiceTablesAreScrollable(page, invoiceKind) {
+  const results = await page.evaluate(() => Array.from(
+    document.querySelectorAll("#invoice-print .table-wrap")
+  ).map((wrap) => {
+    const maxScroll = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+    wrap.scrollLeft = 0;
+    const leftEdge = wrap.scrollLeft;
+    wrap.scrollLeft = maxScroll;
+    const rightEdge = wrap.scrollLeft;
+    return {
+      tableClass: wrap.querySelector(".items-table")?.className || "",
+      clientWidth: wrap.clientWidth,
+      scrollWidth: wrap.scrollWidth,
+      overflowX: getComputedStyle(wrap).overflowX,
+      maxScroll,
+      leftEdge,
+      rightEdge,
+    };
+  }));
+  assert(results.length >= 2, invoiceKind + " must render both new and old ornament table regions.");
+  for (const result of results) {
+    assert(["auto", "scroll"].includes(result.overflowX),
+      invoiceKind + " table is not independently scrollable: " + JSON.stringify(result));
+    assert(
+      result.scrollWidth > result.clientWidth &&
+      result.maxScroll > 0 &&
+      result.leftEdge === 0 &&
+      result.rightEdge >= result.maxScroll - 1,
+      invoiceKind + " ornament table columns are not reachable from both horizontal edges: " + JSON.stringify(result)
+    );
+  }
+}
+
+async function fillNewInvoiceForMobile(page, width) {
+  const customerPanel = page.locator("#invoice-print .inv-two .inv-panel").nth(0);
+  const customerInputs = customerPanel.locator(".form-grid label input");
+  await customerInputs.nth(0).fill("Mobile QA Customer With A Long Full Name");
+  await customerInputs.nth(1).fill("9876543210");
+  await customerInputs.nth(2).fill("Sasra, Gopiballavpur, Jhargram, Paschim Medinipur, West Bengal — PIN 721506, India");
+
+  const paymentPanel = page.locator("#invoice-print .inv-two .inv-panel").nth(1);
+  await paymentPanel.locator(".form-grid label select").selectOption("UPI");
+  await paymentPanel.locator(".form-grid label input").fill("UPI-TEST-20261117-001");
+
+  const table = page.locator("#invoice-print .new-items-table");
+  const fillRow = async (rowIndex, values) => {
+    const inputs = table.locator("tbody tr").nth(rowIndex).locator("td input");
+    for (let index = 0; index < values.length; index += 1) {
+      await inputs.nth(index).fill(String(values[index]));
+    }
+  };
+
+  await fillRow(0, [
+    "22K Gold Necklace with Traditional Filigree Work", "22K / 916",
+    "5.25", "6900", "600", "50", "100",
+  ]);
+  await page.locator("#invoice-print .inv-left .ornament-panel").first()
+    .locator("button:has-text('+ Add Ornament')").click();
+  await fillRow(1, [
+    "Gold Earrings Pair", "22K", "1.2", "6900", "150", "20", "0",
+  ]);
+
+  const values = await page.evaluate(() => {
+    const invoice = document.querySelector("#invoice-print");
+    const panel = invoice?.querySelector(".new-items-table")?.closest(".ornament-panel");
+    const totalText = panel?.querySelector(".row-end strong")?.textContent || "";
+    const amountText = invoice?.querySelector(".new-items-table tbody tr:first-child td:nth-child(9)")?.textContent || "";
+    const wrap = invoice?.querySelector(".new-items-table")?.closest(".table-wrap");
+    return {
+      name: invoice?.querySelector(".inv-two .inv-panel:first-child input")?.value || "",
+      address: invoice?.querySelector(".inv-two .inv-panel:first-child .form-grid label:nth-child(3) input")?.value || "",
+      rows: invoice?.querySelectorAll(".new-items-table tbody tr").length || 0,
+      totalNumber: Number(totalText.replace(/[^\d.-]/g, "")),
+      firstAmount: Number(amountText.replace(/[^\d.-]/g, "")),
+      tableClientWidth: wrap?.clientWidth || 0,
+      tableScrollWidth: wrap?.scrollWidth || 0,
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    };
+  });
+
+  assert(values.name.includes("Long Full Name"), "New Invoice did not retain the long customer name.");
+  assert(values.address.includes("PIN 721506"), "New Invoice did not retain the long customer address.");
+  assert(values.rows === 2, "New Invoice did not add the second ornament row.");
+  assert(Math.abs(values.firstAmount - 36975) < 0.01,
+    "New ornament row amount is incorrect: " + JSON.stringify(values));
+  assert(Math.abs(values.totalNumber - 45425) < 0.01,
+    "New ornament subtotal is incorrect: " + JSON.stringify(values));
+  assert(values.tableScrollWidth > values.tableClientWidth,
+    "The New Invoice ornament table is not wider than its scroll viewport.");
+  assert(values.documentWidth <= values.viewportWidth + 1,
+    "The populated New Invoice caused page-level horizontal scrolling at " + width + "px.");
+}
+
+async function verifyRealSharedPdf(page) {
+  const shareButton = page.locator(".nkj-whatsapp-action");
+  try {
+    await shareButton.waitFor({ state: "visible", timeout: 10000 });
+    await page.waitForFunction(
+      () => {
+        const button = document.querySelector(".nkj-whatsapp-action");
+        return Boolean(button && !button.disabled);
+      },
+      { timeout: 35000 }
+    );
+  } catch (error) {
+    const detail = await page.locator(".nkj-invoice-detail-sheet").innerText().catch(() => "");
+    throw new Error(
+      "The saved invoice's actual PDF file was not prepared for sharing. Detail: " +
+      detail.slice(-900) + "; " + error.message
+    );
+  }
+
+  await shareButton.click();
+  await page.waitForFunction(() => Boolean(window.__nkjSharedPdfCapture), { timeout: 10000 });
+  const captured = await page.evaluate(() => window.__nkjSharedPdfCapture);
+  assert(captured?.type === "application/pdf", "The native share flow did not receive an application/pdf file.");
+  assert(captured.size > 1000, "The generated invoice PDF is unexpectedly small or empty.");
+  assert(captured.name === responsiveSavedInvoice.invoiceNo + ".pdf",
+    "The generated PDF filename does not match the saved invoice.");
+  assert(captured.header?.startsWith("%PDF-"), "The shared invoice attachment is not a PDF document.");
+  const mediaBox = captured.header.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
+  assert(mediaBox, "The actual shared PDF has no readable page MediaBox.");
+  const pageWidth = Number(mediaBox[3]) - Number(mediaBox[1]);
+  const pageHeight = Number(mediaBox[4]) - Number(mediaBox[2]);
+  assert(pageWidth > pageHeight && pageWidth >= 840 && pageHeight >= 590,
+    "The actual shared PDF is not A4 landscape: " + JSON.stringify({ pageWidth, pageHeight }));
+}
+
 async function verifyInvoicePrintPdf(page, invoiceKind) {
   await page.emulateMedia({ media: "print" });
   const printLayout = await page.evaluate(() => {
@@ -409,12 +544,39 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
     invoiceKind + " print stylesheet did not hide on-screen invoice actions."
   );
 
+  const printGeometry = await page.evaluate(() => {
+    const rect = (element) => {
+      if (!element) return null;
+      const r = element.getBoundingClientRect();
+      return {
+        className: typeof element.className === "string" ? element.className : element.tagName,
+        top: Math.round(r.top),
+        bottom: Math.round(r.bottom),
+        height: Math.round(r.height),
+        display: getComputedStyle(element).display,
+        visibility: getComputedStyle(element).visibility,
+      };
+    };
+    const main = document.querySelector("main.container");
+    return {
+      pageHeight: document.documentElement.scrollHeight,
+      bodyHeight: document.body.scrollHeight,
+      mainHeight: main?.scrollHeight || 0,
+      mainChildren: Array.from(main?.children || []).map(rect),
+      overlay: rect(document.querySelector(".nkj-invoice-detail-overlay")),
+      dialog: rect(document.querySelector(".nkj-invoice-detail-sheet")),
+      invoice: rect(document.querySelector("#invoice-print")),
+    };
+  });
   const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
   assert(
     pdf.length > 1000 && pdf.subarray(0, 5).toString("ascii") === "%PDF-",
     invoiceKind + " print/PDF output was not a valid PDF."
   );
   const pdfText = pdf.toString("latin1");
+  const pageCount = (pdfText.match(/\/Type\s*\/Page\b/g) || []).length;
+  assert(pageCount === 1, invoiceKind + " browser print produced " + pageCount +
+    " pages; expected one page for the controlled fixture. Print geometry: " + JSON.stringify(printGeometry));
   const mediaBox = pdfText.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
   if (mediaBox) {
     const width = Number(mediaBox[3]) - Number(mediaBox[1]);
@@ -432,13 +594,15 @@ async function testNewInvoiceMobile(browser, width) {
   try {
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    await fillNewInvoiceForMobile(page, width);
     await inspectInvoiceMobileLayout(page, viewport, "New Invoice");
+    await assertInvoiceTablesAreScrollable(page, "New Invoice");
     if (width === 390) await verifyInvoicePrintPdf(page, "New Invoice");
+    process.stdout.write("PASS populated New Invoice layout, calculations and table swipe at " + width + "px\n");
   } finally {
     await context.close();
   }
 }
-
 async function testInvoiceSavePinGate(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -589,6 +753,26 @@ async function testSavedInvoiceMobile(browser) {
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   await installApiMocks(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "canShare", {
+      configurable: true,
+      value: () => true,
+    });
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async (payload) => {
+        const file = payload?.files?.[0];
+        if (!file) throw new Error("No PDF file was passed to the native share flow.");
+        const bytes = new Uint8Array(await file.slice(0, 200000).arrayBuffer());
+        window.__nkjSharedPdfCapture = {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          header: new TextDecoder("ascii").decode(bytes),
+        };
+      },
+    });
+  });
   try {
     await page.goto(
       BASE_URL + "/saved-invoices?invoiceId=" + responsiveSavedInvoice.id,
@@ -597,12 +781,14 @@ async function testSavedInvoiceMobile(browser) {
     await page.locator(".nkj-invoice-detail-overlay #invoice-print.nkj-saved-invoice-sheet")
       .waitFor({ state: "visible", timeout: 12000 });
     await inspectInvoiceMobileLayout(page, viewport, "Old/Saved Invoice");
+    await assertInvoiceTablesAreScrollable(page, "Old/Saved Invoice");
     await verifyInvoicePrintPdf(page, "Old/Saved Invoice");
+    await verifyRealSharedPdf(page);
+    process.stdout.write("PASS populated Old Invoice modal, browser print and actual PDF share file\n");
   } finally {
     await context.close();
   }
 }
-
 async function assertMobileHeaderAlignment(page, headerSelector, menuSelector, brandSelector, label) {
   const result = await page.evaluate(({ headerSelector, menuSelector, brandSelector }) => {
     const header = document.querySelector(headerSelector);
@@ -683,7 +869,7 @@ async function testOwnerSidebar(browser) {
     await page.locator('.nkj-owner-nav a[href="/profile"]').click();
     await page.waitForURL("**/profile");
     await page.locator(".nkj-owner-sidebar.is-collapsed").waitFor({ state: "attached", timeout: 5000 });
-    process.stdout.write("PASS owner mobile drawer opens, navigates, and closes\\n");
+    process.stdout.write("PASS owner mobile drawer opens, navigates, and closes\n");
   } finally {
     await context.close();
   }
@@ -704,7 +890,7 @@ async function testPublicNavigation(browser) {
     await page.locator('.nkj-public-topbar a[href="/designs"]').click();
     await page.waitForURL("**/designs");
     await page.locator(".nkj-public-topbar > nav:not(.is-open)").waitFor({ state: "attached", timeout: 5000 });
-    process.stdout.write("PASS public mobile menu opens, navigates, and closes\\n");
+    process.stdout.write("PASS public mobile menu opens, navigates, and closes\n");
   } finally {
     await context.close();
   }
@@ -727,7 +913,7 @@ async function testPublicNavigation(browser) {
       await installApiMocks(page);
       try {
         for (const path of ownerRoutes) {
-          process.stdout.write("CHECK " + viewport.name + " " + path + "\\n");
+          process.stdout.write("CHECK " + viewport.name + " " + path + "\n");
           await checkViewport(page, path, viewport);
         }
         if (viewport.width === 390) {
@@ -736,7 +922,7 @@ async function testPublicNavigation(browser) {
       } finally {
         await context.close();
       }
-      process.stdout.write("PASS all " + ownerRoutes.length + " owner routes at " + viewport.name + " " + viewport.width + "x" + viewport.height + "\\n");
+      process.stdout.write("PASS all " + ownerRoutes.length + " owner routes at " + viewport.name + " " + viewport.width + "x" + viewport.height + "\n");
     }
 
     const publicContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -752,7 +938,7 @@ async function testPublicNavigation(browser) {
           status: 200,
           contentType: "text/event-stream",
           headers: { "cache-control": "no-cache" },
-          body: ": responsive-smoke-connected\\n\\n",
+          body: ": responsive-smoke-connected\n\n",
         });
         return;
       }
@@ -773,8 +959,8 @@ async function testPublicNavigation(browser) {
     await testInvoiceSavePinGate(browser);
     await testSavedInvoiceMobile(browser);
     await testPublicNavigation(browser);
-    process.stdout.write("PASS New Invoice at 360/390/430, saved invoice view, and print/PDF layout.\\n");
-    process.stdout.write("All owner/public page responsive smoke checks passed.\\n");
+    process.stdout.write("PASS New Invoice at 360/390/430, saved invoice view, and print/PDF layout.\n");
+    process.stdout.write("All owner/public page responsive smoke checks passed.\n");
   } catch (error) {
     console.error(error);
     process.exitCode = 1;
