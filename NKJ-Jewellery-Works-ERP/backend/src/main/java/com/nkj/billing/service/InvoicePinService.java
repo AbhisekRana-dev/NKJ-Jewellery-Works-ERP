@@ -38,6 +38,11 @@ public class InvoicePinService {
     }
 
     public synchronized String verify(String pin, String ip, Long invoiceId, String requestedPurpose) {
+        return verify(pin, ip, invoiceId, requestedPurpose, null);
+    }
+
+    public synchronized String verify(String pin, String ip, Long invoiceId,
+                                      String requestedPurpose, String idempotencyKey) {
         String purpose = requestedPurpose == null || requestedPurpose.isBlank()
                 ? "PRINT" : requestedPurpose.trim().toUpperCase(java.util.Locale.ROOT);
         if (!"PRINT".equals(purpose) && !"SAVE".equals(purpose)) {
@@ -47,6 +52,19 @@ public class InvoicePinService {
             throw new IllegalArgumentException("A saved invoice is required before printing or downloading a PDF.");
         }
         if (invoiceId != null) requireSavedInvoice(invoiceId);
+
+        final String binding;
+        if ("SAVE".equals(purpose) && invoiceId == null) {
+            String key = idempotencyKey == null ? "" : idempotencyKey.trim();
+            if (!key.matches("[A-Za-z0-9._:-]{1,120}")) {
+                throw new IllegalArgumentException("A valid invoice save request key is required for PIN verification.");
+            }
+            binding = "IDEMPOTENCY:" + key;
+        } else if (invoiceId != null) {
+            binding = "INVOICE:" + invoiceId;
+        } else {
+            binding = "";
+        }
         String key = (ip == null || ip.isBlank()) ? "unknown" : ip;
         long now = System.currentTimeMillis();
         AttemptState state = attempts.getOrDefault(key, new AttemptState(0, now, 0));
@@ -75,7 +93,7 @@ public class InvoicePinService {
         attempts.remove(key);
         byte[] bytes = new byte[32]; random.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        tickets.put(token, new Ticket(key, now + TICKET_TTL_MS, invoiceId, purpose));
+        tickets.put(token, new Ticket(key, now + TICKET_TTL_MS, invoiceId, purpose, binding));
         audit("PIN_VERIFIED", invoiceId, key, Map.of(
                 "purpose", purpose,
                 "expiresAt", Instant.ofEpochMilli(now + TICKET_TTL_MS).toString()
@@ -91,7 +109,8 @@ public class InvoicePinService {
         String key = (ip == null || ip.isBlank()) ? "unknown" : ip;
         if (ticket == null || ticket.expiresAt() < System.currentTimeMillis() ||
                 !"PRINT".equals(ticket.purpose()) || !ticket.ip().equals(key) ||
-                invoiceId == null || !invoiceId.equals(ticket.invoiceId())) {
+                invoiceId == null || !invoiceId.equals(ticket.invoiceId()) ||
+                !("INVOICE:" + invoiceId).equals(ticket.binding())) {
             throw new IllegalArgumentException("Invoice PIN verification expired or does not match this saved invoice. Verify the PIN again.");
         }
         requireSavedInvoice(invoiceId);
@@ -102,15 +121,23 @@ public class InvoicePinService {
      * inserted or a saved invoice is updated. The ticket is bound to the
      * intended existing invoice ID for edits, or null for a new invoice.
      */
-    public void consumeForSave(String token, String ip, Long invoiceId) {
+    public void consumeForSave(String token, String ip, Long invoiceId, String idempotencyKey) {
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("Verify the invoice security PIN before saving this invoice.");
         }
         Ticket ticket = tickets.remove(token);
         String key = (ip == null || ip.isBlank()) ? "unknown" : ip;
+        String expectedBinding;
+        if (invoiceId == null) {
+            String requestKey = idempotencyKey == null ? "" : idempotencyKey.trim();
+            expectedBinding = "IDEMPOTENCY:" + requestKey;
+        } else {
+            expectedBinding = "INVOICE:" + invoiceId;
+        }
         if (ticket == null || ticket.expiresAt() < System.currentTimeMillis() ||
                 !"SAVE".equals(ticket.purpose()) || !ticket.ip().equals(key) ||
-                !java.util.Objects.equals(ticket.invoiceId(), invoiceId)) {
+                !java.util.Objects.equals(ticket.invoiceId(), invoiceId) ||
+                !expectedBinding.equals(ticket.binding())) {
             throw new IllegalArgumentException("Invoice PIN verification expired or does not match this save request. Verify the PIN again.");
         }
         if (invoiceId != null) requireSavedInvoice(invoiceId);
@@ -148,5 +175,5 @@ public class InvoicePinService {
         }
     }
     private record AttemptState(int count, long windowStart, long blockedUntil) {}
-    private record Ticket(String ip, long expiresAt, Long invoiceId, String purpose) {}
+    private record Ticket(String ip, long expiresAt, Long invoiceId, String purpose, String binding) {}
 }
