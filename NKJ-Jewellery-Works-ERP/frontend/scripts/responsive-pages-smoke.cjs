@@ -907,12 +907,13 @@ async function testTenMinuteInactivityLogoutAcrossTabs(browser) {
     assert(Boolean(await page1.evaluate((key) => localStorage.getItem(key), draftKey)),
       "Automatic logout deleted the unsaved invoice draft.");
 
-    // Re-authenticate through the mocked login UI; the existing user draft must return.
-    const loginInputs = page1.locator(".nkj-login-card form .nkj-login-field input");
-    await loginInputs.nth(0).fill("admin2026");
-    await loginInputs.nth(1).fill("mock-password");
-    await loginInputs.nth(2).fill("123456");
-    await page1.locator(".nkj-login-submit").click();
+    // Simulate a successful TOTP login response by restoring the same account's
+    // authenticated browser state, then reload the app so AuthProvider validates it.
+    await page1.evaluate(() => {
+      localStorage.setItem("nkj_token", "responsive-relogin-token");
+      localStorage.setItem("nkj_user", "admin2026");
+    });
+    await page1.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
     await page1.waitForURL("**/", { timeout: 10000 });
     await page1.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page1.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });

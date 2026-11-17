@@ -102,6 +102,10 @@ export function AuthProvider({ children }) {
 
     const handleSessionExpired = (event) => {
       const username = userRef.current || localStorage.getItem("nkj_user") || "";
+      // Several in-flight requests can receive 401 together. The first event
+      // clears the shared token and records the reason; later 401s must not
+      // overwrite the specific inactivity notice with a generic expiry.
+      if (!username) return;
       const reason = event?.detail?.reason || "expired";
       const message = event?.detail?.message || GENERIC_SESSION_MESSAGE;
       broadcastLogout(reason, username);
@@ -157,11 +161,10 @@ export function AuthProvider({ children }) {
           }
         })
         .catch(() => {
-          if (active) {
-            applyLocalLogout(
-              "expired",
-              GENERIC_SESSION_MESSAGE,
-            );
+          // A 401 already removed the token and dispatched the richer reason
+          // above. Do not replace an inactivity notice with a generic message.
+          if (active && localStorage.getItem("nkj_token")) {
+            applyLocalLogout("expired", GENERIC_SESSION_MESSAGE);
           }
         })
         .finally(() => {
