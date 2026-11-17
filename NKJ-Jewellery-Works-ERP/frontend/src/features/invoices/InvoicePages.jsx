@@ -714,10 +714,14 @@ function InvoicePageContent({ draftOwner }) {
 
       const target = event.target instanceof HTMLElement ? event.target : null;
       if (target?.closest("select, [role='combobox'], [role='listbox'], [role='menu'], [aria-expanded='true'], [role='dialog']")) return;
+      const ownerSidebar = document.querySelector(".nkj-owner-sidebar:not(.is-collapsed)");
+      const ownerMobileDrawerOpen = Boolean(
+        ownerSidebar && window.matchMedia?.("(max-width: 760px)").matches
+      );
       if (document.querySelector(
         ".nkj-pin-overlay, .nkj-calculator-modal, [role='dialog'], [role='listbox'], [role='menu'], " +
-        ".nkj-public-topbar > nav.is-open, .nkj-owner-sidebar:not(.is-collapsed)"
-      )) return;
+        ".nkj-public-topbar > nav.is-open"
+      ) || ownerMobileDrawerOpen) return;
 
       event.preventDefault();
       event.stopPropagation();
