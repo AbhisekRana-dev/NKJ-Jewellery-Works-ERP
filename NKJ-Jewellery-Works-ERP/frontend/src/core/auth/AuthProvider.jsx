@@ -4,7 +4,7 @@ import { request } from "../api/client";
 const AuthContext = createContext(null);
 
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
-const ACTIVITY_WRITE_THROTTLE_MS = 2_000;
+const ACTIVITY_WRITE_THROTTLE_MS = 500;
 const SERVER_ACTIVITY_THROTTLE_MS = 15_000;
 const ACTIVITY_STORAGE_PREFIX = "nkj.session.last-user-activity.v1";
 const LOGOUT_SIGNAL_KEY = "nkj.session.logout.v1";
@@ -149,18 +149,22 @@ export function AuthProvider({ children }) {
       if (document.visibilityState === "visible") checkIdle();
     };
 
-    function checkIdle() {
-      const lastActivityAt = readActivityTimestamp(activityKey) || fallbackLastActivityAt;
-      if (Date.now() - lastActivityAt >= IDLE_TIMEOUT_MS) {
-        void expireForInactivity();
-      }
-    }
-
     const activityKey = getActivityStorageKey(user);
     let fallbackLastActivityAt = readActivityTimestamp(activityKey);
     if (!fallbackLastActivityAt) {
       fallbackLastActivityAt = Date.now();
       try { localStorage.setItem(activityKey, String(fallbackLastActivityAt)); } catch {}
+    }
+    let lastStoredActivityAt = readActivityTimestamp(activityKey) || fallbackLastActivityAt;
+
+    function checkIdle() {
+      const lastActivityAt = Math.max(
+        readActivityTimestamp(activityKey),
+        fallbackLastActivityAt,
+      );
+      if (Date.now() - lastActivityAt >= IDLE_TIMEOUT_MS) {
+        void expireForInactivity();
+      }
     }
 
     let lastServerActivityRequestAt = 0;
@@ -196,7 +200,10 @@ export function AuthProvider({ children }) {
     function recordUserActivity() {
       if (expiring) return;
       const now = Date.now();
-      const previous = readActivityTimestamp(activityKey) || fallbackLastActivityAt;
+      const previous = Math.max(
+        readActivityTimestamp(activityKey),
+        fallbackLastActivityAt,
+      );
 
       // Do not let an interaction that occurs after the ten-minute limit revive
       // an already expired session, including after a suspended browser tab resumes.
@@ -205,10 +212,18 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      if (now - previous < ACTIVITY_WRITE_THROTTLE_MS) return;
-
+      // Count every genuine interaction in this tab immediately. Persist the
+      // shared timestamp at a bounded rate so other tabs observe recent activity
+      // without flooding localStorage with every pointer-move event.
       fallbackLastActivityAt = now;
-      try { localStorage.setItem(activityKey, String(now)); } catch {}
+      if (now - lastStoredActivityAt >= ACTIVITY_WRITE_THROTTLE_MS) {
+        try {
+          localStorage.setItem(activityKey, String(now));
+          lastStoredActivityAt = now;
+        } catch {
+          // The current tab still uses its in-memory activity timestamp.
+        }
+      }
 
       if (now - lastServerActivityRequestAt >= SERVER_ACTIVITY_THROTTLE_MS) {
         lastServerActivityRequestAt = now;
