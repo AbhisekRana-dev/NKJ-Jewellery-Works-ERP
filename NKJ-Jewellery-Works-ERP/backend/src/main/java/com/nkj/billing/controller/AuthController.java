@@ -3,6 +3,7 @@ package com.nkj.billing.controller;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -55,9 +56,20 @@ public class AuthController {
 
     @PostMapping("/activity")
     public Map<String,Object> recordActivity(
-            @RequestHeader(value="Authorization", required=false) String header) {
-        auth.recordActivity(ownerToken(header));
-        return Map.of("success", true);
+            @RequestHeader(value="Authorization", required=false) String header,
+            HttpServletResponse response) {
+        String token = ownerToken(header);
+        boolean idleExpired = auth.isIdleExpired(token);
+        try {
+            auth.recordActivity(token);
+            return Map.of("success", true);
+        } catch (IllegalArgumentException ex) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            String message = idleExpired
+                    ? "Your session expired due to inactivity. Please log in again."
+                    : ex.getMessage();
+            return Map.of("message", message == null ? "Administrator login required." : message);
+        }
     }
 
     @GetMapping("/sessions/summary")
@@ -135,14 +147,17 @@ public class AuthController {
 
     /** Password verification only starts the email OTP challenge; it does not create a session. */
     @GetMapping("/session")
-    public Map<String,String> session(@RequestHeader(value="Authorization", required=false) String header) {
+    public Map<String,String> session(
+            @RequestHeader(value="Authorization", required=false) String header,
+            HttpServletResponse response) {
         String token = ownerToken(header);
         boolean idleExpired = auth.isIdleExpired(token);
         if (!auth.valid(token)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             String message = idleExpired
                     ? "Your session expired due to inactivity. Please log in again."
                     : "Administrator session is not valid.";
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, message);
+            return Map.of("message", message);
         }
         return Map.of("username", auth.getUsername());
     }
