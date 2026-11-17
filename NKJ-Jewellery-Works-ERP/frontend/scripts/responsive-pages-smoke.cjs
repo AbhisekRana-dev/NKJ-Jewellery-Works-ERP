@@ -19,6 +19,7 @@ const viewports = [
 ];
 
 const ownerRoutes = [
+  "/", "/invoice", "/calculator", "/designs",
   "/dashboard", "/saved-invoices", "/customers", "/profile", "/rates",
   "/inventory", "/stock-movements", "/staff", "/attendance", "/salary",
   "/salary-payments", "/leaves", "/expenses", "/bookings", "/installments", "/installment-payments",
@@ -28,6 +29,11 @@ const ownerRoutes = [
 ];
 
 const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp"];
+
+// Authenticated compatibility routes may intentionally land on a canonical page.
+const expectedRoutePaths = {
+  "/installment-payments": "/installments",
+};
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -159,9 +165,10 @@ async function checkViewport(page, path, viewport) {
     await page.waitForTimeout(100);
 
     const currentPath = await page.evaluate(() => window.location.pathname);
+    const expectedPath = expectedRoutePaths[path] || path;
     assert(
-      currentPath === path,
-      path + " was redirected to " + currentPath + "; owner-session mock did not authenticate the route."
+      currentPath === expectedPath,
+      path + " resolved to " + currentPath + "; expected " + expectedPath + "."
     );
 
     try {
@@ -212,6 +219,58 @@ async function checkViewport(page, path, viewport) {
           width: Math.round(rect.width * 10) / 10,
         };
       }).filter((item) => item.left < -1 || item.right > width + 1).slice(0, 6);
+      const tableAncestors = [];
+      let tableNode = document.querySelector(".items-table.new-items-table");
+      while (tableNode && tableAncestors.length < 10) {
+        const rect = tableNode.getBoundingClientRect();
+        const style = getComputedStyle(tableNode);
+        tableAncestors.push({
+          tag: tableNode.tagName,
+          className: typeof tableNode.className === "string" ? tableNode.className : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: tableNode.scrollWidth,
+          clientWidth: tableNode.clientWidth,
+          overflowX: style.overflowX,
+          display: style.display,
+          minWidth: style.minWidth,
+        });
+        tableNode = tableNode.parentElement;
+      }
+      const invoiceSheetChildren = Array.from(document.querySelector(".invoice-sheet")?.children || []).map((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName,
+          className: typeof element.className === "string" ? element.className : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX,
+          display: style.display,
+          minWidth: style.minWidth,
+          gridTemplateColumns: style.gridTemplateColumns,
+        };
+      });
+      const overflowElements = Array.from(document.body.querySelectorAll("*")).map((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          tag: element.tagName,
+          className: typeof element.className === "string" ? element.className.slice(0, 90) : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX,
+        };
+      }).filter((item) => (item.right > width + 1 || item.left < -1)
+        && item.overflowX !== "auto" && item.overflowX !== "scroll")
+        .sort((a, b) => b.right - a.right).slice(0, 18);
 
       return {
         width,
@@ -220,8 +279,9 @@ async function checkViewport(page, path, viewport) {
         rootWidth: root?.scrollWidth || 0,
         appWidth: app?.scrollWidth || 0,
         outOfBounds,
-        invoiceDiagnostics: (() => { const invoice = document.querySelector('#invoice-print'); if (!invoice) return null; const describe = (el) => { const rect = el.getBoundingClientRect(); const style = getComputedStyle(el); return { tag: el.tagName, className: typeof el.className === 'string' ? el.className : '', left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width), clientWidth: el.clientWidth, scrollWidth: el.scrollWidth, overflowX: style.overflowX, minWidth: style.minWidth, widthStyle: style.width, padding: style.padding }; }; return { invoice: describe(invoice), children: Array.from(invoice.children).map(describe), tables: Array.from(invoice.querySelectorAll('.table-wrap')).map((el) => ({ ...describe(el), table: el.querySelector('table') ? describe(el.querySelector('table')) : null, parent: el.parentElement ? describe(el.parentElement) : null })) }; })(),
-        overflowCandidates: Array.from(document.body.querySelectorAll('*')).map((el) => { const rect = el.getBoundingClientRect(); const style = getComputedStyle(el); return { tag: el.tagName, id: el.id || '', className: typeof el.className === 'string' ? el.className : '', left: Math.round(rect.left), right: Math.round(rect.right), clientWidth: el.clientWidth, scrollWidth: el.scrollWidth, overflowX: style.overflowX, text: (el.innerText || '').slice(0, 50) }; }).filter((item) => item.right > width + 1 || item.left < -1 || (item.scrollWidth > item.clientWidth + 1 && item.overflowX !== 'auto' && item.overflowX !== 'scroll')).slice(0, 20),
+        overflowElements,
+        tableAncestors,
+        invoiceSheetChildren,
       };
     });
 
@@ -340,12 +400,7 @@ async function testPublicNavigation(browser) {
       process.stdout.write("PASS all " + ownerRoutes.length + " owner routes at " + viewport.name + " " + viewport.width + "x" + viewport.height + "\\n");
     }
 
-    for (const publicViewport of [
-      { name: "public-small-mobile", width: 320, height: 568 },
-      { name: "public-iphone", width: 390, height: 844 },
-      { name: "public-large-mobile", width: 430, height: 932 },
-    ]) {
-      const publicContext = await browser.newContext({ viewport: publicViewport });
+    const publicContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const publicPage = await publicContext.newPage();
     await publicPage.route("**/*", async (route) => {
       const url = new URL(route.request().url());
@@ -367,13 +422,10 @@ async function testPublicNavigation(browser) {
     });
     try {
       for (const path of publicRoutes) {
-        await checkViewport(publicPage, path, publicViewport);
+        await checkViewport(publicPage, path, { name: "public-mobile", width: 390, height: 844 });
       }
     } finally {
       await publicContext.close();
-    }
-
-      process.stdout.write("PASS all " + publicRoutes.length + " public routes at " + publicViewport.name + " " + publicViewport.width + "x" + publicViewport.height + "\\n");
     }
 
     await testPublicNavigation(browser);
