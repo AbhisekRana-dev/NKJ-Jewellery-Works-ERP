@@ -1061,12 +1061,19 @@ async function testMultiTabLogoutSynchronization(browser) {
     );
 
     await firstTab.evaluate(() => {
+      sessionStorage.setItem("nkj.session.expiration-reason", "idle");
+      localStorage.setItem("nkj.session.logout.v1", JSON.stringify({
+        username: "admin2026",
+        reason: "idle",
+        at: Date.now(),
+      }));
       localStorage.removeItem("nkj_token");
-      window.dispatchEvent(new CustomEvent("nkj:session-expired", { detail: { reason: "manual" } }));
+      localStorage.removeItem("nkj_user");
+      window.dispatchEvent(new CustomEvent("nkj:session-expired", { detail: { reason: "idle" } }));
     });
-    await firstTab.waitForURL("**/login", { timeout: 5000 });
-    await secondTab.waitForURL("**/login", { timeout: 5000 });
-    process.stdout.write("PASS shared user activity and synchronized logout across browser tabs\n");
+    await firstTab.waitForURL("**/login?reason=idle", { timeout: 5000 });
+    await secondTab.waitForURL("**/login?reason=idle", { timeout: 5000 });
+    process.stdout.write("PASS shared user activity and idle-logout reason synchronization across browser tabs\\n");
   } finally {
     await context.close();
   }
