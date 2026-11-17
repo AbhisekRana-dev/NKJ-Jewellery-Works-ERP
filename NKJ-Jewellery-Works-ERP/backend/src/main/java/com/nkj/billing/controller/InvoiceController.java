@@ -34,6 +34,7 @@ import com.nkj.billing.repo.InvoiceRepository;
 import com.nkj.billing.service.AuthService;
 import com.nkj.billing.service.CustomerService;
 import com.nkj.billing.service.CashFlowService;
+import com.nkj.billing.service.InvoicePinService;
 import com.nkj.billing.model.Customer;
 
 @RestController
@@ -46,15 +47,18 @@ public class InvoiceController {
     private final JdbcTemplate jdbc;
     private final CustomerService customerService;
     private final CashFlowService cashFlow;
+    private final InvoicePinService invoicePins;
 
     public InvoiceController(InvoiceRepository repo, ObjectMapper mapper, AuthService auth,
-                             JdbcTemplate jdbc, CustomerService customerService, CashFlowService cashFlow) {
+                             JdbcTemplate jdbc, CustomerService customerService, CashFlowService cashFlow,
+                             InvoicePinService invoicePins) {
         this.repo = repo;
         this.mapper = mapper;
         this.auth = auth;
         this.jdbc = jdbc;
         this.customerService = customerService;
         this.cashFlow = cashFlow;
+        this.invoicePins = invoicePins;
     }
 
     /**
@@ -69,8 +73,12 @@ public class InvoiceController {
     @Transactional
     public Map<String, Object> create(@RequestBody Map<String, Object> body,
                                       @RequestHeader("Idempotency-Key") String idempotencyKey,
+                                      @RequestHeader(value = "X-Invoice-Pin-Ticket", required = false) String invoicePinTicket,
                                       jakarta.servlet.http.HttpServletRequest servletRequest) throws Exception {
         String requestKey = clean(idempotencyKey);
+        if (invoicePinTicket == null || invoicePinTicket.isBlank()) {
+            throw new IllegalArgumentException("Verify the invoice security PIN before saving this invoice.");
+        }
         if (!requestKey.matches("[A-Za-z0-9._:-]{1,120}")) {
             throw new IllegalArgumentException("A valid Idempotency-Key is required to save an invoice.");
         }
@@ -90,6 +98,12 @@ public class InvoiceController {
                 },
                 requestKey
         );
+
+        // Consume the verified SAVE ticket before handling either a new insert
+        // or an idempotent retry. Bind the ticket to this exact request key so
+        // an unused/replayed ticket cannot authorize a different invoice.
+        invoicePins.consumeForSave(invoicePinTicket, servletRequest.getRemoteAddr(), null, requestKey);
+
         Invoice existingInvoice = repo.findByIdempotencyKey(requestKey).orElse(null);
         if (existingInvoice != null) {
             if (existingInvoice.getInvoiceDate() == null
@@ -232,7 +246,11 @@ public class InvoiceController {
     @Transactional
     public Map<String, Object> update(@PathVariable Long id,
                                       @RequestBody Map<String, Object> body,
+                                      @RequestHeader(value = "X-Invoice-Pin-Ticket", required = false) String invoicePinTicket,
                                       HttpServletRequest servletRequest) throws Exception {
+        if (invoicePinTicket == null || invoicePinTicket.isBlank()) {
+            throw new IllegalArgumentException("Verify the invoice security PIN before updating this invoice.");
+        }
         validateInvoiceBody(body);
         validateMobileNumber(body);
 
@@ -250,6 +268,9 @@ public class InvoiceController {
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
         }
+
+        // Bind the PIN authorization to the exact invoice being edited.
+        invoicePins.consumeForSave(invoicePinTicket, servletRequest.getRemoteAddr(), id, null);
 
         invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
         invoice.setCustomerName(customerName);

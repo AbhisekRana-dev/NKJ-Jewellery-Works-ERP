@@ -603,6 +603,151 @@ async function testNewInvoiceMobile(browser, width) {
     await context.close();
   }
 }
+async function testInvoiceSavePinGate(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  let saveCalls = 0;
+  let verifyCalls = [];
+  let consumeCalls = 0;
+  let saveRequestHeaders = null;
+  let printDialogOpened = false;
+
+  await page.addInitScript(() => {
+    window.print = () => { window.__nkjPrintDialogOpened = true; };
+  });
+
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (!url.pathname.startsWith("/api/")) {
+      await route.continue();
+      return;
+    }
+    if (url.pathname === "/api/events" || url.pathname === "/api/events/public") {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        headers: { "cache-control": "no-cache" },
+        body: ": responsive-save-pin-test\n\n",
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/invoices/date-support") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          invoiceDateSupported: true,
+          apiVersion: "backdated-invoice-date-v1",
+          invoiceGstinVisibilitySupported: true,
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/invoices/verify-pin" && request.method() === "POST") {
+      const body = request.postDataJSON();
+      verifyCalls.push(body);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          verified: true,
+          ticket: body.purpose === "SAVE" ? "qa-save-ticket" : "qa-print-ticket",
+          expiresInSeconds: 90,
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/invoices" && request.method() === "POST") {
+      saveCalls += 1;
+      saveRequestHeaders = request.headers();
+      const body = request.postDataJSON();
+      const selectedDate = String(body.invoiceDate || "");
+      const datePart = selectedDate.slice(8, 10) + selectedDate.slice(5, 7) + selectedDate.slice(2, 4);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: 9001,
+          invoiceNo: "NKJ-" + datePart + "-001",
+          invoiceDate: selectedDate,
+          showGstin: body.showGstin !== false,
+          customerName: body.customerName,
+          grandTotal: body.grandTotal || 0,
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/invoices/consume-print-ticket" && request.method() === "POST") {
+      consumeCalls += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ authorized: true }),
+      });
+      return;
+    }
+
+    const body = apiPayload(url.pathname, request.method().toUpperCase());
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+    await page.locator("#invoice-print .inv-two .inv-panel").first()
+      .locator(".form-grid label input").first().fill("PIN Gate QA Customer");
+    await page.locator("#invoice-print .new-items-table tbody tr:first-child td input")
+      .first().fill("PIN gate test gold ring");
+
+    await page.locator(".invoice-actions button.primary").click();
+    await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+
+    assert(saveCalls === 0, "New invoice reached POST /api/invoices before the SAVE PIN was verified.");
+    assert(verifyCalls.length === 0, "A save request should not verify a PIN until the user submits the dialog.");
+
+    await page.locator("#nkj-invoice-pin").fill("123456");
+    await page.locator(".nkj-pin-dialog button[type='submit']").click();
+    await page.waitForFunction(() => document.querySelector(".nkj-pin-overlay") === null, { timeout: 10000 });
+    assert(saveCalls === 1, "The invoice was not posted after successful SAVE PIN verification.");
+    assert(verifyCalls.length === 1 && verifyCalls[0].purpose === "SAVE",
+      "The first PIN verification did not declare purpose SAVE: " + JSON.stringify(verifyCalls));
+    assert(Boolean(verifyCalls[0].idempotencyKey),
+      "The SAVE PIN was not bound to the draft idempotency key.");
+    assert(saveRequestHeaders?.["x-invoice-pin-ticket"] === "qa-save-ticket",
+      "The invoice POST did not include the one-time SAVE PIN ticket.");
+    assert(Boolean(saveRequestHeaders?.["idempotency-key"]),
+      "The invoice POST did not include its idempotency key.");
+
+    await page.locator(".invoice-actions button.secondary").click();
+    await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+    await page.locator("#nkj-invoice-pin").fill("123456");
+    await page.locator(".nkj-pin-dialog button[type='submit']").click();
+    await page.waitForFunction(() => window.__nkjPrintDialogOpened === true, { timeout: 10000 });
+
+    assert(verifyCalls.length === 2 && verifyCalls[1].purpose === "PRINT",
+      "Printing did not request a separate PRINT PIN after the SAVE PIN.");
+    assert(verifyCalls[1].invoiceId === 9001,
+      "The PRINT PIN was not bound to the newly saved invoice ID.");
+    assert(consumeCalls === 1, "The print ticket was not consumed exactly once before printing.");
+    printDialogOpened = await page.evaluate(() => window.__nkjPrintDialogOpened === true);
+    assert(printDialogOpened, "The native print action was not reached after PRINT PIN authorization.");
+
+    process.stdout.write("PASS save PIN gate, bound save ticket, separate print PIN and one-time print authorization\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testSavedInvoiceMobile(browser) {
   const viewport = { name: "saved-invoice-mobile-390", width: 390, height: 844 };
   const context = await browser.newContext({ viewport });
@@ -811,6 +956,7 @@ async function testPublicNavigation(browser) {
     for (const width of [360, 390, 430]) {
       await testNewInvoiceMobile(browser, width);
     }
+    await testInvoiceSavePinGate(browser);
     await testSavedInvoiceMobile(browser);
     await testPublicNavigation(browser);
     process.stdout.write("PASS New Invoice at 360/390/430, saved invoice view, and print/PDF layout.\n");

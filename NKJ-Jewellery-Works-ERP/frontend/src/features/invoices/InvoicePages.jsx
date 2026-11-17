@@ -551,6 +551,8 @@ export function InvoicePage() {
     isEditingSavedInvoice ? invoiceSeed?.id ?? null : null
   );
   const [showInvoicePin, setShowInvoicePin] = useState(false);
+  const [showSavePin, setShowSavePin] = useState(false);
+  const [pendingPrintAfterSave, setPendingPrintAfterSave] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [calculatorExpression, setCalculatorExpression] = useState("");
   const [calculatorResult, setCalculatorResult] = useState("");
@@ -983,7 +985,7 @@ export function InvoicePage() {
     return "";
   }
 
-  async function persistInvoice() {
+  async function persistInvoice(pinTicket) {
     if (saved && invoiceId) return { id: invoiceId, invoiceNo };
     if (saveInProgressRef.current) return null;
 
@@ -1036,14 +1038,22 @@ export function InvoicePage() {
       }
 
       const invoicePayload = JSON.stringify(buildInvoicePayload());
+      if (!pinTicket) {
+        throw new Error("Verify the invoice security PIN before saving this invoice.");
+      }
+
       const result = isEditingSavedInvoice && invoiceId
         ? await request(`/invoices/${invoiceId}`, {
             method: "PUT",
+            headers: { "X-Invoice-Pin-Ticket": pinTicket },
             body: invoicePayload,
           })
         : await request("/invoices", {
             method: "POST",
-            headers: { "Idempotency-Key": idempotencyKey },
+            headers: {
+              "Idempotency-Key": idempotencyKey,
+              "X-Invoice-Pin-Ticket": pinTicket,
+            },
             body: invoicePayload,
           });
       if (!result?.id || !result?.invoiceNo) {
@@ -1077,24 +1087,37 @@ export function InvoicePage() {
   }
 
   async function save() {
-    await persistInvoice();
+    if (saved && invoiceId) return;
+    setPendingPrintAfterSave(false);
+    setShowSavePin(true);
+  }
+
+  async function saveInvoiceWithPin(ticket) {
+    const shouldPrintAfterSave = pendingPrintAfterSave;
+    const result = await persistInvoice(ticket);
+    setShowSavePin(false);
+    setPendingPrintAfterSave(false);
+    if (!result?.id || !result?.invoiceNo) return;
+
+    if (shouldPrintAfterSave) {
+      setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN again to print or save as PDF.`);
+      setShowInvoicePin(true);
+    }
   }
 
   async function requestPrintPin() {
     setCalculatorOpen(false);
-    setIsPrintPreparing(true);
     setError("");
-    const result = await persistInvoice();
-    if (!result?.id || !result?.invoiceNo) {
-      setIsPrintPreparing(false);
+    if (!saved || !invoiceId) {
+      // Never create or update a record before the SAVE PIN is verified.
+      // The print flow then asks for a second, purpose-specific PRINT PIN.
+      setPendingPrintAfterSave(true);
+      setShowSavePin(true);
       return;
     }
 
-    // persistInvoice returns the existing ID for a saved invoice and only
-    // creates a database record for an unsaved draft. Never POST again on reprint.
-    setInvoiceId(result.id);
-    setInvoiceNo(result.invoiceNo);
-    setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN to print or save as PDF.`);
+    setIsPrintPreparing(true);
+    setSuccessMessage(`Invoice ${invoiceNo} is saved. Verify the invoice security PIN to print or save as PDF.`);
     setShowInvoicePin(true);
   }
 
@@ -1930,8 +1953,8 @@ export function InvoicePage() {
           type="button"
           className="secondary"
           onClick={requestPrintPin}
-          disabled={saving || showInvoicePin}
-          title="Save this invoice before generating a clean A4 landscape PDF"
+          disabled={saving || showInvoicePin || showSavePin}
+          title="Verify the invoice security PIN before saving and generating a clean A4 landscape PDF"
         >
           <Printer /> {saving ? "Saving..." : "Download / Print Invoice PDF"}
         </button>
@@ -1944,9 +1967,23 @@ export function InvoicePage() {
             : "Unsaved invoice: refreshing this page clears these details. Select Save Invoice to keep it in Invoice History."}
         </p>
       )}
+      {showSavePin && (
+        <InvoicePinDialog
+          invoiceId={isEditingSavedInvoice ? invoiceId : null}
+          purpose="SAVE"
+          idempotencyKey={isEditingSavedInvoice ? null : idempotencyKey}
+          onClose={() => {
+            setShowSavePin(false);
+            setPendingPrintAfterSave(false);
+          }}
+          onVerified={saveInvoiceWithPin}
+          title={isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
+        />
+      )}
       {showInvoicePin && (
         <InvoicePinDialog
           invoiceId={invoiceId}
+          purpose="PRINT"
           onClose={() => {
             setShowInvoicePin(false);
             setIsPrintPreparing(false);
