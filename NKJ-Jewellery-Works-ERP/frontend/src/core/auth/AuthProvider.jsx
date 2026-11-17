@@ -94,6 +94,10 @@ export function AuthProvider({ children }) {
             if (!active) return;
             const username = result?.username || "";
             if (username) {
+              setSessionEndedReason("");
+              setPending("");
+              pendingChallengeRef.current = "";
+              logoutInProgressRef.current = false;
               setUser(username);
               localStorage.setItem("nkj_user", username);
               const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || 0);
