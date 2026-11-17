@@ -375,7 +375,12 @@ function amountInWords(value) {
   );
 }
 
-const INVOICE_DRAFT_STORAGE_KEY = "nkj.invoice.draft.v1";
+const INVOICE_DRAFT_STORAGE_KEY_PREFIX = "nkj.invoice.draft.v2.";
+
+function getInvoiceDraftStorageKey(draftOwner) {
+  const owner = String(draftOwner || "anonymous").trim().toLowerCase();
+  return INVOICE_DRAFT_STORAGE_KEY_PREFIX + encodeURIComponent(owner);
+}
 
 function getTodayIndiaDate() {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -443,11 +448,11 @@ function markInvoiceReloadHandled() {
   }
 }
 
-function readInvoiceDraft() {
-  if (typeof window === "undefined") return null;
+function readInvoiceDraft(storageKey) {
+  if (typeof window === "undefined" || !storageKey) return null;
   try {
-    const draft = JSON.parse(window.localStorage.getItem(INVOICE_DRAFT_STORAGE_KEY) || "null");
-    return draft && draft.version === 1 ? draft : null;
+    const draft = JSON.parse(window.localStorage.getItem(storageKey) || "null");
+    return draft && draft.version === 2 ? draft : null;
   } catch {
     return null;
   }
@@ -465,6 +470,16 @@ function createInvoiceDraftKey() {
 }
 
 export function InvoicePage() {
+  const { user, authReady } = useAuth();
+  if (!authReady) {
+    return <div className="auth-loading" role="status">Preparing invoice draft…</div>;
+  }
+  const draftOwner = String(user || "anonymous").trim().toLowerCase();
+  return <InvoicePageContent key={draftOwner} draftOwner={draftOwner} />;
+}
+
+function InvoicePageContent({ draftOwner }) {
+  const draftStorageKey = getInvoiceDraftStorageKey(draftOwner);
   const location = useLocation();
   const navigate = useNavigate();
   const [reloadResetPending, setReloadResetPending] = useState(() => isUnconsumedInvoiceReload());
@@ -478,9 +493,8 @@ export function InvoicePage() {
   const [isEditingSavedInvoice] = useState(() =>
     Boolean(location.state?.editInvoice?.id) && !isUnconsumedInvoiceReload()
   );
-  const startingNewInvoice = location.state?.startNewInvoice === true;
   const [initialDraft] = useState(() =>
-    reloadResetPending || invoiceSeed || startingNewInvoice ? null : readInvoiceDraft()
+    invoiceSeed ? null : readInvoiceDraft(draftStorageKey)
   );
   const [invoiceDate, setInvoiceDate] = useState(() =>
     invoiceSeed?.invoiceDate || initialDraft?.invoiceDate || getTodayIndiaDate()
@@ -552,6 +566,7 @@ export function InvoicePage() {
   );
   const [showInvoicePin, setShowInvoicePin] = useState(false);
   const [showSavePin, setShowSavePin] = useState(false);
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   const [pendingPrintAfterSave, setPendingPrintAfterSave] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [calculatorExpression, setCalculatorExpression] = useState("");
@@ -559,7 +574,6 @@ export function InvoicePage() {
   const [calculatorError, setCalculatorError] = useState("");
   const [isPrintPreparing, setIsPrintPreparing] = useState(false);
   const saveInProgressRef = useRef(false);
-  const skipNextDraftPersistRef = useRef(false);
 
   const clearCalculator = () => {
     setCalculatorExpression("");
@@ -685,72 +699,86 @@ export function InvoicePage() {
     return () => window.removeEventListener("keydown", onCalculatorKeyDown, true);
   }, [calculatorOpen, isPrintPreparing, calculatorExpression, calculatorResult]);
 
+  useEffect(() => {
+    const handleInvoiceEscape = (event) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+
+      if (showResetConfirmation) {
+        event.preventDefault();
+        event.stopPropagation();
+        setShowResetConfirmation(false);
+        return;
+      }
+
+      if (saved || saving || isEditingSavedInvoice || calculatorOpen || showSavePin || showInvoicePin) return;
+
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest("select, [role='combobox'], [role='listbox'], [role='menu'], [aria-expanded='true'], [role='dialog']")) return;
+      if (document.querySelector(
+        ".nkj-pin-overlay, .nkj-calculator-modal, [role='dialog'], [role='listbox'], [role='menu'], " +
+        ".nkj-public-topbar > nav.is-open, .nkj-owner-sidebar:not(.is-collapsed)"
+      )) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      setShowResetConfirmation(true);
+    };
+
+    document.addEventListener("keydown", handleInvoiceEscape);
+    return () => document.removeEventListener("keydown", handleInvoiceEscape);
+  }, [showResetConfirmation, saved, saving, isEditingSavedInvoice, calculatorOpen, showSavePin, showInvoicePin]);
+
   const initialReloadResetHandledRef = useRef(false);
 
   useEffect(() => {
     const firstMountAfterReload = reloadResetPending && !initialReloadResetHandledRef.current;
-    const explicitNewInvoice = !reloadResetPending && startingNewInvoice;
-
-    if (firstMountAfterReload || explicitNewInvoice) {
-      if (firstMountAfterReload) {
-        // Mark the reload only after render. Keeping the state initializer
-        // read-only makes this reliable under React Strict Mode.
-        initialReloadResetHandledRef.current = true;
-        markInvoiceReloadHandled();
-        setReloadResetPending(false);
-      }
-
-      // A full browser reload must always start a blank invoice, even when
-      // history.state still contains a copied invoice or a New Invoice flag.
-      // Explicit New Invoice navigation uses the same reset path. Saved
-      // database invoices and Invoice History are never modified here.
-      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
-      setInvoiceDate(getTodayIndiaDate());
-      setShowGstin(true);
-      setCustomer({ name: "", mobile: "", address: "" });
-      setPaymentMode("Cash");
-      setReferenceNo("");
-      setTotalPaid(null);
-      setNewItems([blankNew()]);
-      setOldItems([blankOld()]);
-      setDiscount("");
-      setGst("0");
-      setDescription("");
-      setSaved(false);
-      setDraftRestored(false);
-      setIdempotencyKey(createInvoiceDraftKey());
-      setError("");
-      setSuccessMessage("");
-      setInvoiceNo("");
-      setInvoiceId(null);
-      setShowInvoicePin(false);
-
-      // Remove persisted router state so another refresh cannot reopen the
-      // invoice that was previously copied or selected.
+    if (firstMountAfterReload) {
+      // Ignore stale history.state after a browser refresh, but keep the
+      // account-scoped local draft intact for recovery.
+      initialReloadResetHandledRef.current = true;
+      markInvoiceReloadHandled();
+      setReloadResetPending(false);
       navigate("/invoice", { replace: true, state: null });
       return;
     }
 
-    // Do not process stale history.state while the initial reload reset is
-    // waiting to be committed.
     if (reloadResetPending) return;
-
-    if (location.state?.copyInvoice || location.state?.editInvoice) {
+    if (location.state?.copyInvoice || location.state?.editInvoice || location.state?.startNewInvoice) {
       navigate("/invoice", { replace: true, state: null });
     }
-  }, [location.key, startingNewInvoice, location.state, navigate, reloadResetPending]);
+  }, [location.key, location.state, navigate, reloadResetPending]);
 
   useEffect(() => {
+    // Editing a saved invoice must not overwrite or clear the separate
+    // unfinished New Invoice draft for this account.
+    if (isEditingSavedInvoice) return;
+
     if (saved) {
-      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+      try { window.localStorage.removeItem(draftStorageKey); } catch {}
       return;
     }
-    if (skipNextDraftPersistRef.current) {
-      skipNextDraftPersistRef.current = false;
+
+    const draftHasContent =
+      invoiceDate !== getTodayIndiaDate() ||
+      showGstin !== true ||
+      Boolean(customer.name.trim() || customer.mobile.trim() || customer.address.trim()) ||
+      paymentMode !== "Cash" ||
+      Boolean(referenceNo.trim()) ||
+      (totalPaid !== null && String(totalPaid).trim() !== "") ||
+      newItems.some((row) => rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"])) ||
+      oldItems.some((row) => rowHasAnyInput(row, ["description", "purity", "pureWeight", "rate"])) ||
+      Boolean(discount.trim()) ||
+      (String(gst).trim() !== "" && String(gst).trim() !== "0") ||
+      Boolean(description.trim());
+
+    if (!draftHasContent) {
+      try { window.localStorage.removeItem(draftStorageKey); } catch {}
       return;
     }
+
     const draft = {
-      version: 1,
+      version: 2,
+      owner: draftOwner,
       idempotencyKey,
       invoiceDate,
       customer,
@@ -766,11 +794,15 @@ export function InvoicePage() {
       savedAt: new Date().toISOString(),
     };
     try {
-      window.localStorage.setItem(INVOICE_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
     } catch {
-      // The invoice remains usable when browser storage is unavailable or full.
+      // Keep the form usable if browser storage is unavailable or full.
     }
-  }, [invoiceDate, customer, paymentMode, referenceNo, totalPaid, newItems, oldItems, discount, gst, description, showGstin, idempotencyKey, saved]);
+  }, [
+    draftStorageKey, draftOwner, invoiceDate, customer, paymentMode, referenceNo,
+    totalPaid, newItems, oldItems, discount, gst, description, showGstin,
+    idempotencyKey, saved, isEditingSavedInvoice,
+  ]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -921,12 +953,11 @@ export function InvoicePage() {
     };
   }
 
-  function discardDraft() {
-    if (saved || saving) return;
-    if (!window.confirm("Discard this unfinished invoice draft? This cannot be undone.")) return;
+  function confirmResetDraft() {
+    setShowResetConfirmation(false);
+    if (saved || saving || isEditingSavedInvoice) return;
 
-    skipNextDraftPersistRef.current = true;
-    try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+    try { window.localStorage.removeItem(draftStorageKey); } catch {}
     setInvoiceDate(getTodayIndiaDate());
     setShowGstin(true);
     setCustomer({ name: "", mobile: "", address: "" });
@@ -938,12 +969,16 @@ export function InvoicePage() {
     setDiscount("");
     setGst("0");
     setDescription("");
-    setSuccessMessage("");
+    setSaved(false);
     setInvoiceNo("");
     setInvoiceId(null);
     setIdempotencyKey(createInvoiceDraftKey());
     setDraftRestored(false);
+    setPendingPrintAfterSave(false);
+    setShowSavePin(false);
+    setShowInvoicePin(false);
     setError("");
+    setSuccessMessage("");
   }
 
   function validateInvoiceForm() {
@@ -1068,6 +1103,9 @@ export function InvoicePage() {
         throw new Error(
           `Invoice date confirmation mismatch. You selected ${formatInvoiceDateForDisplay(invoiceDate)}, but the server returned ${formatInvoiceDateForDisplay(result.invoiceDate)} with invoice number ${result.invoiceNo}. Check Invoice History before retrying; the server may already have saved this request.`
         );
+      }
+      if (!isEditingSavedInvoice) {
+        try { window.localStorage.removeItem(draftStorageKey); } catch {}
       }
       setInvoiceId(result.id);
       setInvoiceNo(result.invoiceNo);
@@ -1949,6 +1987,18 @@ export function InvoicePage() {
           <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
         </button>
 
+        {!isEditingSavedInvoice && !saved && (
+          <button
+            type="button"
+            className="secondary nkj-invoice-reset-button"
+            onClick={() => setShowResetConfirmation(true)}
+            disabled={saving}
+            title="Clear this unsaved invoice draft"
+          >
+            Reset
+          </button>
+        )}
+
         <button
           type="button"
           className="secondary"
@@ -1963,9 +2013,30 @@ export function InvoicePage() {
       {!saved && (
         <p className="draft-note no-print" role="status">
           {draftRestored
-            ? "An unfinished draft was restored during in-app navigation. Refreshing this page clears the draft."
-            : "Unsaved invoice: refreshing this page clears these details. Select Save Invoice to keep it in Invoice History."}
+            ? "Your unfinished invoice draft was restored. Changes are saved automatically for this account."
+            : "Your unfinished invoice is saved automatically and can be recovered after navigation, refresh or session expiry."}
         </p>
+      )}
+      {showResetConfirmation && (
+        <div className="nkj-invoice-reset-backdrop" role="presentation">
+          <section
+            className="nkj-invoice-reset-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nkj-invoice-reset-title"
+          >
+            <h3 id="nkj-invoice-reset-title">Reset Invoice?</h3>
+            <p>Are you sure you want to reset this invoice? All unsaved data will be deleted.</p>
+            <div className="nkj-invoice-reset-actions">
+              <button type="button" className="secondary" onClick={() => setShowResetConfirmation(false)}>
+                Cancel
+              </button>
+              <button type="button" className="primary" onClick={confirmResetDraft}>
+                Confirm Reset
+              </button>
+            </div>
+          </section>
+        </div>
       )}
       {showSavePin && (
         <InvoicePinDialog
