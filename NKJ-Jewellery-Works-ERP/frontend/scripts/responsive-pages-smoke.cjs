@@ -417,6 +417,7 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
     return {
       tableClass: table?.className || "",
       clientWidth: wrap.clientWidth,
+      containerRight: wrap.getBoundingClientRect().right,
       scrollWidth: wrap.scrollWidth,
       overflowX: getComputedStyle(wrap).overflowX,
       tableDisplay: table ? getComputedStyle(table).display : "missing",
@@ -461,7 +462,7 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
       assert(
         row.display === "grid" &&
         row.width <= result.clientWidth + 1 &&
-        row.right <= result.clientWidth + 1,
+        row.right <= result.containerRight + 1,
         invoiceKind + " ornament card is wider than its phone container: " + JSON.stringify(result)
       );
       assert(
