@@ -739,7 +739,7 @@ async function testInvoiceSavePinGate(browser) {
       "Reset must not be able to clear an already saved invoice."
     );
 
-    await page.locator(".invoice-actions button.secondary").click();
+    await page.getByRole("button", { name: "Download / Print Invoice PDF" }).click();
     await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
     await page.locator("#nkj-invoice-pin").fill("123456");
     await page.locator(".nkj-pin-dialog button[type='submit']").click();
