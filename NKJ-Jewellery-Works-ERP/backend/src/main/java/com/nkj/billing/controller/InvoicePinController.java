@@ -10,14 +10,15 @@ import java.util.Map;
 public class InvoicePinController {
     private final InvoicePinService pins;
     public InvoicePinController(InvoicePinService pins) { this.pins = pins; }
-    public record PinRequest(String pin, Long invoiceId) {}
+    public record PinRequest(String pin, Long invoiceId, String purpose) {}
 
     @PostMapping("/verify-pin")
     public Map<String,Object> verify(@RequestBody PinRequest request, HttpServletRequest servletRequest) {
         String ticket = pins.verify(
                 request == null ? null : request.pin(),
                 servletRequest.getRemoteAddr(),
-                request == null ? null : request.invoiceId()
+                request == null ? null : request.invoiceId(),
+                request == null ? null : request.purpose()
         );
         return Map.of("verified", true, "ticket", ticket, "expiresInSeconds", 90);
     }
