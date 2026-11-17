@@ -91,15 +91,16 @@ public class AuthInterceptor implements HandlerInterceptor {
                 ? header.substring(7)
                 : "";
 
+        boolean idleExpired = auth.isIdleExpired(token);
         if (auth.valid(token)) {
             return true;
         }
 
         res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         res.setContentType("application/json");
-        res.getWriter().write(
-                "{\"message\":\"Administrator login required\"}"
-        );
+        res.getWriter().write(idleExpired
+                ? "{\\\"message\\\":\\\"Your session expired due to inactivity. Please log in again.\\\"}"
+                : "{\\\"message\\\":\\\"Administrator login required\\\"}");
 
         return false;
     }
