@@ -136,6 +136,17 @@ public class AuthController {
             """, auth.getUsername());
     }
 
+    /**
+     * Refreshes the server-side idle timestamp only after a real interaction
+     * reported by the authenticated browser. API polling must never call this.
+     */
+    @PostMapping("/activity")
+    public Map<String,Object> activity(
+            @RequestHeader(value="Authorization", required=false) String header) {
+        auth.markUserActivity(ownerToken(header));
+        return Map.of("success", true);
+    }
+
     /** Password verification only starts the email OTP challenge; it does not create a session. */
     @GetMapping("/session")
     public Map<String,String> session(@RequestHeader(value="Authorization", required=false) String header) {
