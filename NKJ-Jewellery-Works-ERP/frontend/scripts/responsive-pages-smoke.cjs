@@ -400,23 +400,32 @@ async function assertInvoiceTablesAreScrollable(page, invoiceKind) {
   const results = await page.evaluate(() => Array.from(
     document.querySelectorAll("#invoice-print .table-wrap")
   ).map((wrap) => {
-    const before = wrap.scrollLeft;
-    wrap.scrollLeft = Math.min(180, Math.max(0, wrap.scrollWidth - wrap.clientWidth));
+    const maxScroll = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+    wrap.scrollLeft = 0;
+    const leftEdge = wrap.scrollLeft;
+    wrap.scrollLeft = maxScroll;
+    const rightEdge = wrap.scrollLeft;
     return {
       tableClass: wrap.querySelector(".items-table")?.className || "",
       clientWidth: wrap.clientWidth,
       scrollWidth: wrap.scrollWidth,
       overflowX: getComputedStyle(wrap).overflowX,
-      scrollBefore: before,
-      scrollAfter: wrap.scrollLeft,
+      maxScroll,
+      leftEdge,
+      rightEdge,
     };
   }));
   assert(results.length >= 2, invoiceKind + " must render both new and old ornament table regions.");
   for (const result of results) {
     assert(["auto", "scroll"].includes(result.overflowX),
       invoiceKind + " table is not independently scrollable: " + JSON.stringify(result));
-    assert(result.scrollWidth > result.clientWidth && result.scrollAfter > result.scrollBefore,
-      invoiceKind + " ornament table columns are not reachable by horizontal swipe: " + JSON.stringify(result));
+    assert(
+      result.scrollWidth > result.clientWidth &&
+      result.maxScroll > 0 &&
+      result.leftEdge === 0 &&
+      result.rightEdge >= result.maxScroll - 1,
+      invoiceKind + " ornament table columns are not reachable from both horizontal edges: " + JSON.stringify(result)
+    );
   }
 }
 
