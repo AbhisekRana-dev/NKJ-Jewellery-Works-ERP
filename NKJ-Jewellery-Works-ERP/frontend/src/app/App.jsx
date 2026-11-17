@@ -40,17 +40,22 @@ function OwnerOnly({ children }) {
 
 export default function App() {
   const navigate = useNavigate();
+  const { sessionEndedReason } = useAuth();
 
   useEffect(() => {
     const handleSessionExpired = (event) => {
+      const reason = event?.detail?.reason || sessionEndedReason;
       navigate("/login", {
         replace: true,
-        state: { sessionExpired: event?.detail?.reason === "inactivity" },
+        state: { sessionExpired: reason === "inactivity" },
       });
     };
     window.addEventListener("nkj:session-expired", handleSessionExpired);
+    if (sessionEndedReason) {
+      handleSessionExpired({ detail: { reason: sessionEndedReason } });
+    }
     return () => window.removeEventListener("nkj:session-expired", handleSessionExpired);
-  }, [navigate]);
+  }, [navigate, sessionEndedReason]);
 
   return (
     <div className="app-layout">
