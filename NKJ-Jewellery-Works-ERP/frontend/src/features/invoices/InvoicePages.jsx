@@ -914,8 +914,9 @@ export function InvoicePage() {
         "select,input[type='date'],[role='combobox'],[aria-haspopup='listbox'],[role='listbox'],[role='menu'],.nkj-pin-overlay,.nkj-invoice-detail-overlay"
       )) return;
 
-      const mobileNavigationOpen = window.matchMedia?.("(max-width: 760px)").matches
-        && document.body.classList.contains("nkj-mobile-sidebar-open");
+      const isMobileViewport = window.matchMedia?.("(max-width: 760px)").matches;
+      const mobileNavigationOpen = Boolean(isMobileViewport
+        && document.querySelector(".nkj-owner-sidebar:not(.is-collapsed)"));
       const otherOverlayOpen = Boolean(document.querySelector(
         ".nkj-pin-overlay,[role='dialog'],.nkj-invoice-detail-overlay,.nkj-catalog-modal-backdrop,.nkj-public-topbar nav.is-open"
       ));
