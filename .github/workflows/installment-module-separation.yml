@@ -604,6 +604,7 @@ jobs:
           # Exercise the real public invoice-save endpoint and the protected Customer Management API.
           export NKJ_CI_DB="$DB"
           export NKJ_CI_TOKEN="$TOKEN"
+          export INVOICE_TEST_PIN="770722"
           python3 - <<'PY'
           import concurrent.futures
           import datetime
@@ -671,7 +672,25 @@ jobs:
                   body = response.read()
                   return json.loads(body) if body else {}
 
+          def save_pin_ticket(idempotency_key=None, invoice_id=None):
+              verification = request_json(
+                  "/api/invoices/verify-pin",
+                  method="POST",
+                  payload={
+                      "pin": os.environ["INVOICE_TEST_PIN"],
+                      "invoiceId": invoice_id,
+                      "purpose": "SAVE",
+                      "idempotencyKey": idempotency_key
+                  }
+              )
+              assert verification.get("verified") and verification.get("ticket"), (
+                  "Invoice SAVE PIN verification did not return a one-time ticket."
+              )
+              return verification["ticket"]
+
           def save_invoice(name, phone, email="", address="", key=None):
+              request_key = key or ("CI-CUSTOMER-" + name.replace(" ", "-"))
+              ticket = save_pin_ticket(idempotency_key=request_key)
               return request_json(
                   "/api/invoices",
                   method="POST",
@@ -679,7 +698,10 @@ jobs:
                       **invoice_payload(name, phone, email, address),
                       **({"customerEmail": email} if email else {})
                   },
-                  headers={"Idempotency-Key": key or ("CI-CUSTOMER-" + name.replace(" ", "-"))}
+                  headers={
+                      "Idempotency-Key": request_key,
+                      "X-Invoice-Pin-Ticket": ticket
+                  }
               )
 
           # 1. First invoice creates one customer; a later invoice with the same
@@ -727,9 +749,13 @@ jobs:
               "CI Edited Invoice Customer", "9876543210",
               "edited@example.test", "Edited invoice address"
           )
+          edit_ticket = save_pin_ticket(invoice_id=first["id"])
           updated_invoice = request_json(
               f"/api/invoices/{first['id']}", "PUT", edit_payload,
-              {"Authorization": "Bearer " + TOKEN}
+              {
+                  "Authorization": "Bearer " + TOKEN,
+                  "X-Invoice-Pin-Ticket": edit_ticket
+              }
           )
           assert updated_invoice.get("customerId") == first_customer_id, (
               "Editing an invoice did not retain/reuse the phone-matched Customer ID."
@@ -786,12 +812,15 @@ jobs:
               "failed@example.test", "Must not be registered"
           )
           bad_payload["newItems"] = []
+          bad_key = "CI-CUSTOMER-FAILED-001"
+          bad_ticket = save_pin_ticket(idempotency_key=bad_key)
           failed_req = urllib.request.Request(
               BASE + "/api/invoices",
               data=json.dumps(bad_payload).encode(),
               headers={
                   "Content-Type": "application/json",
-                  "Idempotency-Key": "CI-CUSTOMER-FAILED-001"
+                  "Idempotency-Key": bad_key,
+                  "X-Invoice-Pin-Ticket": bad_ticket
               },
               method="POST"
           )
@@ -814,13 +843,13 @@ jobs:
               "retry@example.test", "Retry address"
           )
           retry_key = "CI-CUSTOMER-IDEMPOTENT-001"
-          retry_one = request_json(
-              "/api/invoices", "POST", retry_payload,
-              {"Idempotency-Key": retry_key}
+          retry_one = save_invoice(
+              "CI Idempotent Customer", "9876543214",
+              "retry@example.test", "Retry address", retry_key
           )
-          retry_two = request_json(
-              "/api/invoices", "POST", retry_payload,
-              {"Idempotency-Key": retry_key}
+          retry_two = save_invoice(
+              "CI Idempotent Customer", "9876543214",
+              "retry@example.test", "Retry address", retry_key
           )
           assert retry_one.get("id") == retry_two.get("id"), "Repeated invoice save created a second invoice."
           assert retry_one.get("customerId") == retry_two.get("customerId"), "Repeated invoice save changed Customer ID."
