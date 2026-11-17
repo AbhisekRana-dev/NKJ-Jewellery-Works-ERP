@@ -112,7 +112,9 @@ export function Login() {
     ? "Your session expired due to inactivity. Please log in again."
     : "";
 
-  if (isAdmin) return <NavigateHome />;
+  // An inactivity redirect must show its explanation even if a stale
+  // client-side auth state has not finished clearing during navigation.
+  if (isAdmin && !idleExpiredMessage) return <NavigateHome />;
 
   async function submit(e) {
     e.preventDefault();
