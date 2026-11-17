@@ -141,6 +141,7 @@ public class InvoicePinService {
             throw new IllegalArgumentException("Invoice PIN verification expired or does not match this save request. Verify the PIN again.");
         }
         if (invoiceId != null) requireSavedInvoice(invoiceId);
+        audit("PIN_SAVE_TICKET_CONSUMED", invoiceId, key, Map.of("purpose", "SAVE"));
     }
 
     private void requireSavedInvoice(Long invoiceId) {
