@@ -98,9 +98,11 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         res.setContentType("application/json");
-        res.getWriter().write(idleExpired
-                ? "{\"message\":\"Your session expired due to inactivity. Please log in again.\"}"
-                : "{\\\"message\\\":\\\"Administrator login required\\\"}");
+        String message = idleExpired
+                ? "Your session expired due to inactivity. Please log in again."
+                : "Administrator login required";
+        res.getWriter().write(new com.fasterxml.jackson.databind.ObjectMapper()
+                .writeValueAsString(java.util.Map.of("message", message)));
 
         return false;
     }
