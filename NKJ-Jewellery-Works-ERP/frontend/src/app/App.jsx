@@ -1,5 +1,5 @@
-import React from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../core/auth/AuthProvider";
 import Footer from "../shared/layouts/Footer";
@@ -39,6 +39,18 @@ function OwnerOnly({ children }) {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleSessionExpired = (event) => {
+      navigate("/login", {
+        replace: true,
+        state: { sessionExpired: event?.detail?.reason === "inactivity" },
+      });
+    };
+    window.addEventListener("nkj:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("nkj:session-expired", handleSessionExpired);
+  }, [navigate]);
 
   return (
     <div className="app-layout">
