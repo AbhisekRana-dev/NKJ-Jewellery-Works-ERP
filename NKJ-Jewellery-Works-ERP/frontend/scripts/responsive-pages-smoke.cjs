@@ -592,24 +592,36 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
     const rect = (element) => {
       if (!element) return null;
       const r = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
       return {
         className: typeof element.className === "string" ? element.className : element.tagName,
-        top: Math.round(r.top),
-        bottom: Math.round(r.bottom),
-        height: Math.round(r.height),
-        display: getComputedStyle(element).display,
-        visibility: getComputedStyle(element).visibility,
+        top: Math.round(r.top), left: Math.round(r.left),
+        right: Math.round(r.right), bottom: Math.round(r.bottom),
+        width: Math.round(r.width), height: Math.round(r.height),
+        scrollWidth: element.scrollWidth, scrollHeight: element.scrollHeight,
+        clientWidth: element.clientWidth, clientHeight: element.clientHeight,
+        display: style.display, visibility: style.visibility, position: style.position,
+        minHeight: style.minHeight, maxHeight: style.maxHeight, overflow: style.overflow,
+        breakInside: style.breakInside, breakBefore: style.breakBefore, breakAfter: style.breakAfter,
       };
     };
     const main = document.querySelector("main.container");
+    const invoice = document.querySelector("#invoice-print");
+    const overlay = document.querySelector(".nkj-invoice-detail-overlay");
+    const dialog = document.querySelector(".nkj-invoice-detail-sheet");
     return {
-      pageHeight: document.documentElement.scrollHeight,
-      bodyHeight: document.body.scrollHeight,
-      mainHeight: main?.scrollHeight || 0,
+      viewport: { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
+      document: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight },
+      body: rect(document.body),
+      root: rect(document.querySelector("#root")),
+      appLayout: rect(document.querySelector(".app-layout")),
+      appContent: rect(document.querySelector(".app-content")),
+      main: rect(main),
       mainChildren: Array.from(main?.children || []).map(rect),
-      overlay: rect(document.querySelector(".nkj-invoice-detail-overlay")),
-      dialog: rect(document.querySelector(".nkj-invoice-detail-sheet")),
-      invoice: rect(document.querySelector("#invoice-print")),
+      overlay: rect(overlay),
+      dialog: rect(dialog),
+      invoice: rect(invoice),
+      invoiceChildren: Array.from(invoice?.children || []).map(rect),
     };
   });
   const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
@@ -618,9 +630,15 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
     invoiceKind + " print/PDF output was not a valid PDF."
   );
   const pdfText = pdf.toString("latin1");
-  const pageCount = (pdfText.match(/\/Type\s*\/Page\b/g) || []).length;
+  const pageMatches = [...pdfText.matchAll(/\/Type\s*\/Page\b/g)];
+  const pageCount = pageMatches.length;
+  const mediaBoxes = [...pdfText.matchAll(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/g)]
+    .map((match) => match.slice(1).map(Number));
+  const pageObjectSnippets = pageMatches.map((match) => pdfText.slice(Math.max(0, match.index - 220), Math.min(pdfText.length, match.index + 520)));
   assert(pageCount === 1, invoiceKind + " browser print produced " + pageCount +
-    " pages; expected one page for the controlled fixture. Print geometry: " + JSON.stringify(printGeometry));
+    " pages; expected one page for the controlled fixture. Print geometry: " + JSON.stringify({
+      printGeometry, mediaBoxes, pageObjectSnippets,
+    }));
   const mediaBox = pdfText.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
   if (mediaBox) {
     const width = Number(mediaBox[3]) - Number(mediaBox[1]);
