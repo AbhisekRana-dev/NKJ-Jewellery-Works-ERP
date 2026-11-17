@@ -5,6 +5,7 @@ const { setTimeout: delay } = require("node:timers/promises");
 const BASE_URL = "http://127.0.0.1:4174";
 const viewports = [
   { name: "small-mobile", width: 320, height: 568 },
+  { name: "mobile-360", width: 360, height: 780 },
   { name: "mobile", width: 375, height: 667 },
   { name: "iphone", width: 390, height: 844 },
   { name: "large-mobile", width: 430, height: 932 },
@@ -53,6 +54,28 @@ async function waitForServer(server) {
   throw new Error("Vite development server did not become ready.");
 }
 
+const responsiveSavedInvoice = {
+  id: "responsive-mobile-invoice",
+  invoiceNo: "NKJ-MOBILE-TEST-001",
+  invoiceDate: "2026-11-17",
+  invoiceTime: "10:15:00",
+  customerName: "Mobile QA Customer",
+  mobile: "9876543210",
+  address: "Sasra, Gopiballavpur, Jhargram, West Bengal",
+  paymentMode: "Cash",
+  referenceNo: "",
+  showGstin: true,
+  newItems: [],
+  oldItems: [],
+  newTotal: 1236,
+  oldTotal: 0,
+  gstPercent: 0,
+  gstAmount: 0,
+  discount: 0,
+  grandTotal: 1236,
+  totalPaid: 1236,
+};
+
 function apiPayload(path, method) {
   if (path.endsWith("/auth/session")) return { username: "admin2026" };
   if (path === "/api/admin/profile") {
@@ -77,7 +100,8 @@ function apiPayload(path, method) {
   if (path === "/api/admin/designs/categories" || path === "/api/designs/categories") return [];
   if (path === "/api/designs") return { items: [], total: 0, page: 0 };
   if (path === "/api/invoices/date-support") return { enabled: true, supported: true };
-  if (path === "/api/invoices") return [];
+  if (path === "/api/invoices") return [responsiveSavedInvoice];
+  if (path === "/api/invoices/" + responsiveSavedInvoice.id) return responsiveSavedInvoice;
   if (path === "/api/admin/transactions/summary") return {};
   if (path === "/api/admin/installments/plans" || path === "/api/admin/installments/payments") return [];
   if (path === "/api/admin/reports/summary" || path === "/api/admin/dashboard") return {};
@@ -302,6 +326,168 @@ async function checkViewport(page, path, viewport) {
   }
 }
 
+async function inspectInvoiceMobileLayout(page, viewport, invoiceKind) {
+  const result = await page.evaluate(() => {
+    const invoice = document.querySelector("#invoice-print");
+    const shop = invoice?.querySelector(".inv-shop");
+    const heading = shop?.querySelector("h1");
+    const meta = invoice?.querySelector(".inv-meta");
+    const firstLabel = invoice?.querySelector(".form-grid label");
+    const colon = firstLabel?.querySelector(":scope > i");
+    const firstInput = firstLabel?.querySelector("input, select");
+    const tableWrap = invoice?.querySelector(".table-wrap");
+    const rect = (element) => {
+      if (!element) return null;
+      const value = element.getBoundingClientRect();
+      return { left: value.left, right: value.right, width: value.width, height: value.height };
+    };
+    return {
+      viewportWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      invoice: rect(invoice),
+      shop: rect(shop),
+      heading: rect(heading),
+      headingWritingMode: heading ? getComputedStyle(heading).writingMode : null,
+      headingWordBreak: heading ? getComputedStyle(heading).wordBreak : null,
+      meta: rect(meta),
+      colonDisplay: colon ? getComputedStyle(colon).display : null,
+      firstInput: rect(firstInput),
+      tableWrap: rect(tableWrap),
+      tableOverflowX: tableWrap ? getComputedStyle(tableWrap).overflowX : null,
+    };
+  });
+
+  assert(result.invoice, invoiceKind + " invoice did not render at " + viewport.name + ".");
+  assert(
+    result.documentWidth <= result.viewportWidth + 1 && result.bodyWidth <= result.viewportWidth + 1,
+    invoiceKind + " invoice page has horizontal overflow at " + viewport.name + ": " + JSON.stringify(result)
+  );
+  assert(
+    result.shop && result.shop.width >= result.invoice.width * 0.82,
+    invoiceKind + " shop header is still squeezed into a narrow column at " + viewport.name + ": " + JSON.stringify(result)
+  );
+  assert(
+    result.meta && result.meta.width >= result.invoice.width * 0.82,
+    invoiceKind + " invoice metadata does not use the full mobile width at " + viewport.name + ": " + JSON.stringify(result)
+  );
+  assert(
+    result.headingWritingMode === "horizontal-tb" &&
+    result.heading.width >= result.invoice.width * 0.75,
+    invoiceKind + " shop title is compressed/vertical at " + viewport.name + ": " + JSON.stringify(result)
+  );
+  assert(
+    result.colonDisplay === "none",
+    invoiceKind + " customer/payment form still renders a standalone colon row at " + viewport.name + "."
+  );
+  assert(
+    result.firstInput && result.firstInput.width >= result.invoice.width * 0.7,
+    invoiceKind + " customer/payment input is too narrow at " + viewport.name + ": " + JSON.stringify(result)
+  );
+  assert(
+    result.tableWrap && ["auto", "scroll"].includes(result.tableOverflowX),
+    invoiceKind + " ornament table is not contained in its own horizontal swipe region at " + viewport.name + "."
+  );
+}
+
+async function verifyInvoicePrintPdf(page, invoiceKind) {
+  await page.emulateMedia({ media: "print" });
+  const printLayout = await page.evaluate(() => {
+    const invoice = document.querySelector("#invoice-print");
+    const actions = document.querySelector(".invoice-actions");
+    return {
+      width: invoice ? parseFloat(getComputedStyle(invoice).width) : 0,
+      actionsDisplay: actions ? getComputedStyle(actions).display : "missing",
+    };
+  });
+  assert(
+    printLayout.width >= 1000,
+    invoiceKind + " print stylesheet did not restore the full landscape invoice width: " + JSON.stringify(printLayout)
+  );
+  assert(
+    printLayout.actionsDisplay === "none",
+    invoiceKind + " print stylesheet did not hide on-screen invoice actions."
+  );
+
+  const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+  assert(
+    pdf.length > 1000 && pdf.subarray(0, 5).toString("ascii") === "%PDF-",
+    invoiceKind + " print/PDF output was not a valid PDF."
+  );
+  const pdfText = pdf.toString("latin1");
+  const mediaBox = pdfText.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
+  if (mediaBox) {
+    const width = Number(mediaBox[3]) - Number(mediaBox[1]);
+    const height = Number(mediaBox[4]) - Number(mediaBox[2]);
+    assert(width > height, invoiceKind + " PDF page is not landscape.");
+  }
+  await page.emulateMedia({ media: "screen" });
+}
+
+async function testNewInvoiceMobile(browser, width) {
+  const viewport = { name: "invoice-mobile-" + width, width, height: 820 };
+  const context = await browser.newContext({ viewport });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    await inspectInvoiceMobileLayout(page, viewport, "New Invoice");
+    if (width === 390) await verifyInvoicePrintPdf(page, "New Invoice");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testSavedInvoiceMobile(browser) {
+  const viewport = { name: "saved-invoice-mobile-390", width: 390, height: 844 };
+  const context = await browser.newContext({ viewport });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  try {
+    await page.goto(
+      BASE_URL + "/saved-invoices?invoiceId=" + responsiveSavedInvoice.id,
+      { waitUntil: "domcontentloaded" }
+    );
+    await page.locator(".nkj-invoice-detail-overlay #invoice-print.nkj-saved-invoice-sheet")
+      .waitFor({ state: "visible", timeout: 12000 });
+    await inspectInvoiceMobileLayout(page, viewport, "Old/Saved Invoice");
+    await verifyInvoicePrintPdf(page, "Old/Saved Invoice");
+  } finally {
+    await context.close();
+  }
+}
+
+async function assertMobileHeaderAlignment(page, headerSelector, menuSelector, brandSelector, label) {
+  const result = await page.evaluate(({ headerSelector, menuSelector, brandSelector }) => {
+    const header = document.querySelector(headerSelector);
+    const menu = document.querySelector(menuSelector);
+    const brand = document.querySelector(brandSelector);
+    if (!header || !menu || !brand) return null;
+    const a = menu.getBoundingClientRect();
+    const b = brand.getBoundingClientRect();
+    return {
+      menuLeft: a.left,
+      menuTop: a.top,
+      menuRight: a.right,
+      menuCenterY: a.top + a.height / 2,
+      brandLeft: b.left,
+      brandCenterY: b.top + b.height / 2,
+      headerWidth: header.getBoundingClientRect().width,
+    };
+  }, { headerSelector, menuSelector, brandSelector });
+
+  assert(result, label + " mobile header/menu/brand element was missing.");
+  assert(
+    result.menuLeft < result.brandLeft && result.menuRight <= result.brandLeft + 2,
+    label + " hamburger is not positioned to the left of the shop name: " + JSON.stringify(result)
+  );
+  assert(
+    Math.abs(result.menuCenterY - result.brandCenterY) <= 14,
+    label + " hamburger and shop name are not aligned on one header row: " + JSON.stringify(result)
+  );
+}
+
 async function testOwnerSidebar(browser) {
   // Isolate the drawer interaction from the long sequence of route reloads.
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -343,6 +529,10 @@ async function testOwnerSidebar(browser) {
     const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
     assert(ownerShell === 1 && Boolean(authToken), "Owner route was not authenticated before sidebar testing.");
     await page.locator(".nkj-mobile-menu-button").waitFor({ state: "visible", timeout: 10000 });
+    await assertMobileHeaderAlignment(
+      page, ".nkj-owner-topbar.nkj-reference-navbar", ".nkj-mobile-menu-button",
+      ".nkj-owner-topbar.nkj-reference-navbar > .brand", "Owner"
+    );
     await page.locator(".nkj-mobile-menu-button").click();
     await page.locator(".nkj-owner-sidebar:not(.is-collapsed)").waitFor({ state: "visible", timeout: 5000 });
     await page.locator('.nkj-owner-nav a[href="/profile"]').click();
@@ -360,6 +550,10 @@ async function testPublicNavigation(browser) {
   await page.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
   try {
     await page.locator(".nkj-public-menu-button").waitFor({ state: "visible", timeout: 10000 });
+    await assertMobileHeaderAlignment(
+      page, ".nkj-public-topbar", ".nkj-public-menu-button",
+      ".nkj-public-topbar > .brand", "Public"
+    );
     await page.locator(".nkj-public-menu-button").click();
     await page.locator(".nkj-public-topbar > nav.is-open").waitFor({ state: "visible", timeout: 5000 });
     await page.locator('.nkj-public-topbar a[href="/designs"]').click();
@@ -428,7 +622,12 @@ async function testPublicNavigation(browser) {
       await publicContext.close();
     }
 
+    for (const width of [360, 390, 430]) {
+      await testNewInvoiceMobile(browser, width);
+    }
+    await testSavedInvoiceMobile(browser);
     await testPublicNavigation(browser);
+    process.stdout.write("PASS New Invoice at 360/390/430, saved invoice view, and print/PDF layout.\\n");
     process.stdout.write("All owner/public page responsive smoke checks passed.\\n");
   } catch (error) {
     console.error(error);
