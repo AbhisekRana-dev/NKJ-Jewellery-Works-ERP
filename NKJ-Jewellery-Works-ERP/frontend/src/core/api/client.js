@@ -64,10 +64,15 @@ export async function request(path, options = {}) {
   }
 
   if (response.status === 401 && !suppressSessionExpiry) {
+    // Preserve the account identity before clearing shared auth storage so
+    // the first tab loading an already-expired session can still display the
+    // correct inactivity-specific login notice.
+    const expiredUsername = localStorage.getItem("nkj_user") || "";
     localStorage.removeItem("nkj_token");
     localStorage.removeItem("nkj_user");
     window.dispatchEvent(new CustomEvent("nkj:session-expired", {
       detail: {
+        username: expiredUsername,
         reason: data.reason || "expired",
         message: data.message || "Your session expired. Please log in again.",
       },

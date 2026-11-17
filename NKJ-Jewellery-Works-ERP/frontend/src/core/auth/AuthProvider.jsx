@@ -35,8 +35,10 @@ export function AuthProvider({ children }) {
   const lastLocalActivityAtRef = useRef(0);
   const lastLogoutEventAtRef = useRef(0);
   const logoutInProgressRef = useRef(false);
+  const sessionExpiryHandledRef = useRef(false);
 
   const applyLocalLogout = useCallback((reason = "expired", message = "") => {
+    sessionExpiryHandledRef.current = true;
     if (idleTimerRef.current) {
       window.clearTimeout(idleTimerRef.current);
       idleTimerRef.current = null;
@@ -101,14 +103,13 @@ export function AuthProvider({ children }) {
     let active = true;
 
     const handleSessionExpired = (event) => {
-      const username = userRef.current || localStorage.getItem("nkj_user") || "";
-      // Several in-flight requests can receive 401 together. The first event
-      // clears the shared token and records the reason; later 401s must not
-      // overwrite the specific inactivity notice with a generic expiry.
-      if (!username) return;
+      // Several in-flight requests can receive 401 together. Process the first
+      // expiry only so a later generic 401 cannot overwrite its specific reason.
+      if (sessionExpiryHandledRef.current) return;
+      const username = event?.detail?.username || userRef.current || localStorage.getItem("nkj_user") || "";
       const reason = event?.detail?.reason || "expired";
       const message = event?.detail?.message || GENERIC_SESSION_MESSAGE;
-      broadcastLogout(reason, username);
+      if (username) broadcastLogout(reason, username);
       applyLocalLogout(reason, message);
     };
 
@@ -294,6 +295,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ challengeId: pending, code }),
     });
     const now = Date.now();
+    sessionExpiryHandledRef.current = false;
     localStorage.setItem("nkj_token", result.token);
     localStorage.setItem("nkj_user", result.username);
     userRef.current = result.username;
