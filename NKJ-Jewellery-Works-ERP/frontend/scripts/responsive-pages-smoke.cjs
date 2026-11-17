@@ -346,6 +346,7 @@ async function inspectInvoiceMobileLayout(page, viewport, invoiceKind) {
     const colon = firstLabel?.querySelector(":scope > i");
     const firstInput = firstLabel?.querySelector("input, select");
     const tableWrap = invoice?.querySelector(".table-wrap");
+    const itemTable = tableWrap?.querySelector(".items-table");
     const rect = (element) => {
       if (!element) return null;
       const value = element.getBoundingClientRect();
@@ -365,6 +366,9 @@ async function inspectInvoiceMobileLayout(page, viewport, invoiceKind) {
       firstInput: rect(firstInput),
       tableWrap: rect(tableWrap),
       tableOverflowX: tableWrap ? getComputedStyle(tableWrap).overflowX : null,
+      tableClientWidth: tableWrap?.clientWidth || 0,
+      tableScrollWidth: tableWrap?.scrollWidth || 0,
+      itemTableScrollWidth: itemTable?.scrollWidth || 0,
     };
   });
 
@@ -395,41 +399,76 @@ async function inspectInvoiceMobileLayout(page, viewport, invoiceKind) {
     invoiceKind + " customer/payment input is too narrow at " + viewport.name + ": " + JSON.stringify(result)
   );
   assert(
-    result.tableWrap && ["auto", "scroll"].includes(result.tableOverflowX),
-    invoiceKind + " ornament table is not contained in its own horizontal swipe region at " + viewport.name + "."
+    result.tableWrap &&
+    result.tableClientWidth > 0 &&
+    result.tableScrollWidth <= result.tableClientWidth + 1 &&
+    result.itemTableScrollWidth <= result.tableClientWidth + 1,
+    invoiceKind + " ornament cards exceed their phone-width container at " + viewport.name + ": " + JSON.stringify(result)
   );
 }
 
-async function assertInvoiceTablesAreScrollable(page, invoiceKind) {
+async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
   const results = await page.evaluate(() => Array.from(
     document.querySelectorAll("#invoice-print .table-wrap")
   ).map((wrap) => {
-    const maxScroll = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
-    wrap.scrollLeft = 0;
-    const leftEdge = wrap.scrollLeft;
-    wrap.scrollLeft = maxScroll;
-    const rightEdge = wrap.scrollLeft;
+    const table = wrap.querySelector(".items-table");
+    const tbody = table?.tBodies?.[0];
+    const rows = Array.from(tbody?.rows || []);
     return {
-      tableClass: wrap.querySelector(".items-table")?.className || "",
+      tableClass: table?.className || "",
       clientWidth: wrap.clientWidth,
       scrollWidth: wrap.scrollWidth,
       overflowX: getComputedStyle(wrap).overflowX,
-      maxScroll,
-      leftEdge,
-      rightEdge,
+      tableDisplay: table ? getComputedStyle(table).display : "missing",
+      tableScrollWidth: table?.scrollWidth || 0,
+      headDisplay: table?.tHead ? getComputedStyle(table.tHead).display : "missing",
+      bodyDisplay: tbody ? getComputedStyle(tbody).display : "missing",
+      rows: rows.map((row) => {
+        const cells = Array.from(row.cells);
+        const rowRect = row.getBoundingClientRect();
+        const labelledCells = cells.filter((cell) => {
+          const content = getComputedStyle(cell, "::before").content;
+          return content && content !== "none" && content !== "normal";
+        }).length;
+        return {
+          display: getComputedStyle(row).display,
+          width: rowRect.width,
+          right: rowRect.right,
+          labelledCells,
+          cellCount: cells.length,
+        };
+      }),
     };
   }));
+
   assert(results.length >= 2, invoiceKind + " must render both new and old ornament table regions.");
   for (const result of results) {
-    assert(["auto", "scroll"].includes(result.overflowX),
-      invoiceKind + " table is not independently scrollable: " + JSON.stringify(result));
     assert(
-      result.scrollWidth > result.clientWidth &&
-      result.maxScroll > 0 &&
-      result.leftEdge === 0 &&
-      result.rightEdge >= result.maxScroll - 1,
-      invoiceKind + " ornament table columns are not reachable from both horizontal edges: " + JSON.stringify(result)
+      result.tableDisplay === "block" &&
+      result.headDisplay === "none" &&
+      result.bodyDisplay === "grid",
+      invoiceKind + " ornament table is not rendered as a labelled mobile-card list: " + JSON.stringify(result)
     );
+    assert(
+      result.clientWidth > 0 &&
+      result.scrollWidth <= result.clientWidth + 1 &&
+      result.tableScrollWidth <= result.clientWidth + 1 &&
+      !["auto", "scroll"].includes(result.overflowX),
+      invoiceKind + " ornament cards create a horizontal swipe area instead of fitting the screen: " + JSON.stringify(result)
+    );
+    assert(result.rows.length > 0, invoiceKind + " has no visible ornament cards: " + JSON.stringify(result));
+    for (const row of result.rows) {
+      assert(
+        row.display === "grid" &&
+        row.width <= result.clientWidth + 1 &&
+        row.right <= result.clientWidth + 1,
+        invoiceKind + " ornament card is wider than its phone container: " + JSON.stringify(result)
+      );
+      assert(
+        row.labelledCells >= Math.max(4, row.cellCount - 1),
+        invoiceKind + " ornament card is missing readable field labels: " + JSON.stringify(result)
+      );
+    }
   }
 }
 
@@ -488,8 +527,8 @@ async function fillNewInvoiceForMobile(page, width) {
     "New ornament row amount is incorrect: " + JSON.stringify(values));
   assert(Math.abs(values.totalNumber - 45425) < 0.01,
     "New ornament subtotal is incorrect: " + JSON.stringify(values));
-  assert(values.tableScrollWidth > values.tableClientWidth,
-    "The New Invoice ornament table is not wider than its scroll viewport.");
+  assert(values.tableScrollWidth <= values.tableClientWidth + 1,
+    "The New Invoice ornament cards overflow their phone-width container.");
   assert(values.documentWidth <= values.viewportWidth + 1,
     "The populated New Invoice caused page-level horizontal scrolling at " + width + "px.");
 }
@@ -600,7 +639,7 @@ async function testNewInvoiceMobile(browser, width) {
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
     await fillNewInvoiceForMobile(page, width);
     await inspectInvoiceMobileLayout(page, viewport, "New Invoice");
-    await assertInvoiceTablesAreScrollable(page, "New Invoice");
+    await assertInvoiceTablesUseMobileCards(page, "New Invoice");
     if (width === 390) await verifyInvoicePrintPdf(page, "New Invoice");
     process.stdout.write("PASS populated New Invoice layout, calculations and table swipe at " + width + "px\n");
   } finally {
@@ -964,7 +1003,7 @@ async function testSavedInvoiceMobile(browser) {
     await page.locator(".nkj-invoice-detail-overlay #invoice-print.nkj-saved-invoice-sheet")
       .waitFor({ state: "visible", timeout: 12000 });
     await inspectInvoiceMobileLayout(page, viewport, "Old/Saved Invoice");
-    await assertInvoiceTablesAreScrollable(page, "Old/Saved Invoice");
+    await assertInvoiceTablesUseMobileCards(page, "Old/Saved Invoice");
     await verifyInvoicePrintPdf(page, "Old/Saved Invoice");
     await verifyRealSharedPdf(page);
     process.stdout.write("PASS populated Old Invoice modal, browser print and actual PDF share file\n");
