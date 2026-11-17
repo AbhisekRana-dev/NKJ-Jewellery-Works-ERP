@@ -544,6 +544,30 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
     invoiceKind + " print stylesheet did not hide on-screen invoice actions."
   );
 
+  const printGeometry = await page.evaluate(() => {
+    const rect = (element) => {
+      if (!element) return null;
+      const r = element.getBoundingClientRect();
+      return {
+        className: typeof element.className === "string" ? element.className : element.tagName,
+        top: Math.round(r.top),
+        bottom: Math.round(r.bottom),
+        height: Math.round(r.height),
+        display: getComputedStyle(element).display,
+        visibility: getComputedStyle(element).visibility,
+      };
+    };
+    const main = document.querySelector("main.container");
+    return {
+      pageHeight: document.documentElement.scrollHeight,
+      bodyHeight: document.body.scrollHeight,
+      mainHeight: main?.scrollHeight || 0,
+      mainChildren: Array.from(main?.children || []).map(rect),
+      overlay: rect(document.querySelector(".nkj-invoice-detail-overlay")),
+      dialog: rect(document.querySelector(".nkj-invoice-detail-sheet")),
+      invoice: rect(document.querySelector("#invoice-print")),
+    };
+  });
   const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
   assert(
     pdf.length > 1000 && pdf.subarray(0, 5).toString("ascii") === "%PDF-",
@@ -551,7 +575,8 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
   );
   const pdfText = pdf.toString("latin1");
   const pageCount = (pdfText.match(/\/Type\s*\/Page\b/g) || []).length;
-  assert(pageCount === 1, invoiceKind + " browser print produced " + pageCount + " pages; expected one page for the controlled fixture.");
+  assert(pageCount === 1, invoiceKind + " browser print produced " + pageCount +
+    " pages; expected one page for the controlled fixture. Print geometry: " + JSON.stringify(printGeometry));
   const mediaBox = pdfText.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
   if (mediaBox) {
     const width = Number(mediaBox[3]) - Number(mediaBox[1]);
