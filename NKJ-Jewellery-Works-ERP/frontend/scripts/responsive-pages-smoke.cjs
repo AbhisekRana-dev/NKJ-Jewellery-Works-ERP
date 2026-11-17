@@ -1018,7 +1018,29 @@ async function testIdleLogoutAndDraftRecovery(browser) {
     await loginFields.nth(1).fill("qa-password-not-stored");
     await loginFields.nth(2).fill("123456");
     await page.locator(".nkj-login-submit").click();
-    await page.waitForURL("**/", { timeout: 10000 });
+    try {
+      await page.waitForFunction(
+        () => localStorage.getItem("nkj_token") === "qa-reauthenticated-token" &&
+          localStorage.getItem("nkj_user") === "admin2026",
+        { timeout: 10000 }
+      );
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        url: location.href,
+        token: localStorage.getItem("nkj_token"),
+        user: localStorage.getItem("nkj_user"),
+        loginErrors: Array.from(document.querySelectorAll(".nkj-login-card .error")).map((node) => node.innerText),
+        loginFields: Array.from(document.querySelectorAll(".nkj-login-field input")).map((node) => ({
+          valueLength: node.value.length,
+          disabled: node.disabled,
+        })),
+        buttonDisabled: document.querySelector(".nkj-login-submit")?.disabled,
+        bodyText: (document.body.innerText || "").slice(0, 1200),
+      }));
+      throw new Error("Re-login did not establish the expected test session: " +
+        JSON.stringify(diagnostic) + "; " + error.message);
+    }
+    await page.waitForURL("**/", { timeout: 5000 });
     await pushClientRoute(page, "/invoice");
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
     assert(
