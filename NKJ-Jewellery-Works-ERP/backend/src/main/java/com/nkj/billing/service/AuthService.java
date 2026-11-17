@@ -260,14 +260,21 @@ public class AuthService {
      * from keeping an unattended browser session alive.
      */
     public void markUserActivity(String token) {
-        if (!valid(token)) {
-            throw new IllegalArgumentException("Your session expired due to inactivity. Please log in again.");
-        }
-        SessionState state = sessions.get(token);
+        SessionState state = token == null || token.isBlank() ? null : sessions.get(token);
         if (state == null) {
             throw new IllegalArgumentException("Your login session is no longer valid. Please log in again.");
         }
         long now = System.currentTimeMillis();
+        if (state.expiresAt <= now || isIdleTimeoutReached(now, state.lastUserActivityAt)) {
+            expireSession(token, state);
+            throw new IllegalArgumentException("Your session expired due to inactivity. Please log in again.");
+        }
+
+        // Recheck the current map entry so an activity event cannot revive a
+        // session which was revoked concurrently by logout or session management.
+        if (sessions.get(token) != state) {
+            throw new IllegalArgumentException("Your login session is no longer valid. Please log in again.");
+        }
         state.lastUserActivityAt = now;
         if (now - state.lastActivityPersistedAt >= SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS) {
             jdbc.update("UPDATE owner_login_sessions SET last_active_at=NOW() WHERE id=? AND logged_out_at IS NULL",
