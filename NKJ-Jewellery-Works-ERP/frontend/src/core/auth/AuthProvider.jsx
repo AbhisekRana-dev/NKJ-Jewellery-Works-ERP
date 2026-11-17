@@ -240,13 +240,18 @@ export function AuthProvider({ children }) {
       "mousemove",
       "keydown",
       "click",
-      "scroll",
+      "wheel",
       "touchstart",
+      "touchmove",
     ];
     const listenerOptions = { passive: true };
+    const captureListenerOptions = { passive: true, capture: true };
     activityEvents.forEach((eventName) => {
       window.addEventListener(eventName, recordUserActivity, listenerOptions);
     });
+    // Capture scrolling inside nested tables, panels and sidebars as well as
+    // whole-page scrolling; element scroll events do not reliably bubble.
+    document.addEventListener("scroll", recordUserActivity, captureListenerOptions);
 
     const idleTimer = window.setInterval(checkIdle, 1_000);
     window.addEventListener("focus", onFocus);
@@ -260,6 +265,7 @@ export function AuthProvider({ children }) {
       activityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, recordUserActivity, listenerOptions);
       });
+      document.removeEventListener("scroll", recordUserActivity, captureListenerOptions);
     };
   }, [user]);
 
