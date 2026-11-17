@@ -2209,3 +2209,33 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     overflow: visible !important;
   }
 }
+
+
+/* A4 landscape printable width is 291mm after the 3mm page margins.
+   Keep the saved-invoice modal shell at 287mm so nested borders and CSS-pixel
+   rounding cannot spill a fraction of a pixel onto a second horizontal page. */
+@media print {
+  html:has(.nkj-invoice-detail-overlay),
+  body:has(.nkj-invoice-detail-overlay),
+  body:has(.nkj-invoice-detail-overlay) #root,
+  body:has(.nkj-invoice-detail-overlay) .app-layout,
+  body:has(.nkj-invoice-detail-overlay) .app-content,
+  body:has(.nkj-invoice-detail-overlay) .nkj-owner-layout,
+  body:has(.nkj-invoice-detail-overlay) main.container,
+  body:has(.nkj-invoice-detail-overlay) .invoice-container,
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-overlay,
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-sheet,
+  body:has(.nkj-invoice-detail-overlay) .nkj-full-invoice-modal,
+  body:has(.nkj-invoice-detail-overlay) #invoice-print.nkj-saved-invoice-sheet {
+    width: 287mm !important;
+    min-width: 0 !important;
+    max-width: 287mm !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print.nkj-saved-invoice-sheet {
+    padding: 2mm !important;
+  }
+}

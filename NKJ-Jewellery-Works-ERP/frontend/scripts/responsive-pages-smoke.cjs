@@ -553,8 +553,23 @@ async function verifyRealSharedPdf(page) {
     );
   }
 
-  await shareButton.click();
-  await page.waitForFunction(() => Boolean(window.__nkjSharedPdfCapture), { timeout: 10000 });
+  // Check and click synchronously so a React re-render cannot replace the
+  // prepared-PDF button between the enabled check and locator click.
+  await page.waitForFunction(
+    () => {
+      const button = document.querySelector(".nkj-whatsapp-action");
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    },
+    undefined,
+    { timeout: 35000 }
+  );
+  await page.waitForFunction(
+    () => Boolean(window.__nkjSharedPdfCapture),
+    undefined,
+    { timeout: 10000 }
+  );
   const captured = await page.evaluate(() => window.__nkjSharedPdfCapture);
   assert(captured?.type === "application/pdf", "The native share flow did not receive an application/pdf file.");
   assert(captured.size > 1000, "The generated invoice PDF is unexpectedly small or empty.");
@@ -634,10 +649,9 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
   const pageCount = pageMatches.length;
   const mediaBoxes = [...pdfText.matchAll(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/g)]
     .map((match) => match.slice(1).map(Number));
-  const pageObjectSnippets = pageMatches.map((match) => pdfText.slice(Math.max(0, match.index - 220), Math.min(pdfText.length, match.index + 520)));
   assert(pageCount === 1, invoiceKind + " browser print produced " + pageCount +
     " pages; expected one page for the controlled fixture. Print geometry: " + JSON.stringify({
-      printGeometry, mediaBoxes, pageObjectSnippets,
+      printGeometry, mediaBoxes,
     }));
   const mediaBox = pdfText.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
   if (mediaBox) {
