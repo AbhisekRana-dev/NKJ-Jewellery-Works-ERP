@@ -375,7 +375,23 @@ function amountInWords(value) {
   );
 }
 
-const INVOICE_DRAFT_STORAGE_KEY = "nkj.invoice.draft.v1";
+const INVOICE_DRAFT_STORAGE_KEY = "nkj.invoice.draft.v2";
+
+function getInvoiceDraftStorageKey(owner, isEditingSavedInvoice = false, invoiceId = null) {
+  const account = encodeURIComponent(String(owner || "guest").trim().toLowerCase() || "guest");
+  const scope = isEditingSavedInvoice && invoiceId ? `edit-${invoiceId}` : "new";
+  return `${INVOICE_DRAFT_STORAGE_KEY}:${account}:${scope}`;
+}
+
+function readInvoiceDraft(storageKey) {
+  if (typeof window === "undefined") return null;
+  try {
+    const draft = JSON.parse(window.localStorage.getItem(storageKey) || "null");
+    return draft && draft.version === 2 ? draft : null;
+  } catch {
+    return null;
+  }
+}
 
 function getTodayIndiaDate() {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -389,68 +405,8 @@ function getTodayIndiaDate() {
 }
 
 function formatInvoiceDateForDisplay(value) {
-  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const match = String(value || "").match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
   return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || "—");
-}
-
-const INVOICE_DRAFT_RELOAD_GUARD_KEY = "nkj.invoice.draft.reload-document";
-// Capture the route loaded by the browser itself. The document navigation
-// type remains "reload" during later SPA navigation, so it must not reset an
-// invoice opened after the user refreshed another page.
-const INVOICE_DOCUMENT_ENTRY_PATH = typeof window !== "undefined"
-  ? String(window.location.pathname || "").replace(/\/+$/, "")
-  : "";
-let invoiceReloadDraftClearedInMemory = false;
-
-function getInvoiceReloadDocumentKey() {
-  if (typeof window === "undefined" || INVOICE_DOCUMENT_ENTRY_PATH !== "/invoice") return "";
-  try {
-    const navigationEntries = window.performance?.getEntriesByType?.("navigation") || [];
-    const navigationType = navigationEntries[0]?.type;
-    const legacyReload = navigationEntries.length === 0
-      && window.performance?.navigation?.type === 1;
-    if (navigationType !== "reload" && !legacyReload) return "";
-    return String(
-      window.performance?.timeOrigin ||
-      window.performance?.timing?.navigationStart ||
-      "",
-    );
-  } catch {
-    return "";
-  }
-}
-
-// This check is deliberately read-only because React Strict Mode may call
-// state initializers more than once in development.
-function isUnconsumedInvoiceReload() {
-  const documentKey = getInvoiceReloadDocumentKey();
-  if (!documentKey) return false;
-  try {
-    return window.sessionStorage.getItem(INVOICE_DRAFT_RELOAD_GUARD_KEY) !== documentKey;
-  } catch {
-    return !invoiceReloadDraftClearedInMemory;
-  }
-}
-
-function markInvoiceReloadHandled() {
-  const documentKey = getInvoiceReloadDocumentKey();
-  if (!documentKey) return;
-  invoiceReloadDraftClearedInMemory = true;
-  try {
-    window.sessionStorage.setItem(INVOICE_DRAFT_RELOAD_GUARD_KEY, documentKey);
-  } catch {
-    // The in-memory guard handles browsers with blocked session storage.
-  }
-}
-
-function readInvoiceDraft() {
-  if (typeof window === "undefined") return null;
-  try {
-    const draft = JSON.parse(window.localStorage.getItem(INVOICE_DRAFT_STORAGE_KEY) || "null");
-    return draft && draft.version === 1 ? draft : null;
-  } catch {
-    return null;
-  }
 }
 
 function createInvoiceDraftKey() {
@@ -467,21 +423,36 @@ function createInvoiceDraftKey() {
 export function InvoicePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [reloadResetPending, setReloadResetPending] = useState(() => isUnconsumedInvoiceReload());
-  const editingInvoice = !reloadResetPending && location.state?.editInvoice
+  const editingInvoice = location.state?.editInvoice
     ? parseInvoiceDetails(location.state.editInvoice)
     : null;
-  const copiedInvoice = !reloadResetPending && location.state?.copyInvoice
+  const copiedInvoice = location.state?.copyInvoice
     ? parseInvoiceDetails(location.state.copyInvoice)
     : null;
   const invoiceSeed = editingInvoice || copiedInvoice;
-  const [isEditingSavedInvoice] = useState(() =>
-    Boolean(location.state?.editInvoice?.id) && !isUnconsumedInvoiceReload()
+  const [isEditingSavedInvoice, setIsEditingSavedInvoice] = useState(
+    () => Boolean(location.state?.editInvoice?.id)
   );
   const startingNewInvoice = location.state?.startNewInvoice === true;
-  const [initialDraft] = useState(() =>
-    reloadResetPending || invoiceSeed || startingNewInvoice ? null : readInvoiceDraft()
+
+  // Capture the account namespace before inactivity logout clears nkj_user.
+  // The key remains stable for this form instance and never contains a token.
+  const invoiceOwnerRef = useRef(null);
+  if (invoiceOwnerRef.current === null) {
+    try {
+      invoiceOwnerRef.current = localStorage.getItem("nkj_user") || "guest";
+    } catch {
+      invoiceOwnerRef.current = "guest";
+    }
+  }
+  const [draftStorageKey, setDraftStorageKey] = useState(() =>
+    getInvoiceDraftStorageKey(
+      invoiceOwnerRef.current,
+      Boolean(location.state?.editInvoice?.id),
+      location.state?.editInvoice?.id ?? null
+    )
   );
+  const [initialDraft] = useState(() => invoiceSeed ? null : readInvoiceDraft(draftStorageKey));
   const [invoiceDate, setInvoiceDate] = useState(() =>
     invoiceSeed?.invoiceDate || initialDraft?.invoiceDate || getTodayIndiaDate()
   );
@@ -535,6 +506,7 @@ export function InvoicePage() {
   const [description, setDescription] = useState(() => invoiceSeed?.description || initialDraft?.description || "");
   const [saved, setSaved] = useState(false);
   const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
+  const [draftStorageError, setDraftStorageError] = useState(false);
   // Keep the draft's idempotency key when restoring it. The backend checks
   // that key and safely repairs a prior save's business date only when the
   // rest of the invoice payload is identical.
@@ -685,72 +657,32 @@ export function InvoicePage() {
     return () => window.removeEventListener("keydown", onCalculatorKeyDown, true);
   }, [calculatorOpen, isPrintPreparing, calculatorExpression, calculatorResult]);
 
-  const initialReloadResetHandledRef = useRef(false);
-
   useEffect(() => {
-    const firstMountAfterReload = reloadResetPending && !initialReloadResetHandledRef.current;
-    const explicitNewInvoice = !reloadResetPending && startingNewInvoice;
-
-    if (firstMountAfterReload || explicitNewInvoice) {
-      if (firstMountAfterReload) {
-        // Mark the reload only after render. Keeping the state initializer
-        // read-only makes this reliable under React Strict Mode.
-        initialReloadResetHandledRef.current = true;
-        markInvoiceReloadHandled();
-        setReloadResetPending(false);
+    // Route state is metadata, not a command to delete a draft. New Invoice
+    // links restore the existing account draft; only an explicit reset or a
+    // confirmed backend save removes it.
+    if (location.state?.copyInvoice || location.state?.editInvoice || location.state?.startNewInvoice) {
+      if (startingNewInvoice && saved) {
+        // Support clicking New Invoice again while the previous invoice page
+        // is still mounted after a successful save.
+        resetInvoiceFields({ allowSaved: true });
       }
-
-      // A full browser reload must always start a blank invoice, even when
-      // history.state still contains a copied invoice or a New Invoice flag.
-      // Explicit New Invoice navigation uses the same reset path. Saved
-      // database invoices and Invoice History are never modified here.
-      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
-      setInvoiceDate(getTodayIndiaDate());
-      setShowGstin(true);
-      setCustomer({ name: "", mobile: "", address: "" });
-      setPaymentMode("Cash");
-      setReferenceNo("");
-      setTotalPaid(null);
-      setNewItems([blankNew()]);
-      setOldItems([blankOld()]);
-      setDiscount("");
-      setGst("0");
-      setDescription("");
-      setSaved(false);
-      setDraftRestored(false);
-      setIdempotencyKey(createInvoiceDraftKey());
-      setError("");
-      setSuccessMessage("");
-      setInvoiceNo("");
-      setInvoiceId(null);
-      setShowInvoicePin(false);
-
-      // Remove persisted router state so another refresh cannot reopen the
-      // invoice that was previously copied or selected.
-      navigate("/invoice", { replace: true, state: null });
-      return;
-    }
-
-    // Do not process stale history.state while the initial reload reset is
-    // waiting to be committed.
-    if (reloadResetPending) return;
-
-    if (location.state?.copyInvoice || location.state?.editInvoice) {
       navigate("/invoice", { replace: true, state: null });
     }
-  }, [location.key, startingNewInvoice, location.state, navigate, reloadResetPending]);
+  }, [location.key, location.state, startingNewInvoice, saved, navigate]);
 
   useEffect(() => {
     if (saved) {
-      try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+      try { window.localStorage.removeItem(draftStorageKey); } catch {}
       return;
     }
     if (skipNextDraftPersistRef.current) {
       skipNextDraftPersistRef.current = false;
       return;
     }
+
     const draft = {
-      version: 1,
+      version: 2,
       idempotencyKey,
       invoiceDate,
       customer,
@@ -765,12 +697,19 @@ export function InvoicePage() {
       showGstin,
       savedAt: new Date().toISOString(),
     };
+
     try {
-      window.localStorage.setItem(INVOICE_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+      setDraftStorageError(false);
     } catch {
-      // The invoice remains usable when browser storage is unavailable or full.
+      // Keep the form usable, but warn before a reload/navigation can lose it.
+      setDraftStorageError(true);
     }
-  }, [invoiceDate, customer, paymentMode, referenceNo, totalPaid, newItems, oldItems, discount, gst, description, showGstin, idempotencyKey, saved]);
+  }, [
+    invoiceDate, customer, paymentMode, referenceNo, totalPaid,
+    newItems, oldItems, discount, gst, description, showGstin,
+    idempotencyKey, saved, draftStorageKey,
+  ]);
 
   const newTotal = newItems.reduce((sum, item) => sum + newAmt(item), 0);
 
@@ -921,12 +860,12 @@ export function InvoicePage() {
     };
   }
 
-  function discardDraft() {
-    if (saved || saving) return;
-    if (!window.confirm("Discard this unfinished invoice draft? This cannot be undone.")) return;
+  function resetInvoiceFields({ allowSaved = false } = {}) {
+    if (saving || (saved && !allowSaved)) return;
 
     skipNextDraftPersistRef.current = true;
-    try { window.localStorage.removeItem(INVOICE_DRAFT_STORAGE_KEY); } catch {}
+    try { window.localStorage.removeItem(draftStorageKey); } catch {}
+
     setInvoiceDate(getTodayIndiaDate());
     setShowGstin(true);
     setCustomer({ name: "", mobile: "", address: "" });
@@ -938,13 +877,60 @@ export function InvoicePage() {
     setDiscount("");
     setGst("0");
     setDescription("");
+    setSaved(false);
+    setDraftRestored(false);
+    setDraftStorageError(false);
+    setIsEditingSavedInvoice(false);
+    setDraftStorageKey(getInvoiceDraftStorageKey(invoiceOwnerRef.current, false, null));
+    setIdempotencyKey(createInvoiceDraftKey());
     setSuccessMessage("");
     setInvoiceNo("");
     setInvoiceId(null);
-    setIdempotencyKey(createInvoiceDraftKey());
-    setDraftRestored(false);
     setError("");
+    setShowInvoicePin(false);
+    setShowSavePin(false);
+    setPendingPrintAfterSave(false);
+    setIsPrintPreparing(false);
   }
+
+  function confirmResetInvoice() {
+    if (saving || saved) return;
+    const confirmed = window.confirm(
+      "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
+    );
+    if (!confirmed) return;
+    resetInvoiceFields();
+  }
+
+  useEffect(() => {
+    if (saved) return undefined;
+
+    const onResetShortcut = (event) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+      if (saving || showSavePin || showInvoicePin || calculatorOpen || isPrintPreparing) return;
+
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(
+        "select,input[type='date'],[role='combobox'],[aria-haspopup='listbox'],[role='listbox'],[role='menu'],.nkj-pin-overlay,.nkj-invoice-detail-overlay"
+      )) return;
+
+      const isMobileViewport = window.matchMedia?.("(max-width: 760px)").matches;
+      const mobileNavigationOpen = Boolean(isMobileViewport
+        && document.querySelector(".nkj-owner-sidebar:not(.is-collapsed)"));
+      const otherOverlayOpen = Boolean(document.querySelector(
+        ".nkj-pin-overlay,[role='dialog'],.nkj-invoice-detail-overlay,.nkj-catalog-modal-backdrop,.nkj-public-topbar nav.is-open"
+      ));
+      if (mobileNavigationOpen || otherOverlayOpen) return;
+
+      event.preventDefault();
+      confirmResetInvoice();
+    };
+
+    // Bubble phase: calculator/dialog/menu/dropdown handlers get the first chance
+    // to consume Escape before this page-level reset confirmation runs.
+    window.addEventListener("keydown", onResetShortcut);
+    return () => window.removeEventListener("keydown", onResetShortcut);
+  }, [saved, saving, showSavePin, showInvoicePin, calculatorOpen, isPrintPreparing]);
 
   function validateInvoiceForm() {
     if (!invoiceDate) return "Please select an invoice date.";
@@ -1069,6 +1055,7 @@ export function InvoicePage() {
           `Invoice date confirmation mismatch. You selected ${formatInvoiceDateForDisplay(invoiceDate)}, but the server returned ${formatInvoiceDateForDisplay(result.invoiceDate)} with invoice number ${result.invoiceNo}. Check Invoice History before retrying; the server may already have saved this request.`
         );
       }
+      try { window.localStorage.removeItem(draftStorageKey); } catch {}
       setInvoiceId(result.id);
       setInvoiceNo(result.invoiceNo);
       setSaved(true);
@@ -1943,10 +1930,25 @@ export function InvoicePage() {
 
       {successMessage && <p className="success no-print" role="status">{successMessage}</p>}
       {saving && <p className="draft-note no-print" role="status">Saving the complete invoice to PostgreSQL. Printing will start only after the server confirms the save.</p>}
+      {draftStorageError && (
+        <p className="error no-print" role="alert">
+          This browser could not save your invoice draft. Keep this page open and avoid refreshing until storage is available.
+        </p>
+      )}
 
       <div className="invoice-actions no-print">
         <button type="button" className="primary" onClick={save} disabled={saving || saved}>
           <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
+        </button>
+
+        <button
+          type="button"
+          className="secondary nkj-invoice-reset-button"
+          onClick={confirmResetInvoice}
+          disabled={saving || saved}
+          title="Reset this unsaved invoice and delete its local draft"
+        >
+          Reset
         </button>
 
         <button
@@ -1963,8 +1965,8 @@ export function InvoicePage() {
       {!saved && (
         <p className="draft-note no-print" role="status">
           {draftRestored
-            ? "An unfinished draft was restored during in-app navigation. Refreshing this page clears the draft."
-            : "Unsaved invoice: refreshing this page clears these details. Select Save Invoice to keep it in Invoice History."}
+            ? "Your unfinished invoice draft was restored. It is saved on this device and remains available after refresh or session expiry."
+            : "Your invoice is saved automatically as a draft while you work. It is cleared only after a successful invoice save."}
         </p>
       )}
       {showSavePin && (

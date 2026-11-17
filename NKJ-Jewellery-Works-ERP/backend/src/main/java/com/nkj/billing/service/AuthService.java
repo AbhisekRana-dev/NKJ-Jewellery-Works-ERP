@@ -37,10 +37,12 @@ public class AuthService {
     private static final long SETUP_TOKEN_TTL_MILLIS = 10 * 60 * 1000L;
     private static final long SESSION_MANAGER_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
     private static final long SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS = 30 * 1000L;
+    private static final long IDLE_EXPIRY_REASON_TTL_MILLIS = 60 * 1000L;
     private static final long SESSION_MANAGER_LOCK_MILLIS = 15 * 60 * 1000L;
     private static final int MAX_SESSION_MANAGER_ATTEMPTS = 5;
 
     @Value("${nkj.admin.username:admin2026}") private String username;
+    @Value("${nkj.auth.session-idle-timeout-ms:600000}") private long sessionIdleTimeoutMillis = 600_000L;
     @Value("${nkj.admin.password:}") private String password;
     @Value("${nkj.admin.session-manager-password:}") private String sessionManagerPassword;
     @Value("${nkj.totp.secret:}") private String secret;
@@ -60,6 +62,7 @@ public class AuthService {
             .connectTimeout(Duration.ofSeconds(10)).build();
     private final Map<String, Long> challenges = new ConcurrentHashMap<>();
     private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
+    private final Map<String, Long> idleExpiredTokenHashes = new ConcurrentHashMap<>();
     private final Map<String, SetupOtp> setupOtps = new ConcurrentHashMap<>();
     private final Map<String, Long> setupTokens = new ConcurrentHashMap<>();
     private final Map<String, ManagerGrant> sessionManagerGrants = new ConcurrentHashMap<>();
@@ -72,10 +75,12 @@ public class AuthService {
     private static final class SessionState {
         private final String id;
         private final long expiresAt;
+        private volatile long lastActivityAt;
         private volatile long lastActivityPersistedAt;
         private SessionState(String id, long expiresAt, long now) {
             this.id = id;
             this.expiresAt = expiresAt;
+            this.lastActivityAt = now;
             this.lastActivityPersistedAt = now;
         }
     }
@@ -234,22 +239,78 @@ public class AuthService {
         return "otpauth://totp/" + issuer + ":" + account + "?secret=" + secret + "&issuer=" + issuer + "&digits=6&period=30";
     }
 
+    /**
+     * Validate a bearer session without treating an API request as user activity.
+     * Background polling and ordinary protected reads cannot keep a session alive.
+     */
     public boolean valid(String token) {
         if (token == null || token.isBlank()) return false;
         SessionState state = sessions.get(token);
         if (state == null) return false;
         long now = System.currentTimeMillis();
-        if (state.expiresAt < now) {
-            sessions.remove(token, state);
-            sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
+        if (now > state.expiresAt) {
+            endSession(token, state);
             return false;
         }
+        if (now - state.lastActivityAt >= sessionIdleTimeoutMillis) {
+            idleExpiredTokenHashes.entrySet().removeIf(entry -> entry.getValue() < now);
+            idleExpiredTokenHashes.put(sha256(token), now + IDLE_EXPIRY_REASON_TTL_MILLIS);
+            endSession(token, state);
+            return false;
+        }
+        return sessions.get(token) == state;
+    }
+
+    /**
+     * Extends the idle window only after explicit user-generated activity.
+     * The persisted last_active_at field is throttled to avoid excessive writes.
+     */
+    public boolean recordActivity(String token) {
+        if (!valid(token)) return false;
+        SessionState state = sessions.get(token);
+        if (state == null) return false;
+        long now = System.currentTimeMillis();
+        if (sessions.get(token) != state || !isSessionActive(state, now)) return false;
+
+        state.lastActivityAt = now;
         if (now - state.lastActivityPersistedAt >= SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS) {
-            jdbc.update("UPDATE owner_login_sessions SET last_active_at=NOW() WHERE id=? AND logged_out_at IS NULL",
+            int updated = jdbc.update(
+                    "UPDATE owner_login_sessions SET last_active_at=NOW() WHERE id=? AND logged_out_at IS NULL AND expires_at > NOW()",
                     UUID.fromString(state.id));
+            if (updated == 0) {
+                endSession(token, state);
+                return false;
+            }
             state.lastActivityPersistedAt = now;
         }
         return true;
+    }
+
+    private boolean isSessionActive(SessionState state, long now) {
+        return state != null
+                && now <= state.expiresAt
+                && now - state.lastActivityAt < sessionIdleTimeoutMillis;
+    }
+
+    /** Returns and consumes the short-lived inactivity reason for the rejected bearer token. */
+    public boolean wasIdleExpired(String token) {
+        if (token == null || token.isBlank()) return false;
+        Long expiresAt = idleExpiredTokenHashes.remove(sha256(token));
+        return expiresAt != null && expiresAt >= System.currentTimeMillis();
+    }
+
+    public long getLastActivityAt(String token) {
+        if (!valid(token)) return 0L;
+        SessionState state = sessions.get(token);
+        return state == null ? 0L : state.lastActivityAt;
+    }
+
+    private void endSession(String token, SessionState state) {
+        if (state == null || !sessions.remove(token, state)) return;
+        jdbc.update(
+                "UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()) WHERE id=?",
+                UUID.fromString(state.id));
+        sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
     }
 
     public void logout(String token) {
@@ -268,7 +329,7 @@ public class AuthService {
         requireCurrentSession(ownerToken);
         long now = System.currentTimeMillis();
         int activeCount = (int) sessions.values().stream()
-                .filter(state -> state.expiresAt >= now)
+                .filter(state -> isSessionActive(state, now))
                 .map(state -> state.id).distinct().count();
         Long historyCount = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM owner_login_sessions WHERE username=? AND created_at >= NOW() - INTERVAL '30 days'",
@@ -378,10 +439,9 @@ public class AuthService {
         }
 
         long now = System.currentTimeMillis();
-        sessions.entrySet().removeIf(entry ->
-                entry.getValue().id.equals(sessionId) && entry.getValue().expiresAt < now);
+        sessions.entrySet().removeIf(entry -> !isSessionActive(entry.getValue(), now));
         boolean active = sessions.values().stream()
-                .anyMatch(state -> state.id.equals(sessionId) && state.expiresAt >= now);
+                .anyMatch(state -> state.id.equals(sessionId) && isSessionActive(state, now));
         if (active) {
             throw new IllegalArgumentException("Log out this device before deleting its login history.");
         }
@@ -406,7 +466,7 @@ public class AuthService {
         requireSessionManager(ownerToken, managerToken);
         SessionState current = requireCurrentSession(ownerToken);
         int activeBefore = (int) sessions.values().stream()
-                .filter(state -> !state.id.equals(current.id) && state.expiresAt >= System.currentTimeMillis())
+                .filter(state -> !state.id.equals(current.id) && isSessionActive(state, System.currentTimeMillis()))
                 .map(state -> state.id).distinct().count();
         sessions.entrySet().removeIf(entry -> !entry.getValue().id.equals(current.id));
         sessionManagerGrants.entrySet().removeIf(entry -> !entry.getValue().ownerSessionId().equals(current.id));
@@ -436,7 +496,7 @@ public class AuthService {
     private SessionState findActiveSessionById(String id) {
         long now = System.currentTimeMillis();
         return sessions.values().stream()
-                .filter(state -> state.id.equals(id) && state.expiresAt >= now)
+                .filter(state -> state.id.equals(id) && isSessionActive(state, now))
                 .findFirst().orElse(null);
     }
 

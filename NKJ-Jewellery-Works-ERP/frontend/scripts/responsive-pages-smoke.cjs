@@ -83,7 +83,11 @@ const responsiveSavedInvoice = {
 };
 
 function apiPayload(path, method) {
-  if (path.endsWith("/auth/session")) return { username: "admin2026" };
+  if (path.endsWith("/auth/session")) {
+    return { username: "admin2026", lastActivityAt: Date.now() };
+  }
+  if (path === "/api/auth/login") return { challengeId: "responsive-login-challenge", requiresTotp: true };
+  if (path === "/api/auth/verify") return { token: "responsive-relogin-token", username: "admin2026" };
   if (path === "/api/admin/profile") {
     return {
       fullName: "Responsive Test Owner",
@@ -614,6 +618,7 @@ async function testInvoiceSavePinGate(browser) {
 
   await page.addInitScript(() => {
     window.print = () => { window.__nkjPrintDialogOpened = true; };
+    localStorage.setItem("nkj_user", "admin2026");
   });
 
   await page.route("**/*", async (route) => {
@@ -709,6 +714,8 @@ async function testInvoiceSavePinGate(browser) {
     await page.locator("#invoice-print .new-items-table tbody tr:first-child td input")
       .first().fill("PIN gate test gold ring");
 
+    const invoiceDraftKey = "nkj.invoice.draft.v2:admin2026:new";
+    await page.waitForFunction((key) => Boolean(localStorage.getItem(key)), invoiceDraftKey);
     await page.locator(".invoice-actions button.primary").click();
     await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
 
@@ -727,8 +734,10 @@ async function testInvoiceSavePinGate(browser) {
       "The invoice POST did not include the one-time SAVE PIN ticket.");
     assert(Boolean(saveRequestHeaders?.["idempotency-key"]),
       "The invoice POST did not include its idempotency key.");
+    assert(!(await page.evaluate((key) => localStorage.getItem(key), invoiceDraftKey)),
+      "A successfully saved invoice left its local draft behind.");
 
-    await page.locator(".invoice-actions button.secondary").click();
+    await page.locator(".invoice-actions button:not(.nkj-invoice-reset-button).secondary").click();
     await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
     await page.locator("#nkj-invoice-pin").fill("123456");
     await page.locator(".nkj-pin-dialog button[type='submit']").click();
@@ -743,6 +752,180 @@ async function testInvoiceSavePinGate(browser) {
     assert(printDialogOpened, "The native print action was not reached after PRINT PIN authorization.");
 
     process.stdout.write("PASS save PIN gate, bound save ticket, separate print PIN and one-time print authorization\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testInvoiceDraftRecoveryAndReset(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  const draftKey = "nkj.invoice.draft.v2:admin2026:new";
+  const otherUserDraftKey = "nkj.invoice.draft.v2:anotheruser:new";
+
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+    const customerInputs = page.locator("#invoice-print .inv-two .inv-panel").first()
+      .locator(".form-grid label input");
+    const newItemInputs = page.locator("#invoice-print .new-items-table tbody tr:first-child td input");
+    await customerInputs.nth(0).fill("Draft Recovery Customer");
+    await customerInputs.nth(1).fill("9876543210");
+    await customerInputs.nth(2).fill("Jhargram, West Bengal");
+    await newItemInputs.nth(0).fill("Draft Gold Necklace");
+    await newItemInputs.nth(2).fill("4.25");
+    await page.evaluate((key) => {
+      localStorage.setItem(key, JSON.stringify({
+        version: 2,
+        customer: { name: "Another User Draft" },
+        invoiceDate: "2026-11-17",
+      }));
+    }, otherUserDraftKey);
+
+    await page.waitForFunction((key) => {
+      const draft = JSON.parse(localStorage.getItem(key) || "null");
+      return draft?.version === 2 && draft?.customer?.name === "Draft Recovery Customer";
+    }, draftKey);
+    const storedDraft = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
+    assert(storedDraft?.newItems?.[0]?.description === "Draft Gold Necklace",
+      "Ornament details were not persisted in the user's draft.");
+    assert(storedDraft?.newItems?.[0]?.netWeight === "4.25",
+      "Ornament weight was not persisted in the user's draft.");
+    assert((await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).customer.name, otherUserDraftKey))
+      === "Another User Draft",
+      "Saving this account's draft overwrote another user's draft.");
+
+    // Leave through the application Home route, then return through the real route.
+    await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+      "Home -> New Invoice navigation did not restore the customer.");
+    assert((await newItemInputs.nth(0).inputValue()) === "Draft Gold Necklace",
+      "Home -> New Invoice navigation did not restore ornament details.");
+
+    // A direct browser reload must keep the draft, including its idempotency key.
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+      "Refreshing /invoice cleared the user's unfinished draft.");
+    const afterReload = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
+    assert(afterReload?.idempotencyKey === storedDraft.idempotencyKey,
+      "Refreshing /invoice replaced the draft idempotency key.");
+
+    let escapeCancelMessage = "";
+    page.once("dialog", async (dialog) => {
+      escapeCancelMessage = dialog.message();
+      await dialog.dismiss();
+    });
+    await page.keyboard.press("Escape");
+    assert(escapeCancelMessage === "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
+      "Escape did not show the required reset confirmation.");
+    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+      "Canceling the Escape confirmation changed invoice fields.");
+
+    page.once("dialog", async (dialog) => { await dialog.dismiss(); });
+    await page.locator(".nkj-invoice-reset-button").click();
+    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+      "Canceling the Reset button changed invoice fields.");
+    assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
+      "Canceling Reset deleted the local draft.");
+
+    page.once("dialog", async (dialog) => { await dialog.accept(); });
+    await page.locator(".nkj-invoice-reset-button").click();
+    assert((await customerInputs.nth(0).inputValue()) === "",
+      "Confirming Reset did not clear customer fields.");
+    assert(!(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
+      "Confirming Reset did not delete the account's draft.");
+    assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), otherUserDraftKey)),
+      "Reset incorrectly removed another user's draft.");
+
+    // Independently exercise Escape-confirm as well as Escape-cancel.
+    await customerInputs.nth(0).fill("Escape Confirm Customer");
+    await page.waitForFunction((key) => Boolean(localStorage.getItem(key)), draftKey);
+    page.once("dialog", async (dialog) => { await dialog.accept(); });
+    await page.keyboard.press("Escape");
+    assert((await customerInputs.nth(0).inputValue()) === "",
+      "Confirming the Escape reset did not clear the current invoice.");
+    assert(!(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
+      "Confirming the Escape reset did not delete the draft.");
+
+    process.stdout.write("PASS per-user draft autosave, Home/return, reload recovery, Esc cancel/confirm and Reset cancel/confirm\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testTenMinuteInactivityLogoutAcrossTabs(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page1 = await context.newPage();
+  const page2 = await context.newPage();
+  const draftKey = "nkj.invoice.draft.v2:admin2026:new";
+  const otherUserDraftKey = "nkj.invoice.draft.v2:anotheruser:new";
+
+  await page1.addInitScript(() => { window.__NKJ_TEST_IDLE_TIMEOUT_MS = 2200; });
+  await page2.addInitScript(() => { window.__NKJ_TEST_IDLE_TIMEOUT_MS = 2200; });
+  await installApiMocks(page1);
+  await installApiMocks(page2);
+
+  try {
+    await page1.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await page1.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+    await page2.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await page2.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+
+    await page1.evaluate((key) => localStorage.setItem(key, JSON.stringify({
+      version: 2,
+      idempotencyKey: "draft-to-keep-after-logout",
+      invoiceDate: "2026-11-17",
+      customer: { name: "Keep after logout" },
+      newItems: [{ description: "Gold ring", netWeight: "1.5" }],
+      oldItems: [],
+    })), draftKey);
+    await page1.evaluate((key) => localStorage.setItem(key, JSON.stringify({
+      version: 2, customer: { name: "Another user's data" },
+    })), otherUserDraftKey);
+
+    // Activity in one tab must refresh the idle deadline in the other tab.
+    await page1.waitForTimeout(700);
+    await page1.mouse.move(180, 140);
+    await page1.waitForTimeout(1200);
+    assert((await page2.evaluate(() => location.pathname)) === "/dashboard",
+      "Activity in the first tab did not reset the second tab's idle deadline.");
+
+    await Promise.all([
+      page1.waitForURL("**/login", { timeout: 6000 }),
+      page2.waitForURL("**/login", { timeout: 6000 }),
+    ]);
+    const loginText1 = await page1.locator(".nkj-login-card").innerText();
+    const loginText2 = await page2.locator(".nkj-login-card").innerText();
+    assert(loginText1.includes("Your session expired due to inactivity. Please log in again."),
+      "The first tab did not display the required inactivity message.");
+    assert(loginText2.includes("Your session expired due to inactivity. Please log in again."),
+      "The second tab did not receive synchronized inactivity logout.");
+    assert(Boolean(await page1.evaluate((key) => localStorage.getItem(key), draftKey)),
+      "Automatic logout deleted the unsaved invoice draft.");
+
+    // Simulate a successful TOTP login response by restoring the same account's
+    // authenticated browser state, then reload the app so AuthProvider validates it.
+    await page1.evaluate(() => {
+      localStorage.setItem("nkj_token", "responsive-relogin-token");
+      localStorage.setItem("nkj_user", "admin2026");
+    });
+    await page1.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
+    await page1.waitForURL("**/", { timeout: 10000 });
+    await page1.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page1.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    const recoveredName = await page1.locator("#invoice-print .inv-two .inv-panel").first()
+      .locator(".form-grid label input").nth(0).inputValue();
+    assert(recoveredName === "Keep after logout",
+      "The user's unsaved invoice draft was not restored after login.");
+    assert(Boolean(await page1.evaluate((key) => localStorage.getItem(key), otherUserDraftKey)),
+      "Logging out/in changed another user's separate draft.");
+
+    process.stdout.write("PASS interaction-reset idle timer, cross-tab logout, exact message and post-login draft recovery\n");
   } finally {
     await context.close();
   }
@@ -957,9 +1140,11 @@ async function testPublicNavigation(browser) {
       await testNewInvoiceMobile(browser, width);
     }
     await testInvoiceSavePinGate(browser);
+    await testInvoiceDraftRecoveryAndReset(browser);
+    await testTenMinuteInactivityLogoutAcrossTabs(browser);
     await testSavedInvoiceMobile(browser);
     await testPublicNavigation(browser);
-    process.stdout.write("PASS New Invoice at 360/390/430, saved invoice view, and print/PDF layout.\n");
+    process.stdout.write("PASS New Invoice at 360/390/430, draft recovery/reset, inactivity logout, saved invoice view and print/PDF layout.\n");
     process.stdout.write("All owner/public page responsive smoke checks passed.\n");
   } catch (error) {
     console.error(error);
