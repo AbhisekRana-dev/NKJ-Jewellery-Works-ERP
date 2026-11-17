@@ -912,8 +912,10 @@ async function testPublicNavigation(browser) {
 
 
 async function openInvoiceFromOwnerHome(page) {
-  await page.locator(".nkj-owner-topbar .brand").click();
-  await page.waitForURL("**/");
+  const homeLink = page.locator('.nkj-owner-topbar nav a[href="/"]').first();
+  await homeLink.waitFor({ state: "visible", timeout: 10000 });
+  await homeLink.click();
+  await page.waitForFunction(() => window.location.pathname === "/", { timeout: 10000 });
   const invoiceLink = page.locator('#nkj-owner-sidebar a[href="/invoice"]').first();
   if (!(await invoiceLink.isVisible().catch(() => false))) {
     await page.locator(".nkj-mobile-menu-button").click();
