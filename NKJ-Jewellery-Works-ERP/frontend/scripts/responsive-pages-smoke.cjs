@@ -84,6 +84,9 @@ const responsiveSavedInvoice = {
 
 function apiPayload(path, method) {
   if (path.endsWith("/auth/session")) return { username: "admin2026" };
+  if (path === "/api/auth/login") return { challengeId: "responsive-qa-challenge", requiresTotp: true };
+  if (path === "/api/auth/verify") return { token: "responsive-qa-restored-token", username: "admin2026" };
+  if (path === "/api/auth/activity" || path === "/api/auth/logout") return { success: true };
   if (path === "/api/admin/profile") {
     return {
       fullName: "Responsive Test Owner",
@@ -719,6 +722,10 @@ async function testInvoiceSavePinGate(browser) {
     await page.locator(".nkj-pin-dialog button[type='submit']").click();
     await page.waitForFunction(() => document.querySelector(".nkj-pin-overlay") === null, { timeout: 10000 });
     assert(saveCalls === 1, "The invoice was not posted after successful SAVE PIN verification.");
+    await page.waitForFunction(
+      () => localStorage.getItem("nkj.invoice.draft.v2.user:admin2026") === null,
+      { timeout: 5000 }
+    );
     assert(verifyCalls.length === 1 && verifyCalls[0].purpose === "SAVE",
       "The first PIN verification did not declare purpose SAVE: " + JSON.stringify(verifyCalls));
     assert(Boolean(verifyCalls[0].idempotencyKey),
@@ -789,6 +796,196 @@ async function testSavedInvoiceMobile(browser) {
     await context.close();
   }
 }
+
+async function testInvoiceDraftRecoveryAndReset(browser) {
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  const draftKey = "nkj.invoice.draft.v2.user:admin2026";
+
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+    const customerPanel = page.locator("#invoice-print .inv-two .inv-panel").first();
+    const customerInputs = customerPanel.locator(".form-grid label input");
+    await customerInputs.nth(0).fill("Draft Recovery QA Customer");
+    await customerInputs.nth(1).fill("9876543210");
+    await customerInputs.nth(2).fill("Sasra, Gopiballavpur, Jhargram, West Bengal");
+    const paymentPanel = page.locator("#invoice-print .inv-two .inv-panel").nth(1);
+    await paymentPanel.locator(".form-grid label select").selectOption("UPI");
+    await paymentPanel.locator(".form-grid label input").fill("DRAFT-UPI-REF-001");
+
+    const rowInputs = page.locator("#invoice-print .new-items-table tbody tr:first-child td input");
+    const rowValues = ["22K Gold Ring", "22K", "2.5", "6900", "350", "25", "0"];
+    for (let index = 0; index < rowValues.length; index += 1) {
+      await rowInputs.nth(index).fill(rowValues[index]);
+    }
+
+    await page.waitForFunction((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      return draft.version === 2 &&
+        draft.customer?.name === "Draft Recovery QA Customer" &&
+        draft.customer?.mobile === "9876543210" &&
+        draft.paymentMode === "UPI" &&
+        draft.referenceNo === "DRAFT-UPI-REF-001" &&
+        draft.newItems?.[0]?.description === "22K Gold Ring" &&
+        String(draft.newItems?.[0]?.netWeight) === "2.5";
+    }, draftKey, { timeout: 5000 });
+
+    // Exercise in-app navigation, not just a browser reload.
+    await page.locator(".nkj-owner-topbar nav a.nkj-navbar-link[href='/']").click();
+    await page.waitForURL((url) => url.pathname === "/");
+    await page.locator(".nkj-owner-topbar .nkj-navbar-invoice").click();
+    await page.waitForURL((url) => url.pathname === "/invoice");
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible" });
+    assert(
+      await customerInputs.nth(0).inputValue() === "Draft Recovery QA Customer",
+      "Invoice draft was not restored after navigating Home and returning to New Invoice."
+    );
+    assert(
+      await rowInputs.nth(0).inputValue() === "22K Gold Ring",
+      "Ornament details were not restored after in-app navigation."
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first()
+        .locator(".form-grid label input").nth(0).inputValue() === "Draft Recovery QA Customer",
+      "Invoice draft was not restored after a full browser refresh."
+    );
+
+    await page.keyboard.press("Escape");
+    const dialog = page.locator(".nkj-invoice-reset-dialog");
+    await dialog.waitFor({ state: "visible", timeout: 5000 });
+    await dialog.locator("button:has-text('Cancel')").click();
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first()
+        .locator(".form-grid label input").nth(0).inputValue() === "Draft Recovery QA Customer",
+      "Cancel on the Escape confirmation changed invoice data."
+    );
+
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "visible", timeout: 5000 });
+    await dialog.locator("button:has-text('Confirm Reset')").click();
+    await page.waitForFunction((key) => localStorage.getItem(key) === null, draftKey, { timeout: 5000 });
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first()
+        .locator(".form-grid label input").nth(0).inputValue() === "",
+      "Confirming Escape reset did not clear the New Invoice form."
+    );
+
+    await customerInputs.nth(0).fill("Reset Button Cancel QA");
+    await page.locator(".nkj-invoice-reset-button").click();
+    await dialog.waitFor({ state: "visible", timeout: 5000 });
+    await dialog.locator("button:has-text('Cancel')").click();
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first()
+        .locator(".form-grid label input").nth(0).inputValue() === "Reset Button Cancel QA",
+      "Cancel on the Reset button confirmation changed invoice data."
+    );
+
+    await page.locator(".nkj-invoice-reset-button").click();
+    await dialog.waitFor({ state: "visible", timeout: 5000 });
+    await dialog.locator("button:has-text('Confirm Reset')").click();
+    await page.waitForFunction((key) => localStorage.getItem(key) === null, draftKey, { timeout: 5000 });
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first()
+        .locator(".form-grid label input").nth(0).inputValue() === "",
+      "Confirming Reset did not clear the New Invoice form."
+    );
+    process.stdout.write("PASS per-user invoice draft recovery, refresh, Escape cancel/confirm and Reset cancel/confirm\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testTenMinuteIdleLogoutAndTabSync(browser) {
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const page = await context.newPage();
+  const secondTab = await context.newPage();
+  await page.clock.install();
+  await installApiRouteMocks(page);
+  await installApiRouteMocks(secondTab);
+
+  try {
+    await page.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => {
+      localStorage.setItem("nkj_token", "idle-timeout-test-token");
+      localStorage.setItem("nkj_user", "admin2026");
+      localStorage.setItem("nkj.session.activity.admin2026", String(Date.now()));
+    });
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    const draftName = page.locator("#invoice-print .inv-two .inv-panel").first()
+      .locator(".form-grid label input").first();
+    await draftName.fill("Draft Must Survive Automatic Logout");
+
+    await secondTab.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await secondTab.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+
+    const beforeActivity = await page.evaluate(() =>
+      Number(localStorage.getItem("nkj.session.activity.admin2026") || 0)
+    );
+    await page.clock.fastForward(9 * 60 * 1000);
+    await page.locator("#invoice-print .inv-shop h1").click();
+    await page.waitForFunction(
+      (previous) => Number(localStorage.getItem("nkj.session.activity.admin2026") || 0) > previous,
+      beforeActivity,
+      { timeout: 5000 }
+    );
+    await page.clock.fastForward(9 * 60 * 1000);
+    assert(
+      await page.evaluate(() => Boolean(localStorage.getItem("nkj_token"))),
+      "User interaction did not reset the 10-minute inactivity timer."
+    );
+
+    await page.clock.fastForward(10 * 60 * 1000 + 100);
+    await page.waitForURL((url) => url.pathname === "/login" && url.search.includes("reason=inactivity"), { timeout: 10000 });
+    await page.locator(".nkj-session-expired-notice").waitFor({ state: "visible", timeout: 5000 });
+    assert(
+      (await page.locator(".nkj-session-expired-notice").innerText()).trim() ===
+        "Your session expired due to inactivity. Please log in again.",
+      "The automatic logout notice is missing or incorrect."
+    );
+    assert(
+      await page.evaluate(() => !localStorage.getItem("nkj_token") && !localStorage.getItem("nkj_user")),
+      "Automatic logout did not clear the authentication data."
+    );
+
+    await secondTab.waitForURL(
+      (url) => url.pathname === "/login" && url.search.includes("reason=inactivity"),
+      { timeout: 10000 }
+    );
+    assert(
+      await secondTab.evaluate(() => !localStorage.getItem("nkj_token")),
+      "Logout in one tab did not clear authentication in the other tab."
+    );
+
+    const loginInputs = page.locator(".nkj-login-card form .nkj-login-field input");
+    await loginInputs.nth(0).fill("admin2026");
+    await loginInputs.nth(1).fill("qa-password");
+    await loginInputs.nth(2).fill("123456");
+    await page.locator(".nkj-login-card form button[type='submit']").click();
+    await page.waitForURL((url) => url.pathname === "/");
+    await page.locator(".nkj-owner-topbar .nkj-navbar-invoice").click();
+    await page.waitForURL((url) => url.pathname === "/invoice");
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible" });
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first()
+        .locator(".form-grid label input").first().inputValue() === "Draft Must Survive Automatic Logout",
+      "The user's unsaved invoice draft was not restored after logging in again."
+    );
+
+    process.stdout.write("PASS 10-minute inactivity expiry, user activity reset, multi-tab logout and post-login draft recovery\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function assertMobileHeaderAlignment(page, headerSelector, menuSelector, brandSelector, label) {
   const result = await page.evaluate(({ headerSelector, menuSelector, brandSelector }) => {
     const header = document.querySelector(headerSelector);
@@ -957,6 +1154,8 @@ async function testPublicNavigation(browser) {
       await testNewInvoiceMobile(browser, width);
     }
     await testInvoiceSavePinGate(browser);
+    await testInvoiceDraftRecoveryAndReset(browser);
+    await testTenMinuteIdleLogoutAndTabSync(browser);
     await testSavedInvoiceMobile(browser);
     await testPublicNavigation(browser);
     process.stdout.write("PASS New Invoice at 360/390/430, saved invoice view, and print/PDF layout.\n");
