@@ -108,6 +108,7 @@ export function Login() {
   const [error, setError] = useState("");
 
   const [busy, setBusy] = useState(false);
+  const sessionExpiredByInactivity = location.state?.sessionExpired === true;
 
   if (isAdmin) return <NavigateHome />;
 
@@ -202,6 +203,12 @@ export function Login() {
           <p className="nkj-login-subtitle">
             Login to Nandikishor Jewellery Works
           </p>
+
+          {sessionExpiredByInactivity && (
+            <p className="error" role="alert">
+              Your session expired due to inactivity. Please log in again.
+            </p>
+          )}
 
           <form onSubmit={submit}>
             <label className="nkj-login-field">
