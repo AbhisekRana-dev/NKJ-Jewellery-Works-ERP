@@ -375,6 +375,22 @@ function amountInWords(value) {
   );
 }
 
+function getTodayIndiaDate() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function formatInvoiceDateForDisplay(value) {
+  const match = String(value || "").match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || "—");
+}
+
 const INVOICE_DRAFT_STORAGE_KEY = "nkj.invoice.draft.v1";
 const INVOICE_DRAFT_STORAGE_VERSION = 2;
 
