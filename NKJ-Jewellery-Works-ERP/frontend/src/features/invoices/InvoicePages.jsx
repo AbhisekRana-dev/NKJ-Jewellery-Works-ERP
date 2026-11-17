@@ -679,9 +679,11 @@ function InvoicePageForm({ draftUser }) {
       if (calculatorOpen || showSavePin || showInvoicePin || isPrintPreparing) return;
       const target = event.target;
       if (target instanceof Element && target.closest(
-        'select, [role="combobox"], [role="listbox"], [role="menu"], [aria-haspopup="listbox"], [data-state="open"]'
+        'select, [role="combobox"], [role="listbox"], [role="menu"], [aria-haspopup], [aria-expanded="true"], [data-state="open"]'
       )) return;
-      if (document.querySelector('[aria-modal="true"], [role="dialog"]')) return;
+      if (document.querySelector(
+        '[aria-modal="true"], [role="dialog"], [role="menu"], [role="listbox"], [aria-expanded="true"], [data-state="open"]'
+      )) return;
       if (saved || saving || isEditingSavedInvoice) return;
 
       event.preventDefault();
