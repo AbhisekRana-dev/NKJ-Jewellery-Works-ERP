@@ -108,6 +108,9 @@ export function Login() {
   const [error, setError] = useState("");
 
   const [busy, setBusy] = useState(false);
+  const idleExpiredMessage = new URLSearchParams(location.search).get("reason") === "idle"
+    ? "Your session expired due to inactivity. Please log in again."
+    : "";
 
   if (isAdmin) return <NavigateHome />;
 
@@ -202,6 +205,8 @@ export function Login() {
           <p className="nkj-login-subtitle">
             Login to Nandikishor Jewellery Works
           </p>
+
+          {idleExpiredMessage && <p className="error" role="alert">{idleExpiredMessage}</p>}
 
           <form onSubmit={submit}>
             <label className="nkj-login-field">
