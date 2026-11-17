@@ -457,7 +457,7 @@ async function fillNewInvoiceForMobile(page, width) {
     const wrap = invoice?.querySelector(".new-items-table")?.closest(".table-wrap");
     return {
       name: invoice?.querySelector(".inv-two .inv-panel:first-child input")?.value || "",
-      address: invoice?.querySelector(".inv-two .inv-panel:first-child input:nth-of-type(3)")?.value || "",
+      address: invoice?.querySelector(".inv-two .inv-panel:first-child .form-grid label:nth-child(3) input")?.value || "",
       rows: invoice?.querySelectorAll(".new-items-table tbody tr").length || 0,
       totalNumber: Number(totalText.replace(/[^\d.-]/g, "")),
       firstAmount: Number(amountText.replace(/[^\d.-]/g, "")),
