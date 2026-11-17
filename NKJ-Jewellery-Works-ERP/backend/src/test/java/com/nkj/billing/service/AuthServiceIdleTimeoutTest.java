@@ -67,6 +67,8 @@ class AuthServiceIdleTimeoutTest {
         assertFalse(service.valid(token));
         assertFalse(sessions.containsKey(token));
         assertTrue(service.wasIdleExpired(token));
+        assertTrue(service.wasIdleExpired(token),
+                "Concurrent 401 responses must retain the same inactivity expiry reason.");
         verify(jdbc).update(anyString(), any(Object[].class));
     }
 
