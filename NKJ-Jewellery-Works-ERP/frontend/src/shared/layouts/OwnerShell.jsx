@@ -99,6 +99,8 @@ export function Nav({ active = "home" }) {
     const media = window.matchMedia?.("(max-width: 760px)");
     const closeOnEscape = (event) => {
       if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
       setPublicMenuOpen(false);
       document.querySelector(".nkj-public-menu-button")?.focus();
     };
@@ -194,6 +196,8 @@ export function Nav({ active = "home" }) {
     if (!ownerWorkspace || !window.matchMedia?.("(max-width: 760px)").matches || sidebarCollapsed) return undefined;
     const closeOnEscape = (event) => {
       if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
       setSidebarCollapsed(true);
       document.querySelector(".nkj-mobile-menu-button")?.focus();
     };
