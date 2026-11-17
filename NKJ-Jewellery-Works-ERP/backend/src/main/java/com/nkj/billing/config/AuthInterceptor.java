@@ -10,7 +10,7 @@
 //  @Override public boolean preHandle(HttpServletRequest req,HttpServletResponse res,Object handler)throws Exception{
 //   String h=req.getHeader("Authorization");String token=h!=null&&h.startsWith("Bearer ")?h.substring(7):"";
 //   if(auth.valid(token))return true;
-//   res.setStatus(401);res.setContentType("application/json");res.getWriter().write("{\"message\":\"Administrator login required\"}");return false;
+                : "{\"message\":\"Administrator login required\"}");
 //  }
 // }
 
@@ -99,7 +99,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         res.setContentType("application/json");
         res.getWriter().write(idleExpired
-                ? "{\\\"message\\\":\\\"Your session expired due to inactivity. Please log in again.\\\"}"
+                ? "{\"message\":\"Your session expired due to inactivity. Please log in again.\"}"
                 : "{\\\"message\\\":\\\"Administrator login required\\\"}");
 
         return false;
