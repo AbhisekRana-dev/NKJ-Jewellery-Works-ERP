@@ -3,7 +3,7 @@ import { request } from "../api/client";
 
 const AuthContext = createContext(null);
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
-const ACTIVITY_SYNC_INTERVAL_MS = 30 * 1000;
+const ACTIVITY_SYNC_INTERVAL_MS = 10 * 1000;
 const LAST_ACTIVITY_KEY = "nkj.auth.last-activity.v1";
 const LAST_SERVER_ACTIVITY_SYNC_KEY = "nkj.auth.last-server-activity-sync.v1";
 const LOGOUT_BROADCAST_KEY = "nkj.auth.logout-event.v1";
