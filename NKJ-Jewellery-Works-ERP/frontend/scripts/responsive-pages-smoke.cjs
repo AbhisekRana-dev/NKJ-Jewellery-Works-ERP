@@ -988,9 +988,10 @@ async function testIdleLogoutAndDraftRecovery(browser) {
       return raw && JSON.parse(raw).customer?.name === "Draft Survives Automatic Logout";
     }, INVOICE_DRAFT_TEST_KEY, { timeout: 5000 });
 
-    await page.evaluate((key) => {
-      localStorage.setItem(key, String(Date.now() - 10 * 60 * 1000 - 1_000));
-    }, IDLE_ACTIVITY_TEST_KEY);
+    await page.evaluate(() => {
+      const baseline = Date.now();
+      Date.now = () => baseline + (10 * 60 * 1000) + 1_000;
+    });
     await page.waitForURL("**/login?reason=idle", { timeout: 8000 });
     await page.getByText("Your session expired due to inactivity. Please log in again.", { exact: true })
       .waitFor({ state: "visible", timeout: 5000 });
@@ -1013,15 +1014,20 @@ async function testIdleLogoutAndDraftRecovery(browser) {
       "The user's unfinished invoice draft was not restored after logging in again."
     );
 
-    const previousActivity = await page.evaluate((key) => {
-      const oldValue = Date.now() - 9 * 60 * 1000;
-      localStorage.setItem(key, String(oldValue));
-      return oldValue;
+    const clockState = await page.evaluate((key) => {
+      const baseline = Date.now();
+      const previous = baseline - 9 * 60 * 1000;
+      localStorage.setItem(key, String(previous));
+      // Move the test clock forward nine minutes while keeping the app session
+      // under its ten-minute limit; the next click must refresh both local and
+      // cross-tab activity timestamps.
+      Date.now = () => baseline + 9 * 60 * 1000;
+      return { previous, now: Date.now() };
     }, IDLE_ACTIVITY_TEST_KEY);
     await page.locator("#invoice-print .inv-two .inv-panel").first()
       .locator(".form-grid label input").first().click();
     await page.waitForFunction((key, previous) => Number(localStorage.getItem(key)) > previous,
-      IDLE_ACTIVITY_TEST_KEY, previousActivity, { timeout: 5000 });
+      IDLE_ACTIVITY_TEST_KEY, clockState.previous, { timeout: 5000 });
     assert(
       await page.evaluate((key) => Date.now() - Number(localStorage.getItem(key)) < 10 * 60 * 1000,
         IDLE_ACTIVITY_TEST_KEY),
