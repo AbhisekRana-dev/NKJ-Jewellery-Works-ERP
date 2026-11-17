@@ -31,6 +31,7 @@ export function AuthProvider({ children }) {
   const [pending, setPending] = useState("");
   const [authReady, setAuthReady] = useState(false);
   const [sessionEndedReason, setSessionEndedReason] = useState("");
+  const pendingChallengeRef = useRef("");
   const logoutInProgressRef = useRef(false);
 
   function publishLogout(reason) {
@@ -52,6 +53,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(LAST_SERVER_ACTIVITY_SYNC_KEY);
     setUser("");
     setPending("");
+    pendingChallengeRef.current = "";
     setAuthReady(true);
     setSessionEndedReason(reason);
     if (notifyApp) {
@@ -239,15 +241,19 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
-    setPending(result.challengeId);
+    pendingChallengeRef.current = result.challengeId || "";
+    setPending(pendingChallengeRef.current);
     return result;
   }
 
   async function verify(code) {
-    if (!pending) throw new Error("Your login challenge expired. Please sign in again.");
+    // Login starts password and TOTP verification in one async submit handler.
+    // A ref avoids reading a stale React render's pending-challenge state.
+    const challengeId = pendingChallengeRef.current || pending;
+    if (!challengeId) throw new Error("Your login challenge expired. Please sign in again.");
     const result = await request("/auth/verify", {
       method: "POST",
-      body: JSON.stringify({ challengeId: pending, code }),
+      body: JSON.stringify({ challengeId, code }),
     });
     localStorage.setItem("nkj_token", result.token);
     localStorage.setItem("nkj_user", result.username);
@@ -258,6 +264,7 @@ export function AuthProvider({ children }) {
     setSessionEndedReason("");
     setUser(result.username);
     setPending("");
+    pendingChallengeRef.current = "";
     setAuthReady(true);
     return result;
   }
