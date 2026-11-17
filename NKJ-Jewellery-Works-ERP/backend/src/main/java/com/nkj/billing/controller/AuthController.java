@@ -46,20 +46,17 @@ public class AuthController {
     public Map<String,Object> logout(@RequestHeader(value="Authorization", required=false) String h) {
         if (h != null && h.startsWith("Bearer ")) {
             String token = h.substring(7);
-            if (auth.valid(token)) {
-                // A QR capability must not remain usable after the owner explicitly
-                // signs out. In-flight mobile pages immediately become revoked.
-                jdbc.update("""
-                    UPDATE public.jewellery_design_upload_sessions
-                       SET revoked_at=NOW()
-                     WHERE created_by=?
-                       AND consumed_at IS NULL
-                       AND revoked_at IS NULL
-                       AND expires_at > NOW()
-                    """, auth.getUsername());
-            }
-            auth.logout(token);
+            // Revoke the owner session even when its idle timeout has just elapsed.
+            // This endpoint is safe to call repeatedly and never revives the token.
+            if (auth.logout(token)) revokePendingQrUploads();
         }
+        return Map.of("success", true);
+    }
+
+    @PostMapping("/activity")
+    public Map<String,Object> recordActivity(
+            @RequestHeader(value="Authorization", required=false) String header) {
+        auth.recordActivity(ownerToken(header));
         return Map.of("success", true);
     }
 
@@ -139,8 +136,14 @@ public class AuthController {
     /** Password verification only starts the email OTP challenge; it does not create a session. */
     @GetMapping("/session")
     public Map<String,String> session(@RequestHeader(value="Authorization", required=false) String header) {
-        String token = header != null && header.startsWith("Bearer ") ? header.substring(7) : "";
-        if (!auth.valid(token)) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Administrator session is not valid.");
+        String token = ownerToken(header);
+        boolean idleExpired = auth.isIdleExpired(token);
+        if (!auth.valid(token)) {
+            String message = idleExpired
+                    ? "Your session expired due to inactivity. Please log in again."
+                    : "Administrator session is not valid.";
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, message);
+        }
         return Map.of("username", auth.getUsername());
     }
 
