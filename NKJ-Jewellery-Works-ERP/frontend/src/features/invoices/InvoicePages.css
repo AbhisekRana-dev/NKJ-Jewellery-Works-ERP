@@ -2192,16 +2192,6 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   min-height: 40px;
   padding: 9px 14px;
 }
-.nkj-session-expired-notice {
-  margin: 0 0 14px;
-  padding: 11px 13px;
-  border: 1px solid #e5c78f;
-  border-radius: 8px;
-  background: #fff8e9;
-  color: #6b4817;
-  font-size: 13px;
-  line-height: 1.45;
-}
 @media (max-width: 480px) {
   .nkj-invoice-reset-dialog { padding: 18px; }
   .nkj-invoice-reset-actions { display: grid; grid-template-columns: 1fr 1fr; }
