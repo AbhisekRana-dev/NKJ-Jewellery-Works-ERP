@@ -28,8 +28,25 @@ public class InvoicePinService {
 
     public InvoicePinService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
+    /**
+     * Issue a one-time ticket for either saving/updating or printing an invoice.
+     * SAVE tickets may be unbound for a new invoice or bound to an existing
+     * invoice ID for an edit. PRINT tickets must always target a saved invoice.
+     */
     public synchronized String verify(String pin, String ip, Long invoiceId) {
-        requireSavedInvoice(invoiceId);
+        return verify(pin, ip, invoiceId, "PRINT");
+    }
+
+    public synchronized String verify(String pin, String ip, Long invoiceId, String requestedPurpose) {
+        String purpose = requestedPurpose == null || requestedPurpose.isBlank()
+                ? "PRINT" : requestedPurpose.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"PRINT".equals(purpose) && !"SAVE".equals(purpose)) {
+            throw new IllegalArgumentException("Unsupported invoice PIN purpose.");
+        }
+        if ("PRINT".equals(purpose) && invoiceId == null) {
+            throw new IllegalArgumentException("A saved invoice is required before printing or downloading a PDF.");
+        }
+        if (invoiceId != null) requireSavedInvoice(invoiceId);
         String key = (ip == null || ip.isBlank()) ? "unknown" : ip;
         long now = System.currentTimeMillis();
         AttemptState state = attempts.getOrDefault(key, new AttemptState(0, now, 0));
@@ -58,8 +75,11 @@ public class InvoicePinService {
         attempts.remove(key);
         byte[] bytes = new byte[32]; random.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        tickets.put(token, new Ticket(key, now + TICKET_TTL_MS, invoiceId));
-        audit("PIN_VERIFIED", invoiceId, key, Map.of("expiresAt", Instant.ofEpochMilli(now + TICKET_TTL_MS).toString()));
+        tickets.put(token, new Ticket(key, now + TICKET_TTL_MS, invoiceId, purpose));
+        audit("PIN_VERIFIED", invoiceId, key, Map.of(
+                "purpose", purpose,
+                "expiresAt", Instant.ofEpochMilli(now + TICKET_TTL_MS).toString()
+        ));
         return token;
     }
 
@@ -70,10 +90,30 @@ public class InvoicePinService {
         Ticket ticket = tickets.remove(token);
         String key = (ip == null || ip.isBlank()) ? "unknown" : ip;
         if (ticket == null || ticket.expiresAt() < System.currentTimeMillis() ||
-                !ticket.ip().equals(key) || invoiceId == null || !ticket.invoiceId().equals(invoiceId)) {
+                !"PRINT".equals(ticket.purpose()) || !ticket.ip().equals(key) ||
+                invoiceId == null || !invoiceId.equals(ticket.invoiceId())) {
             throw new IllegalArgumentException("Invoice PIN verification expired or does not match this saved invoice. Verify the PIN again.");
         }
         requireSavedInvoice(invoiceId);
+    }
+
+    /**
+     * Consume the one-time PIN ticket immediately before a new invoice is
+     * inserted or a saved invoice is updated. The ticket is bound to the
+     * intended existing invoice ID for edits, or null for a new invoice.
+     */
+    public void consumeForSave(String token, String ip, Long invoiceId) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Verify the invoice security PIN before saving this invoice.");
+        }
+        Ticket ticket = tickets.remove(token);
+        String key = (ip == null || ip.isBlank()) ? "unknown" : ip;
+        if (ticket == null || ticket.expiresAt() < System.currentTimeMillis() ||
+                !"SAVE".equals(ticket.purpose()) || !ticket.ip().equals(key) ||
+                !java.util.Objects.equals(ticket.invoiceId(), invoiceId)) {
+            throw new IllegalArgumentException("Invoice PIN verification expired or does not match this save request. Verify the PIN again.");
+        }
+        if (invoiceId != null) requireSavedInvoice(invoiceId);
     }
 
     private void requireSavedInvoice(Long invoiceId) {
@@ -108,5 +148,5 @@ public class InvoicePinService {
         }
     }
     private record AttemptState(int count, long windowStart, long blockedUntil) {}
-    private record Ticket(String ip, long expiresAt, Long invoiceId) {}
+    private record Ticket(String ip, long expiresAt, Long invoiceId, String purpose) {}
 }
