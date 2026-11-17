@@ -993,8 +993,21 @@ async function testIdleLogoutAndDraftRecovery(browser) {
       Date.now = () => baseline + (10 * 60 * 1000) + 1_000;
     });
     await page.waitForURL("**/login?reason=idle", { timeout: 8000 });
-    await page.getByText("Your session expired due to inactivity. Please log in again.", { exact: true })
-      .waitFor({ state: "visible", timeout: 5000 });
+    try {
+      await page.locator(".nkj-login-card [role='alert']")
+        .filter({ hasText: "Your session expired due to inactivity. Please log in again." })
+        .waitFor({ state: "visible", timeout: 5000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        url: location.href,
+        bodyText: (document.body.innerText || "").slice(0, 1400),
+        tokenPresent: Boolean(localStorage.getItem("nkj_token")),
+        user: localStorage.getItem("nkj_user"),
+        rootMarkup: document.getElementById("root")?.innerHTML.slice(0, 1800) || "",
+      }));
+      throw new Error("Idle expiration login notice was not visible: " +
+        JSON.stringify(diagnostic) + "; " + error.message);
+    }
     assert(
       await page.evaluate((key) => Boolean(localStorage.getItem(key)), INVOICE_DRAFT_TEST_KEY),
       "Automatic logout deleted the unfinished invoice draft."
