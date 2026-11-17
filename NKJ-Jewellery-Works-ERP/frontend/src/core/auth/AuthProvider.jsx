@@ -91,6 +91,20 @@ export function AuthProvider({ children }) {
         }
       }
 
+      // Login happens in one tab, but the bearer token and username are shared
+      // by the same-origin browser tabs. Re-scope the other tabs to that account
+      // so a prior user's draft state cannot remain mounted beside the new token.
+      if (event.key === "nkj_user") {
+        if (event.newValue) {
+          setUser(event.newValue);
+          setPending("");
+          setAuthReady(true);
+        } else {
+          clearSession(expirationReasonFromStorage(), true);
+        }
+        return;
+      }
+
       // The logout signal may arrive just before the shared token is removed.
       // Preserve its idle reason rather than replacing the login notice with a
       // generic manual-logout redirect on the subsequent storage event.
