@@ -42,6 +42,15 @@ public class AuthController {
         return Map.of("token", auth.verify(x.challengeId(), x.code(),
                 request.getHeader("User-Agent"), clientIp(request)), "username", auth.getUsername());
     }
+    @PostMapping("/activity")
+    public Map<String,Object> recordActivity(
+            @RequestHeader(value="Authorization", required=false) String header) {
+        if (!auth.recordActivity(ownerToken(header))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired due to inactivity. Please log in again.");
+        }
+        return Map.of("active", true);
+    }
+
     @PostMapping("/logout")
     public Map<String,Object> logout(@RequestHeader(value="Authorization", required=false) String h) {
         if (h != null && h.startsWith("Bearer ")) {
