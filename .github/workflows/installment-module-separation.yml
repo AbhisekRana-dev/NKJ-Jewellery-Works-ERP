@@ -715,6 +715,62 @@ jobs:
           assert "customerEmail" not in first.get("details", {}) and "email" not in first.get("details", {}), "Invoice detail payload exposed customer email."
           first_customer_id = first["customerId"]
 
+          # The public invoice API must reject direct creation without any PIN ticket.
+          missing_pin_key = "CI-CUSTOMER-PIN-MISSING-001"
+          missing_pin_req = urllib.request.Request(
+              BASE + "/api/invoices",
+              data=json.dumps(invoice_payload(
+                  "CI Missing PIN Customer", "9876543215"
+              )).encode(),
+              headers={
+                  "Content-Type": "application/json",
+                  "Idempotency-Key": missing_pin_key
+              },
+              method="POST"
+          )
+          try:
+              with urllib.request.urlopen(missing_pin_req, timeout=30):
+                  raise AssertionError("Public invoice create accepted a request without a SAVE PIN ticket.")
+          except urllib.error.HTTPError as error:
+              assert 400 <= error.code < 500, f"Missing SAVE PIN should be rejected with a client error, got HTTP {error.code}."
+          assert sql(
+              "SELECT COUNT(*) FROM invoices WHERE idempotency_key='CI-CUSTOMER-PIN-MISSING-001'"
+          ) == "0", "A direct request without a SAVE PIN ticket inserted an invoice."
+
+          # A PRINT ticket for an existing invoice must not authorize a new invoice creation.
+          print_verification = request_json(
+              "/api/invoices/verify-pin",
+              method="POST",
+              payload={
+                  "pin": os.environ["INVOICE_TEST_PIN"],
+                  "invoiceId": first["id"],
+                  "purpose": "PRINT"
+              }
+          )
+          print_ticket = print_verification.get("ticket")
+          assert print_verification.get("verified") and print_ticket, "Could not prepare the PRINT-purpose negative test ticket."
+          wrong_purpose_key = "CI-CUSTOMER-PIN-WRONG-PURPOSE-001"
+          wrong_purpose_req = urllib.request.Request(
+              BASE + "/api/invoices",
+              data=json.dumps(invoice_payload(
+                  "CI Wrong Purpose Customer", "9876543216"
+              )).encode(),
+              headers={
+                  "Content-Type": "application/json",
+                  "Idempotency-Key": wrong_purpose_key,
+                  "X-Invoice-Pin-Ticket": print_ticket
+              },
+              method="POST"
+          )
+          try:
+              with urllib.request.urlopen(wrong_purpose_req, timeout=30):
+                  raise AssertionError("A PRINT-purpose ticket authorized invoice creation.")
+          except urllib.error.HTTPError as error:
+              assert 400 <= error.code < 500, f"Wrong-purpose PIN ticket should be rejected with a client error, got HTTP {error.code}."
+          assert sql(
+              "SELECT COUNT(*) FROM invoices WHERE idempotency_key='CI-CUSTOMER-PIN-WRONG-PURPOSE-001'"
+          ) == "0", "A PRINT-purpose ticket inserted a new invoice."
+
           second = save_invoice(
               "CI Different Display Name", "9876543210",
               "alpha@example.test", "Customer address from second invoice",
