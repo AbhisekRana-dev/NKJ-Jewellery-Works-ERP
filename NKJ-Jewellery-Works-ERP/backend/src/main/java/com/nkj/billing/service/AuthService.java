@@ -33,6 +33,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class AuthService {
     private static final long CHALLENGE_TTL_MILLIS = 2 * 60 * 1000L;
     private static final long SESSION_TTL_MILLIS = 8 * 60 * 60 * 1000L;
+    private static final long SESSION_IDLE_TTL_MILLIS = 10 * 60 * 1000L;
     private static final long SETUP_OTP_TTL_MILLIS = 5 * 60 * 1000L;
     private static final long SETUP_TOKEN_TTL_MILLIS = 10 * 60 * 1000L;
     private static final long SESSION_MANAGER_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
@@ -72,10 +73,12 @@ public class AuthService {
     private static final class SessionState {
         private final String id;
         private final long expiresAt;
+        private volatile long lastActivityAt;
         private volatile long lastActivityPersistedAt;
         private SessionState(String id, long expiresAt, long now) {
             this.id = id;
             this.expiresAt = expiresAt;
+            this.lastActivityAt = now;
             this.lastActivityPersistedAt = now;
         }
     }
@@ -234,22 +237,51 @@ public class AuthService {
         return "otpauth://totp/" + issuer + ":" + account + "?secret=" + secret + "&issuer=" + issuer + "&digits=6&period=30";
     }
 
+    /**
+     * Validate a session without extending its inactivity window. Background
+     * API polling and the /auth/session heartbeat deliberately use this path.
+     */
     public boolean valid(String token) {
+        return valid(token, false);
+    }
+
+    /**
+     * Validate a session and record a real user interaction. The frontend calls
+     * this only from its throttled interaction heartbeat, never from API polling.
+     */
+    public boolean recordActivity(String token) {
+        return valid(token, true);
+    }
+
+    private boolean valid(String token, boolean userActivity) {
         if (token == null || token.isBlank()) return false;
         SessionState state = sessions.get(token);
         if (state == null) return false;
+
         long now = System.currentTimeMillis();
-        if (state.expiresAt < now) {
-            sessions.remove(token, state);
-            sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
+        boolean absoluteExpiry = state.expiresAt <= now;
+        boolean idleExpiry = now - state.lastActivityAt >= SESSION_IDLE_TTL_MILLIS;
+        if (absoluteExpiry || idleExpiry) {
+            expireSession(token, state);
             return false;
         }
-        if (now - state.lastActivityPersistedAt >= SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS) {
-            jdbc.update("UPDATE owner_login_sessions SET last_active_at=NOW() WHERE id=? AND logged_out_at IS NULL",
-                    UUID.fromString(state.id));
-            state.lastActivityPersistedAt = now;
+
+        if (userActivity) {
+            state.lastActivityAt = now;
+            if (now - state.lastActivityPersistedAt >= SESSION_ACTIVITY_WRITE_INTERVAL_MILLIS) {
+                jdbc.update("UPDATE owner_login_sessions SET last_active_at=NOW() WHERE id=? AND logged_out_at IS NULL",
+                        UUID.fromString(state.id));
+                state.lastActivityPersistedAt = now;
+            }
         }
         return true;
+    }
+
+    private void expireSession(String token, SessionState state) {
+        if (!sessions.remove(token, state)) return;
+        jdbc.update("UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW() WHERE id=?",
+                UUID.fromString(state.id));
+        sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
     }
 
     public void logout(String token) {
@@ -259,6 +291,11 @@ public class AuthService {
             jdbc.update("UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW() WHERE id=?",
                     UUID.fromString(state.id));
             sessionManagerGrants.entrySet().removeIf(entry -> entry.getValue().ownerSessionId().equals(state.id));
+        } else {
+            // Also persist revocation when logout follows an expiry check or a
+            // request reaches an instance that no longer has the token in memory.
+            jdbc.update("UPDATE owner_login_sessions SET logged_out_at=COALESCE(logged_out_at,NOW()), last_active_at=NOW() WHERE token_hash=? AND logged_out_at IS NULL",
+                    sha256(token));
         }
     }
 
