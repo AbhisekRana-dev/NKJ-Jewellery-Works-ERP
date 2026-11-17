@@ -22,13 +22,18 @@ const ownerRoutes = [
   "/", "/invoice", "/calculator", "/designs",
   "/dashboard", "/saved-invoices", "/customers", "/profile", "/rates",
   "/inventory", "/stock-movements", "/staff", "/attendance", "/salary",
-  "/salary-payments", "/leaves", "/expenses", "/bookings", "/installments",
+  "/salary-payments", "/leaves", "/expenses", "/bookings", "/installments", "/installment-payments",
   "/suppliers", "/purchases", "/payments", "/transactions", "/old-gold",
   "/karigars", "/repairs", "/reports", "/reports/sales", "/reports/profit",
   "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
 ];
 
 const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/login", "/setup-totp"];
+
+// Authenticated compatibility routes may intentionally land on a canonical page.
+const expectedRoutePaths = {
+  "/installment-payments": "/installments",
+};
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -160,9 +165,10 @@ async function checkViewport(page, path, viewport) {
     await page.waitForTimeout(100);
 
     const currentPath = await page.evaluate(() => window.location.pathname);
+    const expectedPath = expectedRoutePaths[path] || path;
     assert(
-      currentPath === path,
-      path + " was redirected to " + currentPath + "; owner-session mock did not authenticate the route."
+      currentPath === expectedPath,
+      path + " resolved to " + currentPath + "; expected " + expectedPath + "."
     );
 
     try {
