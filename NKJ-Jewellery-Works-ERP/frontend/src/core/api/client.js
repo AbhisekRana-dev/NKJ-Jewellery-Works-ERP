@@ -46,7 +46,10 @@ export async function request(path, options = {}) {
   if (response.status === 401 && !suppressSessionExpiry) {
     localStorage.removeItem("nkj_token");
     localStorage.removeItem("nkj_user");
-    window.dispatchEvent(new Event("nkj:session-expired"));
+    const reason = /inactivity/i.test(String(data.message || data.error || ""))
+      ? "inactivity"
+      : "expired";
+    window.dispatchEvent(new CustomEvent("nkj:session-expired", { detail: { reason } }));
   }
 
   if (!response.ok) {
