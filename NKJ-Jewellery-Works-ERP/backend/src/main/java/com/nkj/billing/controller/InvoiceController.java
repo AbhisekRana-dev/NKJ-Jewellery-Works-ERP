@@ -34,6 +34,7 @@ import com.nkj.billing.repo.InvoiceRepository;
 import com.nkj.billing.service.AuthService;
 import com.nkj.billing.service.CustomerService;
 import com.nkj.billing.service.CashFlowService;
+import com.nkj.billing.service.InvoicePinService;
 import com.nkj.billing.model.Customer;
 
 @RestController
@@ -46,15 +47,18 @@ public class InvoiceController {
     private final JdbcTemplate jdbc;
     private final CustomerService customerService;
     private final CashFlowService cashFlow;
+    private final InvoicePinService invoicePins;
 
     public InvoiceController(InvoiceRepository repo, ObjectMapper mapper, AuthService auth,
-                             JdbcTemplate jdbc, CustomerService customerService, CashFlowService cashFlow) {
+                             JdbcTemplate jdbc, CustomerService customerService, CashFlowService cashFlow,
+                             InvoicePinService invoicePins) {
         this.repo = repo;
         this.mapper = mapper;
         this.auth = auth;
         this.jdbc = jdbc;
         this.customerService = customerService;
         this.cashFlow = cashFlow;
+        this.invoicePins = invoicePins;
     }
 
     /**
@@ -69,6 +73,7 @@ public class InvoiceController {
     @Transactional
     public Map<String, Object> create(@RequestBody Map<String, Object> body,
                                       @RequestHeader("Idempotency-Key") String idempotencyKey,
+                                      @RequestHeader(value = "X-Invoice-Pin-Ticket", required = false) String invoicePinTicket,
                                       jakarta.servlet.http.HttpServletRequest servletRequest) throws Exception {
         String requestKey = clean(idempotencyKey);
         if (!requestKey.matches("[A-Za-z0-9._:-]{1,120}")) {
@@ -151,6 +156,11 @@ public class InvoiceController {
             throw new IllegalArgumentException("Customer name is required.");
         }
 
+        // The public invoice-create endpoint still requires a server-issued
+        // one-time SAVE ticket. This check runs after validation/idempotency
+        // handling but before any new invoice row or payment is inserted.
+        invoicePins.consumeForSave(invoicePinTicket, servletRequest.getRemoteAddr(), null);
+
         Invoice invoice = new Invoice();
         invoice.setInvoiceNo("PENDING-" + UUID.randomUUID());
         invoice.setIdempotencyKey(requestKey);
@@ -232,6 +242,7 @@ public class InvoiceController {
     @Transactional
     public Map<String, Object> update(@PathVariable Long id,
                                       @RequestBody Map<String, Object> body,
+                                      @RequestHeader(value = "X-Invoice-Pin-Ticket", required = false) String invoicePinTicket,
                                       HttpServletRequest servletRequest) throws Exception {
         validateInvoiceBody(body);
         validateMobileNumber(body);
@@ -250,6 +261,9 @@ public class InvoiceController {
         if (customerName.isEmpty()) {
             throw new IllegalArgumentException("Customer name is required.");
         }
+
+        // Bind the PIN authorization to the exact invoice being edited.
+        invoicePins.consumeForSave(invoicePinTicket, servletRequest.getRemoteAddr(), id);
 
         invoice.setShowGstin(booleanValue(body.get("showGstin"), true));
         invoice.setCustomerName(customerName);
