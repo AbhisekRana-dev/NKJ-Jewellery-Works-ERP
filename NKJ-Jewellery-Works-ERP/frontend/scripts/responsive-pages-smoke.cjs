@@ -840,6 +840,16 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
         Number(draft.newItems?.[0]?.netWeight) === 2.5;
     }, INVOICE_DRAFT_TEST_KEY, { timeout: 5000 });
 
+    // Escape must close the calculator popup, not trigger invoice reset.
+    await page.getByRole("button", { name: "Open manual calculator" }).click();
+    await page.locator(".nkj-invoice-calculator-popup").waitFor({ state: "visible", timeout: 5000 });
+    await page.keyboard.press("Escape");
+    await page.locator(".nkj-invoice-calculator-popup").waitFor({ state: "hidden", timeout: 5000 });
+    assert(
+      await page.getByRole("dialog").count() === 0,
+      "Escape from the calculator incorrectly opened the invoice reset confirmation."
+    );
+
     const storedDraft = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), INVOICE_DRAFT_TEST_KEY);
     const draftKeys = Object.keys(storedDraft).join(",").toLowerCase();
     assert(!/(password|token|pin)/.test(draftKeys),
@@ -906,6 +916,59 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
       "Confirming the Reset button did not clear the current invoice."
     );
     process.stdout.write("PASS user-scoped draft, SPA navigation, browser refresh, Escape cancel/confirm and Reset cancel/confirm\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testInvoiceDraftPerUserIsolation(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const ownerPage = await context.newPage();
+  await installApiMocks(ownerPage);
+  try {
+    await ownerPage.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await ownerPage.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    await ownerPage.locator("#invoice-print .inv-two .inv-panel").first()
+      .locator(".form-grid label input").first().fill("Owner-Only Draft");
+    await ownerPage.waitForFunction((key) => {
+      const raw = localStorage.getItem(key);
+      return raw && JSON.parse(raw).customer?.name === "Owner-Only Draft";
+    }, INVOICE_DRAFT_TEST_KEY, { timeout: 5000 });
+
+    const staffPage = await context.newPage();
+    await installApiRouteMocks(staffPage);
+    await staffPage.addInitScript(() => {
+      localStorage.setItem("nkj_token", "secondary-user-test-token");
+      localStorage.setItem("nkj_user", "staff-qa");
+    });
+    await staffPage.route("**/api/auth/session", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ username: "staff-qa" }),
+      });
+    });
+    await staffPage.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await staffPage.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+    const staffDraftKey = "nkj.invoice.draft.v1.v2.staff-qa";
+    await staffPage.locator("#invoice-print .inv-two .inv-panel").first()
+      .locator(".form-grid label input").first().fill("Staff-Only Draft");
+    await staffPage.waitForFunction((key) => {
+      const raw = localStorage.getItem(key);
+      return raw && JSON.parse(raw).customer?.name === "Staff-Only Draft";
+    }, staffDraftKey, { timeout: 5000 });
+
+    const drafts = await ownerPage.evaluate(({ ownerKey, staffKey }) => ({
+      owner: JSON.parse(localStorage.getItem(ownerKey) || "null"),
+      staff: JSON.parse(localStorage.getItem(staffKey) || "null"),
+    }), { ownerKey: INVOICE_DRAFT_TEST_KEY, staffKey: staffDraftKey });
+    assert(drafts.owner?.customer?.name === "Owner-Only Draft",
+      "The second user's form changed the first user's invoice draft.");
+    assert(drafts.staff?.customer?.name === "Staff-Only Draft",
+      "The second user's invoice draft was not saved in its own storage namespace.");
+
+    process.stdout.write("PASS invoice drafts remain isolated between distinct authenticated usernames\\n");
   } finally {
     await context.close();
   }
@@ -1178,6 +1241,7 @@ async function testPublicNavigation(browser) {
     }
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftRecoveryAndReset(browser);
+    await testInvoiceDraftPerUserIsolation(browser);
     await testIdleLogoutAndDraftRecovery(browser);
     await testMultiTabLogoutSynchronization(browser);
     await testSavedInvoiceMobile(browser);
