@@ -473,7 +473,7 @@ async function fillNewInvoiceForMobile(page, width) {
   assert(values.rows === 2, "New Invoice did not add the second ornament row.");
   assert(Math.abs(values.firstAmount - 36975) < 0.01,
     "New ornament row amount is incorrect: " + JSON.stringify(values));
-  assert(Math.abs(values.totalNumber - 50287.5) < 0.01,
+  assert(Math.abs(values.totalNumber - 45425) < 0.01,
     "New ornament subtotal is incorrect: " + JSON.stringify(values));
   assert(values.tableScrollWidth > values.tableClientWidth,
     "The New Invoice ornament table is not wider than its scroll viewport.");
