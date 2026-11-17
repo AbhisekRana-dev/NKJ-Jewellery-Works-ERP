@@ -2149,3 +2149,52 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     display: none !important;
   }
 }
+
+
+/* Unsaved invoice reset confirmation; kept separate from invoice print styles. */
+.nkj-invoice-reset-backdrop {
+  position: fixed;
+  z-index: 10050;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(20, 10, 14, .58);
+}
+.nkj-invoice-reset-dialog {
+  width: min(440px, 100%);
+  padding: 22px;
+  border: 1px solid #d69a36;
+  border-radius: 12px;
+  background: #fff;
+  color: #25151a;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .28);
+}
+.nkj-invoice-reset-dialog h3 {
+  margin: 0 0 10px;
+  color: #8d1230;
+  font: 700 20px Arial, sans-serif;
+}
+.nkj-invoice-reset-dialog p {
+  margin: 0;
+  color: #493941;
+  font: 14px/1.55 Arial, sans-serif;
+}
+.nkj-invoice-reset-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.nkj-invoice-reset-actions button {
+  min-width: 112px;
+}
+@media (max-width: 480px) {
+  .nkj-invoice-reset-dialog { padding: 18px; }
+  .nkj-invoice-reset-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .nkj-invoice-reset-actions button { width: 100%; min-width: 0; }
+}
+@media print {
+  .nkj-invoice-reset-backdrop { display: none !important; }
+}
