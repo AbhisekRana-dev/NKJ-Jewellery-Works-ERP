@@ -872,7 +872,7 @@ export default function JewelleryCatalogAdminPage() {
                   <div className="nkj-catalog-bulk-review-fields">
                     <label>Product name
                       <input value={bulkDesignNames[index] || ""} maxLength={150} disabled={bulkRunning}
-                        onChange={(event) => setBulkDesignNames((current) => current.map((name, itemIndex) => itemIndex === index ? event.target.value : name))} />
+                        onChange={(event) => { setBulkDesignNames((current) => current.map((name, itemIndex) => itemIndex === index ? event.target.value : name)); setBulkNameConfirmed((current) => current.map((confirmed, itemIndex) => itemIndex === index ? false : confirmed)); }} />
                     </label>
                     <label className="nkj-catalog-name-confirm">
                       <input type="checkbox" checked={Boolean(bulkNameConfirmed[index])} disabled={bulkRunning || !String(bulkDesignNames[index] || "").trim()}
