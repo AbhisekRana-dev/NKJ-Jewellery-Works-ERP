@@ -84,6 +84,10 @@ const responsiveSavedInvoice = {
 
 function apiPayload(path, method) {
   if (path.endsWith("/auth/session")) return { username: "admin2026" };
+  if (path === "/api/auth/login" && method === "POST") return { challengeId: "responsive-qa-login-challenge" };
+  if (path === "/api/auth/verify" && method === "POST") return { token: "responsive-qa-new-token", username: "admin2026" };
+  if (path === "/api/auth/activity" && method === "POST") return { success: true };
+  if (path === "/api/auth/logout" && method === "POST") return { success: true };
   if (path === "/api/admin/profile") {
     return {
       fullName: "Responsive Test Owner",
@@ -709,6 +713,11 @@ async function testInvoiceSavePinGate(browser) {
     await page.locator("#invoice-print .new-items-table tbody tr:first-child td input")
       .first().fill("PIN gate test gold ring");
 
+    await page.waitForFunction(() => {
+      const draft = JSON.parse(localStorage.getItem("nkj.invoice.draft.v2.anonymous") || "null");
+      return Boolean(draft && draft.customer?.name === "PIN Gate QA Customer");
+    }, { timeout: 5000 });
+
     await page.locator(".invoice-actions button.primary").click();
     await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
 
@@ -727,6 +736,10 @@ async function testInvoiceSavePinGate(browser) {
       "The invoice POST did not include the one-time SAVE PIN ticket.");
     assert(Boolean(saveRequestHeaders?.["idempotency-key"]),
       "The invoice POST did not include its idempotency key.");
+    await page.waitForFunction(
+      () => localStorage.getItem("nkj.invoice.draft.v2.anonymous") === null,
+      { timeout: 5000 }
+    );
 
     await page.locator(".invoice-actions button.secondary").click();
     await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
@@ -896,6 +909,220 @@ async function testPublicNavigation(browser) {
   }
 }
 
+
+
+async function openInvoiceFromOwnerHome(page) {
+  await page.locator(".nkj-owner-topbar .brand").click();
+  await page.waitForURL("**/");
+  const invoiceLink = page.locator('#nkj-owner-sidebar a[href="/invoice"]').first();
+  if (!(await invoiceLink.isVisible().catch(() => false))) {
+    await page.locator(".nkj-mobile-menu-button").click();
+  }
+  await invoiceLink.click();
+  await page.waitForURL("**/invoice");
+  await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+}
+
+async function testInvoiceDraftRecoveryAndReset(browser) {
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const page = await context.newPage();
+  let invoiceDeleteCalls = 0;
+  page.on("request", (request) => {
+    if (request.method() === "DELETE" && new URL(request.url()).pathname.startsWith("/api/invoices/")) {
+      invoiceDeleteCalls += 1;
+    }
+  });
+  await installApiMocks(page);
+
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+    const customerInputs = page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input");
+    await customerInputs.nth(0).fill("Draft Recovery Customer");
+    await customerInputs.nth(1).fill("9876543210");
+    await customerInputs.nth(2).fill("Jhargram, West Bengal");
+    const paymentPanel = page.locator("#invoice-print .inv-two .inv-panel").nth(1);
+    await paymentPanel.locator(".form-grid label select").selectOption("UPI");
+    await paymentPanel.locator(".form-grid label input").fill("DRAFT-UPI-REF-001");
+    const firstItem = page.locator("#invoice-print .new-items-table tbody tr:first-child td input");
+    await firstItem.nth(0).fill("22K Gold Ring - Draft Recovery");
+    await firstItem.nth(1).fill("22K");
+    await firstItem.nth(2).fill("2.5");
+    await firstItem.nth(3).fill("6900");
+    await firstItem.nth(4).fill("250");
+    await page.locator("#invoice-print .totals input").first().fill("3");
+
+    await page.waitForFunction(() => {
+      const draft = JSON.parse(localStorage.getItem("nkj.invoice.draft.v2.admin2026") || "null");
+      return Boolean(
+        draft &&
+        draft.owner === "admin2026" &&
+        draft.customer?.name === "Draft Recovery Customer" &&
+        draft.newItems?.[0]?.description === "22K Gold Ring - Draft Recovery" &&
+        draft.paymentMode === "UPI" &&
+        draft.referenceNo === "DRAFT-UPI-REF-001"
+      );
+    }, { timeout: 7000 });
+
+    await openInvoiceFromOwnerHome(page);
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input").first().inputValue()
+        === "Draft Recovery Customer",
+      "Customer data did not restore after navigating Home and returning to New Invoice."
+    );
+    assert(
+      await page.locator("#invoice-print .new-items-table tbody tr:first-child td input").first().inputValue()
+        === "22K Gold Ring - Draft Recovery",
+      "Ornament data did not restore after SPA navigation."
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input").first().inputValue()
+        === "Draft Recovery Customer",
+      "Customer data did not restore after browser refresh."
+    );
+    assert(
+      await page.locator("#invoice-print .new-items-table tbody tr:first-child td input").first().inputValue()
+        === "22K Gold Ring - Draft Recovery",
+      "Ornament data did not restore after browser refresh."
+    );
+
+    const paymentSelect = page.locator("#invoice-print .inv-two .inv-panel").nth(1).locator(".form-grid label select");
+    await paymentSelect.focus();
+    await paymentSelect.press("Escape");
+    assert(await page.locator(".nkj-invoice-reset-dialog").count() === 0,
+      "Invoice Escape handler stole Escape from the payment dropdown.");
+
+    const beforeCancel = await page.evaluate(() => localStorage.getItem("nkj.invoice.draft.v2.admin2026"));
+    await page.locator("#invoice-print .new-items-table tbody tr:first-child td input").first().press("Escape");
+    await page.locator(".nkj-invoice-reset-dialog").waitFor({ state: "visible", timeout: 3000 });
+    await page.getByRole("button", { name: "Cancel" }).click();
+    assert(await page.locator(".nkj-invoice-reset-dialog").count() === 0, "Escape reset confirmation did not close on Cancel.");
+    assert(await page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input").first().inputValue()
+      === "Draft Recovery Customer", "Escape Cancel changed the invoice customer.");
+    assert(await page.evaluate(() => localStorage.getItem("nkj.invoice.draft.v2.admin2026")) === beforeCancel,
+      "Escape Cancel changed the stored draft.");
+
+    await page.locator(".nkj-invoice-reset-button").click();
+    await page.locator(".nkj-invoice-reset-dialog").waitFor({ state: "visible", timeout: 3000 });
+    await page.getByRole("button", { name: "Cancel" }).click();
+    assert(await page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input").first().inputValue()
+      === "Draft Recovery Customer", "Reset Cancel changed the invoice customer.");
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("nkj:session-expired", { detail: { reason: "inactivity" } }));
+    });
+    await page.waitForURL("**/login");
+    await page.getByText("Your session expired due to inactivity. Please log in again.").waitFor({ state: "visible" });
+    assert(await page.evaluate(() => Boolean(localStorage.getItem("nkj.invoice.draft.v2.admin2026"))),
+      "Automatic logout deleted the unsaved invoice draft.");
+
+    const loginFields = page.locator(".nkj-login-card form input");
+    await loginFields.nth(0).fill("admin2026");
+    await loginFields.nth(1).fill("qa-password");
+    await loginFields.nth(2).fill("123456");
+    await page.locator(".nkj-login-submit").click();
+    await page.waitForURL("**/");
+    await openInvoiceFromOwnerHome(page);
+    assert(
+      await page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input").first().inputValue()
+        === "Draft Recovery Customer",
+      "The previous unsaved invoice draft did not restore after re-login."
+    );
+
+    await page.locator("#invoice-print .new-items-table tbody tr:first-child td input").first().press("Escape");
+    await page.locator(".nkj-invoice-reset-dialog").waitFor({ state: "visible", timeout: 3000 });
+    await page.getByRole("button", { name: "Confirm Reset" }).click();
+    assert(await page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input").first().inputValue() === "",
+      "Escape Confirm did not clear the customer.");
+    assert(await page.locator("#invoice-print .new-items-table tbody tr:first-child td input").first().inputValue() === "",
+      "Escape Confirm did not clear the ornament item.");
+    assert(await page.evaluate(() => localStorage.getItem("nkj.invoice.draft.v2.admin2026") === null),
+      "Escape Confirm did not remove the account draft.");
+
+    await page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input").first().fill("Reset Button QA Customer");
+    await page.waitForFunction(() => Boolean(localStorage.getItem("nkj.invoice.draft.v2.admin2026")));
+    await page.locator(".nkj-invoice-reset-button").click();
+    await page.locator(".nkj-invoice-reset-dialog").waitFor({ state: "visible", timeout: 3000 });
+    await page.getByRole("button", { name: "Confirm Reset" }).click();
+    assert(await page.locator("#invoice-print .inv-two .inv-panel").first().locator(".form-grid label input").first().inputValue() === "",
+      "Reset button confirmation did not clear the customer field.");
+    assert(await page.evaluate(() => localStorage.getItem("nkj.invoice.draft.v2.admin2026") === null),
+      "Reset button confirmation did not remove the account draft.");
+    assert(invoiceDeleteCalls === 0, "Reset attempted to delete a saved invoice.");
+    process.stdout.write("PASS account-scoped draft auto-save, SPA/refresh recovery, logout/re-login recovery, Escape and Reset confirmation\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testIdleLogoutAndActivityReset(browser) {
+  const idleContext = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const idlePage = await idleContext.newPage();
+  await idlePage.clock.install({ time: new Date("2026-11-17T10:00:00.000Z") });
+  await installApiMocks(idlePage);
+  try {
+    await idlePage.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await idlePage.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+    await idlePage.clock.runFor(10 * 60 * 1000 + 2000);
+    await idlePage.waitForURL("**/login", { timeout: 10000 });
+    await idlePage.getByText("Your session expired due to inactivity. Please log in again.").waitFor({ state: "visible" });
+    assert(await idlePage.evaluate(() => localStorage.getItem("nkj_token") === null),
+      "Ten-minute inactivity did not clear the browser authentication token.");
+    process.stdout.write("PASS ten-minute idle logout while background API polling continues\n");
+  } finally {
+    await idleContext.close();
+  }
+
+  const activeContext = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const activePage = await activeContext.newPage();
+  await activePage.clock.install({ time: new Date("2026-11-17T10:00:00.000Z") });
+  await installApiMocks(activePage);
+  try {
+    await activePage.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await activePage.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+    await activePage.clock.runFor(9 * 60 * 1000);
+    await activePage.mouse.move(500, 350);
+    await activePage.clock.runFor(9 * 60 * 1000);
+    assert((await activePage.evaluate(() => location.pathname)) === "/dashboard",
+      "Real user activity at minute nine did not reset the inactivity countdown.");
+    await activePage.clock.runFor(65 * 1000);
+    await activePage.waitForURL("**/login", { timeout: 10000 });
+    process.stdout.write("PASS mouse interaction resets timeout; later ten-minute idle period logs out\n");
+  } finally {
+    await activeContext.close();
+  }
+}
+
+async function testLogoutSynchronizedAcrossTabs(browser) {
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const first = await context.newPage();
+  const second = await context.newPage();
+  await installApiMocks(first);
+  await installApiMocks(second);
+  try {
+    await first.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await first.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+    await second.goto(BASE_URL + "/dashboard", { waitUntil: "domcontentloaded" });
+    await second.locator("#nkj-owner-sidebar").waitFor({ state: "attached", timeout: 10000 });
+
+    await first.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("nkj:session-expired", { detail: { reason: "inactivity" } }));
+    });
+    await first.waitForURL("**/login", { timeout: 5000 });
+    await second.waitForURL("**/login", { timeout: 5000 });
+    await second.getByText("Your session expired due to inactivity. Please log in again.").waitFor({ state: "visible" });
+    assert(await second.evaluate(() => localStorage.getItem("nkj_token") === null),
+      "Other browser tabs retained the expired authentication token.");
+    process.stdout.write("PASS inactivity logout synchronizes across browser tabs\n");
+  } finally {
+    await context.close();
+  }
+}
+
 (async () => {
   const server = spawn(
     process.platform === "win32" ? "npm.cmd" : "npm",
@@ -957,6 +1184,9 @@ async function testPublicNavigation(browser) {
       await testNewInvoiceMobile(browser, width);
     }
     await testInvoiceSavePinGate(browser);
+    await testInvoiceDraftRecoveryAndReset(browser);
+    await testIdleLogoutAndActivityReset(browser);
+    await testLogoutSynchronizedAcrossTabs(browser);
     await testSavedInvoiceMobile(browser);
     await testPublicNavigation(browser);
     process.stdout.write("PASS New Invoice at 360/390/430, saved invoice view, and print/PDF layout.\n");
