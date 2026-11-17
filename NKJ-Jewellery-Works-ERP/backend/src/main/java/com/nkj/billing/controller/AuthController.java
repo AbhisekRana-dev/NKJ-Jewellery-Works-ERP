@@ -139,9 +139,22 @@ public class AuthController {
     /** Password verification only starts the email OTP challenge; it does not create a session. */
     @GetMapping("/session")
     public Map<String,String> session(@RequestHeader(value="Authorization", required=false) String header) {
-        String token = header != null && header.startsWith("Bearer ") ? header.substring(7) : "";
+        String token = ownerToken(header);
         if (!auth.valid(token)) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Administrator session is not valid.");
         return Map.of("username", auth.getUsername());
+    }
+
+    /**
+     * This endpoint is called only after a real pointer, keyboard, click,
+     * scroll or touch interaction. General API requests and session polling
+     * never extend the ten-minute inactivity deadline.
+     */
+    @PostMapping("/activity")
+    public Map<String,Object> activity(@RequestHeader(value="Authorization", required=false) String header) {
+        if (!auth.recordActivity(ownerToken(header))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired due to inactivity. Please log in again.");
+        }
+        return Map.of("success", true);
     }
 
     @PostMapping("/setup-email/start")
