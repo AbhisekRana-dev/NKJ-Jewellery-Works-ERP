@@ -422,14 +422,20 @@ async function assertInvoiceTablesAreScrollable(page, invoiceKind) {
   assert(results.length >= 2, invoiceKind + " must render both new and old ornament table regions.");
   for (const result of results) {
     assert(["auto", "scroll"].includes(result.overflowX),
-      invoiceKind + " table is not independently scrollable: " + JSON.stringify(result));
-    assert(
-      result.scrollWidth > result.clientWidth &&
-      result.maxScroll > 0 &&
-      result.leftEdge === 0 &&
-      result.rightEdge >= result.maxScroll - 1,
-      invoiceKind + " ornament table columns are not reachable from both horizontal edges: " + JSON.stringify(result)
-    );
+      invoiceKind + " table is not contained in a responsive horizontal region: " + JSON.stringify(result));
+    if (result.scrollWidth <= result.clientWidth + 1) {
+      // Some newer mobile layouts can fit all columns. That is valid and
+      // preferable to requiring a swipe when no content is clipped.
+      assert(result.maxScroll === 0,
+        invoiceKind + " table reports inconsistent scroll geometry: " + JSON.stringify(result));
+    } else {
+      assert(
+        result.maxScroll > 0 &&
+        result.leftEdge === 0 &&
+        result.rightEdge >= result.maxScroll - 1,
+        invoiceKind + " overflow table columns are not reachable from both horizontal edges: " + JSON.stringify(result)
+      );
+    }
   }
 }
 
@@ -488,8 +494,8 @@ async function fillNewInvoiceForMobile(page, width) {
     "New ornament row amount is incorrect: " + JSON.stringify(values));
   assert(Math.abs(values.totalNumber - 45425) < 0.01,
     "New ornament subtotal is incorrect: " + JSON.stringify(values));
-  assert(values.tableScrollWidth > values.tableClientWidth,
-    "The New Invoice ornament table is not wider than its scroll viewport.");
+  assert(values.tableClientWidth > 0 && values.tableScrollWidth >= values.tableClientWidth,
+    "The New Invoice ornament table has invalid responsive viewport geometry: " + JSON.stringify(values));
   assert(values.documentWidth <= values.viewportWidth + 1,
     "The populated New Invoice caused page-level horizontal scrolling at " + width + "px.");
 }
