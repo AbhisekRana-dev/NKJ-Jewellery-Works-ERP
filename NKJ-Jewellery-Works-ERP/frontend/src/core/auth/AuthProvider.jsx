@@ -91,9 +91,11 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // A manual logout or a 401 in another tab clears the shared token.
+      // The logout signal may arrive just before the shared token is removed.
+      // Preserve its idle reason rather than replacing the login notice with a
+      // generic manual-logout redirect on the subsequent storage event.
       if (event.key === "nkj_token" && event.newValue === null) {
-        clearSession("manual", true);
+        clearSession(expirationReasonFromStorage(), true);
       }
     };
 
