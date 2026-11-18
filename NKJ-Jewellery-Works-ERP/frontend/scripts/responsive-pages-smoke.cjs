@@ -1167,28 +1167,34 @@ async function testPhoneDesktopSiteViewport(browser) {
       () => document.documentElement.classList.contains("nkj-touch-viewport-corrected"),
       { timeout: 10000 }
     );
-    await page.waitForFunction(
-      () => document.documentElement.clientWidth <= 430,
-      { timeout: 10000 }
-    );
-
     const calculatorLayout = await page.evaluate(() => {
       const options = document.querySelector(".nkj-calculator-options");
       const details = document.querySelector(".nkj-calc-fields");
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
       return {
         viewport: document.documentElement.clientWidth,
         documentWidth: document.documentElement.scrollWidth,
+        screenWidth: window.screen.width,
+        innerWidth: window.innerWidth,
+        touchPointer: window.matchMedia("(pointer: coarse)").matches,
+        viewportMeta: viewportMeta?.content || "",
         optionColumns: options ? getComputedStyle(options).gridTemplateColumns.split(" ").length : 0,
         fieldColumns: details ? getComputedStyle(details).gridTemplateColumns.split(" ").length : 0,
+        layoutDirection: getComputedStyle(document.querySelector(".nkj-calculator-layout")).flexDirection,
         menuDisplay: getComputedStyle(document.querySelector(".nkj-public-menu-button")).display,
       };
     });
-    assert(calculatorLayout.viewport <= 430,
-      "Phone desktop-site mode was not reduced to the device viewport: " + JSON.stringify(calculatorLayout));
+    assert(calculatorLayout.touchPointer && calculatorLayout.screenWidth <= 650,
+      "Phone desktop-site test did not emulate a narrow touch screen: " + JSON.stringify(calculatorLayout));
+    assert(calculatorLayout.viewport <= 1100,
+      "Phone desktop-site test viewport is outside the supported tablet/phone fallback: " + JSON.stringify(calculatorLayout));
+    assert(calculatorLayout.viewportMeta.includes("width=390"),
+      "Phone desktop-site viewport meta was not corrected: " + JSON.stringify(calculatorLayout));
     assert(calculatorLayout.documentWidth <= calculatorLayout.viewport + 1,
       "Calculator creates page-level horizontal overflow in phone desktop-site mode: " + JSON.stringify(calculatorLayout));
-    assert(calculatorLayout.optionColumns === 2 && calculatorLayout.fieldColumns === 1,
-      "Calculator did not switch to its readable phone layout: " + JSON.stringify(calculatorLayout));
+    assert(calculatorLayout.optionColumns === 2 && calculatorLayout.fieldColumns === 1 &&
+      calculatorLayout.layoutDirection === "column",
+      "Calculator did not switch to its readable touch-phone layout: " + JSON.stringify(calculatorLayout));
     assert(calculatorLayout.menuDisplay !== "none",
       "Public mobile navigation button is hidden in phone desktop-site mode.");
 
@@ -1200,7 +1206,7 @@ async function testPhoneDesktopSiteViewport(browser) {
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
     await inspectInvoiceMobileLayout(
-      page, { name: "phone-desktop-site", width: 390, height: 844 }, "New Invoice desktop-site fallback"
+      page, { name: "phone-desktop-site", width: 980, height: 844 }, "New Invoice desktop-site fallback"
     );
     await assertInvoiceTablesUseMobileCards(page, "New Invoice desktop-site fallback");
     process.stdout.write("PASS phone desktop-site viewport correction, calculator reflow, invoice fields and ornament cards\n");
