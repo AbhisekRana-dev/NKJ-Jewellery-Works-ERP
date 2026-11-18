@@ -831,5 +831,254 @@
     padding: 7px 8px !important;
     font-size: 14px !important;
     box-sizing: border-box !important;
+/* Final invoice table behavior: keep the page viewport fixed, and give only
+   the wide ornament grids their own touch-friendly horizontal swipe region.
+   This also restores the expected QA invariant for New and Saved Invoices. */
+@media screen and (max-width: 760px) {
+  body.invoice-page #invoice-print .table-wrap,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print .table-wrap,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet .table-wrap {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body.invoice-page #invoice-print table.items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table {
+    display: table !important;
+    width: max-content !important;
+    max-width: none !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  body.invoice-page #invoice-print table.new-items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.new-items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.new-items-table {
+    min-width: 900px !important;
+  }
+
+  body.invoice-page #invoice-print table.old-items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.old-items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.old-items-table {
+    min-width: 650px !important;
+  }
+
+  body.invoice-page #invoice-print table.items-table > thead,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table > thead,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table > thead {
+    display: table-header-group !important;
+  }
+
+  body.invoice-page #invoice-print table.items-table > tbody,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table > tbody,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table > tbody {
+    display: table-row-group !important;
+    width: auto !important;
+  }
+
+  body.invoice-page #invoice-print table.items-table > tbody > tr,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table > tbody > tr,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table > tbody > tr {
+    display: table-row !important;
+    width: auto !important;
+    border: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.invoice-page #invoice-print table.items-table > thead > tr > th,
+  body.invoice-page #invoice-print table.items-table > tbody > tr > td,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table > thead > tr > th,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table > tbody > tr > td,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table > thead > tr > th,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table > tbody > tr > td {
+    display: table-cell !important;
+    min-width: 0 !important;
+    padding: 5px 4px !important;
+    border: 1px solid #d7dce2 !important;
+    text-align: center !important;
+    font-size: 10px !important;
+  }
+
+  body.invoice-page #invoice-print table.items-table td::before,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table td::before,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table td::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  body.invoice-page #invoice-print table.items-table input,
+  body.invoice-page #invoice-print table.items-table select,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table input,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print table.items-table select,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table input,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet table.items-table select {
+    width: 100% !important;
+    min-width: 62px !important;
+    max-width: 100% !important;
+    min-height: 36px !important;
+    padding: 5px 4px !important;
+    font-size: 14px !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Saved-invoice browser printing: reveal the print ancestors as well as the
+   invoice, remove the history/modal chrome from print flow and keep the
+   complete saved sheet on one A4 landscape page. These rules are print-only. */
+@media print {
+  @page {
+    size: 297mm 210mm;
+    margin: 3mm;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) .nkj-owner-sidebar,
+  body:has(.nkj-invoice-detail-overlay) .nkj-owner-topbar,
+  body:has(.nkj-invoice-detail-overlay) .nkj-public-topbar,
+  body:has(.nkj-invoice-detail-overlay) .jewellery-footer {
+    display: none !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) main.container > :not(.nkj-invoice-detail-overlay) {
+    display: none !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) main.container,
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-overlay,
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-sheet.nkj-full-invoice-modal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    transform: none !important;
+    filter: none !important;
+    contain: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print.nkj-saved-invoice-sheet,
+  body:has(.nkj-invoice-detail-overlay) #invoice-print.nkj-saved-invoice-sheet * {
+    visibility: visible !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print.nkj-saved-invoice-sheet {
+    display: block !important;
+    position: relative !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 1.5mm !important;
+    box-sizing: border-box !important;
+    zoom: .86 !important;
+    overflow: visible !important;
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    background: #fff !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-actions {
+    display: none !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print .table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print .items-table,
+  body:has(.nkj-invoice-detail-overlay) #invoice-print table {
+    display: table !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print .items-table thead {
+    display: table-header-group !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print .items-table tbody {
+    display: table-row-group !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print .items-table tr {
+    display: table-row !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print .items-table th,
+  body:has(.nkj-invoice-detail-overlay) #invoice-print .items-table td {
+    display: table-cell !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) #invoice-print button,
+  body:has(.nkj-invoice-detail-overlay) #invoice-print .no-print,
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-actions {
+    display: none !important;
+  }
+}
+
+/* Explicit mobile widths: some Chromium viewport widths can otherwise size
+   the old-items table to the wrapper's width despite its min-width rule.
+   Keep both invoice tables genuinely wider than their swipe viewport. */
+@media screen and (max-width: 760px) {
+  body.invoice-page #invoice-print .table-wrap,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print .table-wrap,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet .table-wrap {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body.invoice-page #invoice-print .table-wrap > table.new-items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print .table-wrap > table.new-items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet .table-wrap > table.new-items-table {
+    display: table !important;
+    width: 900px !important;
+    min-width: 900px !important;
+    max-width: none !important;
+  }
+
+  body.invoice-page #invoice-print .table-wrap > table.old-items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print .table-wrap > table.old-items-table,
+  body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet .table-wrap > table.old-items-table {
+    display: table !important;
+    width: 650px !important;
+    min-width: 650px !important;
+    max-width: none !important;
   }
 }
