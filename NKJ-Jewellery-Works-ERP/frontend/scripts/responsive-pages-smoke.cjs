@@ -1181,7 +1181,7 @@ async function testPhoneDesktopSiteViewport(browser) {
         optionColumns: options ? getComputedStyle(options).gridTemplateColumns.split(" ").length : 0,
         fieldColumns: details ? getComputedStyle(details).gridTemplateColumns.split(" ").length : 0,
         layoutDirection: getComputedStyle(document.querySelector(".nkj-calculator-layout")).flexDirection,
-        menuDisplay: getComputedStyle(document.querySelector(".nkj-public-menu-button")).display,
+        menuDisplay: getComputedStyle(document.querySelector(".nkj-mobile-menu-button")).display,
       };
     });
     assert(calculatorLayout.touchPointer && calculatorLayout.screenWidth <= 650,
@@ -1199,8 +1199,8 @@ async function testPhoneDesktopSiteViewport(browser) {
       "Public mobile navigation button is hidden in phone desktop-site mode.");
 
     await assertMobileHeaderAlignment(
-      page, ".nkj-public-topbar", ".nkj-public-menu-button",
-      ".nkj-public-topbar > .brand", "Phone desktop-site fallback"
+      page, ".nkj-owner-topbar", ".nkj-mobile-menu-button",
+      ".nkj-owner-topbar > .brand", "Phone desktop-site fallback"
     );
 
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
