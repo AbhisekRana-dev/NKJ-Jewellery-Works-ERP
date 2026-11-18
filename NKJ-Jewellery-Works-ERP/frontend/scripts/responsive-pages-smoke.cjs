@@ -1135,6 +1135,78 @@ async function testOwnerSidebar(browser) {
   }
 }
 
+async function testPhysicalMobileLayout(browser) {
+  // Simulate Android Chrome with "Desktop site" enabled: a wide layout
+  // viewport, but a touch-first physical device.
+  const context = await browser.newContext({
+    viewport: { width: 980, height: 844 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  try {
+    await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
+    await page.locator(".nkj-calculator-page").waitFor({ state: "visible", timeout: 10000 });
+    const calculator = await page.evaluate(() => {
+      const options = document.querySelector(".nkj-calculator-options");
+      const ornament = document.querySelector(".nkj-calc-ornament");
+      const menu = document.querySelector(".nkj-public-menu-button");
+      const columns = (value) => value.trim().split(/\\s+(?![^()]*\\))/).filter(Boolean).length;
+      return {
+        viewportWidth: document.documentElement.clientWidth,
+        coarsePointer: matchMedia("(pointer: coarse)").matches,
+        optionsColumns: options ? columns(getComputedStyle(options).gridTemplateColumns) : 0,
+        ornamentColumns: ornament ? columns(getComputedStyle(ornament).gridTemplateColumns) : 0,
+        menuVisible: Boolean(menu && getComputedStyle(menu).display !== "none"),
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+    assert(calculator.coarsePointer,
+      "Touch-layout test did not expose a coarse pointer: " + JSON.stringify(calculator));
+    assert(calculator.optionsColumns === 2,
+      "Calculator modes did not switch to a two-row phone layout in desktop-site mode: " + JSON.stringify(calculator));
+    assert(calculator.ornamentColumns === 1,
+      "Calculator details and result did not stack vertically in desktop-site mode: " + JSON.stringify(calculator));
+    assert(calculator.menuVisible,
+      "Public mobile hamburger is hidden in desktop-site mode: " + JSON.stringify(calculator));
+    assert(calculator.documentWidth <= calculator.viewportWidth + 1,
+      "Calculator causes horizontal page overflow in desktop-site mode: " + JSON.stringify(calculator));
+
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    const invoice = await page.evaluate(() => {
+      const root = document.querySelector("#invoice-print");
+      const firstLabel = root?.querySelector(".form-grid label");
+      const input = firstLabel?.querySelector("input, select");
+      const colon = firstLabel?.querySelector(":scope > i");
+      const shop = root?.querySelector(".inv-shop");
+      const meta = root?.querySelector(".inv-meta");
+      const rectWidth = (element) => element?.getBoundingClientRect().width || 0;
+      return {
+        viewportWidth: document.documentElement.clientWidth,
+        invoiceWidth: rectWidth(root),
+        shopWidth: rectWidth(shop),
+        metaWidth: rectWidth(meta),
+        inputWidth: rectWidth(input),
+        colonDisplay: colon ? getComputedStyle(colon).display : "missing",
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+    assert(invoice.shopWidth >= invoice.invoiceWidth * .82 &&
+      invoice.metaWidth >= invoice.invoiceWidth * .82,
+      "Invoice header/metadata did not use the full phone width in desktop-site mode: " + JSON.stringify(invoice));
+    assert(invoice.inputWidth >= invoice.invoiceWidth * .7 && invoice.colonDisplay === "none",
+      "Invoice customer/payment fields did not stack to a readable phone layout: " + JSON.stringify(invoice));
+    assert(invoice.documentWidth <= invoice.viewportWidth + 1,
+      "Invoice causes horizontal page overflow in desktop-site mode: " + JSON.stringify(invoice));
+    process.stdout.write("PASS physical-mobile responsive layout with a 980px desktop-site viewport\\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testPublicNavigation(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -1220,7 +1292,7 @@ async function testPublicNavigation(browser) {
     await testInvoiceDraftRecoveryAndReset(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
     // Verify public navbar placement before the independent saved-invoice print fixture.
-    await testPublicNavigation(browser);
+    await testPublicNavigation(browser);\n    await testPhysicalMobileLayout(browser);
     await testSavedInvoiceMobile(browser);
     process.stdout.write("PASS New Invoice at 360/390/430, draft recovery/reset, inactivity logout, saved invoice view and print/PDF layout.\n");
     process.stdout.write("All owner/public page responsive smoke checks passed.\n");
