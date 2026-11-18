@@ -2,7 +2,8 @@
  * NKJ ERP — shared mobile layout corrections.
  * Screen-only rules: desktop layouts and the A4 invoice print stylesheet remain unchanged.
  */
-@media screen and (max-width: 760px) {
+@media screen and (max-width: 760px),
+       screen and (hover: none) and (pointer: coarse) and (min-width: 761px) and (max-width: 1100px) {
   html, body, #root {
     width: 100%;
     max-width: 100%;
@@ -617,7 +618,8 @@
 
 /* Higher-specificity override for the invoice's legacy #invoice-print rules.
    On phones, each ornament row becomes a labelled card instead of a 760px table. */
-@media screen and (max-width: 760px) {
+@media screen and (max-width: 760px),
+       screen and (hover: none) and (pointer: coarse) and (min-width: 761px) and (max-width: 1100px) {
   body.invoice-page #invoice-print .table-wrap {
     width: 100% !important;
     min-width: 0 !important;
@@ -727,7 +729,8 @@
 /* Saved-invoice preview uses the same compact labelled ornament cards as
    the editable invoice. This is screen-only; the A4 print rules above remain
    responsible for the saved PDF layout. */
-@media screen and (max-width: 760px) {
+@media screen and (max-width: 760px),
+       screen and (hover: none) and (pointer: coarse) and (min-width: 761px) and (max-width: 1100px) {
   body.nkj-owner-layout .nkj-invoice-detail-sheet #invoice-print .table-wrap {
     display: block !important;
     width: 100% !important;
@@ -834,7 +837,8 @@
 /* Final invoice table behavior: keep the page viewport fixed, and give only
    the wide ornament grids their own touch-friendly horizontal swipe region.
    This also restores the expected QA invariant for New and Saved Invoices. */
-@media screen and (max-width: 760px) {
+@media screen and (max-width: 760px),
+       screen and (hover: none) and (pointer: coarse) and (min-width: 761px) and (max-width: 1100px) {
   body.invoice-page #invoice-print .table-wrap,
   body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print .table-wrap,
   body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet .table-wrap {
@@ -1054,7 +1058,8 @@
 /* Explicit mobile widths: some Chromium viewport widths can otherwise size
    the old-items table to the wrapper's width despite its min-width rule.
    Keep both invoice tables genuinely wider than their swipe viewport. */
-@media screen and (max-width: 760px) {
+@media screen and (max-width: 760px),
+       screen and (hover: none) and (pointer: coarse) and (min-width: 761px) and (max-width: 1100px) {
   body.invoice-page #invoice-print .table-wrap,
   body.nkj-owner-layout .nkj-invoice-detail-overlay #invoice-print .table-wrap,
   body.nkj-owner-layout .nkj-invoice-detail-overlay .nkj-saved-invoice-sheet .table-wrap {
