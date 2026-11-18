@@ -1135,6 +1135,32 @@ async function testOwnerSidebar(browser) {
   }
 }
 
+async function testManualCalculatorEqualsGate(page) {
+  await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
+  await page.locator('[data-calculator-mode="manual"]').click();
+
+  const result = page.locator(".nkj-calc-result");
+  await result.waitFor({ state: "visible", timeout: 5000 });
+  assert((await result.textContent()).trim() === "—",
+    "Manual calculator must not show a result before the user presses equals.");
+
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await page.getByRole("button", { name: "+", exact: true }).click();
+  await page.getByRole("button", { name: "3", exact: true }).click();
+  assert((await result.textContent()).trim() === "—",
+    "Manual calculator calculated while entering 2 + 3, before equals.");
+
+  await page.getByRole("button", { name: "=", exact: true }).click();
+  assert((await result.textContent()).trim() === "= 5.00",
+    "Manual calculator should show 5.00 only after equals is pressed.");
+
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  assert((await result.textContent()).trim() === "—",
+    "Manual calculator must hide the previous result as soon as a new input is entered.");
+
+  process.stdout.write("PASS manual calculator shows results only after equals is pressed\\n");
+}
+
 async function testPublicNavigation(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -1209,6 +1235,7 @@ async function testPublicNavigation(browser) {
       for (const path of publicRoutes) {
         await checkViewport(publicPage, path, { name: "public-mobile", width: 390, height: 844 });
       }
+      await testManualCalculatorEqualsGate(publicPage);
     } finally {
       await publicContext.close();
     }
