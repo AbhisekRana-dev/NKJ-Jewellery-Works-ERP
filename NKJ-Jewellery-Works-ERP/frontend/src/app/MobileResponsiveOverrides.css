@@ -94,7 +94,12 @@
 }
 
 /* Phones: one content column and a true off-canvas owner drawer. */
-@media screen and (max-width: 760px) {
+/* The device-width/pointer fallbacks also catch Android Chrome's
+   "Desktop site" mode, where the layout viewport can be much wider than
+   the physical phone screen even though the page is being viewed on mobile. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
   html, body { width: 100%; min-width: 320px; overflow-x: clip; }
 
   body.nkj-owner-layout {
@@ -1108,7 +1113,12 @@
 
 
 /* Invoice rows with long totals/actions must wrap instead of widening the sheet. */
-@media screen and (max-width: 760px) {
+/* The device-width/pointer fallbacks also catch Android Chrome's
+   "Desktop site" mode, where the layout viewport can be much wider than
+   the physical phone screen even though the page is being viewed on mobile. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
   .invoice-sheet .row-end {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -1164,7 +1174,12 @@
 
 
 /* The invoice thank-you flourish is artwork, not a fixed-width row. */
-@media screen and (max-width: 760px) {
+/* The device-width/pointer fallbacks also catch Android Chrome's
+   "Desktop site" mode, where the layout viewport can be much wider than
+   the physical phone screen even though the page is being viewed on mobile. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
   .invoice-sheet .thankyou {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
@@ -1211,7 +1226,12 @@
    #invoice-print two-column mobile rules in ResponsivePolish.css.
    Print/PDF geometry is untouched.
 ============================================================ */
-@media screen and (max-width: 760px) {
+/* The device-width/pointer fallbacks also catch Android Chrome's
+   "Desktop site" mode, where the layout viewport can be much wider than
+   the physical phone screen even though the page is being viewed on mobile. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
   html,
   body {
     max-width: 100%;
