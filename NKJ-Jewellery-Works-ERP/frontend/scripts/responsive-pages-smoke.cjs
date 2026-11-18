@@ -1203,7 +1203,7 @@ async function testPhoneDesktopSiteViewport(browser) {
       page, { name: "phone-desktop-site", width: 390, height: 844 }, "New Invoice desktop-site fallback"
     );
     await assertInvoiceTablesUseMobileCards(page, "New Invoice desktop-site fallback");
-    process.stdout.write("PASS phone desktop-site viewport correction, calculator reflow, invoice fields and ornament cards\\n");
+    process.stdout.write("PASS phone desktop-site viewport correction, calculator reflow, invoice fields and ornament cards\n");
   } finally {
     await context.close();
   }
