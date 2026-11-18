@@ -1142,6 +1142,7 @@ async function testPhoneDesktopSiteViewport(browser) {
     viewport: { width: 980, height: 844 },
     screen: { width: 390, height: 844 },
     isMobile: true,
+    hasTouch: true,
     deviceScaleFactor: 2,
   });
   const page = await context.newPage();
