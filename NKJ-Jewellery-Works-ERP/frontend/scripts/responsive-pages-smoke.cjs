@@ -1152,7 +1152,7 @@ async function testPhysicalMobileLayout(browser) {
     const calculator = await page.evaluate(() => {
       const options = document.querySelector(".nkj-calculator-options");
       const ornament = document.querySelector(".nkj-calc-ornament");
-      const menu = document.querySelector(".nkj-public-menu-button");
+      const menu = document.querySelector(".nkj-mobile-menu-button");
       const columns = (value) => value.trim().split(/\s+/).filter(Boolean).length;
       return {
         viewportWidth: document.documentElement.clientWidth,
