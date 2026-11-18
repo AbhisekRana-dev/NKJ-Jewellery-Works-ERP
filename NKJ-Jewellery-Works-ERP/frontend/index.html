@@ -1,1 +1,33 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/><meta name="theme-color" content="#8f0927"/><title>Nandikishor Jewellery Works</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<script>
+  // Android Chrome can request a desktop page width (often ~980 CSS px) on a
+  // phone even when this page declares a viewport meta tag. Detect that
+  // touch-device mismatch and restore the phone's real CSS viewport before
+  // React mounts, so the existing mobile layouts are used instead of being
+  // scaled down to fit the screen.
+  (() => {
+    try {
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
+      const screenWidth = Math.round(Number(window.screen && window.screen.width) || 0);
+      const layoutWidth = Math.round(Number(window.innerWidth) || 0);
+      const coarsePointer = Boolean(
+        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+        (navigator.maxTouchPoints > 0)
+      );
+      const phoneDesktopViewport = coarsePointer &&
+        screenWidth >= 320 &&
+        screenWidth <= 650 &&
+        layoutWidth > screenWidth * 1.4;
+
+      if (viewportMeta && phoneDesktopViewport) {
+        viewportMeta.setAttribute(
+          "content",
+          "width=" + screenWidth + ", initial-scale=1.0, viewport-fit=cover"
+        );
+        document.documentElement.classList.add("nkj-touch-viewport-corrected");
+      }
+    } catch (_) {
+      // A browser that blocks viewport changes still gets the normal site.
+    }
+  })();
+</script><meta name="theme-color" content="#8f0927"/><title>Nandikishor Jewellery Works</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
