@@ -94,7 +94,12 @@
 }
 
 /* Phones: one content column and a true off-canvas owner drawer. */
-@media screen and (max-width: 760px) {
+/* The device-width/pointer fallbacks also catch Android Chrome's
+   "Desktop site" mode, where the layout viewport can be much wider than
+   the physical phone screen even though the page is being viewed on mobile. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
   html, body { width: 100%; min-width: 320px; overflow-x: clip; }
 
   body.nkj-owner-layout {
@@ -1108,7 +1113,12 @@
 
 
 /* Invoice rows with long totals/actions must wrap instead of widening the sheet. */
-@media screen and (max-width: 760px) {
+/* The device-width/pointer fallbacks also catch Android Chrome's
+   "Desktop site" mode, where the layout viewport can be much wider than
+   the physical phone screen even though the page is being viewed on mobile. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
   .invoice-sheet .row-end {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -1164,7 +1174,12 @@
 
 
 /* The invoice thank-you flourish is artwork, not a fixed-width row. */
-@media screen and (max-width: 760px) {
+/* The device-width/pointer fallbacks also catch Android Chrome's
+   "Desktop site" mode, where the layout viewport can be much wider than
+   the physical phone screen even though the page is being viewed on mobile. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
   .invoice-sheet .thankyou {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
@@ -1211,7 +1226,12 @@
    #invoice-print two-column mobile rules in ResponsivePolish.css.
    Print/PDF geometry is untouched.
 ============================================================ */
-@media screen and (max-width: 760px) {
+/* The device-width/pointer fallbacks also catch Android Chrome's
+   "Desktop site" mode, where the layout viewport can be much wider than
+   the physical phone screen even though the page is being viewed on mobile. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
   html,
   body {
     max-width: 100%;
@@ -1659,5 +1679,203 @@
     flex: 1 1 125px !important;
     min-width: 0 !important;
     max-width: 100% !important;
+  }
+}
+
+/* Final physical-phone guard.
+   Android Chrome can report a desktop-sized layout viewport while the actual
+   device is a touch phone. In that case every calculator mode must use natural
+   document flow, never the fixed-height desktop canvas or its two-column form. */
+@media screen and (max-width: 1100px) and (pointer: coarse) {
+  html,
+  body,
+  #root,
+  .app-layout,
+  .app-content {
+    width: 100% !important;
+    min-width: 320px !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+
+  body.nkj-owner-layout {
+    --nkj-owner-collapsed-width: 0px !important;
+    --nkj-owner-sidebar-width: 0px !important;
+  }
+
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container:has(.nkj-calculator-page) {
+    box-sizing: border-box !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-page {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 8px 2px 20px !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-heading,
+  .nkj-calculator-layout,
+  .nkj-calculator-workspace,
+  .nkj-calculator-panel,
+  .nkj-calculator-panel:not([hidden]),
+  .nkj-calc-with-history,
+  .nkj-calc-ornament-layout,
+  .nkj-calc-ornament-layout > .nkj-calc-ornament,
+  .nkj-calc-diamond-layout,
+  .nkj-calc-manual-only {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+
+  .nkj-calculator-options {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 7px !important;
+  }
+
+  .nkj-calculator-options > button {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 58px !important;
+    height: auto !important;
+    padding: 7px 8px !important;
+  }
+
+  .nkj-calculator-workspace {
+    display: block !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 10px !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-panel:not([hidden]) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .nkj-calc-with-history.nkj-calc-ornament-layout,
+  .nkj-calculator-page--diamond .nkj-calc-diamond-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament,
+  .nkj-calc-diamond-details,
+  .nkj-calc-diamond-summary,
+  .nkj-calc-ornament-layout > .nkj-calc-history,
+  .nkj-calc-diamond-layout > .nkj-calc-history,
+  .nkj-calc-details-card,
+  .nkj-calc-result-card,
+  .nkj-calc-history {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calc-ornament-layout > .nkj-calc-ornament {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .nkj-calc-fields,
+  .nkj-calculator-page--diamond .nkj-calc-diamond-details .nkj-calc-fields {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 11px !important;
+  }
+
+  .nkj-calc-fields input,
+  .nkj-calc-fields select {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    font-size: 16px !important;
+  }
+
+  .nkj-calculator-page--diamond .nkj-calc-diamond-details,
+  .nkj-calculator-page--diamond .nkj-calc-diamond-summary {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .nkj-calculator-page--manual .nkj-calc-manual-only {
+    display: grid !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-page--manual .nkj-calc-manual-only > .nkj-calc-manual {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 560px !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-page--manual .nkj-calc-manual-only .nkj-calc-keypad {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(5, minmax(46px, auto)) !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .nkj-calculator-page--manual .nkj-calc-manual-only .nkj-calc-keypad > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 46px !important;
+    height: auto !important;
   }
 }
