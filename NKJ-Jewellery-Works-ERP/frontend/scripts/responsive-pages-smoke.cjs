@@ -1201,6 +1201,7 @@ async function testPhysicalMobileLayout(browser) {
       "Invoice customer/payment fields did not stack to a readable phone layout: " + JSON.stringify(invoice));
     assert(invoice.documentWidth <= invoice.viewportWidth + 1,
       "Invoice causes horizontal page overflow in desktop-site mode: " + JSON.stringify(invoice));
+    await assertInvoiceTablesUseMobileCards(page, "Physical mobile invoice");
     process.stdout.write("PASS physical-mobile responsive layout with a 980px desktop-site viewport\n");
   } finally {
     await context.close();
