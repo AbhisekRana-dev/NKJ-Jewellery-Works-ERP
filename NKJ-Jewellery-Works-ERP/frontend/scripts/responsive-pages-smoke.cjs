@@ -1058,15 +1058,19 @@ async function assertMobileHeaderAlignment(page, headerSelector, menuSelector, b
       menuRight: a.right,
       menuCenterY: a.top + a.height / 2,
       brandLeft: b.left,
+      brandRight: b.right,
       brandCenterY: b.top + b.height / 2,
-      headerWidth: header.getBoundingClientRect().width,
+      headerLeft: header.getBoundingClientRect().left,
+      headerRight: header.getBoundingClientRect().right,
     };
   }, { headerSelector, menuSelector, brandSelector });
 
   assert(result, label + " mobile header/menu/brand element was missing.");
   assert(
-    result.menuLeft < result.brandLeft && result.menuRight <= result.brandLeft + 2,
-    label + " hamburger is not positioned to the left of the shop name: " + JSON.stringify(result)
+    result.brandLeft <= result.headerLeft + 2 &&
+    result.menuLeft >= result.brandRight - 2 &&
+    result.menuRight >= result.headerRight - 2,
+    label + " header must place the shop name on the left and hamburger on the right: " + JSON.stringify(result)
   );
   assert(
     Math.abs(result.menuCenterY - result.brandCenterY) <= 14,
