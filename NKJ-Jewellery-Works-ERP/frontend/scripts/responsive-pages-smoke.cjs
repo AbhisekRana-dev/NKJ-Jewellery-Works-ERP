@@ -1058,15 +1058,20 @@ async function assertMobileHeaderAlignment(page, headerSelector, menuSelector, b
       menuRight: a.right,
       menuCenterY: a.top + a.height / 2,
       brandLeft: b.left,
+      brandRight: b.right,
       brandCenterY: b.top + b.height / 2,
-      headerWidth: header.getBoundingClientRect().width,
+      headerLeft: header.getBoundingClientRect().left,
+      headerRight: header.getBoundingClientRect().right,
     };
   }, { headerSelector, menuSelector, brandSelector });
 
   assert(result, label + " mobile header/menu/brand element was missing.");
   assert(
-    result.menuLeft < result.brandLeft && result.menuRight <= result.brandLeft + 2,
-    label + " hamburger is not positioned to the left of the shop name: " + JSON.stringify(result)
+    result.brandLeft < result.menuLeft &&
+    result.menuLeft >= result.brandRight - 2 &&
+    result.menuRight >= result.headerRight - 15 &&
+    result.menuRight <= result.headerRight + 2,
+    label + " header must place the shop name on the left and hamburger on the right: " + JSON.stringify(result)
   );
   assert(
     Math.abs(result.menuCenterY - result.brandCenterY) <= 14,
@@ -1214,8 +1219,9 @@ async function testPublicNavigation(browser) {
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftRecoveryAndReset(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
-    await testSavedInvoiceMobile(browser);
+    // Verify public navbar placement before the independent saved-invoice print fixture.
     await testPublicNavigation(browser);
+    await testSavedInvoiceMobile(browser);
     process.stdout.write("PASS New Invoice at 360/390/430, draft recovery/reset, inactivity logout, saved invoice view and print/PDF layout.\n");
     process.stdout.write("All owner/public page responsive smoke checks passed.\n");
   } catch (error) {

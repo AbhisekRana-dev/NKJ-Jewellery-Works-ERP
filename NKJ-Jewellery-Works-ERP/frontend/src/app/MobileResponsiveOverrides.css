@@ -1218,17 +1218,16 @@
     overflow-x: clip !important;
   }
 
-  /* Place the hamburger in the first column and the business name
-     beside it, on one consistent header row across public/owner pages. */
+  /* Mobile navbar: keep the brand on the left and the menu on the right.
+     Use one shared flex contract for public and authenticated owner headers. */
   .nkj-owner-topbar.nkj-reference-navbar,
   .nkj-public-topbar {
-    display: grid !important;
-    grid-template-columns: 42px minmax(0, 1fr) !important;
-    grid-template-rows: minmax(46px, auto) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: row !important;
     align-items: center !important;
-    justify-content: stretch !important;
-    justify-items: stretch !important;
-    gap: 8px !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -1236,50 +1235,34 @@
     height: auto !important;
     max-height: none !important;
     margin: 0 !important;
-    padding:
-      8px max(10px, env(safe-area-inset-right))
-      8px max(10px, env(safe-area-inset-left)) !important;
+    padding: 8px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)) !important;
     overflow: visible !important;
   }
 
-  .nkj-owner-topbar.nkj-reference-navbar > .nkj-mobile-menu-button,
-  .nkj-public-topbar > .nkj-public-menu-button {
-    grid-column: 1 !important;
-    grid-row: 1 !important;
-    justify-self: start !important;
-    align-self: center !important;
-    position: relative !important;
-    inset: auto !important;
-    z-index: 2 !important;
-    display: inline-grid !important;
-    width: 42px !important;
-    min-width: 42px !important;
-    max-width: 42px !important;
-    height: 42px !important;
-    min-height: 42px !important;
-    max-height: 42px !important;
-    margin: 0 !important;
-    padding: 0 !important;
+  .nkj-owner-topbar.nkj-reference-navbar::before,
+  .nkj-owner-topbar.nkj-reference-navbar::after,
+  .nkj-public-topbar::before,
+  .nkj-public-topbar::after {
+    display: none !important;
+    content: none !important;
   }
 
   .nkj-owner-topbar.nkj-reference-navbar > .brand,
   .nkj-public-topbar > .brand {
-    grid-column: 2 !important;
-    grid-row: 1 !important;
-    justify-self: stretch !important;
-    align-self: center !important;
+    order: 1 !important;
     display: flex !important;
-    width: 100% !important;
+    flex: 1 1 auto !important;
     min-width: 0 !important;
     max-width: 100% !important;
+    width: auto !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
-    text-align: left !important;
     overflow: hidden !important;
     border: 0 !important;
+    text-align: left !important;
   }
 
   .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy,
@@ -1288,8 +1271,9 @@
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
-    text-align: left !important;
+    margin: 0 !important;
     overflow: hidden !important;
+    text-align: left !important;
   }
 
   .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b,
@@ -1298,12 +1282,36 @@
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    font-size: clamp(14px, 4vw, 18px) !important;
-    line-height: 1.2 !important;
+    font: 700 clamp(14px, 4vw, 18px)/1.2 Georgia, "Times New Roman", serif !important;
     text-align: left !important;
     white-space: normal !important;
-    overflow-wrap: normal !important;
+    overflow-wrap: break-word !important;
     word-break: normal !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy small,
+  .nkj-public-topbar > .brand small {
+    display: none !important;
+  }
+
+  .nkj-owner-topbar.nkj-reference-navbar > .nkj-mobile-menu-button,
+  .nkj-public-topbar > .nkj-public-menu-button {
+    order: 2 !important;
+    position: relative !important;
+    inset: auto !important;
+    z-index: 2 !important;
+    display: inline-grid !important;
+    flex: 0 0 44px !important;
+    place-items: center !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    margin: 0 0 0 auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .nkj-owner-topbar.nkj-reference-navbar > nav {
@@ -1311,7 +1319,8 @@
   }
 
   .nkj-public-topbar > nav {
-    grid-column: 1 / -1 !important;
+    grid-column: auto !important;
+    width: 100% !important;
   }
 
   /* The invoice business header is a single full-width stack on phones.

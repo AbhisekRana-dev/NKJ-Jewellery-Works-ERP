@@ -294,6 +294,12 @@ export function Nav({ active = "home" }) {
         </aside>
 
         <header className="topbar nkj-owner-topbar nkj-reference-navbar">
+          <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
+            <div className="nkj-navbar-brand-copy">
+              <b>Nandikishor Jewellery Works</b>
+              <small><MapPin size={14} /> Sasra, Gopiballavpur, Jhargram</small>
+            </div>
+          </Link>
           <button
             type="button"
             className="nkj-mobile-menu-button"
@@ -304,12 +310,6 @@ export function Nav({ active = "home" }) {
           >
             {sidebarCollapsed ? <Menu size={22} aria-hidden="true" /> : <CloseIcon size={22} aria-hidden="true" />}
           </button>
-          <Link to="/" className="brand" aria-label="Nandikishor Jewellery Works home">
-            <div className="nkj-navbar-brand-copy">
-              <b>Nandikishor Jewellery Works</b>
-              <small><MapPin size={14} /> Sasra, Gopiballavpur, Jhargram</small>
-            </div>
-          </Link>
           <nav aria-label="Main navigation">
             <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
             <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>

@@ -2248,24 +2248,27 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     overflow: visible !important;
   }
 
-  /* The shared standalone-invoice print rule fixes #invoice-print to a
-     204mm-high A4 canvas. A saved invoice lives inside a modal and must be
-     returned to normal flow; inheriting that fixed canvas caused pagination
-     and an additional page on mobile viewports. */
+  /* Keep the read-only saved invoice on the same single A4 landscape
+     canvas as New Invoice. The modal shell is hidden/reset above; fixing the
+     sheet to the page prevents the owner-app flow from creating a second page. */
   body:has(#invoice-print.nkj-saved-invoice-sheet) #invoice-print.nkj-saved-invoice-sheet {
-    position: relative !important;
-    inset: auto !important;
-    top: auto !important;
+    position: fixed !important;
+    top: 0 !important;
     right: auto !important;
     bottom: auto !important;
-    left: auto !important;
-    height: auto !important;
+    left: 0 !important;
+    width: 287mm !important;
+    min-width: 287mm !important;
+    max-width: 287mm !important;
+    height: 204mm !important;
     min-height: 0 !important;
     max-height: none !important;
     margin: 0 !important;
     padding: 2mm !important;
+    box-sizing: border-box !important;
     overflow: visible !important;
-    zoom: .88 !important;
+    zoom: 1 !important;
+    transform: none !important;
     break-before: avoid !important;
     break-after: avoid !important;
     break-inside: avoid !important;
