@@ -1293,7 +1293,8 @@ async function testPublicNavigation(browser) {
     await testInvoiceDraftRecoveryAndReset(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
     // Verify public navbar placement before the independent saved-invoice print fixture.
-    await testPublicNavigation(browser);\n    await testPhysicalMobileLayout(browser);
+    await testPublicNavigation(browser);
+    await testPhysicalMobileLayout(browser);
     await testSavedInvoiceMobile(browser);
     process.stdout.write("PASS New Invoice at 360/390/430, draft recovery/reset, inactivity logout, saved invoice view and print/PDF layout.\n");
     process.stdout.write("All owner/public page responsive smoke checks passed.\n");
