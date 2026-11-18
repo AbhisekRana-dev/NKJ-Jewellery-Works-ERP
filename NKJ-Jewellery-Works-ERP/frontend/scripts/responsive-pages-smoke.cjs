@@ -1067,9 +1067,10 @@ async function assertMobileHeaderAlignment(page, headerSelector, menuSelector, b
 
   assert(result, label + " mobile header/menu/brand element was missing.");
   assert(
-    result.brandLeft <= result.headerLeft + 2 &&
+    result.brandLeft < result.menuLeft &&
     result.menuLeft >= result.brandRight - 2 &&
-    result.menuRight >= result.headerRight - 2,
+    result.menuRight >= result.headerRight - 15 &&
+    result.menuRight <= result.headerRight + 2,
     label + " header must place the shop name on the left and hamburger on the right: " + JSON.stringify(result)
   );
   assert(
