@@ -980,3 +980,73 @@
     display: none !important;
   }
 }
+
+/* Final touch-device calculator guard. This shared stylesheet is loaded after
+   feature styles; retain natural mobile flow even when Chrome reports a
+   desktop-sized viewport for a physical phone. */
+@media screen and (max-width: 1100px) and (pointer: coarse) {
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container:has(.nkj-calculator-page),
+  main.container:has(.nkj-calculator-page) {
+    box-sizing: border-box !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-page,
+  .nkj-calculator-layout,
+  .nkj-calculator-workspace,
+  .nkj-calculator-panel:not([hidden]),
+  .nkj-calc-with-history.nkj-calc-ornament-layout,
+  .nkj-calc-ornament-layout > .nkj-calc-ornament,
+  .nkj-calc-diamond-layout,
+  .nkj-calc-diamond-details,
+  .nkj-calc-diamond-summary,
+  .nkj-calc-manual-only {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .nkj-calculator-page {
+    display: block !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .nkj-calculator-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .nkj-calculator-options {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .nkj-calc-with-history.nkj-calc-ornament-layout,
+  .nkj-calc-diamond-layout,
+  .nkj-calc-ornament-layout > .nkj-calc-ornament {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .nkj-calc-fields,
+  .nkj-calc-diamond-details .nkj-calc-fields {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-width: 0 !important;
+  }
+}
