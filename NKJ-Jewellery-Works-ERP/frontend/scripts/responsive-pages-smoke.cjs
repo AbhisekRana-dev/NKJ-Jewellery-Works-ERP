@@ -1135,6 +1135,80 @@ async function testOwnerSidebar(browser) {
   }
 }
 
+async function testPhoneDesktopSiteViewport(browser) {
+  // Simulate Android Chrome's "Desktop site" layout viewport on a narrow
+  // touch screen: 980 CSS px layout width but a 390 CSS px physical screen.
+  const context = await browser.newContext({
+    viewport: { width: 980, height: 844 },
+    screen: { width: 390, height: 844 },
+    isMobile: true,
+    deviceScaleFactor: 2,
+  });
+  const page = await context.newPage();
+  await context.addInitScript(() => {
+    try {
+      Object.defineProperty(window.screen, "width", {
+        configurable: true,
+        get: () => 390,
+      });
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        configurable: true,
+        get: () => 5,
+      });
+    } catch (_) {
+      // The viewport assertions below will report if the emulation is unsupported.
+    }
+  });
+  await installApiMocks(page);
+
+  try {
+    await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains("nkj-touch-viewport-corrected"),
+      { timeout: 10000 }
+    );
+    await page.waitForFunction(
+      () => document.documentElement.clientWidth <= 430,
+      { timeout: 10000 }
+    );
+
+    const calculatorLayout = await page.evaluate(() => {
+      const options = document.querySelector(".nkj-calculator-options");
+      const details = document.querySelector(".nkj-calc-fields");
+      return {
+        viewport: document.documentElement.clientWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        optionColumns: options ? getComputedStyle(options).gridTemplateColumns.split(" ").length : 0,
+        fieldColumns: details ? getComputedStyle(details).gridTemplateColumns.split(" ").length : 0,
+        menuDisplay: getComputedStyle(document.querySelector(".nkj-public-menu-button")).display,
+      };
+    });
+    assert(calculatorLayout.viewport <= 430,
+      "Phone desktop-site mode was not reduced to the device viewport: " + JSON.stringify(calculatorLayout));
+    assert(calculatorLayout.documentWidth <= calculatorLayout.viewport + 1,
+      "Calculator creates page-level horizontal overflow in phone desktop-site mode: " + JSON.stringify(calculatorLayout));
+    assert(calculatorLayout.optionColumns === 2 && calculatorLayout.fieldColumns === 1,
+      "Calculator did not switch to its readable phone layout: " + JSON.stringify(calculatorLayout));
+    assert(calculatorLayout.menuDisplay !== "none",
+      "Public mobile navigation button is hidden in phone desktop-site mode.");
+
+    await assertMobileHeaderAlignment(
+      page, ".nkj-public-topbar", ".nkj-public-menu-button",
+      ".nkj-public-topbar > .brand", "Phone desktop-site fallback"
+    );
+
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    await inspectInvoiceMobileLayout(
+      page, { name: "phone-desktop-site", width: 390, height: 844 }, "New Invoice desktop-site fallback"
+    );
+    await assertInvoiceTablesUseMobileCards(page, "New Invoice desktop-site fallback");
+    process.stdout.write("PASS phone desktop-site viewport correction, calculator reflow, invoice fields and ornament cards\\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testPublicNavigation(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -1219,6 +1293,7 @@ async function testPublicNavigation(browser) {
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftRecoveryAndReset(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
+    await testPhoneDesktopSiteViewport(browser);
     // Verify public navbar placement before the independent saved-invoice print fixture.
     await testPublicNavigation(browser);
     await testSavedInvoiceMobile(browser);
