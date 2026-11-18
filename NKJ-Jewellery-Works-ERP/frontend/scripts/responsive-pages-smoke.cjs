@@ -1153,7 +1153,7 @@ async function testPhysicalMobileLayout(browser) {
       const options = document.querySelector(".nkj-calculator-options");
       const ornament = document.querySelector(".nkj-calc-ornament");
       const menu = document.querySelector(".nkj-public-menu-button");
-      const columns = (value) => value.trim().split(/\\s+(?![^()]*\\))/).filter(Boolean).length;
+      const columns = (value) => value.trim().split(/\s+/).filter(Boolean).length;
       return {
         viewportWidth: document.documentElement.clientWidth,
         coarsePointer: matchMedia("(pointer: coarse)").matches,
@@ -1201,7 +1201,7 @@ async function testPhysicalMobileLayout(browser) {
       "Invoice customer/payment fields did not stack to a readable phone layout: " + JSON.stringify(invoice));
     assert(invoice.documentWidth <= invoice.viewportWidth + 1,
       "Invoice causes horizontal page overflow in desktop-site mode: " + JSON.stringify(invoice));
-    process.stdout.write("PASS physical-mobile responsive layout with a 980px desktop-site viewport\\n");
+    process.stdout.write("PASS physical-mobile responsive layout with a 980px desktop-site viewport\n");
   } finally {
     await context.close();
   }
