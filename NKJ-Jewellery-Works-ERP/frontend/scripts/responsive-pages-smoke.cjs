@@ -1103,6 +1103,45 @@ async function assertMobileHeaderAlignment(page, headerSelector, menuSelector, b
   );
 }
 
+async function assertOwnerHamburgerRightEdge(page, label) {
+  const layout = await page.evaluate(() => {
+    const header = document.querySelector(".nkj-owner-topbar.nkj-reference-navbar");
+    const brand = header?.querySelector(":scope > a.brand");
+    const menu = header?.querySelector(":scope > button.nkj-mobile-menu-button");
+    if (!header || !brand || !menu) return null;
+    const headerRect = header.getBoundingClientRect();
+    const brandRect = brand.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const headerStyle = getComputedStyle(header);
+    const menuStyle = getComputedStyle(menu);
+    return {
+      headerWidth: headerRect.width,
+      headerRight: headerRect.right,
+      brandRight: brandRect.right,
+      menuLeft: menuRect.left,
+      menuRight: menuRect.right,
+      menuWidth: menuRect.width,
+      rightGap: headerRect.right - menuRect.right,
+      headerDirection: headerStyle.flexDirection,
+      menuPosition: menuStyle.position,
+      menuDisplay: menuStyle.display,
+      menuVisibility: menuStyle.visibility,
+    };
+  });
+
+  assert(layout, label + " owner header elements were missing.");
+  assert(
+    layout.headerDirection === "row" &&
+    layout.menuPosition === "absolute" &&
+    layout.menuDisplay !== "none" &&
+    layout.menuVisibility === "visible" &&
+    layout.menuWidth >= 40 &&
+    layout.rightGap >= 6 && layout.rightGap <= 20 &&
+    layout.menuLeft > layout.brandRight,
+    label + " owner hamburger must stay at the far right of the header: " + JSON.stringify(layout)
+  );
+}
+
 async function testOwnerSidebar(browser) {
   // Isolate the drawer interaction from the long sequence of route reloads.
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -1144,10 +1183,15 @@ async function testOwnerSidebar(browser) {
     const authToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
     assert(ownerShell === 1 && Boolean(authToken), "Owner route was not authenticated before sidebar testing.");
     await page.locator(".nkj-mobile-menu-button").waitFor({ state: "visible", timeout: 10000 });
-    await assertMobileHeaderAlignment(
-      page, ".nkj-owner-topbar.nkj-reference-navbar", ".nkj-mobile-menu-button",
-      ".nkj-owner-topbar.nkj-reference-navbar > .brand", "Owner"
-    );
+    for (const width of [320, 360, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await assertMobileHeaderAlignment(
+        page, ".nkj-owner-topbar.nkj-reference-navbar", ".nkj-mobile-menu-button",
+        ".nkj-owner-topbar.nkj-reference-navbar > .brand", "Owner " + width + "px"
+      );
+      await assertOwnerHamburgerRightEdge(page, "Owner " + width + "px");
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.locator(".nkj-mobile-menu-button").click();
     await page.locator(".nkj-owner-sidebar:not(.is-collapsed)").waitFor({ state: "visible", timeout: 5000 });
     await page.locator('.nkj-owner-nav a[href="/profile"]').click();
