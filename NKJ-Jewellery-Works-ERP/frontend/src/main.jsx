@@ -4,7 +4,6 @@ import ReactDOM from 'react-dom/client'
 import {BrowserRouter} from 'react-router-dom'
 import App from './app/App'
 import './shared/styles/mobile-responsive.css'
-import './app/OwnerMobileNavbarFix.css'
 import {AuthProvider} from './core/auth/AuthProvider'
 import RealtimeProvider from './core/realtime/RealtimeProvider'
 class AppErrorBoundary extends React.Component {
