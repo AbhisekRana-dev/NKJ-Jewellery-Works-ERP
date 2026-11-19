@@ -11,17 +11,30 @@ import {
 import { useAuth } from "../../core/auth/AuthProvider";
 
 const SIDEBAR_STORAGE_KEY = "nkj-owner-sidebar-collapsed";
+const SIDEBAR_LAYOUT_VERSION_KEY = "nkj-owner-sidebar-layout-version";
+const SIDEBAR_LAYOUT_VERSION = "compact-desktop-rail-v2";
 const SIDEBAR_SCROLL_KEY = "nkj-owner-sidebar-scroll";
 const SIDEBAR_NAV_CLICK_KEY = "nkj-owner-sidebar-nav-last-click";
 const SIDEBAR_DOUBLE_CLICK_MS = 450;
 function initialSidebarState() {
   try {
+    // Move existing installations to the compact rail shown in the reference
+    // screenshots exactly once. After this migration, the arrow toggle choice
+    // is respected and persists across desktop visits.
+    const savedVersion = window.localStorage.getItem(SIDEBAR_LAYOUT_VERSION_KEY);
+    if (savedVersion !== SIDEBAR_LAYOUT_VERSION) {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, "true");
+      window.localStorage.setItem(SIDEBAR_LAYOUT_VERSION_KEY, SIDEBAR_LAYOUT_VERSION);
+      return true;
+    }
+
     if (window.matchMedia?.("(max-width: 760px)").matches) return true;
     const saved = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
     if (saved !== null) return saved === "true";
-    return window.matchMedia?.("(max-width: 1100px)").matches ?? false;
+    return window.matchMedia?.("(max-width: 1100px)").matches ?? true;
   } catch {
-    return false;
+    // Prefer the safe, compact layout when browser storage is unavailable.
+    return true;
   }
 }
 
