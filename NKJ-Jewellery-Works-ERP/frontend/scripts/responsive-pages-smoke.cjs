@@ -492,9 +492,9 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
 async function fillNewInvoiceForMobile(page, width) {
   const customerPanel = page.locator("#invoice-print .inv-two .inv-panel").nth(0);
   const customerInputs = customerPanel.locator(".form-grid label input");
-  await customerInputs.nth(0).fill("Mobile QA Customer With A Long Full Name");
+  await customerInputs.nth(0).fill("mobile QA 123 Customer With A Long Full Name");
   await customerInputs.nth(1).fill("9876543210");
-  await customerInputs.nth(2).fill("Sasra, Gopiballavpur, Jhargram, Paschim Medinipur, West Bengal — PIN 721506, India");
+  await customerInputs.nth(2).fill("sasra, Gopiballavpur, Jhargram, Paschim Medinipur, West Bengal — pin 721506, India");
 
   const paymentPanel = page.locator("#invoice-print .inv-two .inv-panel").nth(1);
   await paymentPanel.locator(".form-grid label select").selectOption("UPI");
@@ -525,7 +525,7 @@ async function fillNewInvoiceForMobile(page, width) {
     const amountText = invoice?.querySelector(".new-items-table tbody tr:first-child td:nth-child(9)")?.textContent || "";
     const wrap = invoice?.querySelector(".new-items-table")?.closest(".table-wrap");
     return {
-      name: invoice?.querySelector(".inv-two .inv-panel:first-child input")?.value || "",
+      name: invoice?.querySelector(".inv-two .inv-panel:first-child .form-grid label:first-child input")?.value || "",
       address: invoice?.querySelector(".inv-two .inv-panel:first-child .form-grid label:nth-child(3) input")?.value || "",
       rows: invoice?.querySelectorAll(".new-items-table tbody tr").length || 0,
       totalNumber: Number(totalText.replace(/[^\d.-]/g, "")),
@@ -537,8 +537,10 @@ async function fillNewInvoiceForMobile(page, width) {
     };
   });
 
-  assert(values.name.includes("Long Full Name"), "New Invoice did not retain the long customer name.");
-  assert(values.address.includes("PIN 721506"), "New Invoice did not retain the long customer address.");
+  assert(values.name === "MOBILE QA CUSTOMER WITH A LONG FULL NAME" && !/\\d/.test(values.name),
+    "Customer name must remove digits and remain uppercase: " + JSON.stringify(values.name));
+  assert(values.address === "SASRA, GOPIBALLAVPUR, JHARGRAM, PASCHIM MEDINIPUR, WEST BENGAL — PIN 721506, INDIA",
+    "Customer address must remain uppercase and preserve house/PIN digits: " + JSON.stringify(values.address));
   assert(values.rows === 2, "New Invoice did not add the second ornament row.");
   assert(Math.abs(values.firstAmount - 36975) < 0.01,
     "New ornament row amount is incorrect: " + JSON.stringify(values));
