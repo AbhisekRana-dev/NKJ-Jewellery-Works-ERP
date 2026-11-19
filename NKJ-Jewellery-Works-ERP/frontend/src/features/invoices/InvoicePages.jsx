@@ -61,8 +61,8 @@ import { money } from "../../shared/utils/formatters";
 
 function normalizeCustomerName(value) {
   return String(value ?? "")
-    .replace(/[^\\p{L}\\p{M}\\s.'’\\-]/gu, "")
-    .replace(/\\s+/gu, " ")
+    .replace(/[^\p{L}\p{M}\s.'’-]/gu, "")
+    .replace(/\s+/gu, " ")
     .toUpperCase();
 }
 
