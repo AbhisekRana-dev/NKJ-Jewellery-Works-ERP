@@ -443,8 +443,10 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
             const fieldRect = field?.getBoundingClientRect();
             return {
               width: cellRect.width,
+              height: cellRect.height,
               labelWidth: cellRect.width,
               fieldWidth: fieldRect?.width || 0,
+              fieldHeight: fieldRect?.height || 0,
               fieldCount: field ? 1 : 0,
             };
           }),
@@ -484,6 +486,10 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
         row.cells.every((cell) => cell.width >= 60) &&
         row.cells.every((cell) => !cell.fieldCount || cell.fieldWidth >= Math.min(96, cell.width - 12)),
         invoiceKind + " ornament fields were squeezed into narrow desktop percentage columns: " + JSON.stringify(result)
+      );
+      assert(
+        row.cells.every((cell) => !cell.fieldCount || cell.fieldHeight >= 44),
+        invoiceKind + " ornament input is vertically clipped or too short for mobile typing: " + JSON.stringify(result)
       );
     }
   }
