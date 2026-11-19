@@ -537,7 +537,7 @@ async function fillNewInvoiceForMobile(page, width) {
     };
   });
 
-  assert(values.name === "MOBILE QA CUSTOMER WITH A LONG FULL NAME" && !/\\d/.test(values.name),
+  assert(values.name === "MOBILE QA CUSTOMER WITH A LONG FULL NAME" && !/\d/.test(values.name),
     "Customer name must remove digits and remain uppercase: " + JSON.stringify(values.name));
   assert(values.address === "SASRA, GOPIBALLAVPUR, JHARGRAM, PASCHIM MEDINIPUR, WEST BENGAL — PIN 721506, INDIA",
     "Customer address must remain uppercase and preserve house/PIN digits: " + JSON.stringify(values.address));
