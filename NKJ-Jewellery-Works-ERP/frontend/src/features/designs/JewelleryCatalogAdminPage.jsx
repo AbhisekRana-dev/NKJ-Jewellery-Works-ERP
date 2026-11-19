@@ -124,10 +124,6 @@ export default function JewelleryCatalogAdminPage() {
   const [detailsActionBusy, setDetailsActionBusy] = useState(false);
   const [detailsActionError, setDetailsActionError] = useState("");
   const [bulkFiles, setBulkFiles] = useState([]);
-  const [bulkDesignNames, setBulkDesignNames] = useState([]);
-  const [bulkNameConfirmed, setBulkNameConfirmed] = useState([]);
-  const bulkPreviews = useMemo(() => bulkFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [bulkFiles]);
-  useEffect(() => () => bulkPreviews.forEach((preview) => URL.revokeObjectURL(preview.url)), [bulkPreviews]);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState("");
@@ -733,30 +729,20 @@ export default function JewelleryCatalogAdminPage() {
       setError("Choose one or more JPG, PNG or WebP design photographs.");
       return;
     }
-    const invalidIndex = bulkFiles.findIndex((file, index) =>
-      !String(bulkDesignNames[index] || "").trim() || !bulkNameConfirmed[index]
-    );
-    if (invalidIndex !== -1) {
-      setError(`Confirm that the product name matches photo ${invalidIndex + 1} before uploading. You can edit every name here.`);
-      return;
-    }
     setBulkRunning(true);
     setBulkProgress("");
     setError("");
     let completed = 0;
     try {
-      for (let index = 0; index < bulkFiles.length; index += 1) {
-        const file = bulkFiles[index];
-        const designName = String(bulkDesignNames[index]).trim();
+      for (const file of bulkFiles) {
         const saved = await request("/admin/designs", {
           method: "POST",
           body: JSON.stringify({
             categoryId: Number(bulkCategoryId),
-            designName,
-            description: "Indian jewellery design reference. Verify material, purity, weight and other specifications against the actual piece.",
-            styleLabel: "Indian jewellery design",
-            regionalInspiration: "Pan-Indian",
-            keywords: designName,
+            designName: cleanFileName(file.name),
+            description: "Owner-uploaded jewellery design photograph.",
+            styleLabel: "Shop photograph",
+            keywords: cleanFileName(file.name),
             isActive: true,
             isFeatured: false,
           }),
@@ -766,10 +752,8 @@ export default function JewelleryCatalogAdminPage() {
         setBulkProgress(`Uploaded ${completed} of ${bulkFiles.length} designs…`);
       }
       setBulkFiles([]);
-      setBulkDesignNames([]);
-      setBulkNameConfirmed([]);
       setBulkProgress(`Successfully added ${completed} designs.`);
-      setMessage(`Bulk upload complete: ${completed} verified-name designs added.`);
+      setMessage(`Bulk upload complete: ${completed} designs added.`);
       await loadDesigns(0);
     } catch (err) {
       setError(`${err.message || "Bulk upload stopped."} ${completed} design(s) uploaded before the error.`);
@@ -835,8 +819,8 @@ export default function JewelleryCatalogAdminPage() {
 
         <section className="nkj-catalog-bulk">
           <div className="nkj-catalog-bulk-heading">
-            <div><Upload size={19} /><b>Upload Indian Jewellery Designs from Chrome</b></div>
-            <small>Save images from Chrome to your device, select them here, then verify each product name before saving.</small>
+            <div><Upload size={19} /><b>Bulk Upload Shop Photographs</b></div>
+            <small>Each selected image becomes a separate design record with its own generated design code.</small>
           </div>
           <div className="nkj-catalog-bulk-fields">
             <label>Assign metal and subcategory
@@ -845,14 +829,8 @@ export default function JewelleryCatalogAdminPage() {
                 {categories.filter((item) => item.isActive !== false).map((item) => <option key={item.id} value={item.id}>{item.metalType} · {item.subcategoryName}</option>)}
               </select>
             </label>
-            <label className="nkj-catalog-file-picker"><ImagePlus size={17} /> Choose images saved from Chrome
-              <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple disabled={bulkRunning} onChange={(event) => {
-                const files = Array.from(event.target.files || []);
-                setBulkFiles(files);
-                setBulkDesignNames(files.map((file) => cleanFileName(file.name)));
-                setBulkNameConfirmed(files.map(() => false));
-                setError("");
-              }} />
+            <label className="nkj-catalog-file-picker"><ImagePlus size={17} /> Choose multiple JPG/PNG/WebP images
+              <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={(event) => setBulkFiles(Array.from(event.target.files || []))} />
             </label>
             <button type="button" onClick={runBulkUpload} disabled={bulkRunning || !bulkFiles.length}>
               {bulkRunning ? <LoaderCircle className="spin" size={16} /> : <Upload size={16} />}
@@ -860,31 +838,7 @@ export default function JewelleryCatalogAdminPage() {
             </button>
           </div>
           {bulkProgress && <small className="nkj-catalog-progress">{bulkProgress}</small>}
-          {bulkFiles.length > 0 && (
-            <div className="nkj-catalog-bulk-review">
-              <div className="nkj-catalog-bulk-review-title">
-                <b>Review photos and product names ({bulkFiles.length})</b>
-                <span>Names are editable. Confirm each one only after checking the photo.</span>
-              </div>
-              {bulkFiles.map((file, index) => (
-                <div className="nkj-catalog-bulk-review-row" key={`${file.name}-${file.size}-${file.lastModified}-${index}`}>
-                  <img src={bulkPreviews[index]?.url} alt={bulkDesignNames[index] || "Jewellery design preview"} />
-                  <div className="nkj-catalog-bulk-review-fields">
-                    <label>Product name
-                      <input value={bulkDesignNames[index] || ""} maxLength={150} disabled={bulkRunning}
-                        onChange={(event) => { setBulkDesignNames((current) => current.map((name, itemIndex) => itemIndex === index ? event.target.value : name)); setBulkNameConfirmed((current) => current.map((confirmed, itemIndex) => itemIndex === index ? false : confirmed)); }} />
-                    </label>
-                    <label className="nkj-catalog-name-confirm">
-                      <input type="checkbox" checked={Boolean(bulkNameConfirmed[index])} disabled={bulkRunning || !String(bulkDesignNames[index] || "").trim()}
-                        onChange={(event) => setBulkNameConfirmed((current) => current.map((confirmed, itemIndex) => itemIndex === index ? event.target.checked : confirmed))} />
-                      I checked this photo and confirmed the product name is correct
-                    </label>
-                    <small>{file.name}</small>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {bulkFiles.length > 0 && <small className="nkj-catalog-progress">{bulkFiles.map((file) => file.name).join(" · ")}</small>}
         </section>
 
         <section className="nkj-catalog-filters">

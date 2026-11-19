@@ -106,8 +106,8 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [error, setError] = useState("");
+
   const [busy, setBusy] = useState(false);
-  const sessionExpiredMessage = location.state?.sessionExpiredMessage || "";
 
   if (isAdmin) return <NavigateHome />;
 
@@ -274,7 +274,6 @@ export function Login() {
               app
             </div>
 
-            {sessionExpiredMessage && <p className="error" role="alert">{sessionExpiredMessage}</p>}
             {error && <p className="error">{error}</p>}
 
             <button

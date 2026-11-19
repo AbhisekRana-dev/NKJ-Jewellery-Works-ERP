@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -43,21 +42,6 @@ public class AuthController {
         return Map.of("token", auth.verify(x.challengeId(), x.code(),
                 request.getHeader("User-Agent"), clientIp(request)), "username", auth.getUsername());
     }
-    @PostMapping("/activity")
-    public ResponseEntity<Map<String,Object>> recordActivity(
-            @RequestHeader(value="Authorization", required=false) String header) {
-        String token = ownerToken(header);
-        if (!auth.recordActivity(token)) {
-            boolean idleExpired = auth.wasIdleExpired(token);
-            String message = idleExpired
-                    ? "Your session expired due to inactivity. Please log in again."
-                    : "Your session expired. Please log in again.";
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", message, "reason", idleExpired ? "inactivity" : "expired"));
-        }
-        return ResponseEntity.ok(Map.of("active", true, "lastActivityAt", auth.getLastActivityAt(token)));
-    }
-
     @PostMapping("/logout")
     public Map<String,Object> logout(@RequestHeader(value="Authorization", required=false) String h) {
         if (h != null && h.startsWith("Bearer ")) {
@@ -154,19 +138,10 @@ public class AuthController {
 
     /** Password verification only starts the email OTP challenge; it does not create a session. */
     @GetMapping("/session")
-    public ResponseEntity<Map<String,Object>> session(@RequestHeader(value="Authorization", required=false) String header) {
-        String token = ownerToken(header);
-        if (!auth.valid(token)) {
-            boolean idleExpired = auth.wasIdleExpired(token);
-            String message = idleExpired
-                    ? "Your session expired due to inactivity. Please log in again."
-                    : "Your session expired. Please log in again.";
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", message, "reason", idleExpired ? "inactivity" : "expired"));
-        }
-        return ResponseEntity.ok(Map.of(
-                "username", auth.getUsername(),
-                "lastActivityAt", auth.getLastActivityAt(token)));
+    public Map<String,String> session(@RequestHeader(value="Authorization", required=false) String header) {
+        String token = header != null && header.startsWith("Bearer ") ? header.substring(7) : "";
+        if (!auth.valid(token)) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Administrator session is not valid.");
+        return Map.of("username", auth.getUsername());
     }
 
     @PostMapping("/setup-email/start")

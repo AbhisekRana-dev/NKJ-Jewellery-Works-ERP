@@ -9,8 +9,6 @@ export default function InvoicePinDialog({
   onClose,
   onVerified,
   invoiceId,
-  purpose = "PRINT",
-  idempotencyKey,
   title = "Verify invoice security PIN",
 }) {
   const [pin, setPin] = useState("");
@@ -27,12 +25,8 @@ export default function InvoicePinDialog({
     event.preventDefault();
     setError("");
 
-    if (purpose === "PRINT" && !invoiceId) {
+    if (!invoiceId) {
       setError("A saved invoice is required before PIN verification.");
-      return;
-    }
-    if (purpose === "SAVE" && !invoiceId && !idempotencyKey) {
-      setError("The invoice save request is missing. Close this dialog and try again.");
       return;
     }
     if (!/^\d{6}$/.test(pin)) {
@@ -45,7 +39,7 @@ export default function InvoicePinDialog({
     try {
       const result = await request("/invoices/verify-pin", {
         method: "POST",
-        body: JSON.stringify({ pin, invoiceId: invoiceId ?? null, purpose, idempotencyKey: idempotencyKey ?? null }),
+        body: JSON.stringify({ pin, invoiceId }),
       });
 
       await onVerified(result.ticket);
