@@ -333,7 +333,7 @@ function ManualCalculator({ active }) {
         <div className="nkj-calc-display">
           <span>MANUAL CALCULATOR</span>
           <div className="nkj-calc-expression" aria-live="polite">{expression}</div>
-          <div className="nkj-calc-result" aria-live="polite">{showResult && calculated ? `= ${Number(result || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}</div>
+          <div className="nkj-calc-result" aria-live="polite">{showResult && calculated ? `= ${Number(result || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""}</div>
           {error && <small className="nkj-calc-error">{error}</small>}
         </div>
 
