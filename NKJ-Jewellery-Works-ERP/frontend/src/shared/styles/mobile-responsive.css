@@ -1050,3 +1050,396 @@
     min-width: 0 !important;
   }
 }
+
+
+/* NKJ LAYOUT WIDTH + MOBILE INVOICE REGRESSION FIX (screen only). */
+/*
+ * Owner sidebar, topbar and workspace must all use the same live width.
+ * The earlier shell CSS referenced --nkj-owner-expanded-width without a
+ * default outside the 1451–1750px band. In that case the sidebar fell back
+ * to 258px while the content margin declaration became invalid, allowing
+ * the fixed sidebar to cover the first part of the page.
+ */
+@media screen and (min-width: 1101px) {
+  body.nkj-owner-layout {
+    --nkj-owner-expanded-width: 258px;
+    --nkj-owner-collapsed-width: 82px;
+    --nkj-owner-sidebar-width: 258px;
+  }
+
+  body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
+    --nkj-owner-sidebar-width: 82px;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar {
+    width: var(--nkj-owner-sidebar-width) !important;
+  }
+
+  body.nkj-owner-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar {
+    box-sizing: border-box !important;
+    width: calc(100% - var(--nkj-owner-sidebar-width)) !important;
+    max-width: calc(100% - var(--nkj-owner-sidebar-width)) !important;
+    margin-left: var(--nkj-owner-sidebar-width) !important;
+    min-width: 0 !important;
+  }
+
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container,
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-invoice-container {
+    box-sizing: border-box !important;
+    display: block !important;
+    float: none !important;
+    width: calc(100% - var(--nkj-owner-sidebar-width)) !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 0 0 var(--nkj-owner-sidebar-width) !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+  }
+}
+
+/* Preserve the narrower desktop sidebar sizing intentionally used at 100% zoom. */
+@media screen and (min-width: 1451px) and (max-width: 1750px) {
+  body.nkj-owner-layout {
+    --nkj-owner-expanded-width: 216px;
+    --nkj-owner-collapsed-width: 74px;
+    --nkj-owner-sidebar-width: 216px;
+  }
+
+  body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
+    --nkj-owner-sidebar-width: 74px;
+  }
+}
+
+/* Tablet uses a fixed 78px rail; phone uses an off-canvas drawer and no content gutter. */
+@media screen and (min-width: 761px) and (max-width: 1100px) {
+  body.nkj-owner-layout {
+    --nkj-owner-expanded-width: 78px;
+    --nkj-owner-collapsed-width: 78px;
+    --nkj-owner-sidebar-width: 78px;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar {
+    width: 78px !important;
+  }
+
+  body.nkj-owner-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar,
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container,
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-invoice-container {
+    box-sizing: border-box !important;
+    width: calc(100% - 78px) !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 78px !important;
+  }
+}
+
+/*
+ * Phone invoice editor/read-only sheet.
+ * This block is deliberately in the final shared screen stylesheet because
+ * the older shared mobile file was loaded after the app overrides and restored
+ * a 58px logo column. That left the actual shop heading with too little room.
+ */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
+  html,
+  body,
+  #root,
+  .app-layout,
+  .app-content {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+
+  body.nkj-owner-layout {
+    --nkj-owner-expanded-width: 0px;
+    --nkj-owner-collapsed-width: 0px;
+    --nkj-owner-sidebar-width: 0px;
+  }
+
+  body.nkj-owner-layout .app-content > .nkj-owner-topbar.nkj-reference-navbar,
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container,
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-invoice-container {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+  }
+
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-container,
+  body.nkj-owner-layout .app-content > main.container.nkj-owner-invoice-container {
+    padding: 12px max(8px, env(safe-area-inset-right)) 22px max(8px, env(safe-area-inset-left)) !important;
+  }
+
+  .nkj-public-topbar {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 62px !important;
+    padding: 8px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  .nkj-public-topbar > .brand {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: calc(100% - 56px) !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-public-topbar > .nkj-public-menu-button {
+    display: inline-grid !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0 0 0 auto !important;
+    align-self: center !important;
+  }
+
+  #invoice-print.invoice-sheet,
+  #invoice-print.nkj-saved-invoice-sheet {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    overflow: visible !important;
+  }
+
+  #invoice-print .inv-head {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    grid-auto-flow: row !important;
+    align-items: stretch !important;
+    justify-items: stretch !important;
+    gap: 9px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #invoice-print .inv-logo-wrap {
+    display: none !important;
+  }
+
+  #invoice-print .inv-shop {
+    display: block !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 1 !important;
+    justify-self: stretch !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 2px !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+    writing-mode: horizontal-tb !important;
+  }
+
+  #invoice-print .inv-shop h1,
+  #invoice-print .inv-shop h2 {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 0 6px !important;
+    font-size: clamp(18px, 5.8vw, 25px) !important;
+    line-height: 1.14 !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    hyphens: none !important;
+    text-align: center !important;
+    writing-mode: horizontal-tb !important;
+  }
+
+  #invoice-print .inv-shop h3,
+  #invoice-print .inv-shop > b,
+  #invoice-print .inv-shop p,
+  #invoice-print .inv-shop strong {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 3px 0 !important;
+    font-size: clamp(13px, 3.8vw, 16px) !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    hyphens: none !important;
+    text-align: center !important;
+    writing-mode: horizontal-tb !important;
+  }
+
+  #invoice-print .invoice-gstin {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 5px auto 0 !important;
+    padding: 5px 8px !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    box-sizing: border-box !important;
+  }
+
+  #invoice-print .inv-meta {
+    display: block !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #invoice-print .inv-meta > b {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    white-space: normal !important;
+  }
+
+  #invoice-print .inv-meta span {
+    display: grid !important;
+    grid-template-columns: minmax(82px, .8fr) minmax(0, 1.2fr) !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 7px 9px !important;
+    box-sizing: border-box !important;
+  }
+
+  #invoice-print .inv-meta span label,
+  #invoice-print .inv-meta span strong {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  #invoice-print .invoice-date-input {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  #invoice-print .inv-two,
+  #invoice-print .inv-main,
+  #invoice-print .inv-bottom,
+  #invoice-print .words-sign {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    gap: 9px !important;
+  }
+
+  #invoice-print .inv-panel,
+  #invoice-print .inv-left,
+  #invoice-print .totals,
+  #invoice-print .inv-shop {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  #invoice-print .form-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  #invoice-print .form-grid label {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 5px !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+  }
+
+  #invoice-print .form-grid label > i {
+    display: none !important;
+  }
+
+  #invoice-print .form-grid label > input,
+  #invoice-print .form-grid label > select,
+  #invoice-print .form-grid input,
+  #invoice-print .form-grid select,
+  #invoice-print .totals input {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 44px !important;
+    padding: 9px 11px !important;
+    font-size: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  #invoice-print .table-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #invoice-print .inv-bottom textarea,
+  #invoice-print textarea {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .nkj-invoice-detail-overlay {
+    padding: 6px !important;
+  }
+
+  .nkj-invoice-detail-sheet.nkj-full-invoice-modal {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 8px !important;
+  }
+}
