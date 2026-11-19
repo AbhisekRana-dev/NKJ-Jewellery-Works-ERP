@@ -59,17 +59,6 @@ import { Page } from "../../shared/layouts/OwnerShell";
 import { money } from "../../shared/utils/formatters";
 
 
-function normalizeCustomerName(value) {
-  return String(value ?? "")
-    .replace(/[^\p{L}\p{M}\s.'’-]/gu, "")
-    .replace(/\s+/gu, " ")
-    .toUpperCase();
-}
-
-function normalizeCustomerAddress(value) {
-  return String(value ?? "").toUpperCase();
-}
-
 function evaluateCalculatorExpression(rawExpression) {
   const expression = String(rawExpression ?? "")
     .replace(/[×xX]/g, "*")
@@ -484,9 +473,9 @@ export function InvoicePage() {
   };
 
   const [customer, setCustomer] = useState(() => ({
-    name: normalizeCustomerName(invoiceSeed?.customerName || invoiceSeed?.name || initialDraft?.customer?.name || ""),
+    name: invoiceSeed?.customerName || invoiceSeed?.name || initialDraft?.customer?.name || "",
     mobile: invoiceSeed?.mobile || initialDraft?.customer?.mobile || "",
-    address: normalizeCustomerAddress(invoiceSeed?.address || initialDraft?.customer?.address || ""),
+    address: invoiceSeed?.address || initialDraft?.customer?.address || "",
   }));
 
   const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || initialDraft?.paymentMode || "Cash");
@@ -844,9 +833,9 @@ export function InvoicePage() {
     return {
       invoiceDate,
       showGstin,
-      customerName: normalizeCustomerName(customer.name),
+      customerName: customer.name,
       mobile: customer.mobile,
-      address: normalizeCustomerAddress(customer.address),
+      address: customer.address,
       paymentMode,
       referenceNo,
       description,
@@ -1335,20 +1324,11 @@ export function InvoicePage() {
                 <i>:</i>
 
                 <input
-                  type="text"
-                  inputMode="text"
-                  autoCapitalize="characters"
-                  autoComplete="name"
                   value={customer.name}
-                  onChange={(e) => {
-                    setCustomer({
-                      ...customer,
-                      name: normalizeCustomerName(e.target.value),
-                    });
-                    setError("");
-                  }}
+                  onChange={(e) =>
+                    setCustomer({ ...customer, name: e.target.value })
+                  }
                   placeholder="Customer name"
-                  aria-label="Customer name (letters only)"
                 />
               </label>
 
@@ -1390,19 +1370,11 @@ export function InvoicePage() {
                 <i>:</i>
 
                 <input
-                  type="text"
-                  inputMode="text"
-                  autoCapitalize="characters"
-                  autoComplete="street-address"
                   value={customer.address}
                   onChange={(e) =>
-                    setCustomer({
-                      ...customer,
-                      address: normalizeCustomerAddress(e.target.value),
-                    })
+                    setCustomer({ ...customer, address: e.target.value })
                   }
                   placeholder="Address"
-                  aria-label="Address (uppercase)"
                 />
               </label>
             </div>
