@@ -437,6 +437,17 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
           right: rowRect.right,
           labelledCells,
           cellCount: cells.length,
+          cells: cells.map((cell) => {
+            const cellRect = cell.getBoundingClientRect();
+            const field = cell.querySelector("input, select, textarea");
+            const fieldRect = field?.getBoundingClientRect();
+            return {
+              width: cellRect.width,
+              labelWidth: cellRect.width,
+              fieldWidth: fieldRect?.width || 0,
+              fieldCount: field ? 1 : 0,
+            };
+          }),
         };
       }),
     };
@@ -468,6 +479,11 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
       assert(
         row.labelledCells >= Math.max(4, row.cellCount - 1),
         invoiceKind + " ornament card is missing readable field labels: " + JSON.stringify(result)
+      );
+      assert(
+        row.cells.every((cell) => cell.width >= 60) &&
+        row.cells.every((cell) => !cell.fieldCount || cell.fieldWidth >= Math.min(96, cell.width - 12)),
+        invoiceKind + " ornament fields were squeezed into narrow desktop percentage columns: " + JSON.stringify(result)
       );
     }
   }
