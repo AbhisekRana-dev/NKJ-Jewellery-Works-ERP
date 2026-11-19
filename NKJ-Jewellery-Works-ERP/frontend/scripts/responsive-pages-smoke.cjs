@@ -1245,25 +1245,42 @@ async function testManualCalculatorEqualsGate(page) {
   await page.locator('[data-calculator-mode="manual"]').click();
 
   const result = page.locator(".nkj-calc-result");
+  const expression = page.locator(".nkj-calc-expression");
   await result.waitFor({ state: "visible", timeout: 5000 });
-  assert((await result.textContent()).trim() === "—",
-    "Manual calculator must not show a result before the user presses equals.");
 
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "+", exact: true }).click();
-  await page.getByRole("button", { name: "3", exact: true }).click();
-  assert((await result.textContent()).trim() === "—",
-    "Manual calculator calculated while entering 2 + 3, before equals.");
+  // Clear persisted drafts first so a result from an earlier test/session
+  // cannot make this assertion pass or fail nondeterministically.
+  await page.getByRole("button", { name: "AC", exact: true }).click();
+  assert((await result.textContent()).trim() === "",
+    "Manual calculator result area must be empty before any explicit calculation.");
+
+  for (const key of ["9", "9", "×", "8", "8"]) {
+    await page.getByRole("button", { name: key, exact: true }).click();
+  }
+  assert((await expression.textContent()).trim() === "99*88",
+    "Manual calculator expression should show 99*88 while the user is typing.");
+  assert((await result.textContent()).trim() === "",
+    "Manual calculator must not calculate 99*88 while entering keys, before equals.");
 
   await page.getByRole("button", { name: "=", exact: true }).click();
-  assert((await result.textContent()).trim() === "= 5.00",
-    "Manual calculator should show 5.00 only after equals is pressed.");
+  assert((await result.textContent()).trim() === "= 8,712.00",
+    "Manual calculator should show 8,712.00 only after the equals button is pressed.");
+
+  await page.getByRole("button", { name: "AC", exact: true }).click();
+  for (const key of ["9", "9", "×", "8", "8"]) {
+    await page.getByRole("button", { name: key, exact: true }).click();
+  }
+  assert((await result.textContent()).trim() === "",
+    "Manual calculator must keep the result blank before keyboard Enter.");
+  await page.keyboard.press("Enter");
+  assert((await result.textContent()).trim() === "= 8,712.00",
+    "Manual calculator should calculate 99*88 when Enter is pressed.");
 
   await page.getByRole("button", { name: "4", exact: true }).click();
-  assert((await result.textContent()).trim() === "—",
-    "Manual calculator must hide the previous result as soon as a new input is entered.");
+  assert((await result.textContent()).trim() === "",
+    "Manual calculator must clear the previous result as soon as a new input is entered.");
 
-  process.stdout.write("PASS manual calculator shows results only after equals is pressed\n");
+  process.stdout.write("PASS manual calculator shows 99*88 only after equals or Enter\\n");
 }
 
 async function testPublicNavigation(browser) {
