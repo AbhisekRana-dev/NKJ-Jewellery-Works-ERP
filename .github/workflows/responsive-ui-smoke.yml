@@ -1,0 +1,49 @@
+name: NKJ Responsive UI Smoke Test
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - "fix/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  calculator-responsive:
+    name: Calculator viewport and interaction checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: NKJ-Jewellery-Works-ERP/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
+
+      - name: Install temporary browser-test runner
+        run: npm install --no-save --package-lock=false playwright
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
+
+      - name: Test calculator at mobile, tablet, laptop and desktop sizes
+        run: node scripts/responsive-smoke.cjs
+        working-directory: NKJ-Jewellery-Works-ERP/frontend
+
+      - name: Test all ERP page layouts and mobile navigation
+        run: node scripts/responsive-pages-smoke.cjs
+        working-directory: NKJ-Jewellery-Works-ERP/frontend

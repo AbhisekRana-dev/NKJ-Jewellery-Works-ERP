@@ -2,12 +2,16 @@ package com.nkj.billing.controller;
 
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,6 +30,7 @@ public class AuthController {
 
     record Login(String username, String password) {}
     record Verify(String challengeId, String code) {}
+    record SessionManagerUnlock(String password) {}
     record SetupEmailStart(String username, String password) {}
     record SetupEmailVerify(String challengeId, String code) {}
 
@@ -34,9 +39,25 @@ public class AuthController {
         return Map.of("challengeId", auth.login(x.username(), x.password()), "requiresTotp", true);
     }
     @PostMapping("/verify")
-    public Map<String,Object> verify(@RequestBody Verify x) {
-        return Map.of("token", auth.verify(x.challengeId(), x.code()), "username", auth.getUsername());
+    public Map<String,Object> verify(@RequestBody Verify x, HttpServletRequest request) {
+        return Map.of("token", auth.verify(x.challengeId(), x.code(),
+                request.getHeader("User-Agent"), clientIp(request)), "username", auth.getUsername());
     }
+    @PostMapping("/activity")
+    public ResponseEntity<Map<String,Object>> recordActivity(
+            @RequestHeader(value="Authorization", required=false) String header) {
+        String token = ownerToken(header);
+        if (!auth.recordActivity(token)) {
+            boolean idleExpired = auth.wasIdleExpired(token);
+            String message = idleExpired
+                    ? "Your session expired due to inactivity. Please log in again."
+                    : "Your session expired. Please log in again.";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", message, "reason", idleExpired ? "inactivity" : "expired"));
+        }
+        return ResponseEntity.ok(Map.of("active", true, "lastActivityAt", auth.getLastActivityAt(token)));
+    }
+
     @PostMapping("/logout")
     public Map<String,Object> logout(@RequestHeader(value="Authorization", required=false) String h) {
         if (h != null && h.startsWith("Bearer ")) {
@@ -58,12 +79,94 @@ public class AuthController {
         return Map.of("success", true);
     }
 
+    @GetMapping("/sessions/summary")
+    public Map<String,Object> sessionSummary(@RequestHeader(value="Authorization", required=false) String header) {
+        return auth.sessionSummary(ownerToken(header));
+    }
+
+    @PostMapping("/sessions/unlock")
+    public Map<String,Object> unlockSessionManagement(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestBody SessionManagerUnlock body,
+            HttpServletRequest request) {
+        // The direct peer address is used for the attempt limiter; the forwarded header is only metadata.
+        String managerToken = auth.unlockSessionManager(ownerToken(header), body.password(), request.getRemoteAddr());
+        return Map.of("managerToken", managerToken, "expiresInSeconds", 300);
+    }
+
+    @GetMapping("/sessions")
+    public Map<String,Object> loginHistory(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestHeader(value="X-Owner-Session-Manager", required=false) String managerToken) {
+        return Map.of("sessions", auth.listLoginHistory(ownerToken(header), managerToken));
+    }
+
+    @PostMapping("/sessions/{sessionId}/logout")
+    public Map<String,Object> logoutLoginSession(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestHeader(value="X-Owner-Session-Manager", required=false) String managerToken,
+            @PathVariable String sessionId) {
+        boolean current = auth.logoutLoginSession(ownerToken(header), managerToken, sessionId);
+        revokePendingQrUploads();
+        if (current) return Map.of("success", true, "currentSession", true);
+        return Map.of("success", true, "currentSession", false);
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public Map<String,Object> deleteLoginHistoryEntry(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestHeader(value="X-Owner-Session-Manager", required=false) String managerToken,
+            @PathVariable String sessionId) {
+        auth.deleteLoginHistoryEntry(ownerToken(header), managerToken, sessionId);
+        return Map.of("success", true, "deleted", true);
+    }
+
+    @PostMapping("/sessions/logout-others")
+    public Map<String,Object> logoutOtherSessions(
+            @RequestHeader(value="Authorization", required=false) String header,
+            @RequestHeader(value="X-Owner-Session-Manager", required=false) String managerToken) {
+        int loggedOut = auth.logoutOtherLoginSessions(ownerToken(header), managerToken);
+        revokePendingQrUploads();
+        return Map.of("success", true, "loggedOutCount", loggedOut);
+    }
+
+    private String ownerToken(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) return "";
+        return authorization.substring(7);
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) return forwarded.split(",")[0].trim();
+        return request.getRemoteAddr();
+    }
+
+    private void revokePendingQrUploads() {
+        jdbc.update("""
+            UPDATE public.jewellery_design_upload_sessions
+               SET revoked_at=NOW()
+             WHERE created_by=?
+               AND consumed_at IS NULL
+               AND revoked_at IS NULL
+               AND expires_at > NOW()
+            """, auth.getUsername());
+    }
+
     /** Password verification only starts the email OTP challenge; it does not create a session. */
     @GetMapping("/session")
-    public Map<String,String> session(@RequestHeader(value="Authorization", required=false) String header) {
-        String token = header != null && header.startsWith("Bearer ") ? header.substring(7) : "";
-        if (!auth.valid(token)) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Administrator session is not valid.");
-        return Map.of("username", auth.getUsername());
+    public ResponseEntity<Map<String,Object>> session(@RequestHeader(value="Authorization", required=false) String header) {
+        String token = ownerToken(header);
+        if (!auth.valid(token)) {
+            boolean idleExpired = auth.wasIdleExpired(token);
+            String message = idleExpired
+                    ? "Your session expired due to inactivity. Please log in again."
+                    : "Your session expired. Please log in again.";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", message, "reason", idleExpired ? "inactivity" : "expired"));
+        }
+        return ResponseEntity.ok(Map.of(
+                "username", auth.getUsername(),
+                "lastActivityAt", auth.getLastActivityAt(token)));
     }
 
     @PostMapping("/setup-email/start")

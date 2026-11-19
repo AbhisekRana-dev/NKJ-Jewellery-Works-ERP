@@ -2083,3 +2083,199 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     object-fit: contain !important;
   }
 }
+
+
+/* Keep the Saved Invoices listing out of the invoice's native print flow.
+   The detail sheet is rendered after the hidden invoice-history table inside
+   the same <main>. visibility:hidden alone still reserves those siblings'
+   layout space and can push the saved invoice onto additional pages. */
+@media print {
+  body:has(.nkj-invoice-detail-overlay) .nkj-owner-sidebar,
+  body:has(.nkj-invoice-detail-overlay) .nkj-owner-topbar,
+  body:has(.nkj-invoice-detail-overlay) .nkj-public-topbar,
+  body:has(.nkj-invoice-detail-overlay) .jewellery-footer {
+    display: none !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) main.container > :not(.nkj-invoice-detail-overlay) {
+    display: none !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) main.container {
+    display: block !important;
+    position: static !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-overlay {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-sheet.nkj-full-invoice-modal {
+    position: static !important;
+    display: block !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body:has(.nkj-invoice-detail-overlay) .nkj-invoice-detail-actions {
+    display: none !important;
+  }
+}
+
+
+/* Saved invoice modal print containment.
+   The saved-invoice route uses the owner app's nested flex shell, unlike the
+   standalone New Invoice route. Remove the app-shell min-height/flex sizing
+   while printing the modal so its content does not create an additional page. */
+@media print {
+  body:has(.nkj-invoice-detail-overlay) #root,
+  body:has(.nkj-invoice-detail-overlay) .app-layout,
+  body:has(.nkj-invoice-detail-overlay) .app-content {
+    display: block !important;
+    position: static !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    flex: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+  }
+}
+
+
+/* The legacy full-invoice modal print rule is more specific than the generic
+   overlay reset above. Override that exact selector so the saved invoice
+   participates in normal print flow instead of being absolutely positioned. */
+@media print {
+  body:has(.nkj-full-invoice-modal) .nkj-invoice-detail-overlay {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:has(.nkj-full-invoice-modal) .nkj-full-invoice-modal {
+    position: static !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+}
+
+
+/* A4 landscape printable width is 291mm after the 3mm page margins.
+   Keep the saved-invoice modal shell at 287mm so nested borders and CSS-pixel
+   rounding cannot spill a fraction of a pixel onto a second horizontal page. */
+@media print {
+  /* Match the earlier #invoice-print-based rules' specificity so these
+     width constraints override every nested 291mm owner-shell declaration. */
+  html:has(#invoice-print.nkj-saved-invoice-sheet),
+  body:has(#invoice-print.nkj-saved-invoice-sheet),
+  body:has(#invoice-print.nkj-saved-invoice-sheet) #root,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .app-layout,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .app-content,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .nkj-owner-layout,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) main.container,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .invoice-container,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .nkj-invoice-detail-overlay,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .nkj-invoice-detail-sheet,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .nkj-full-invoice-modal,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) #invoice-print.nkj-saved-invoice-sheet {
+    width: 287mm !important;
+    min-width: 0 !important;
+    max-width: 287mm !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  html:has(#invoice-print.nkj-saved-invoice-sheet),
+  body:has(#invoice-print.nkj-saved-invoice-sheet),
+  body:has(#invoice-print.nkj-saved-invoice-sheet) #root,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .app-layout,
+  body:has(#invoice-print.nkj-saved-invoice-sheet) .app-content {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Keep the saved invoice in normal print flow. The list, toolbar and
+     modal controls are removed above, leaving this as the only printable
+     document. Natural height avoids an absolute/fixed canvas being repeated
+     or clipped by Chromium's page fragmentation. */
+  body:has(#invoice-print.nkj-saved-invoice-sheet) #invoice-print.nkj-saved-invoice-sheet {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    display: block !important;
+    width: 287mm !important;
+    min-width: 287mm !important;
+    max-width: 287mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    zoom: 1 !important;
+    transform: none !important;
+    break-before: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

@@ -7,7 +7,7 @@ const INITIAL_ORNAMENT_DRAFT = Object.freeze({
   weight: "", purity: "", rate: "", making: "",
   makingMode: "rupees", stamp: "", extra: "",
 });
-const INITIAL_MANUAL_DRAFT = Object.freeze({ expression: "0", result: "0", error: "", calculated: false });
+const INITIAL_MANUAL_DRAFT = Object.freeze({ expression: "0", result: "", error: "", calculated: false });
 
 function usePersistentDraft(storageKey, initialValue) {
   const [draft, setDraft] = useState(() => {
@@ -42,6 +42,7 @@ const money = (value) => Number(value || 0).toLocaleString("en-IN", {
 
 const numberInput = (value, setter) => ({
   type: "number",
+  inputMode: "decimal",
   min: "0",
   step: "0.01",
   value,
@@ -190,9 +191,13 @@ function evaluateExpression(source) {
 
 function ManualCalculator({ active }) {
   const [draft, setDraft] = usePersistentDraft("nkj_manual_calculator_draft", INITIAL_MANUAL_DRAFT);
-  const { expression, result, error } = draft;
+  const { expression, result, error, calculated } = draft;
+  // A saved result is not shown automatically when the calculator is opened.
+  // Only a successful equals action in the current session reveals the output.
+  const [showResult, setShowResult] = useState(false);
 
   const append = useCallback((value) => {
+    setShowResult(false);
     setDraft((current) => {
       const isOperator = ["+", "-", "*", "/", "%"].includes(value);
       const baseExpression = current.calculated
@@ -205,7 +210,7 @@ function ManualCalculator({ active }) {
         ...current,
         error: "",
         calculated: false,
-        result: current.calculated ? "0" : current.result,
+        result: "",
         expression: nextExpression,
       };
     });
@@ -216,12 +221,15 @@ function ManualCalculator({ active }) {
       const value = evaluateExpression(expression);
       const formatted = String(Number(value.toFixed(8)));
       setDraft((current) => ({ ...current, result: formatted, calculated: true, error: "" }));
+      setShowResult(true);
     } catch (err) {
-      setDraft((current) => ({ ...current, error: err.message || "Invalid calculation." }));
+      setShowResult(false);
+      setDraft((current) => ({ ...current, result: "", calculated: false, error: err.message || "Invalid calculation." }));
     }
   }, [expression, setDraft]);
 
   const clear = useCallback(() => {
+    setShowResult(false);
     setDraft({ ...INITIAL_MANUAL_DRAFT });
   }, [setDraft]);
 
@@ -229,13 +237,14 @@ function ManualCalculator({ active }) {
   const resetManualCalculator = clear;
 
   const backspace = useCallback(() => {
+    setShowResult(false);
     setDraft((current) => {
       const source = current.calculated ? current.result : current.expression;
       return {
         ...current,
         error: "",
         calculated: false,
-        result: current.calculated ? "0" : current.result,
+        result: "",
         expression: source.length <= 1 ? "0" : source.slice(0, -1),
       };
     });
@@ -324,7 +333,7 @@ function ManualCalculator({ active }) {
         <div className="nkj-calc-display">
           <span>MANUAL CALCULATOR</span>
           <div className="nkj-calc-expression" aria-live="polite">{expression}</div>
-          <div className="nkj-calc-result">= {Number(result || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="nkj-calc-result" aria-live="polite">{showResult && calculated ? `= ${Number(result || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""}</div>
           {error && <small className="nkj-calc-error">{error}</small>}
         </div>
 

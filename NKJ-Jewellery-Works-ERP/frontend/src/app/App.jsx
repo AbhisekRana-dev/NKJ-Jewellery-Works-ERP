@@ -24,6 +24,8 @@ import JewelleryDesignsPage from "../features/designs/JewelleryDesignsPage";
 import JewelleryCatalogAdminPage from "../features/designs/JewelleryCatalogAdminPage";
 import MobileDesignUploadPage from "../features/designs/MobileDesignUploadPage";
 import "./Responsive.css";
+import "./ResponsivePolish.css";
+import "./MobileResponsiveOverrides.css";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
