@@ -1363,3 +1363,236 @@
     padding: 8px !important;
   }
 }
+
+
+/* ===============================================================
+   OWNER DESKTOP LAYOUT — FINAL CASCADE OVERRIDE
+   This file is imported from main.jsx after App.jsx and therefore
+   wins over component and route styles. Keep the sidebar, navbar
+   and page content on one shared width variable.
+================================================================ */
+@media screen and (min-width: 761px) {
+  body.nkj-owner-layout {
+    --nkj-owner-expanded-width: 258px;
+    --nkj-owner-collapsed-width: 82px;
+    --nkj-owner-sidebar-width: 258px;
+  }
+
+  body.nkj-owner-layout.nkj-owner-sidebar-collapsed {
+    --nkj-owner-sidebar-width: var(--nkj-owner-collapsed-width);
+  }
+
+  body.nkj-owner-layout:not(.nkj-owner-sidebar-collapsed) {
+    --nkj-owner-sidebar-width: var(--nkj-owner-expanded-width);
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar {
+    box-sizing: border-box !important;
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    width: var(--nkj-owner-sidebar-width) !important;
+    max-width: var(--nkj-owner-sidebar-width) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  /* Compact rail: one vertical column, circular icons and short captions. */
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed {
+    width: var(--nkj-owner-collapsed-width) !important;
+    max-width: var(--nkj-owner-collapsed-width) !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed > .nkj-owner-brand {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 104px !important;
+    height: 104px !important;
+    padding: 34px 5px 8px !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed > .nkj-owner-brand .nkj-owner-logo-image {
+    display: block !important;
+    width: 54px !important;
+    height: 54px !important;
+    max-width: 54px !important;
+    max-height: 54px !important;
+    flex: 0 0 54px !important;
+    object-fit: contain !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-nav {
+    display: block !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    padding: 7px 5px 10px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-group {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-title,
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-full-label,
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-nav-arrow {
+    display: none !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 52px !important;
+    margin: 1px 0 !important;
+    padding: 5px 1px !important;
+    text-align: center !important;
+    white-space: normal !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a > svg:first-child {
+    display: block !important;
+    width: 29px !important;
+    height: 29px !important;
+    flex: 0 0 29px !important;
+    padding: 6px !important;
+    border-radius: 50% !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-nav a .nkj-owner-nav-short-label {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    line-height: 1.05 !important;
+    text-align: center !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed .nkj-owner-sidebar-bottom {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    padding: 8px 5px max(10px, env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Expanded sidebar: restore the original full text navigation list. */
+  body.nkj-owner-layout .nkj-owner-sidebar:not(.is-collapsed) {
+    width: var(--nkj-owner-expanded-width) !important;
+    max-width: var(--nkj-owner-expanded-width) !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav-group {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav a {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 42px !important;
+    gap: 11px !important;
+    padding: 9px 10px !important;
+    text-align: left !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav-title,
+  body.nkj-owner-layout .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav-full-label,
+  body.nkj-owner-layout .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav-arrow {
+    display: block !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar:not(.is-collapsed) .nkj-owner-nav-short-label {
+    display: none !important;
+  }
+
+  /* Navbar and workspace always begin exactly after the current sidebar. */
+  body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .app-content > .nkj-owner-topbar.nkj-reference-navbar,
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .app-content > .nkj-owner-topbar.nkj-reference-navbar {
+    box-sizing: border-box !important;
+    position: sticky !important;
+    top: 0 !important;
+    left: auto !important;
+    right: auto !important;
+    width: calc(100% - var(--nkj-owner-sidebar-width)) !important;
+    max-width: calc(100% - var(--nkj-owner-sidebar-width)) !important;
+    min-width: 0 !important;
+    margin: 0 0 0 var(--nkj-owner-sidebar-width) !important;
+    flex-shrink: 0 !important;
+  }
+
+  body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .app-content > main.container.nkj-owner-container,
+  body.nkj-owner-layout:has(.nkj-owner-sidebar.is-collapsed) .app-content > main.container.nkj-owner-invoice-container,
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .app-content > main.container.nkj-owner-container,
+  body.nkj-owner-layout:has(.nkj-owner-sidebar:not(.is-collapsed)) .app-content > main.container.nkj-owner-invoice-container {
+    box-sizing: border-box !important;
+    display: block !important;
+    float: none !important;
+    width: calc(100% - var(--nkj-owner-sidebar-width)) !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 0 0 var(--nkj-owner-sidebar-width) !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+  }
+}
+
+/* Keep the reference screenshot's slimmer dimensions at normal laptop zoom. */
+@media screen and (min-width: 1451px) and (max-width: 1750px) {
+  body.nkj-owner-layout {
+    --nkj-owner-expanded-width: 216px;
+    --nkj-owner-collapsed-width: 74px;
+  }
+}
+
+/* Tablet uses the compact 78px navigation rail without a desktop-sized gutter. */
+@media screen and (min-width: 761px) and (max-width: 1100px) {
+  body.nkj-owner-layout {
+    --nkj-owner-expanded-width: 78px;
+    --nkj-owner-collapsed-width: 78px;
+    --nkj-owner-sidebar-width: 78px;
+  }
+
+  body.nkj-owner-layout .nkj-owner-sidebar {
+    width: 78px !important;
+    max-width: 78px !important;
+  }
+
+  body.nkj-owner-layout .nkj-owner-topbar.nkj-reference-navbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: calc(100% - 78px) !important;
+    max-width: calc(100% - 78px) !important;
+    margin-left: 78px !important;
+  }
+
+  body.nkj-owner-layout .container.nkj-owner-container,
+  body.nkj-owner-layout .container.nkj-owner-invoice-container {
+    width: calc(100% - 78px) !important;
+    margin-left: 78px !important;
+  }
+}
