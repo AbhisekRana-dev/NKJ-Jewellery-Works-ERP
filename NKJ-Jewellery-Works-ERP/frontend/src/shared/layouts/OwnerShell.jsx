@@ -12,7 +12,7 @@ import { useAuth } from "../../core/auth/AuthProvider";
 
 const SIDEBAR_STORAGE_KEY = "nkj-owner-sidebar-collapsed";
 const SIDEBAR_LAYOUT_VERSION_KEY = "nkj-owner-sidebar-layout-version";
-const SIDEBAR_LAYOUT_VERSION = "compact-desktop-rail-v2";
+const SIDEBAR_LAYOUT_VERSION = "compact-desktop-rail-v3";
 const SIDEBAR_SCROLL_KEY = "nkj-owner-sidebar-scroll";
 const SIDEBAR_NAV_CLICK_KEY = "nkj-owner-sidebar-nav-last-click";
 const SIDEBAR_DOUBLE_CLICK_MS = 450;
