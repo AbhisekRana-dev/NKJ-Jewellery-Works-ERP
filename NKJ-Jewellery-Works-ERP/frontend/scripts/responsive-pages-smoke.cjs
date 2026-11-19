@@ -1140,6 +1140,7 @@ async function testPhysicalMobileLayout(browser) {
   // viewport, but a touch-first physical device.
   const context = await browser.newContext({
     viewport: { width: 980, height: 844 },
+    screen: { width: 390, height: 844 },
     deviceScaleFactor: 2,
     isMobile: true,
     hasTouch: true,
@@ -1148,14 +1149,20 @@ async function testPhysicalMobileLayout(browser) {
   await installApiMocks(page);
   try {
     await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains("nkj-touch-viewport-corrected"),
+      { timeout: 10000 }
+    );
     await page.locator(".nkj-calculator-page").waitFor({ state: "visible", timeout: 10000 });
     const calculator = await page.evaluate(() => {
       const options = document.querySelector(".nkj-calculator-options");
       const ornament = document.querySelector(".nkj-calc-ornament");
-      const menu = document.querySelector(".nkj-public-menu-button");
+      const menu = document.querySelector(".nkj-mobile-menu-button");
       const columns = (value) => value.trim().split(/\s+/).filter(Boolean).length;
       return {
         viewportWidth: document.documentElement.clientWidth,
+        screenWidth: window.screen.width,
+        viewportMeta: document.querySelector('meta[name="viewport"]')?.content || "",
         coarsePointer: matchMedia("(pointer: coarse)").matches,
         optionsColumns: options ? columns(getComputedStyle(options).gridTemplateColumns) : 0,
         ornamentColumns: ornament ? columns(getComputedStyle(ornament).gridTemplateColumns) : 0,
@@ -1163,14 +1170,15 @@ async function testPhysicalMobileLayout(browser) {
         documentWidth: document.documentElement.scrollWidth,
       };
     });
-    assert(calculator.coarsePointer,
-      "Touch-layout test did not expose a coarse pointer: " + JSON.stringify(calculator));
+    assert(calculator.coarsePointer && calculator.screenWidth === 390 &&
+      calculator.viewportMeta.includes("width=390"),
+      "Phone desktop-site viewport was not corrected to the physical device width: " + JSON.stringify(calculator));
     assert(calculator.optionsColumns === 2,
       "Calculator modes did not switch to a two-row phone layout in desktop-site mode: " + JSON.stringify(calculator));
     assert(calculator.ornamentColumns === 1,
       "Calculator details and result did not stack vertically in desktop-site mode: " + JSON.stringify(calculator));
     assert(calculator.menuVisible,
-      "Public mobile hamburger is hidden in desktop-site mode: " + JSON.stringify(calculator));
+      "Owner mobile hamburger is hidden in desktop-site mode: " + JSON.stringify(calculator));
     assert(calculator.documentWidth <= calculator.viewportWidth + 1,
       "Calculator causes horizontal page overflow in desktop-site mode: " + JSON.stringify(calculator));
 
@@ -1206,6 +1214,32 @@ async function testPhysicalMobileLayout(browser) {
   } finally {
     await context.close();
   }
+}
+
+async function testManualCalculatorEqualsGate(page) {
+  await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
+  await page.locator('[data-calculator-mode="manual"]').click();
+
+  const result = page.locator(".nkj-calc-result");
+  await result.waitFor({ state: "visible", timeout: 5000 });
+  assert((await result.textContent()).trim() === "—",
+    "Manual calculator must not show a result before the user presses equals.");
+
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await page.getByRole("button", { name: "+", exact: true }).click();
+  await page.getByRole("button", { name: "3", exact: true }).click();
+  assert((await result.textContent()).trim() === "—",
+    "Manual calculator calculated while entering 2 + 3, before equals.");
+
+  await page.getByRole("button", { name: "=", exact: true }).click();
+  assert((await result.textContent()).trim() === "= 5.00",
+    "Manual calculator should show 5.00 only after equals is pressed.");
+
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  assert((await result.textContent()).trim() === "—",
+    "Manual calculator must hide the previous result as soon as a new input is entered.");
+
+  process.stdout.write("PASS manual calculator shows results only after equals is pressed\n");
 }
 
 async function testPublicNavigation(browser) {
@@ -1282,6 +1316,7 @@ async function testPublicNavigation(browser) {
       for (const path of publicRoutes) {
         await checkViewport(publicPage, path, { name: "public-mobile", width: 390, height: 844 });
       }
+      await testManualCalculatorEqualsGate(publicPage);
     } finally {
       await publicContext.close();
     }

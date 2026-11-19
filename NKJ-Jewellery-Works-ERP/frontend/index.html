@@ -1,1 +1,27 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/><meta name="theme-color" content="#8f0927"/><title>Nandikishor Jewellery Works</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<script>
+  // Android Chrome can retain a desktop-sized CSS viewport on a touch phone
+  // when "Desktop site" is enabled. Restore the physical phone width before
+  // the React application and its responsive styles are mounted.
+  (() => {
+    try {
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
+      const screenWidth = Math.round(Number(window.screen && window.screen.width) || 0);
+      const layoutWidth = Math.round(Number(window.innerWidth) || 0);
+      const coarsePointer = Boolean(
+        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+        (navigator.maxTouchPoints > 0)
+      );
+      if (viewportMeta && coarsePointer && screenWidth >= 320 &&
+          screenWidth <= 650 && layoutWidth > screenWidth * 1.4) {
+        viewportMeta.setAttribute(
+          "content",
+          "width=" + screenWidth + ", initial-scale=1.0, viewport-fit=cover"
+        );
+        document.documentElement.classList.add("nkj-touch-viewport-corrected");
+      }
+    } catch (_) {
+      // Keep the application usable if a browser blocks dynamic viewport updates.
+    }
+  })();
+</script><meta name="theme-color" content="#8f0927"/><title>Nandikishor Jewellery Works</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
