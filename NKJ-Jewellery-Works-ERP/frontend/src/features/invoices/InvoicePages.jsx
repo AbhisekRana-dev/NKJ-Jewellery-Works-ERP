@@ -1613,8 +1613,8 @@ export function InvoicePage() {
 
                         <td className="making-charge-cell">
                           <div className="making-charge-editor">
-                            <div className={`making-charge-line making-charge-percent-line ${x.makingChargeMode === "percent" ? "is-selected" : ""}`}>
-                              <label className="making-charge-mode-option" title="Use percentage-based making charge">
+                            <div className="making-charge-mode-picker" role="radiogroup" aria-label={`Making charge mode for ornament ${i + 1}`}>
+                              <label className={`making-charge-mode-option ${x.makingChargeMode === "percent" ? "is-active" : ""}`}>
                                 <input
                                   type="radio"
                                   name={`making-charge-mode-${i}`}
@@ -1624,27 +1624,7 @@ export function InvoicePage() {
                                 />
                                 <span>%</span>
                               </label>
-                              <label className="making-charge-entry making-charge-percent-entry">
-                                <input
-                                  {...numberProps}
-                                  step="0.01"
-                                  min="0"
-                                  className="making-charge-percent-input"
-                                  aria-label={`Making charge percentage for ornament ${i + 1}`}
-                                  value={x.makingChargePercent}
-                                  onChange={(e) => update(setNewItems, newItems, i, "makingChargePercent", e.target.value)}
-                                  placeholder="0.00"
-                                />
-                                <span className="making-charge-suffix">%</span>
-                              </label>
-                              <div className="making-charge-preview" aria-live="polite">
-                                <span aria-hidden="true">⇒</span>
-                                <strong>₹ {money((Number(x.netWeight) || 0) * (Number(x.rate) || 0) * (Number(x.makingChargePercent) || 0) / 100)}</strong>
-                              </div>
-                            </div>
-
-                            <div className={`making-charge-line making-charge-amount-line ${x.makingChargeMode !== "percent" ? "is-selected" : ""}`}>
-                              <label className="making-charge-mode-option" title="Use a fixed rupee making charge">
+                              <label className={`making-charge-mode-option ${x.makingChargeMode !== "percent" ? "is-active" : ""}`}>
                                 <input
                                   type="radio"
                                   name={`making-charge-mode-${i}`}
@@ -1654,6 +1634,29 @@ export function InvoicePage() {
                                 />
                                 <span>₹</span>
                               </label>
+                            </div>
+
+                            {x.makingChargeMode === "percent" ? (
+                              <div className="making-charge-percent-row">
+                                <label className="making-charge-entry making-charge-percent-entry">
+                                  <input
+                                    {...numberProps}
+                                    step="0.01"
+                                    min="0"
+                                    className="making-charge-percent-input"
+                                    aria-label={`Making charge percentage for ornament ${i + 1}`}
+                                    value={x.makingChargePercent}
+                                    onChange={(e) => update(setNewItems, newItems, i, "makingChargePercent", e.target.value)}
+                                    placeholder="0.00"
+                                  />
+                                  <span className="making-charge-suffix">%</span>
+                                </label>
+                                <span className="making-charge-arrow" aria-hidden="true">⇒</span>
+                                <output className="making-charge-result" aria-live="polite" aria-label={`Calculated making charge ${money(makingChargeAmount(x))} rupees`}>
+                                  ₹ {money(makingChargeAmount(x))}
+                                </output>
+                              </div>
+                            ) : (
                               <label className="making-charge-entry making-charge-flat-entry">
                                 <span className="making-charge-prefix">₹</span>
                                 <input
@@ -1667,7 +1670,7 @@ export function InvoicePage() {
                                   placeholder="0.00"
                                 />
                               </label>
-                            </div>
+                            )}
                           </div>
                           <span className="making-charge-print-value">
                             {x.makingChargeMode === "percent" && Number(x.makingChargePercent) > 0
