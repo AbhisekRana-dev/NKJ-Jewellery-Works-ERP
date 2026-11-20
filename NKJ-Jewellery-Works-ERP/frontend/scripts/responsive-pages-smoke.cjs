@@ -733,7 +733,11 @@ async function testInvoiceMakingChargeModes(browser) {
 
     await percentMode.check();
     await row.locator(".making-charge-percent-input").fill("12");
-    const preview = await row.locator(".making-charge-preview strong").innerText();
+    const resultRect = await row.locator(".making-charge-result").boundingBox();
+    const inputRect = await row.locator(".making-charge-percent-input").boundingBox();
+    assert(resultRect && inputRect && Math.abs(resultRect.y - inputRect.y) < 5,
+      "Percent entry and converted rupee amount must be displayed side by side.");
+    const preview = await row.locator(".making-charge-result").innerText();
     const makingAmount = Number(preview.replace(/[^\d.-]/g, ""));
     assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
 
@@ -741,7 +745,7 @@ async function testInvoiceMakingChargeModes(browser) {
     assert(Math.abs(rowTotal - 40722) < 0.01, "Percentage mode ornament total is incorrect: " + rowTotal);
 
     await rateInput.fill("7000");
-    const recalculated = Number((await row.locator(".making-charge-preview strong").innerText()).replace(/[^\d.-]/g, ""));
+    const recalculated = Number((await row.locator(".making-charge-result").innerText()).replace(/[^\d.-]/g, ""));
     assert(Math.abs(recalculated - 4410) < 0.01, "Percentage charge did not recalculate after rate changed: " + recalculated);
     process.stdout.write("PASS invoice making charge percent/rupee selection and live totals\n");
   } finally {
