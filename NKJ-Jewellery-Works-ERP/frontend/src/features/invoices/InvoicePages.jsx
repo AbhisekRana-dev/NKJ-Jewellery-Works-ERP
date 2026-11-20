@@ -213,7 +213,7 @@ function hasInvoiceLineItems(invoice) {
   const newItems = invoiceRows(data.newItems);
   const oldItems = invoiceRows(data.oldItems);
   return (
-    newItems.some((row) => rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"])) ||
+    newItems.some((row) => rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "makingChargeFlatAmount", "makingChargePercent", "stampCharge", "extraCharge"])) ||
     oldItems.some((row) => rowHasAnyInput(row, ["description", "purity", "pureWeight", "rate"]))
   );
 }
@@ -228,6 +228,9 @@ const blankNew = () => ({
   rate: "",
 
   makingCharge: "",
+  makingChargeMode: "amount",
+  makingChargeFlatAmount: "",
+  makingChargePercent: "",
 
   stampCharge: "",
 
@@ -244,10 +247,32 @@ const blankOld = () => ({
   rate: "",
 });
 
+const makingChargeAmount = (row) => {
+  const mode = row?.makingChargeMode === "percent" ? "percent" : "amount";
+  if (mode === "percent") {
+    const baseAmount = (Number(row?.netWeight) || 0) * (Number(row?.rate) || 0);
+    const percent = Number(row?.makingChargePercent) || 0;
+    return Math.round((baseAmount * percent / 100 + Number.EPSILON) * 100) / 100;
+  }
+  const flatAmount = Number(row?.makingChargeFlatAmount ?? row?.makingCharge) || 0;
+  return Math.round((flatAmount + Number.EPSILON) * 100) / 100;
+};
+
+const normalizeNewItemRow = (row) => {
+  const merged = { ...blankNew(), ...(row || {}) };
+  return {
+    ...merged,
+    // Legacy invoices contain only makingCharge in rupees. Keep that mode.
+    makingChargeMode: merged.makingChargeMode === "percent" ? "percent" : "amount",
+    makingChargeFlatAmount: row?.makingChargeFlatAmount ?? row?.makingCharge ?? "",
+    makingChargePercent: merged.makingChargePercent ?? "",
+  };
+};
+
 const newAmt = (x) => {
   const netWeight = Number(x.netWeight) || 0;
   const rate = Number(x.rate) || 0;
-  const makingCharge = Number(x.makingCharge) || 0;
+  const makingCharge = makingChargeAmount(x);
   const stampCharge = Number(x.stampCharge) || 0;
   const extraCharge = Number(x.extraCharge) || 0;
 
@@ -499,7 +524,7 @@ export function InvoicePage() {
       ? null
       : String(initialDraft.totalPaid);
   });
-  const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
+  const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map(normalizeNewItemRow));
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
   // and always start with exactly one empty row at the end.
   const [oldItems, setOldItems] = useState(() => {
@@ -727,8 +752,7 @@ export function InvoicePage() {
   const oldTotal = oldItems.reduce((sum, item) => sum + oldAmt(item), 0);
 
   const makingTotal = newItems.reduce(
-    (sum, item) => sum + (+item.makingCharge || 0),
-
+    (sum, item) => sum + makingChargeAmount(item),
     0,
   );
 
@@ -779,7 +803,7 @@ export function InvoicePage() {
   };
 
   const hasNewItemDetails = newItems.some((row) =>
-    rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]),
+    rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "makingChargeFlatAmount", "makingChargePercent", "stampCharge", "extraCharge"]),
   );
   const hasOldItemDetails = oldItems.some((row) =>
     rowHasAnyInput(row, ["description", "purity", "pureWeight", "rate"]),
@@ -797,6 +821,8 @@ export function InvoicePage() {
       "netWeight",
       "rate",
       "makingCharge",
+      "makingChargeFlatAmount",
+      "makingChargePercent",
       "stampCharge",
       "extraCharge",
     ]);
@@ -850,8 +876,12 @@ export function InvoicePage() {
       paymentMode,
       referenceNo,
       description,
-      // Preserve every displayed row, including intentionally blank rows.
-      newItems,
+      // Preserve the selected input mode while sending the calculated
+      // rupee amount in the existing backend-compatible makingCharge field.
+      newItems: newItems.map((row) => ({
+        ...row,
+        makingCharge: makingChargeAmount(row),
+      })),
       oldItems,
       newTotal,
       oldTotal,
@@ -959,8 +989,8 @@ export function InvoicePage() {
       return raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0);
     });
     const invalidNewItem = newItems.some((row) =>
-      rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]) &&
-      hasInvalidNumber(row, ["netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]),
+      rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "makingChargeFlatAmount", "makingChargePercent", "stampCharge", "extraCharge"]) &&
+      hasInvalidNumber(row, ["netWeight", "rate", "makingCharge", "makingChargeFlatAmount", "makingChargePercent", "stampCharge", "extraCharge"]),
     );
     if (invalidNewItem) return "New ornament weights, rates, and charges must be valid non-negative numbers.";
 
@@ -1478,7 +1508,7 @@ export function InvoicePage() {
 
                         "Rate / GM (₹)",
 
-                        "Making (₹)",
+                        "Making Charge (MC)",
 
                         "Stamp (₹)",
 
@@ -1581,25 +1611,73 @@ export function InvoicePage() {
                           />
                         </td>
 
-                        <td>
-                          <input
-                            {...numberProps}
-                            value={x.makingCharge}
-                            onChange={(e) =>
-                              update(
-                                setNewItems,
+                        <td className="making-charge-cell">
+                          <div className="making-charge-editor">
+                            <div className="making-charge-mode-picker" role="radiogroup" aria-label={`Making charge mode for ornament ${i + 1}`}>
+                              <label className={`making-charge-mode-option ${x.makingChargeMode === "percent" ? "is-active" : ""}`}>
+                                <input
+                                  type="radio"
+                                  name={`making-charge-mode-${i}`}
+                                  value="percent"
+                                  checked={x.makingChargeMode === "percent"}
+                                  onChange={() => update(setNewItems, newItems, i, "makingChargeMode", "percent")}
+                                />
+                                <span>%</span>
+                              </label>
+                              <label className={`making-charge-mode-option ${x.makingChargeMode !== "percent" ? "is-active" : ""}`}>
+                                <input
+                                  type="radio"
+                                  name={`making-charge-mode-${i}`}
+                                  value="amount"
+                                  checked={x.makingChargeMode !== "percent"}
+                                  onChange={() => update(setNewItems, newItems, i, "makingChargeMode", "amount")}
+                                />
+                                <span>₹</span>
+                              </label>
+                            </div>
 
-                                newItems,
-
-                                i,
-
-                                "makingCharge",
-
-                                e.target.value,
-                              )
-                            }
-                            placeholder="0.00"
-                          />
+                            {x.makingChargeMode === "percent" ? (
+                              <div className="making-charge-percent-row">
+                                <label className="making-charge-entry making-charge-percent-entry">
+                                  <input
+                                    {...numberProps}
+                                    step="0.01"
+                                    min="0"
+                                    className="making-charge-percent-input"
+                                    aria-label={`Making charge percentage for ornament ${i + 1}`}
+                                    value={x.makingChargePercent}
+                                    onChange={(e) => update(setNewItems, newItems, i, "makingChargePercent", e.target.value)}
+                                    placeholder="0.00"
+                                  />
+                                  <span className="making-charge-suffix">%</span>
+                                </label>
+                                <span className="making-charge-arrow" aria-hidden="true">⇒</span>
+                                <output className="making-charge-result" aria-live="polite" aria-label={`Calculated making charge ${money(makingChargeAmount(x))} rupees`}>
+                                  ₹ {money(makingChargeAmount(x))}
+                                </output>
+                              </div>
+                            ) : (
+                              <label className="making-charge-entry making-charge-flat-entry">
+                                <span className="making-charge-prefix">₹</span>
+                                <input
+                                  {...numberProps}
+                                  step="0.01"
+                                  min="0"
+                                  className="making-charge-flat-input"
+                                  aria-label={`Making charge rupees for ornament ${i + 1}`}
+                                  value={x.makingChargeFlatAmount}
+                                  onChange={(e) => update(setNewItems, newItems, i, "makingChargeFlatAmount", e.target.value)}
+                                  placeholder="0.00"
+                                />
+                              </label>
+                            )}
+                          </div>
+                          <span className="making-charge-print-value">
+                            {x.makingChargeMode === "percent" && Number(x.makingChargePercent) > 0
+                              ? `${x.makingChargePercent}% · `
+                              : ""}
+                            ₹ {money(makingChargeAmount(x))}
+                          </span>
                         </td>
 
                         <td>
@@ -2155,7 +2233,7 @@ function SavedInvoicePrintSheet({ invoice }) {
               <table className="items-table new-items-table">
                 <thead>
                   <tr>
-                    {["Sl. No.", "Description", "Purity", "Net Wt. (gm)", "Rate / GM (₹)", "Making (₹)", "Stamp (₹)", "Extra (₹)", "Amount (₹)", ""].map((label, index) => (
+                    {["Sl. No.", "Description", "Purity", "Net Wt. (gm)", "Rate / GM (₹)", "Making Charge (MC)", "Stamp (₹)", "Extra (₹)", "Amount (₹)", ""].map((label, index) => (
                       <th key={`${label}-${index}`}>{label}</th>
                     ))}
                   </tr>
@@ -2168,7 +2246,12 @@ function SavedInvoicePrintSheet({ invoice }) {
                       <td><input value={row.purity || ""} readOnly /></td>
                       <td><input value={row.netWeight ?? ""} readOnly /></td>
                       <td><input value={row.rate ?? ""} readOnly /></td>
-                      <td><input value={row.makingCharge ?? ""} readOnly /></td>
+                      <td><span className="making-charge-saved-value">
+                        {row.makingChargeMode === "percent" && Number(row.makingChargePercent) > 0
+                          ? `${row.makingChargePercent}% · `
+                          : ""}
+                        ₹ {money(row.makingCharge ?? 0)}
+                      </span></td>
                       <td><input value={row.stampCharge ?? ""} readOnly /></td>
                       <td><input value={row.extraCharge ?? ""} readOnly /></td>
                       <td>{money(row.amount ?? newAmt(row))}</td>
@@ -2316,7 +2399,7 @@ function downloadInvoicePdfFile(file) {
 /** Export the existing SavedInvoicePrintSheet as a PDF file. */
 function collectInvoicePrintStyles() {
   const collected = [];
-  const relevantSelector = /#invoice-print|\.invoice-sheet|\.inv-|\.form-grid|\.items-table|\.totals|\.row-end|\.second-reference-totals|\.new-items-table|\.old-items-table|\.invoice-logo-image|\.words-sign|\.amount-words|\.signatures|\.thankyou|\.description-panel/;
+  const relevantSelector = /#invoice-print|\.invoice-sheet|\.inv-|\.form-grid|\.items-table|\.totals|\.row-end|\.second-reference-totals|\.new-items-table|\.old-items-table|\.invoice-logo-image|\.words-sign|\.amount-words|\.signatures|\.thankyou|\.description-panel|\.making-charge/;
 
   const visit = (rules, insidePrint = false) => {
     Array.from(rules || []).forEach((rule) => {

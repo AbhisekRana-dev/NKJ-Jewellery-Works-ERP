@@ -2315,3 +2315,351 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     page-break-inside: avoid !important;
   }
 }
+
+
+/* Making Charge (MC) — two aligned rows matching the requested reference layout. */
+.new-items-table th:nth-child(6) { width: 20%; }
+.new-items-table td.making-charge-cell {
+  height: auto !important;
+  min-width: 220px;
+  padding: 5px 6px !important;
+  overflow: visible !important;
+  vertical-align: middle;
+}
+.making-charge-editor {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 5px;
+}
+.making-charge-line {
+  display: grid;
+  grid-template-columns: 24px minmax(64px, 78px) minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  box-sizing: border-box;
+  transition: background .12s ease, border-color .12s ease;
+}
+.making-charge-line.is-selected {
+  border-color: #e5c478;
+  background: linear-gradient(90deg, #fff8e8, #fffdf7);
+}
+.making-charge-amount-line {
+  grid-template-columns: 24px minmax(90px, 120px) minmax(0, 1fr);
+}
+.making-charge-mode-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #263343 !important;
+  font: 800 13px/1.1 Arial, sans-serif !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.making-charge-mode-option input[type="radio"] {
+  appearance: auto !important;
+  -webkit-appearance: radio !important;
+  accent-color: #1684ee !important;
+  flex: 0 0 15px !important;
+  width: 15px !important;
+  min-width: 15px !important;
+  height: 15px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+.making-charge-entry {
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 2px 6px !important;
+  border: 1px solid #b8c6d7 !important;
+  border-radius: 7px !important;
+  background: #fff !important;
+  box-sizing: border-box !important;
+}
+.making-charge-entry:focus-within {
+  border-color: #3284d7 !important;
+  box-shadow: 0 0 0 2px rgba(50, 132, 215, .13) !important;
+}
+.making-charge-entry input {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 25px !important;
+  margin: 0 !important;
+  padding: 2px 1px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #182334 !important;
+  text-align: center !important;
+  font: 700 13px/1.2 Arial, sans-serif !important;
+}
+.making-charge-entry input::-webkit-inner-spin-button,
+.making-charge-entry input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+.making-charge-prefix,
+.making-charge-suffix {
+  flex: 0 0 auto !important;
+  color: #6d5260 !important;
+  font: 800 11px/1 Arial, sans-serif !important;
+}
+.making-charge-preview {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  color: #6e7581;
+  font: 800 11px/1.2 Arial, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.making-charge-preview > span {
+  flex: 0 0 auto;
+  color: #929ba8;
+  font-size: 16px;
+  line-height: 1;
+}
+.making-charge-preview strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #7d102f;
+  font: 800 12px/1.2 Arial, sans-serif;
+  white-space: nowrap;
+}
+.making-charge-print-value { display: none; }
+.making-charge-saved-value {
+  display: inline-block;
+  font: 13px Georgia, "Times New Roman", serif;
+  color: #172033;
+  white-space: nowrap;
+}
+@media (max-width: 950px) {
+  .new-items-table td.making-charge-cell { min-width: 205px; }
+  .making-charge-line {
+    grid-template-columns: 22px minmax(64px, 76px) minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .new-items-table td.making-charge-cell { min-width: 210px; }
+  .making-charge-line { gap: 4px; }
+  .making-charge-mode-option { font-size: 12px !important; }
+}
+@media print {
+  #invoice-print .making-charge-editor { display: none !important; }
+  #invoice-print .making-charge-print-value {
+    display: inline-block !important;
+    color: #10172a !important;
+    font: 7pt Georgia, "Times New Roman", serif !important;
+    white-space: nowrap !important;
+  }
+  #invoice-print .making-charge-saved-value {
+    font: 7pt Georgia, "Times New Roman", serif !important;
+  }
+}
+
+
+/* Match the requested reference: enter % on the left and see the
+   converted rupee making charge immediately on the same row. */
+.new-items-table th:nth-child(6) {
+  width: 16% !important;
+  min-width: 170px !important;
+}
+.new-items-table td.making-charge-cell {
+  width: 16% !important;
+  min-width: 170px !important;
+}
+.making-charge-editor { gap: 6px !important; }
+.making-charge-mode-picker {
+  justify-content: flex-start !important;
+  gap: 13px !important;
+  min-height: 18px !important;
+}
+.making-charge-percent-row {
+  display: grid !important;
+  grid-template-columns: minmax(54px, .78fr) 15px minmax(82px, 1.22fr) !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.making-charge-percent-entry {
+  min-width: 0 !important;
+  min-height: 36px !important;
+  padding: 2px 4px !important;
+}
+.making-charge-percent-entry input {
+  text-align: center !important;
+  font-size: 14px !important;
+}
+.making-charge-percent-entry .making-charge-suffix { font-size: 12px !important; }
+.making-charge-arrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+  color: #98a0aa !important;
+  font: 800 17px/1 Arial, sans-serif !important;
+}
+.making-charge-result {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 36px !important;
+  padding: 3px 5px !important;
+  border: 1px solid #b9c8dc !important;
+  border-radius: 7px !important;
+  background: linear-gradient(180deg, #fff 0%, #f7faff 100%) !important;
+  color: #1e293b !important;
+  font: 800 13px/1.15 Arial, sans-serif !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+.making-charge-flat-entry { min-height: 36px !important; }
+@media (max-width: 760px) {
+  .new-items-table td.making-charge-cell,
+  .new-items-table th:nth-child(6) { min-width: 170px !important; }
+  .making-charge-percent-row {
+    grid-template-columns: minmax(48px, .78fr) 13px minmax(78px, 1.22fr) !important;
+    gap: 4px !important;
+  }
+  .making-charge-result { font-size: 12px !important; }
+}
+
+
+/* Final Making Charge column sizing.
+   The table uses fixed layout; allocate enough of the existing 100% width
+   to MC so the percent input → arrow → rupee result cannot spill into Stamp.
+   The small reductions come from the formerly oversized description/purity/
+   weight columns. All other invoice columns and calculations stay unchanged. */
+@media screen and (min-width: 761px) {
+  .invoice-sheet .new-items-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+  .invoice-sheet .new-items-table th:nth-child(1),
+  .invoice-sheet .new-items-table td:nth-child(1) { width: 5% !important; }
+  .invoice-sheet .new-items-table th:nth-child(2),
+  .invoice-sheet .new-items-table td:nth-child(2) { width: 17% !important; }
+  .invoice-sheet .new-items-table th:nth-child(3),
+  .invoice-sheet .new-items-table td:nth-child(3) { width: 8% !important; }
+  .invoice-sheet .new-items-table th:nth-child(4),
+  .invoice-sheet .new-items-table td:nth-child(4) { width: 10% !important; }
+  .invoice-sheet .new-items-table th:nth-child(5),
+  .invoice-sheet .new-items-table td:nth-child(5) { width: 11% !important; }
+  .invoice-sheet .new-items-table th:nth-child(6),
+  .invoice-sheet .new-items-table td:nth-child(6) { width: 16% !important; }
+  .invoice-sheet .new-items-table th:nth-child(7),
+  .invoice-sheet .new-items-table td:nth-child(7) { width: 9% !important; }
+  .invoice-sheet .new-items-table th:nth-child(8),
+  .invoice-sheet .new-items-table td:nth-child(8) { width: 11% !important; }
+  .invoice-sheet .new-items-table th:nth-child(9),
+  .invoice-sheet .new-items-table td:nth-child(9) { width: 12% !important; }
+  .invoice-sheet .new-items-table th:nth-child(10),
+  .invoice-sheet .new-items-table td:nth-child(10) { width: 1% !important; }
+}
+
+.making-charge-cell {
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+.making-charge-percent-row {
+  box-sizing: border-box !important;
+  grid-template-columns: minmax(54px, .78fr) 15px minmax(82px, 1.22fr) !important;
+  max-width: 100% !important;
+}
+.making-charge-percent-entry,
+.making-charge-result {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.making-charge-result {
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  font-size: 11px !important;
+  padding-left: 3px !important;
+  padding-right: 3px !important;
+}
+
+
+/* Invoice ornament delete controls — make the trash icon visible and easy to tap. */
+@media screen {
+  #invoice-print .new-items-table th:last-child,
+  #invoice-print .new-items-table td:last-child,
+  #invoice-print .old-items-table th:last-child,
+  #invoice-print .old-items-table td:last-child {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    padding: 3px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn {
+    display: inline-grid !important;
+    place-items: center !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: 1px solid #edbdc8 !important;
+    border-radius: 8px !important;
+    background: #fff5f7 !important;
+    color: #a5092d !important;
+    cursor: pointer !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn svg {
+    display: block !important;
+    width: 21px !important;
+    height: 21px !important;
+    min-width: 21px !important;
+    min-height: 21px !important;
+    stroke-width: 2.4 !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn:hover {
+    border-color: #a5092d !important;
+    background: #ffe5eb !important;
+    color: #850923 !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn:focus-visible {
+    outline: 3px solid rgba(165, 9, 45, .24) !important;
+    outline-offset: 2px !important;
+  }
+}
