@@ -1534,13 +1534,14 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 }
 
 
-/* Floating invoice calculator. This control stays outside #invoice-print and
-   never writes its result into invoice state. */
+/* Floating invoice calculator. These names are intentionally unique so the
+   full Calculator page cannot restyle this compact invoice popup. */
 .nkj-invoice-calculator-anchor {
   position: relative;
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
+  z-index: 10001;
 }
 .nkj-calculator-trigger {
   display: inline-flex;
@@ -1564,151 +1565,186 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   box-shadow: 0 3px 10px rgba(91, 7, 28, .12);
 }
 .nkj-calculator-trigger:focus-visible,
-.nkj-calc-key:focus-visible,
-.nkj-calculator-close:focus-visible {
+.nkj-invoice-calculator-key:focus-visible,
+.nkj-invoice-calculator-close:focus-visible {
   outline: 2px solid #a20b2d;
   outline-offset: 2px;
 }
 .nkj-invoice-calculator-popup {
   position: absolute;
-  z-index: 10000;
-  top: calc(100% + 9px);
+  z-index: 12000;
+  top: calc(100% + 10px);
   right: 0;
-  width: min(292px, calc(100vw - 30px));
-  padding: 12px;
+  display: block;
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 24px));
+  min-width: min(320px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: min(560px, calc(100dvh - 112px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 14px;
   border: 1px solid #d9b875;
-  border-radius: 13px;
+  border-radius: 16px;
   background: #fffaf0;
   color: #351520;
-  box-shadow: 0 14px 36px rgba(47, 7, 19, .24);
+  box-shadow: 0 18px 48px rgba(47, 7, 19, .28);
+  overscroll-behavior: contain;
 }
-.nkj-calculator-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 1px 1px 9px;
-  border-bottom: 1px solid #ead8b6;
+.nkj-invoice-calculator-heading {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 0 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #ead8b6 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #78142e !important;
 }
-.nkj-calculator-heading > div {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #78142e;
+.nkj-invoice-calculator-heading > div {
+  display: inline-flex !important;
+  flex: 1 1 auto !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+  width: auto !important;
+  color: #78142e !important;
 }
-.nkj-calculator-heading strong {
-  font: 700 13px Arial, sans-serif;
+.nkj-invoice-calculator-heading > div svg {
+  flex: 0 0 auto !important;
 }
-.nkj-calculator-close {
+.nkj-invoice-calculator-heading strong {
+  display: block !important;
+  min-width: 0 !important;
+  color: #78142e !important;
+  font: 800 15px/1.25 Arial, sans-serif !important;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+}
+.nkj-invoice-calculator-close {
   display: grid;
+  flex: 0 0 32px;
   place-items: center;
-  width: 29px;
-  height: 29px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid #e4d2b2;
-  border-radius: 7px;
+  border-radius: 9px;
   background: #fff;
   color: #75142d;
   cursor: pointer;
 }
-.nkj-calculator-display {
+.nkj-invoice-calculator-close:hover {
+  border-color: #c99a37;
+  background: #fff2d3;
+}
+.nkj-invoice-calculator-display {
   display: grid;
-  gap: 5px;
-  min-height: 72px;
-  margin: 10px 0;
-  padding: 10px 11px;
+  gap: 6px;
+  min-height: 82px;
+  margin: 12px 0;
+  padding: 12px 13px;
   border: 1px solid #ead9b8;
-  border-radius: 9px;
+  border-radius: 11px;
   background: #fff;
   text-align: right;
   overflow: hidden;
 }
-.nkj-calculator-expression {
-  min-height: 15px;
-  overflow: hidden;
+.nkj-invoice-calculator-expression {
+  min-width: 0;
+  min-height: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
   color: #897b72;
-  font: 11px/1.3 Arial, sans-serif;
-  text-overflow: ellipsis;
+  font: 12px/1.35 Arial, sans-serif;
   white-space: nowrap;
 }
-.nkj-calculator-value {
-  min-height: 27px;
+.nkj-invoice-calculator-value {
+  min-width: 0;
+  min-height: 30px;
   overflow-wrap: anywhere;
   color: #671029;
-  font: 700 24px/1.15 Arial, sans-serif;
+  font: 800 clamp(25px, 2.2vw, 30px)/1.15 Arial, sans-serif;
 }
-.nkj-calculator-value.has-error {
+.nkj-invoice-calculator-value.has-error {
   color: #b42332;
   font-size: 13px;
 }
-.nkj-calculator-keypad {
+.nkj-invoice-calculator-keypad {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
-}
-.nkj-calc-key {
+  gap: 8px;
+  width: 100%;
   min-width: 0;
-  min-height: 42px;
-  padding: 7px 4px;
+}
+.nkj-invoice-calculator-key {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 4px;
   border: 1px solid #e8d8bb;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
   color: #3b2a25;
-  font: 700 16px Arial, sans-serif;
+  font: 800 17px/1 Arial, sans-serif;
   cursor: pointer;
-  transition: background .12s ease, transform .12s ease;
+  transition: background .12s ease, transform .12s ease, border-color .12s ease;
 }
-.nkj-calc-key:hover {
-  background: #f7eddd;
+.nkj-invoice-calculator-key:hover {
+  border-color: #c99a37;
+  background: #fff2d3;
 }
-.nkj-calc-key:active {
-  transform: translateY(1px);
-}
-.nkj-calc-key.is-operator {
+.nkj-invoice-calculator-key:active { transform: translateY(1px); }
+.nkj-invoice-calculator-key.is-operator {
   border-color: #d8b777;
   background: #f6ebd7;
   color: #74132c;
 }
-.nkj-calc-key.is-utility {
+.nkj-invoice-calculator-key.is-utility {
+  border-color: #e8b7c3;
   background: #f2e5cf;
   color: #78142e;
   font-size: 13px;
 }
-.nkj-calc-key.is-equals {
+.nkj-invoice-calculator-key.is-equals {
   border-color: #75132d;
   background: #75132d;
   color: #fff8ec;
 }
-.nkj-calc-key:nth-child(17) {
-  grid-column: span 2;
-}
-.nkj-calculator-hint {
-  margin: 9px 1px 0;
+.nkj-invoice-calculator-key:nth-child(17) { grid-column: span 2; }
+.nkj-invoice-calculator-hint {
+  margin: 10px 2px 0;
   color: #897b72;
   font: 10px/1.4 Arial, sans-serif;
   text-align: center;
 }
+.nkj-invoice-calculator-scrim { display: none; }
 @media (max-width: 600px) {
-  .nkj-invoice-calculator-popup {
-    right: 0;
-    width: min(280px, calc(100vw - 28px));
-  }
   .nkj-calculator-trigger {
-    min-height: 36px;
-    padding: 6px 10px;
+    min-height: 40px;
+    padding: 7px 10px;
     font-size: 12px;
   }
 }
 @media print {
   .nkj-calculator-trigger,
   .nkj-invoice-calculator-popup,
-  .nkj-invoice-calculator-anchor {
+  .nkj-invoice-calculator-anchor,
+  .nkj-invoice-calculator-scrim {
     display: none !important;
     visibility: hidden !important;
   }
 }
-
-
 /* ==========================================================
    SAVED INVOICE SCREEN FIX
    Scope: read-only invoice opened from Invoice History.
