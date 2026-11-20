@@ -264,7 +264,7 @@ const normalizeNewItemRow = (row) => {
     ...merged,
     // Legacy invoices contain only makingCharge in rupees. Keep that mode.
     makingChargeMode: merged.makingChargeMode === "percent" ? "percent" : "amount",
-    makingChargeFlatAmount: merged.makingChargeFlatAmount ?? merged.makingCharge ?? "",
+    makingChargeFlatAmount: row?.makingChargeFlatAmount ?? row?.makingCharge ?? "",
     makingChargePercent: merged.makingChargePercent ?? "",
   };
 };
