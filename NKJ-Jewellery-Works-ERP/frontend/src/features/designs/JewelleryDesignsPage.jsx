@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
   Layers3, Star, ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird, QrCode,
@@ -15,6 +15,7 @@ import "./JewelleryDesignsPage.css";
 
 const PAGE_SIZE = 24;
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+const normalizeCollectionKey = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 async function uploadAdminMultipart(path, formData) {
   const token = window.localStorage.getItem("nkj_token");
@@ -188,6 +189,8 @@ function DesignImage({ design }) {
 
 export default function JewelleryDesignsPage() {
   const { isAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
+  const collectionQuery = searchParams.get("collection") || "";
   const [categories, setCategories] = useState([]);
   const [metal, setMetal] = useState("GOLD");
   const [subcategory, setSubcategory] = useState("");
@@ -221,6 +224,7 @@ export default function JewelleryDesignsPage() {
   const [qrLoading, setQrLoading] = useState(false);
   const [qrError, setQrError] = useState("");
   const [favorites, setFavorites] = useState(loadFavorites);
+  const appliedCollectionRef = useRef("");
 
   const metalCategories = useMemo(
     () => categories.filter((item) => item.metalType === metal),
@@ -245,6 +249,45 @@ export default function JewelleryDesignsPage() {
       });
     return () => { cancelled = true; };
   }, []);
+
+  // Homepage collection links carry a category slug. Resolve it against the
+  // live catalogue so the links keep working even if the owner renames or
+  // re-slugs a category later.
+  useEffect(() => {
+    const requested = collectionQuery.trim();
+    if (!requested || loadingCategories || !categories.length || appliedCollectionRef.current === requested) return;
+
+    const requestedKey = normalizeCollectionKey(requested);
+    const singularKey = requestedKey.endsWith("s") ? requestedKey.slice(0, -1) : requestedKey;
+    const match = categories.find((category) => {
+      const keys = [
+        normalizeCollectionKey(category.slug),
+        normalizeCollectionKey(category.subcategoryName),
+      ].filter(Boolean);
+      return keys.some((key) => key === requestedKey || (key.endsWith("s") ? key.slice(0, -1) : key) === singularKey);
+    });
+
+    appliedCollectionRef.current = requested;
+    if (match) {
+      setMetal(String(match.metalType || "GOLD").toUpperCase());
+      setSubcategory(match.slug || "");
+      setSearch("");
+    } else {
+      // If the catalogue uses a different category label, still take the
+      // customer to a useful filtered view rather than an unfiltered page.
+      setMetal("GOLD");
+      setSubcategory("");
+      setSearch(requested.replace(/[-_]+/g, " "));
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelector(".nkj-designs-gallery-section")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [collectionQuery, categories, loadingCategories]);
 
   const loadDesigns = useCallback(async (nextPage, append = false) => {
     setLoading(true);
@@ -749,7 +792,7 @@ export default function JewelleryDesignsPage() {
           )}
         </section>
 
-        <section className="nkj-designs-gallery-section">
+        <section className="nkj-designs-gallery-section" id="nkj-designs-gallery">
           <div className="nkj-designs-gallery-heading">
             <div>
               <span>CURATED NKJ COLLECTION</span>
