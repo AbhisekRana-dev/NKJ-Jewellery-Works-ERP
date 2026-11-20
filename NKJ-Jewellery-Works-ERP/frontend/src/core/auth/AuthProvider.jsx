@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
   const [user, setUser] = useState("");
   const [pending, setPending] = useState("");
+  const pendingChallengeRef = useRef("");
   const [authReady, setAuthReady] = useState(false);
   const userRef = useRef("");
   const idleTimerRef = useRef(null);
@@ -45,6 +46,7 @@ export function AuthProvider({ children }) {
     }
     userRef.current = "";
     setUser("");
+    pendingChallengeRef.current = "";
     setPending("");
     setAuthReady(true);
     localStorage.removeItem("nkj_token");
@@ -90,6 +92,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("nkj_token");
       localStorage.removeItem("nkj_user");
       setUser("");
+      pendingChallengeRef.current = "";
       setPending("");
       setAuthReady(true);
       if (reason === "inactivity") {
@@ -284,15 +287,30 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
-    setPending(result.challengeId);
+    const challengeId = String(result?.challengeId || "").trim();
+    if (!challengeId) {
+      throw new Error("The server did not create a login challenge. Please try again.");
+    }
+
+    // Keep the challenge in a ref as well as React state. The login form
+    // verifies immediately after begin() resolves, before React is required
+    // to commit the pending-state update.
+    pendingChallengeRef.current = challengeId;
+    setPending(challengeId);
     return result;
   }
 
-  async function verify(code) {
-    if (!pending) throw new Error("Your login challenge expired. Please sign in again.");
+  async function verify(code, challengeIdOverride = "") {
+    const challengeId = String(
+      challengeIdOverride || pendingChallengeRef.current || pending || "",
+    ).trim();
+    if (!challengeId) {
+      throw new Error("Your login challenge expired. Please sign in again.");
+    }
+
     const result = await request("/auth/verify", {
       method: "POST",
-      body: JSON.stringify({ challengeId: pending, code }),
+      body: JSON.stringify({ challengeId, code }),
     });
     const now = Date.now();
     sessionExpiryHandledRef.current = false;
@@ -302,6 +320,7 @@ export function AuthProvider({ children }) {
     lastActivityAtRef.current = now;
     lastActivitySentAtRef.current = now;
     setUser(result.username);
+    pendingChallengeRef.current = "";
     setPending("");
     setAuthReady(true);
     return result;

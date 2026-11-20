@@ -107,7 +107,15 @@ function apiPayload(path, method) {
   }
   if (path === "/api/admin/attendance/dashboard") return { summary: {}, records: [], staff: [] };
   if (path === "/api/admin/designs" && method === "GET") return { items: [], total: 0, page: 0 };
-  if (path === "/api/admin/designs/categories" || path === "/api/designs/categories") return [];
+  if (path === "/api/designs/categories") {
+    return [
+      { id: "necklaces", slug: "necklaces", metalType: "GOLD", subcategoryName: "Necklaces", activeDesignCount: 3 },
+      { id: "earrings", slug: "earrings", metalType: "GOLD", subcategoryName: "Earrings", activeDesignCount: 4 },
+      { id: "bangles", slug: "bangles", metalType: "GOLD", subcategoryName: "Bangles", activeDesignCount: 5 },
+      { id: "rings", slug: "rings", metalType: "GOLD", subcategoryName: "Rings", activeDesignCount: 6 },
+    ];
+  }
+  if (path === "/api/admin/designs/categories") return [];
   if (path === "/api/designs") return { items: [], total: 0, page: 0 };
   if (path === "/api/invoices/date-support") return { enabled: true, supported: true };
   if (path === "/api/invoices") return [responsiveSavedInvoice];
@@ -1327,6 +1335,79 @@ async function testManualCalculatorEqualsGate(page) {
   process.stdout.write("PASS manual calculator shows 99*88 only after equals or Enter\\n");
 }
 
+async function testHomeCollectionNavigation(browser) {
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const page = await context.newPage();
+  await installApiRouteMocks(page);
+  const collections = [
+    { slug: "necklaces", title: "Necklaces" },
+    { slug: "earrings", title: "Earrings" },
+    { slug: "bangles", title: "Bangles" },
+    { slug: "rings", title: "Rings" },
+  ];
+
+  try {
+    for (const collection of collections) {
+      await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
+      const card = page.locator(
+        'a.nkj-public-collection-card[href="/designs?collection=' + collection.slug + '"]'
+      );
+      await card.waitFor({ state: "visible", timeout: 10000 });
+      await card.click();
+      await page.waitForURL("**/designs?collection=" + collection.slug);
+      await page.waitForFunction((expected) => {
+        return document.querySelector(".nkj-designs-gallery-heading h2")?.textContent?.trim() === expected;
+      }, collection.title, { timeout: 10000 });
+    }
+
+    await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
+    await page.locator(".nkj-public-collection-view-more").click();
+    await page.waitForURL((url) => url.pathname === "/designs", { timeout: 10000 });
+    process.stdout.write("PASS homepage collection cards open their matching catalogue categories and View More opens all designs\\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testOwnerLoginSingleClick(browser) {
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const page = await context.newPage();
+  await installApiRouteMocks(page);
+  const loginRequests = [];
+  const verifyRequests = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/auth/login" && request.method() === "POST") {
+      loginRequests.push(request.postDataJSON());
+    }
+    if (url.pathname === "/api/auth/verify" && request.method() === "POST") {
+      verifyRequests.push(request.postDataJSON());
+    }
+  });
+
+  try {
+    await page.goto(BASE_URL + "/login", { waitUntil: "domcontentloaded" });
+    await page.locator('input[autocomplete="username"]').fill("admin2026");
+    await page.locator('input[autocomplete="current-password"]').fill("test-password");
+    await page.locator('input[autocomplete="one-time-code"]').fill("123456");
+    await page.locator(".nkj-login-submit").click();
+    await page.waitForURL((url) => url.pathname === "/", { timeout: 10000 });
+
+    assert(loginRequests.length === 1,
+      "A single Login click must issue exactly one /auth/login request; got " + loginRequests.length + ".");
+    assert(verifyRequests.length === 1,
+      "A single Login click must issue exactly one /auth/verify request; got " + verifyRequests.length + ".");
+    assert(verifyRequests[0].challengeId === "responsive-login-challenge",
+      "Login verification must use the challenge returned by the same /auth/login request.");
+    const storedToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
+    assert(storedToken === "responsive-relogin-token",
+      "A single Login click did not store the authenticated session token.");
+    process.stdout.write("PASS owner login completes from one click using the returned challenge ID\\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testPublicNavigation(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -1414,6 +1495,8 @@ async function testPublicNavigation(browser) {
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
     // Verify public navbar placement before the independent saved-invoice print fixture.
     await testPublicNavigation(browser);
+    await testHomeCollectionNavigation(browser);
+    await testOwnerLoginSingleClick(browser);
     await testPhysicalMobileLayout(browser);
     await testSavedInvoiceMobile(browser);
     process.stdout.write("PASS New Invoice at 360/390/430, draft recovery/reset, inactivity logout, saved invoice view and print/PDF layout.\n");
