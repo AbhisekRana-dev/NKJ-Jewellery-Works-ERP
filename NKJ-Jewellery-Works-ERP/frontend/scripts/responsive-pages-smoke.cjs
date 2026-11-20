@@ -1611,6 +1611,10 @@ async function testPublicNavigation(browser) {
     await waitForServer(server);
     browser = await chromium.launch({ headless: true });
 
+    // Run the Ctrl+P page-count regression first so failures surface before
+    // the much larger all-routes responsive sweep.
+    await testNewInvoiceNativePrintSinglePage(browser);
+
     for (const viewport of viewports) {
       const context = await browser.newContext({ viewport });
       const page = await context.newPage();
@@ -1662,7 +1666,6 @@ async function testPublicNavigation(browser) {
       await testNewInvoiceMobile(browser, width);
     }
     await testInvoiceMakingChargeModes(browser);
-    await testNewInvoiceNativePrintSinglePage(browser);
     for (const width of [360, 390, 768, 1366]) {
       await testInvoiceCalculatorPopup(browser, width);
     }
