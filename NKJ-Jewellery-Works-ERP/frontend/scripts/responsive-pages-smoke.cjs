@@ -733,10 +733,18 @@ async function testInvoiceMakingChargeModes(browser) {
 
     await percentMode.check();
     await row.locator(".making-charge-percent-input").fill("12");
+    const makingCell = row.locator("td").nth(5);
+    const stampCell = row.locator("td").nth(6);
     const resultRect = await row.locator(".making-charge-result").boundingBox();
     const inputRect = await row.locator(".making-charge-percent-input").boundingBox();
+    const cellRect = await makingCell.boundingBox();
+    const stampInputRect = await stampCell.locator("input").boundingBox();
     assert(resultRect && inputRect && Math.abs(resultRect.y - inputRect.y) < 5,
       "Percent entry and converted rupee amount must be displayed side by side.");
+    assert(cellRect && resultRect.left >= cellRect.left && resultRect.right <= cellRect.right + 1,
+      "Calculated rupee box must remain inside the Making Charge column; it must not overlap Stamp Charge.");
+    assert(stampInputRect && resultRect.right < stampInputRect.left,
+      "Calculated rupee box overlaps the Stamp Charge input.");
     const preview = await row.locator(".making-charge-result").innerText();
     const makingAmount = Number(preview.replace(/[^\d.-]/g, ""));
     assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
