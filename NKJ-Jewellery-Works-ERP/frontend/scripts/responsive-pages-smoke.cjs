@@ -711,6 +711,55 @@ async function testNewInvoiceMobile(browser, width) {
     await context.close();
   }
 }
+async function testNewInvoiceNativePrintSinglePage(browser) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    await page.locator("#invoice-print .new-items-table tbody tr").first().locator("td").nth(2).locator("input").fill("22K / 916");
+    await page.locator("#invoice-print .new-items-table tbody tr").first().locator("td").nth(3).locator("input").fill("5.25");
+    await page.locator("#invoice-print .new-items-table tbody tr").first().locator("td").nth(4).locator("input").fill("6900");
+
+    await page.emulateMedia({ media: "print" });
+    const geometry = await page.evaluate(() => {
+      const invoice = document.querySelector("#invoice-print");
+      const main = document.querySelector("main.invoice-container");
+      const appLayout = document.querySelector(".app-layout");
+      const rect = invoice.getBoundingClientRect();
+      const mainRect = main.getBoundingClientRect();
+      return {
+        invoiceTop: rect.top,
+        invoiceHeight: rect.height,
+        mainTop: mainRect.top,
+        appLayoutMinHeight: getComputedStyle(appLayout).minHeight,
+        appLayoutDisplay: getComputedStyle(appLayout).display,
+        appContentDisplay: getComputedStyle(document.querySelector(".app-content")).display,
+        invoiceBreakInside: getComputedStyle(invoice).breakInside,
+      };
+    });
+
+    assert(geometry.invoiceTop <= 1 && geometry.mainTop <= 1,
+      "New invoice must start at the top of print page 1: " + JSON.stringify(geometry));
+    assert(geometry.appLayoutDisplay === "block" && geometry.appContentDisplay === "block",
+      "Print layout must reset the full-height application flex shell: " + JSON.stringify(geometry));
+    assert(geometry.invoiceBreakInside !== "avoid",
+      "The complete invoice sheet must not be treated as one unbreakable print block.");
+
+    const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
+    const pdfSource = pdf.toString("latin1");
+    const pageCount = (pdfSource.match(/\/Type\s*\/Page\b/g) || []).length;
+    assert(pageCount === 1,
+      "New invoice Ctrl+P must generate exactly one A4 landscape PDF page, not " + pageCount + ".");
+
+    process.stdout.write("PASS new invoice Ctrl+P prints from page 1 on one A4 landscape page\\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testInvoiceMakingChargeModes(browser) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 950 } });
   const page = await context.newPage();
@@ -1613,6 +1662,7 @@ async function testPublicNavigation(browser) {
       await testNewInvoiceMobile(browser, width);
     }
     await testInvoiceMakingChargeModes(browser);
+    await testNewInvoiceNativePrintSinglePage(browser);
     for (const width of [360, 390, 768, 1366]) {
       await testInvoiceCalculatorPopup(browser, width);
     }
