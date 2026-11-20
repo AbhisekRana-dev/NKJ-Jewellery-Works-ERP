@@ -728,22 +728,22 @@ async function testInvoiceMakingChargeModes(browser) {
     await rateInput.fill("6900");
     await flatMode.check();
     await row.locator(".making-charge-flat-input").fill("5000");
-    let rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\\d.-]/g, ""));
+    let rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
     assert(Math.abs(rowTotal - 41375) < 0.01, "Fixed ₹5,000 making charge total is incorrect: " + rowTotal);
 
     await percentMode.check();
     await row.locator(".making-charge-percent-input").fill("12");
     const preview = await row.locator(".making-charge-preview strong").innerText();
-    const makingAmount = Number(preview.replace(/[^\\d.-]/g, ""));
+    const makingAmount = Number(preview.replace(/[^\d.-]/g, ""));
     assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
 
-    rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\\d.-]/g, ""));
+    rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
     assert(Math.abs(rowTotal - 40722) < 0.01, "Percentage mode ornament total is incorrect: " + rowTotal);
 
     await rateInput.fill("7000");
-    const recalculated = Number((await row.locator(".making-charge-preview strong").innerText()).replace(/[^\\d.-]/g, ""));
+    const recalculated = Number((await row.locator(".making-charge-preview strong").innerText()).replace(/[^\d.-]/g, ""));
     assert(Math.abs(recalculated - 4410) < 0.01, "Percentage charge did not recalculate after rate changed: " + recalculated);
-    process.stdout.write("PASS invoice making charge percent/rupee selection and live totals\\n");
+    process.stdout.write("PASS invoice making charge percent/rupee selection and live totals\n");
   } finally {
     await context.close();
   }
