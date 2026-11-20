@@ -3929,3 +3929,517 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
 .nkj-catalog-view-image-fallback.is-visible { display: grid; }
 .nkj-catalog-view-image-fallback b { color: #f4e5c5; font-size: 15px; }
 .nkj-catalog-view-image-fallback small { color: #b3a4a1; font-size: 10px; }
+
+/* ============================================================
+   NKJ JEWELLERY DESIGNS — DAY THEME
+   Warm ivory surfaces, maroon typography and soft antique gold.
+   Scoped to the catalogue and its full-screen design viewer.
+============================================================ */
+.nkj-designs-page {
+  color: #382b31 !important;
+  color-scheme: light;
+}
+
+.nkj-designs-page .nkj-designs-hero {
+  border: 1px solid #ead19a !important;
+  background:
+    radial-gradient(circle at 88% 22%, rgba(244, 205, 117, .36), transparent 25%),
+    radial-gradient(circle at 8% 100%, rgba(255, 255, 255, .95), transparent 33%),
+    linear-gradient(112deg, #fff9e9 0%, #fff0cf 53%, #f9e4b7 100%) !important;
+  box-shadow: 0 8px 24px rgba(111, 73, 28, .09) !important;
+  color: #64102b !important;
+}
+
+.nkj-designs-page .nkj-designs-eyebrow {
+  color: #a16d20 !important;
+}
+
+.nkj-designs-page .nkj-designs-hero h1 {
+  color: #710f2c !important;
+}
+
+.nkj-designs-page .nkj-designs-hero p {
+  color: #725b5d !important;
+}
+
+.nkj-designs-page .nkj-designs-hero-note {
+  border-color: #e7ca8b !important;
+  background: rgba(255, 255, 255, .72) !important;
+  color: #81551d !important;
+}
+
+.nkj-designs-page .nkj-designs-hero-mark {
+  border-color: rgba(177, 132, 48, .58) !important;
+  color: #b08332 !important;
+  box-shadow: 0 0 0 9px rgba(238, 202, 112, .13), inset 0 0 24px rgba(246, 211, 121, .18) !important;
+}
+
+.nkj-designs-page .nkj-designs-hero-ring {
+  border-color: rgba(177, 132, 48, .45) !important;
+}
+
+.nkj-designs-page .nkj-designs-hero-mark > span {
+  background: #fff8e8 !important;
+  color: #8a5b1d !important;
+}
+
+.nkj-designs-page .nkj-designs-owner-add {
+  border: 1px solid #b98a38 !important;
+  background: linear-gradient(110deg, #fff7df, #f3d99c) !important;
+  color: #74112d !important;
+  box-shadow: 0 3px 10px rgba(131, 83, 20, .1) !important;
+}
+
+.nkj-designs-page .nkj-designs-section-heading h2,
+.nkj-designs-page .nkj-designs-gallery-heading h2,
+.nkj-designs-page .nkj-designs-metal-heading h2 {
+  color: #790e2d !important;
+}
+
+.nkj-designs-page .nkj-designs-section-heading > div > span,
+.nkj-designs-page .nkj-designs-gallery-heading > div:first-child > span {
+  color: #a2762e !important;
+}
+
+.nkj-designs-page .nkj-designs-section-heading > small,
+.nkj-designs-page .nkj-designs-gallery-heading > div:first-child > small {
+  color: #85757a !important;
+}
+
+.nkj-designs-page .nkj-designs-category-box {
+  border-color: #ead9c1 !important;
+  background: linear-gradient(145deg, #fffefa, #fff8ee) !important;
+  box-shadow: 0 3px 12px rgba(75, 36, 25, .035) !important;
+}
+
+.nkj-designs-page .nkj-designs-category-box button {
+  border-color: #ead8c7 !important;
+  background: #fff !important;
+  color: #72132e !important;
+}
+
+.nkj-designs-page .nkj-designs-category-box button:hover {
+  border-color: #cda24e !important;
+  background: #fff6df !important;
+}
+
+.nkj-designs-page .nkj-designs-category-box button.active {
+  border-color: #850d31 !important;
+  background: linear-gradient(110deg, #920d35, #710d2b) !important;
+  color: #fff7e8 !important;
+}
+
+.nkj-designs-page .nkj-designs-search,
+.nkj-designs-page .nkj-designs-sort {
+  border-color: #e6d9cc !important;
+  background: #fff !important;
+  color: #8b642b !important;
+  box-shadow: 0 2px 7px rgba(71, 37, 24, .035) !important;
+}
+
+.nkj-designs-page .nkj-designs-search input,
+.nkj-designs-page .nkj-designs-sort select {
+  background: transparent !important;
+  color: #432d35 !important;
+}
+
+.nkj-designs-page .nkj-design-view-toggle button {
+  border-color: #e5d7c8 !important;
+  background: #fff !important;
+  color: #7e3449 !important;
+}
+
+.nkj-designs-page .nkj-design-view-toggle button.active {
+  border-color: #8a1033 !important;
+  background: #8a1033 !important;
+  color: #fff8ec !important;
+}
+
+.nkj-designs-page .nkj-design-card {
+  border-color: #eddfcf !important;
+  background: #fff !important;
+  box-shadow: 0 5px 16px rgba(83, 46, 31, .065) !important;
+}
+
+.nkj-designs-page .nkj-design-card:hover {
+  box-shadow: 0 11px 24px rgba(83, 46, 31, .12) !important;
+}
+
+.nkj-designs-page .nkj-design-image-trigger,
+.nkj-designs-page .nkj-design-photo,
+.nkj-designs-page .nkj-design-photo img {
+  background: #fffaf1 !important;
+}
+
+.nkj-designs-page .nkj-design-featured,
+.nkj-designs-page .nkj-design-sample-label,
+.nkj-designs-page .nkj-design-real-label {
+  border-color: #f1dfb9 !important;
+  background: rgba(255, 250, 237, .96) !important;
+  color: #7d4d18 !important;
+  box-shadow: 0 2px 8px rgba(72, 43, 20, .08) !important;
+}
+
+.nkj-designs-page .nkj-design-photo-label {
+  border-color: #e6c98d !important;
+  background: rgba(255, 250, 237, .94) !important;
+  color: #7b4a18 !important;
+}
+
+.nkj-designs-page .nkj-design-image-zoom-hint {
+  border: 1px solid #e4d2ad !important;
+  background: rgba(255, 253, 247, .94) !important;
+  color: #6e1830 !important;
+}
+
+.nkj-designs-page .nkj-design-favorite {
+  border-color: #ead6c7 !important;
+  background: rgba(255, 255, 255, .96) !important;
+  color: #861234 !important;
+}
+
+.nkj-designs-page .nkj-design-card-meta small {
+  color: #887a7e !important;
+}
+
+.nkj-designs-page .nkj-design-card h3 {
+  color: #70102d !important;
+}
+
+.nkj-designs-page .nkj-design-card p {
+  color: #786c70 !important;
+}
+
+.nkj-designs-page .nkj-design-card-content > button {
+  border-color: #e4cfaa !important;
+  background: #fff7e6 !important;
+  color: #79112e !important;
+}
+
+.nkj-designs-page .nkj-design-card-content > button:hover {
+  background: #f7e4b8 !important;
+}
+
+.nkj-designs-page .nkj-designs-pagination {
+  border-color: #eadccf !important;
+  color: #827479 !important;
+}
+
+.nkj-designs-page .nkj-designs-empty {
+  border-color: #e8d5c2 !important;
+  background: #fffdf9 !important;
+  color: #817176 !important;
+}
+
+.nkj-designs-page .nkj-designs-empty b {
+  color: #74122f !important;
+}
+
+.nkj-designs-page .nkj-designs-loading {
+  color: #805d60 !important;
+}
+
+/* Daylight product-detail viewer: warm white gallery and readable detail cards. */
+.nkj-catalog-modal-backdrop.nkj-catalog-view-backdrop {
+  background: rgba(72, 42, 35, .34) !important;
+  backdrop-filter: blur(5px) !important;
+}
+
+.nkj-catalog-details-modal.nkj-catalog-view-modal {
+  border-color: #e5ca92 !important;
+  background:
+    radial-gradient(ellipse at 75% 0%, rgba(248, 224, 174, .36), transparent 40%),
+    linear-gradient(135deg, #fffefa 0%, #fffaf2 55%, #fff5e8 100%) !important;
+  color: #3c2a31 !important;
+  box-shadow: 0 24px 80px rgba(70, 40, 25, .24), inset 0 0 0 1px rgba(225, 185, 92, .1) !important;
+}
+
+.nkj-catalog-view-close {
+  border-color: #dfc38a !important;
+  background: #fffaf0 !important;
+  color: #78122f !important;
+  box-shadow: 0 2px 8px rgba(74, 43, 25, .09) !important;
+}
+
+.nkj-catalog-view-close:hover {
+  background: #f8e7bf !important;
+}
+
+.nkj-catalog-view-gallery {
+  border-color: #ead9be !important;
+  background: #fff !important;
+  box-shadow: 0 4px 16px rgba(82, 46, 25, .07) !important;
+}
+
+.nkj-catalog-view-main-photo {
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(246, 226, 188, .3), transparent 68%),
+    linear-gradient(135deg, #fffdf8, #f8f1e5) !important;
+}
+
+.nkj-catalog-view-image-count {
+  border-color: #e5d2ad !important;
+  background: rgba(255, 253, 247, .94) !important;
+  color: #71152f !important;
+}
+
+.nkj-catalog-view-image-tools button,
+.nkj-catalog-view-image-arrow {
+  border-color: #d9bf8d !important;
+  background: rgba(255, 252, 244, .96) !important;
+  color: #74112d !important;
+  box-shadow: 0 2px 8px rgba(70, 40, 25, .1) !important;
+}
+
+.nkj-catalog-view-image-tools button:hover,
+.nkj-catalog-view-image-arrow:hover {
+  background: #f7e8c8 !important;
+}
+
+.nkj-catalog-view-gallery-thumbs {
+  border-top-color: #eadcc9 !important;
+  background: #fffdf8 !important;
+  scrollbar-color: #d9bf8d transparent !important;
+}
+
+.nkj-catalog-view-gallery-thumbs > button,
+.nkj-catalog-view-photo-strip > button {
+  border-color: #e6d7c5 !important;
+  background: #fff !important;
+}
+
+.nkj-catalog-view-gallery-thumbs > button.active,
+.nkj-catalog-view-photo-strip > button.active {
+  border-color: #b88b35 !important;
+  box-shadow: 0 0 0 2px rgba(184, 139, 53, .14) !important;
+}
+
+.nkj-catalog-view-no-photo {
+  color: #9b783c !important;
+}
+
+.nkj-catalog-view-no-photo b,
+.nkj-catalog-view-image-fallback b {
+  color: #74132e !important;
+}
+
+.nkj-catalog-view-no-photo span,
+.nkj-catalog-view-image-fallback small {
+  color: #81747a !important;
+}
+
+.nkj-catalog-view-information {
+  scrollbar-color: #d5bd91 transparent !important;
+}
+
+.nkj-catalog-view-title-row h2 {
+  color: #70102c !important;
+}
+
+.nkj-catalog-view-id {
+  border-color: #e5c57f !important;
+  background: linear-gradient(110deg, #fff0c2, #f1d58c) !important;
+  color: #402815 !important;
+}
+
+.nkj-catalog-view-id > b {
+  color: #402815 !important;
+}
+
+.nkj-catalog-view-card {
+  border-color: #ead8bd !important;
+  background: linear-gradient(145deg, #fff, #fff9ef) !important;
+  box-shadow: 0 3px 12px rgba(89, 54, 30, .055) !important;
+}
+
+.nkj-catalog-view-card > h3,
+.nkj-catalog-view-photos-card > header h3 {
+  color: #8a1533 !important;
+}
+
+.nkj-catalog-view-detail-rows {
+  border-top-color: #eee0ce !important;
+}
+
+.nkj-catalog-view-detail-rows > div {
+  border-bottom-color: #eee4d7 !important;
+  color: #514047 !important;
+}
+
+.nkj-catalog-view-detail-rows > div > svg {
+  color: #ae8135 !important;
+}
+
+.nkj-catalog-view-detail-rows > div > span {
+  color: #786a70 !important;
+}
+
+.nkj-catalog-view-detail-rows > div > b {
+  color: #482e37 !important;
+}
+
+.nkj-catalog-view-extra-details > span {
+  color: #7e7075 !important;
+}
+
+.nkj-catalog-view-extra-details b {
+  color: #563840 !important;
+}
+
+.nkj-catalog-view-description {
+  border-top-color: #eee2d2 !important;
+  color: #75676d !important;
+}
+
+.nkj-catalog-view-photos-card > header > span {
+  color: #9a6c23 !important;
+}
+
+.nkj-catalog-view-photo-strip {
+  scrollbar-color: #d5bd91 transparent !important;
+}
+
+.nkj-catalog-view-no-saved {
+  color: #84767b !important;
+}
+
+.nkj-catalog-view-photo-actions button,
+.nkj-catalog-owner-control-actions button {
+  border-color: #e1cfb2 !important;
+  background: #fffaf1 !important;
+  color: #74132f !important;
+}
+
+.nkj-catalog-view-photo-actions button:hover,
+.nkj-catalog-owner-control-actions button:hover {
+  background: #f8edda !important;
+}
+
+.nkj-catalog-view-photo-actions button.primary-photo {
+  border-color: #c49a49 !important;
+  background: linear-gradient(110deg, #ffe9a9, #e9c36d) !important;
+  color: #563411 !important;
+}
+
+.nkj-catalog-view-photo-actions button.remove-photo,
+.nkj-catalog-owner-control-actions button.archive {
+  border-color: #e5c6c8 !important;
+  background: #fff6f5 !important;
+  color: #a32942 !important;
+}
+
+.nkj-catalog-view-photo-actions button:disabled {
+  opacity: .42 !important;
+}
+
+.nkj-catalog-owner-controls-heading {
+  border-bottom-color: #eadcc8 !important;
+  color: #a47b31 !important;
+}
+
+.nkj-catalog-owner-controls-heading small {
+  color: #9c762f !important;
+}
+
+.nkj-catalog-owner-controls-heading b {
+  color: #70122e !important;
+}
+
+.nkj-catalog-owner-control-actions button.mobile-upload {
+  border-color: #dfc27d !important;
+  background: #fff7df !important;
+  color: #7d5520 !important;
+}
+
+.nkj-catalog-view-footer button {
+  border-color: #c39b50 !important;
+  background: linear-gradient(115deg, #ffedb8, #e6bd61) !important;
+  color: #4b3016 !important;
+}
+
+.nkj-catalog-view-image-fallback {
+  background: radial-gradient(ellipse at center, #fffaf0, #f4eadb) !important;
+  color: #9a773d !important;
+}
+
+.nkj-design-inline-name input,
+.nkj-catalog-view-detail-rows input,
+.nkj-catalog-view-modal .nkj-design-upload-tools input:not([type="file"]) {
+  border: 1px solid #e2cfb6 !important;
+  background: #fff !important;
+  color: #392a31 !important;
+}
+
+.nkj-design-inline-name input:focus,
+.nkj-catalog-view-detail-rows input:focus {
+  border-color: #bd9140 !important;
+  box-shadow: 0 0 0 3px rgba(189, 145, 64, .14) !important;
+}
+
+.nkj-catalog-view-modal .nkj-design-mobile-qr-panel,
+.nkj-catalog-view-modal .nkj-design-upload-tools,
+.nkj-catalog-view-modal .nkj-design-replace-photo-tools {
+  border-color: #e9d9c2 !important;
+  background: #fffdf8 !important;
+  color: #554148 !important;
+}
+
+.nkj-catalog-view-modal .nkj-design-mobile-qr-heading,
+.nkj-catalog-view-modal .nkj-design-upload-tools b,
+.nkj-catalog-view-modal .nkj-design-replace-photo-tools b {
+  color: #74132f !important;
+}
+
+.nkj-catalog-view-modal .nkj-design-upload-tools small,
+.nkj-catalog-view-modal .nkj-design-replace-photo-tools small,
+.nkj-catalog-view-modal .nkj-design-mobile-qr-heading small {
+  color: #7e7075 !important;
+}
+
+.nkj-catalog-view-modal .nkj-design-admin-button {
+  border-color: #ddc69b !important;
+  background: #fff6e3 !important;
+  color: #74132f !important;
+}
+
+.nkj-catalog-view-modal .nkj-design-admin-button.primary,
+.nkj-catalog-view-modal .nkj-design-admin-button.gold {
+  border-color: #bd9140 !important;
+  background: linear-gradient(110deg, #ffedb9, #e8c26b) !important;
+  color: #563715 !important;
+}
+
+.nkj-catalog-view-modal .nkj-design-admin-button.danger {
+  border-color: #e5c6c8 !important;
+  background: #fff5f4 !important;
+  color: #a32942 !important;
+}
+
+.nkj-catalog-view-modal .nkj-design-admin-feedback.error {
+  border-color: #efc5c8 !important;
+  background: #fff1f1 !important;
+  color: #a01d35 !important;
+}
+
+.nkj-catalog-view-modal .nkj-design-admin-feedback.success {
+  border-color: #cce4d1 !important;
+  background: #effaf1 !important;
+  color: #25683d !important;
+}
+
+.nkj-catalog-view-lightbox {
+  background: rgba(52, 34, 27, .86) !important;
+}
+
+.nkj-catalog-view-lightbox > button.close {
+  border-color: #e1c58d !important;
+  background: #fffaf0 !important;
+  color: #74132f !important;
+}
+
+/* Keep touch layouts compact and preserve the light palette at every width. */
+@media (max-width: 720px) {
+  .nkj-designs-page .nkj-designs-hero {
+    background: linear-gradient(135deg, #fff9e9, #f8e6c1) !important;
+  }
+}
