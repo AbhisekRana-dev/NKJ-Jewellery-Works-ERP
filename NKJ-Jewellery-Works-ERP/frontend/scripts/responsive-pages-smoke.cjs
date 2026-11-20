@@ -711,6 +711,78 @@ async function testNewInvoiceMobile(browser, width) {
     await context.close();
   }
 }
+async function testInvoiceCalculatorPopup(browser, width) {
+  const viewport = { name: "invoice-calculator-" + width, width, height: width <= 760 ? 820 : 900 };
+  const context = await browser.newContext({ viewport });
+  const page = await context.newPage();
+  await installApiMocks(page);
+
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    await page.locator(".nkj-calculator-trigger").click();
+    const popup = page.locator(".nkj-invoice-calculator-popup");
+    await popup.waitFor({ state: "visible", timeout: 5000 });
+
+    const geometry = await popup.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const heading = element.querySelector(".nkj-invoice-calculator-heading strong");
+      const headingStyle = heading ? getComputedStyle(heading) : null;
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+        viewportWidth: document.documentElement.clientWidth,
+        viewportHeight: document.documentElement.clientHeight,
+        headingWhiteSpace: headingStyle?.whiteSpace || "",
+        headingScrollWidth: heading?.scrollWidth || 0,
+        headingClientWidth: heading?.clientWidth || 0,
+      };
+    });
+
+    assert(geometry.width >= Math.min(300, width - 24),
+      "Invoice calculator is too narrow at " + width + "px: " + JSON.stringify(geometry));
+    assert(geometry.left >= -1 && geometry.right <= geometry.viewportWidth + 1,
+      "Invoice calculator extends beyond the horizontal viewport at " + width + "px: " + JSON.stringify(geometry));
+    assert(geometry.top >= -1 && geometry.bottom <= geometry.viewportHeight + 1,
+      "Invoice calculator extends beyond the vertical viewport at " + width + "px: " + JSON.stringify(geometry));
+    assert(geometry.headingWhiteSpace === "nowrap" && geometry.headingScrollWidth <= geometry.headingClientWidth + 1,
+      "Invoice calculator heading wraps or clips at " + width + "px: " + JSON.stringify(geometry));
+
+    if (width <= 760) {
+      await page.locator(".nkj-invoice-calculator-scrim").waitFor({ state: "visible", timeout: 3000 });
+      const position = await popup.evaluate((element) => getComputedStyle(element).position);
+      assert(position === "fixed", "Phone calculator should open as a centered fixed dialog.");
+    } else {
+      const position = await popup.evaluate((element) => getComputedStyle(element).position);
+      assert(position === "absolute", "Desktop calculator should stay anchored to the toolbar.");
+    }
+
+    await page.locator(".nkj-invoice-calculator-key", { hasText: /^7$/ }).click();
+    await page.locator(".nkj-invoice-calculator-key", { hasText: /^\+$/ }).click();
+    await page.locator(".nkj-invoice-calculator-key", { hasText: /^3$/ }).click();
+    await page.locator(".nkj-invoice-calculator-key", { hasText: /^=$/ }).click();
+    await page.waitForFunction(() => {
+      return document.querySelector(".nkj-invoice-calculator-value")?.textContent?.trim() === "10";
+    }, { timeout: 3000 });
+
+    if (width <= 760) {
+      await page.locator(".nkj-invoice-calculator-scrim").click({ position: { x: 5, y: 5 } });
+      await popup.waitFor({ state: "hidden", timeout: 3000 });
+    } else {
+      await page.locator(".nkj-invoice-calculator-close").click();
+      await popup.waitFor({ state: "hidden", timeout: 3000 });
+    }
+
+    process.stdout.write("PASS invoice calculator popup width, position, heading, calculation and close at " + width + "px\\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testInvoiceSavePinGate(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -1489,6 +1561,9 @@ async function testPublicNavigation(browser) {
 
     for (const width of [360, 390, 430]) {
       await testNewInvoiceMobile(browser, width);
+    }
+    for (const width of [360, 390, 768, 1366]) {
+      await testInvoiceCalculatorPopup(browser, width);
     }
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftRecoveryAndReset(browser);
