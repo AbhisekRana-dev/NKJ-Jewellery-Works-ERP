@@ -822,75 +822,36 @@ async function testInvoiceMakingChargeModes(browser) {
   }
 }
 
-async function testInvoiceCalculatorPopup(browser, width) {
-  const viewport = { name: "invoice-calculator-" + width, width, height: width <= 760 ? 820 : 900 };
-  const context = await browser.newContext({ viewport });
-  const page = await context.newPage();
-  await installApiMocks(page);
-
-  try {
-    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
-    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    await page.locator(".nkj-calculator-trigger").click();
-    const popup = page.locator(".nkj-invoice-calculator-popup");
-    await popup.waitFor({ state: "visible", timeout: 5000 });
-
-    const geometry = await popup.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      const heading = element.querySelector(".nkj-invoice-calculator-heading strong");
-      const headingStyle = heading ? getComputedStyle(heading) : null;
-      return {
-        left: rect.left,
-        right: rect.right,
-        top: rect.top,
-        bottom: rect.bottom,
-        width: rect.width,
-        height: rect.height,
-        viewportWidth: document.documentElement.clientWidth,
-        viewportHeight: document.documentElement.clientHeight,
-        headingWhiteSpace: headingStyle?.whiteSpace || "",
-        headingScrollWidth: heading?.scrollWidth || 0,
-        headingClientWidth: heading?.clientWidth || 0,
-      };
+async function testInvoiceToolbarAndDeleteControls(browser) {
+  for (const width of [390, 1440]) {
+    const context = await browser.newContext({
+      viewport: { width, height: width <= 760 ? 844 : 950 },
     });
+    const page = await context.newPage();
+    await installApiMocks(page);
+    try {
+      await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+      await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
 
-    assert(geometry.width >= Math.min(300, width - 24),
-      "Invoice calculator is too narrow at " + width + "px: " + JSON.stringify(geometry));
-    assert(geometry.left >= -1 && geometry.right <= geometry.viewportWidth + 1,
-      "Invoice calculator extends beyond the horizontal viewport at " + width + "px: " + JSON.stringify(geometry));
-    assert(geometry.top >= -1 && geometry.bottom <= geometry.viewportHeight + 1,
-      "Invoice calculator extends beyond the vertical viewport at " + width + "px: " + JSON.stringify(geometry));
-    assert(geometry.headingWhiteSpace === "nowrap" && geometry.headingScrollWidth <= geometry.headingClientWidth + 1,
-      "Invoice calculator heading wraps or clips at " + width + "px: " + JSON.stringify(geometry));
+      assert(await page.locator(".nkj-calculator-trigger").count() === 0,
+        "Invoice page must not show a Calculator button.");
+      assert(await page.locator(".nkj-invoice-calculator-popup, .nkj-invoice-calculator-scrim").count() === 0,
+        "Invoice page must not render a calculator popup or overlay.");
 
-    if (width <= 760) {
-      await page.locator(".nkj-invoice-calculator-scrim").waitFor({ state: "visible", timeout: 3000 });
-      const position = await popup.evaluate((element) => getComputedStyle(element).position);
-      assert(position === "fixed", "Phone calculator should open as a centered fixed dialog.");
-    } else {
-      const position = await popup.evaluate((element) => getComputedStyle(element).position);
-      assert(position === "absolute", "Desktop calculator should stay anchored to the toolbar.");
+      const newDelete = page.locator("#invoice-print .new-items-table tbody tr").first().locator("td:last-child .icon-btn");
+      const oldDelete = page.locator("#invoice-print .old-items-table tbody tr").first().locator("td:last-child .icon-btn");
+      for (const [label, button] of [["new ornament", newDelete], ["old ornament", oldDelete]]) {
+        const buttonRect = await button.boundingBox();
+        const iconRect = await button.locator("svg").boundingBox();
+        assert(buttonRect && buttonRect.width <= 26 && buttonRect.height <= 26,
+          label + " delete button should be compact (<=26px); got " + JSON.stringify(buttonRect));
+        assert(iconRect && iconRect.width >= 11 && iconRect.width <= 14 && iconRect.height >= 11 && iconRect.height <= 14,
+          label + " trash icon should be about 12–13px; got " + JSON.stringify(iconRect));
+      }
+      process.stdout.write("PASS invoice has no Calculator button and compact delete icons at " + width + "px\\n");
+    } finally {
+      await context.close();
     }
-
-    await page.locator(".nkj-invoice-calculator-key", { hasText: /^7$/ }).click();
-    await page.locator(".nkj-invoice-calculator-key", { hasText: /^\+$/ }).click();
-    await page.locator(".nkj-invoice-calculator-key", { hasText: /^3$/ }).click();
-    await page.locator(".nkj-invoice-calculator-key", { hasText: /^=$/ }).click();
-    await page.waitForFunction(() => {
-      return document.querySelector(".nkj-invoice-calculator-value")?.textContent?.trim() === "10";
-    }, { timeout: 3000 });
-
-    if (width <= 760) {
-      await page.locator(".nkj-invoice-calculator-scrim").click({ position: { x: 5, y: 5 } });
-      await popup.waitFor({ state: "hidden", timeout: 3000 });
-    } else {
-      await page.locator(".nkj-invoice-calculator-close").click();
-      await popup.waitFor({ state: "hidden", timeout: 3000 });
-    }
-
-    process.stdout.write("PASS invoice calculator popup width, position, heading, calculation and close at " + width + "px\\n");
-  } finally {
-    await context.close();
   }
 }
 
@@ -1678,9 +1639,7 @@ async function testPublicNavigation(browser) {
       await testNewInvoiceMobile(browser, width);
     }
     await testInvoiceMakingChargeModes(browser);
-    for (const width of [360, 390, 768, 1366]) {
-      await testInvoiceCalculatorPopup(browser, width);
-    }
+    await testInvoiceToolbarAndDeleteControls(browser);
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftRecoveryAndReset(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);

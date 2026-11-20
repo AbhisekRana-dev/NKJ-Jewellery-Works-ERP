@@ -46,7 +46,6 @@ import {
   Gem,
   Wrench,
   ChevronRight,
-  Calculator as CalculatorIcon,
 } from "lucide-react";
 
 
@@ -68,99 +67,6 @@ function normalizeCustomerName(value) {
 
 function normalizeCustomerAddress(value) {
   return String(value ?? "").toUpperCase();
-}
-
-function evaluateCalculatorExpression(rawExpression) {
-  const expression = String(rawExpression ?? "")
-    .replace(/[×xX]/g, "*")
-    .replace(/[÷]/g, "/")
-    .replace(/[−]/g, "-")
-    .replace(/\s+/g, "");
-
-  if (!expression) throw new Error("Enter a calculation first.");
-
-  const tokens = expression.match(/\d+(?:\.\d*)?|\.\d+|[+\-*/%()]/g) || [];
-  if (tokens.join("") !== expression) throw new Error("Check the expression and try again.");
-
-  let cursor = 0;
-
-  const parsePrimary = () => {
-    const token = tokens[cursor];
-    if (token === "(") {
-      cursor += 1;
-      const nested = parseExpression();
-      if (tokens[cursor] !== ")") throw new Error("Missing closing bracket.");
-      cursor += 1;
-      return nested;
-    }
-    if (!token || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token)) {
-      throw new Error("Enter a number.");
-    }
-    cursor += 1;
-    const value = Number(token);
-    if (!Number.isFinite(value)) throw new Error("The number is too large.");
-    return { value, isPercent: false };
-  };
-
-  const parseFactor = () => {
-    let sign = 1;
-    while (tokens[cursor] === "+" || tokens[cursor] === "-") {
-      if (tokens[cursor] === "-") sign *= -1;
-      cursor += 1;
-    }
-    const node = parsePrimary();
-    let isPercent = false;
-    while (tokens[cursor] === "%") {
-      node.value /= 100;
-      isPercent = true;
-      cursor += 1;
-    }
-    return { value: sign * node.value, isPercent };
-  };
-
-  const parseTerm = () => {
-    let left = parseFactor();
-    while (tokens[cursor] === "*" || tokens[cursor] === "/") {
-      const operator = tokens[cursor++];
-      const right = parseFactor();
-      if (operator === "/" && right.value === 0) {
-        throw new Error("Cannot divide by zero.");
-      }
-      left = {
-        value: operator === "*" ? left.value * right.value : left.value / right.value,
-        isPercent: false,
-      };
-      if (!Number.isFinite(left.value)) throw new Error("The result is outside the supported range.");
-    }
-    return left;
-  };
-
-  const parseExpression = () => {
-    let left = parseTerm();
-    while (tokens[cursor] === "+" || tokens[cursor] === "-") {
-      const operator = tokens[cursor++];
-      const right = parseTerm();
-      // For addition/subtraction, a postfix percentage is relative to the
-      // value on its left (for example, 200 + 10% = 220).
-      const rightValue = right.isPercent ? left.value * right.value : right.value;
-      left = {
-        value: operator === "+" ? left.value + rightValue : left.value - rightValue,
-        isPercent: false,
-      };
-      if (!Number.isFinite(left.value)) throw new Error("The result is outside the supported range.");
-    }
-    return left;
-  };
-
-  const result = parseExpression();
-  if (cursor !== tokens.length) throw new Error("Check the expression and try again.");
-  if (!Number.isFinite(result.value)) throw new Error("The result is not a valid number.");
-  return result.value;
-}
-
-function formatCalculatorValue(value) {
-  if (!Number.isFinite(value)) throw new Error("The result is not a valid number.");
-  return Number(value.toPrecision(12)).toString();
 }
 
 function parseInvoiceDetails(invoice) {
@@ -561,137 +467,9 @@ export function InvoicePage() {
   const [showInvoicePin, setShowInvoicePin] = useState(false);
   const [showSavePin, setShowSavePin] = useState(false);
   const [pendingPrintAfterSave, setPendingPrintAfterSave] = useState(false);
-  const [calculatorOpen, setCalculatorOpen] = useState(false);
-  const [calculatorExpression, setCalculatorExpression] = useState("");
-  const [calculatorResult, setCalculatorResult] = useState("");
-  const [calculatorError, setCalculatorError] = useState("");
   const [isPrintPreparing, setIsPrintPreparing] = useState(false);
   const saveInProgressRef = useRef(false);
   const skipNextDraftPersistRef = useRef(false);
-
-  const clearCalculator = () => {
-    setCalculatorExpression("");
-    setCalculatorResult("");
-    setCalculatorError("");
-  };
-
-  const appendCalculatorToken = (token) => {
-    setCalculatorError("");
-    setCalculatorResult("");
-    setCalculatorExpression((current) => {
-      const operators = ["+", "−", "×", "÷"];
-      const isOperator = operators.includes(token);
-      const continuesResult = isOperator || token === "%";
-      let next = calculatorResult !== ""
-        ? (continuesResult ? calculatorResult : "")
-        : current;
-      const last = next.slice(-1);
-
-      if (isOperator) {
-        if (!next) return token === "−" ? token : "";
-        if (operators.includes(last)) {
-          if (next.length === 1 && last === "−" && token !== "−") return next;
-          return next.slice(0, -1) + token;
-        }
-        return next + token;
-      }
-
-      if (token === ".") {
-        const currentNumber = next.split(/[+−×÷*/()]/).pop() || "";
-        if (currentNumber.includes(".")) return next;
-        return next + (currentNumber ? "." : "0.");
-      }
-
-      if (token === "%") {
-        if (!/[0-9.)]$/.test(next) || last === "%") return next;
-        return next + token;
-      }
-
-      if (/^[0-9]$/.test(token)) return next + token;
-      if (token === "(") return next + token;
-      if (token === ")") return next + token;
-      return next;
-    });
-  };
-
-  const backspaceCalculator = () => {
-    setCalculatorError("");
-    setCalculatorResult("");
-    setCalculatorExpression((current) => {
-      const value = calculatorResult !== "" ? calculatorResult : current;
-      return value.slice(0, -1);
-    });
-  };
-
-  const calculateExpression = () => {
-    try {
-      const value = evaluateCalculatorExpression(calculatorExpression);
-      const formatted = formatCalculatorValue(value);
-      setCalculatorExpression(calculatorExpression);
-      setCalculatorResult(formatted);
-      setCalculatorError("");
-    } catch (error) {
-      setCalculatorResult("");
-      setCalculatorError(error.message || "Unable to calculate this expression.");
-    }
-  };
-
-  useEffect(() => {
-    if (!calculatorOpen || isPrintPreparing) return undefined;
-
-    const isEditableElement = (element) => {
-      if (!(element instanceof HTMLElement)) return false;
-      return element.isContentEditable ||
-        Boolean(element.closest("input, textarea, select, [contenteditable='true'], [role='textbox']"));
-    };
-
-    const onCalculatorKeyDown = (event) => {
-      if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
-      const key = event.key;
-      // Escape always closes the popup, even when focus is currently in an
-      // invoice field. All other calculator keys leave editable fields alone.
-      if (key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        setCalculatorOpen(false);
-        setCalculatorError("");
-        return;
-      }
-      if (isEditableElement(event.target) || isEditableElement(document.activeElement)) return;
-      if (key === "Enter" || key === "=") {
-        event.preventDefault();
-        event.stopPropagation();
-        calculateExpression();
-        return;
-      }
-      if (key === "Backspace") {
-        event.preventDefault();
-        event.stopPropagation();
-        backspaceCalculator();
-        return;
-      }
-      if (key === "Delete") {
-        event.preventDefault();
-        event.stopPropagation();
-        clearCalculator();
-        return;
-      }
-
-      const mapped = key === "*" || key.toLowerCase() === "x" ? "×"
-        : key === "/" ? "÷"
-          : key === "-" ? "−"
-            : key === "+" ? "+"
-              : key;
-      if (/^[0-9.]$/.test(mapped) || ["+", "−", "×", "÷", "%", "(", ")"].includes(mapped)) {
-        event.preventDefault();
-        event.stopPropagation();
-        appendCalculatorToken(mapped);
-      }
-    };
-
-    window.addEventListener("keydown", onCalculatorKeyDown, true);
-    return () => window.removeEventListener("keydown", onCalculatorKeyDown, true);
-  }, [calculatorOpen, isPrintPreparing, calculatorExpression, calculatorResult]);
 
   useEffect(() => {
     // Route state is metadata, not a command to delete a draft. New Invoice
@@ -948,7 +726,7 @@ export function InvoicePage() {
 
     const onResetShortcut = (event) => {
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
-      if (saving || showSavePin || showInvoicePin || calculatorOpen || isPrintPreparing) return;
+      if (saving || showSavePin || showInvoicePin || isPrintPreparing) return;
 
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest(
@@ -971,7 +749,7 @@ export function InvoicePage() {
     // to consume Escape before this page-level reset confirmation runs.
     window.addEventListener("keydown", onResetShortcut);
     return () => window.removeEventListener("keydown", onResetShortcut);
-  }, [saved, saving, showSavePin, showInvoicePin, calculatorOpen, isPrintPreparing]);
+  }, [saved, saving, showSavePin, showInvoicePin, isPrintPreparing]);
 
   function validateInvoiceForm() {
     if (!invoiceDate) return "Please select an invoice date.";
@@ -1208,92 +986,6 @@ export function InvoicePage() {
         </label>
         {isEditingSavedInvoice && invoiceNo && (
           <span className="nkj-editing-invoice-note">Editing {invoiceNo}</span>
-        )}
-        {!isPrintPreparing && (
-          <div className="nkj-invoice-calculator-anchor no-print">
-            <button
-              type="button"
-              className="nkj-calculator-trigger"
-              onClick={() => {
-                setCalculatorOpen((open) => !open);
-                setCalculatorError("");
-              }}
-              aria-label={calculatorOpen ? "Close calculator" : "Open manual calculator"}
-              aria-expanded={calculatorOpen}
-              aria-haspopup="dialog"
-              title="Manual calculator"
-            >
-              <CalculatorIcon size={19} />
-              <span>Calculator</span>
-            </button>
-
-            {calculatorOpen && (
-              <>
-                <button
-                  type="button"
-                  className="nkj-invoice-calculator-scrim no-print"
-                  onClick={() => {
-                    setCalculatorOpen(false);
-                    setCalculatorError("");
-                  }}
-                  aria-label="Close calculator"
-                  tabIndex={-1}
-                />
-                <section
-                className="nkj-invoice-calculator-popup no-print"
-                role="dialog"
-                aria-label="Manual calculator"
-                aria-modal="false"
-              >
-                <header className="nkj-invoice-calculator-heading">
-                  <div>
-                    <CalculatorIcon size={17} />
-                    <strong>Manual Calculator</strong>
-                  </div>
-                  <button
-                    type="button"
-                    className="nkj-invoice-calculator-close"
-                    onClick={() => {
-                      setCalculatorOpen(false);
-                      setCalculatorError("");
-                    }}
-                    aria-label="Close calculator"
-                    title="Close"
-                  >
-                    <X size={18} />
-                  </button>
-                </header>
-
-                <div className="nkj-invoice-calculator-display" aria-live="polite" aria-atomic="true">
-                  <div className="nkj-invoice-calculator-expression">{calculatorExpression || "Enter calculation"}</div>
-                  <div className={`nkj-invoice-calculator-value${calculatorError ? " has-error" : ""}`}>
-                    {calculatorError || calculatorResult || calculatorExpression || "0"}
-                  </div>
-                </div>
-
-                <div className="nkj-invoice-calculator-keypad">
-                  {["AC", "⌫", "%", "÷", "7", "8", "9", "×", "4", "5", "6", "−", "1", "2", "3", "+", "0", ".", "="].map((key) => (
-                    <button
-                      type="button"
-                      key={key}
-                      className={`nkj-invoice-calculator-key${["÷", "×", "−", "+"].includes(key) ? " is-operator" : ""}${key === "=" ? " is-equals" : ""}${key === "AC" || key === "⌫" ? " is-utility" : ""}`}
-                      onClick={() => {
-                        if (key === "AC") clearCalculator();
-                        else if (key === "⌫") backspaceCalculator();
-                        else if (key === "=") calculateExpression();
-                        else appendCalculatorToken(key);
-                      }}
-                      aria-label={key === "⌫" ? "Backspace" : key === "AC" ? "Clear calculator" : key}
-                    >
-                      {key}
-                    </button>
-                  ))}
-                </div>
-                <p className="nkj-invoice-calculator-hint">Keyboard: 0–9, +, −, *, /, %, Enter, Backspace, Delete, Esc</p>
-                </section>
-              </>
-            )}
-          </div>
         )}
       </div>
 
