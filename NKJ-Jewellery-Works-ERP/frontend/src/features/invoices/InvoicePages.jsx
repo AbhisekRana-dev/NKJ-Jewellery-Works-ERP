@@ -1198,20 +1198,31 @@ export function InvoicePage() {
             </button>
 
             {calculatorOpen && (
-              <section
+              <>
+                <button
+                  type="button"
+                  className="nkj-invoice-calculator-scrim no-print"
+                  onClick={() => {
+                    setCalculatorOpen(false);
+                    setCalculatorError("");
+                  }}
+                  aria-label="Close calculator"
+                  tabIndex={-1}
+                />
+                <section
                 className="nkj-invoice-calculator-popup no-print"
                 role="dialog"
                 aria-label="Manual calculator"
                 aria-modal="false"
               >
-                <header className="nkj-calculator-heading">
+                <header className="nkj-invoice-calculator-heading">
                   <div>
                     <CalculatorIcon size={17} />
                     <strong>Manual Calculator</strong>
                   </div>
                   <button
                     type="button"
-                    className="nkj-calculator-close"
+                    className="nkj-invoice-calculator-close"
                     onClick={() => {
                       setCalculatorOpen(false);
                       setCalculatorError("");
@@ -1223,19 +1234,19 @@ export function InvoicePage() {
                   </button>
                 </header>
 
-                <div className="nkj-calculator-display" aria-live="polite" aria-atomic="true">
-                  <div className="nkj-calculator-expression">{calculatorExpression || "Enter calculation"}</div>
-                  <div className={`nkj-calculator-value${calculatorError ? " has-error" : ""}`}>
+                <div className="nkj-invoice-calculator-display" aria-live="polite" aria-atomic="true">
+                  <div className="nkj-invoice-calculator-expression">{calculatorExpression || "Enter calculation"}</div>
+                  <div className={`nkj-invoice-calculator-value${calculatorError ? " has-error" : ""}`}>
                     {calculatorError || calculatorResult || calculatorExpression || "0"}
                   </div>
                 </div>
 
-                <div className="nkj-calculator-keypad">
+                <div className="nkj-invoice-calculator-keypad">
                   {["AC", "⌫", "%", "÷", "7", "8", "9", "×", "4", "5", "6", "−", "1", "2", "3", "+", "0", ".", "="].map((key) => (
                     <button
                       type="button"
                       key={key}
-                      className={`nkj-calc-key${["÷", "×", "−", "+"].includes(key) ? " is-operator" : ""}${key === "=" ? " is-equals" : ""}${key === "AC" || key === "⌫" ? " is-utility" : ""}`}
+                      className={`nkj-invoice-calculator-key${["÷", "×", "−", "+"].includes(key) ? " is-operator" : ""}${key === "=" ? " is-equals" : ""}${key === "AC" || key === "⌫" ? " is-utility" : ""}`}
                       onClick={() => {
                         if (key === "AC") clearCalculator();
                         else if (key === "⌫") backspaceCalculator();
@@ -1248,8 +1259,9 @@ export function InvoicePage() {
                     </button>
                   ))}
                 </div>
-                <p className="nkj-calculator-hint">Keyboard: 0–9, +, −, *, /, %, Enter, Backspace, Delete, Esc</p>
-              </section>
+                <p className="nkj-invoice-calculator-hint">Keyboard: 0–9, +, −, *, /, %, Enter, Backspace, Delete, Esc</p>
+                </section>
+              </>
             )}
           </div>
         )}
