@@ -773,6 +773,13 @@ async function testInvoiceMakingChargeModes(browser) {
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
     const row = page.locator("#invoice-print .new-items-table tbody tr").first();
+    const deleteButton = row.locator("td:last-child .icon-btn");
+    const deleteButtonRect = await deleteButton.boundingBox();
+    const deleteIconRect = await deleteButton.locator("svg").boundingBox();
+    assert(deleteButtonRect && deleteButtonRect.width >= 32 && deleteButtonRect.height >= 32,
+      "New ornament delete button must have a visible 32px or larger hit target.");
+    assert(deleteIconRect && deleteIconRect.width >= 20 && deleteIconRect.height >= 20,
+      "New ornament trash icon must be clearly visible at 20px or larger.");
     const weightInput = row.locator("td").nth(3).locator("input");
     const rateInput = row.locator("td").nth(4).locator("input");
     const flatMode = row.locator('.making-charge-mode-option input[value="amount"]');
