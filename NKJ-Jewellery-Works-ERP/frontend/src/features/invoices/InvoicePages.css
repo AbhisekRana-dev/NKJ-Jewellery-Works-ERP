@@ -2317,12 +2317,12 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 }
 
 
-/* Making Charge (MC) column — percentage or fixed rupee mode. */
-.new-items-table th:nth-child(6) { width: 14%; }
+/* Making Charge (MC) — two aligned rows matching the requested reference layout. */
+.new-items-table th:nth-child(6) { width: 20%; }
 .new-items-table td.making-charge-cell {
   height: auto !important;
-  min-width: 112px;
-  padding: 5px 4px !important;
+  min-width: 220px;
+  padding: 5px 6px !important;
   overflow: visible !important;
   vertical-align: middle;
 }
@@ -2331,55 +2331,66 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   width: 100%;
   min-width: 0;
   gap: 5px;
-  text-align: left;
 }
-.making-charge-mode-picker {
-  display: flex;
+.making-charge-line {
+  display: grid;
+  grid-template-columns: 24px minmax(64px, 78px) minmax(0, 1fr);
   align-items: center;
-  justify-content: flex-start;
-  gap: 11px;
+  gap: 5px;
   min-width: 0;
-  padding: 0 1px;
+  padding: 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  box-sizing: border-box;
+  transition: background .12s ease, border-color .12s ease;
+}
+.making-charge-line.is-selected {
+  border-color: #e5c478;
+  background: linear-gradient(90deg, #fff8e8, #fffdf7);
+}
+.making-charge-amount-line {
+  grid-template-columns: 24px minmax(90px, 120px) minmax(0, 1fr);
 }
 .making-charge-mode-option {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: flex-start;
+  gap: 3px;
   min-width: 0;
   margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
   color: #263343 !important;
-  font: 800 12px/1.1 Arial, sans-serif !important;
+  font: 800 13px/1.1 Arial, sans-serif !important;
   cursor: pointer;
+  white-space: nowrap;
 }
 .making-charge-mode-option input[type="radio"] {
   appearance: auto !important;
   -webkit-appearance: radio !important;
   accent-color: #1684ee !important;
-  flex: 0 0 14px !important;
-  width: 14px !important;
-  min-width: 14px !important;
-  height: 14px !important;
+  flex: 0 0 15px !important;
+  width: 15px !important;
+  min-width: 15px !important;
+  height: 15px !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   box-shadow: none !important;
   cursor: pointer;
 }
-.making-charge-mode-option.is-active span { color: #851033 !important; }
 .making-charge-entry {
   display: flex !important;
   align-items: center !important;
   gap: 3px !important;
   width: 100% !important;
   min-width: 0 !important;
-  min-height: 30px !important;
+  min-height: 32px !important;
   margin: 0 !important;
-  padding: 2px 5px !important;
-  border: 1px solid #bac9da !important;
-  border-radius: 6px !important;
+  padding: 2px 6px !important;
+  border: 1px solid #b8c6d7 !important;
+  border-radius: 7px !important;
   background: #fff !important;
   box-sizing: border-box !important;
 }
@@ -2417,15 +2428,23 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   color: #6e7581;
   font: 800 11px/1.2 Arial, sans-serif;
   white-space: nowrap;
+  overflow: hidden;
 }
-.making-charge-preview > span { color: #a2a8b2; font-size: 16px; line-height: 1; }
+.making-charge-preview > span {
+  flex: 0 0 auto;
+  color: #929ba8;
+  font-size: 16px;
+  line-height: 1;
+}
 .making-charge-preview strong {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #7d102f;
   font: 800 12px/1.2 Arial, sans-serif;
   white-space: nowrap;
@@ -2437,10 +2456,16 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   color: #172033;
   white-space: nowrap;
 }
+@media (max-width: 950px) {
+  .new-items-table td.making-charge-cell { min-width: 205px; }
+  .making-charge-line {
+    grid-template-columns: 22px minmax(64px, 76px) minmax(0, 1fr);
+  }
+}
 @media (max-width: 760px) {
-  .new-items-table td.making-charge-cell { min-width: 118px; }
-  .making-charge-mode-picker { gap: 9px; }
-  .making-charge-mode-option { font-size: 11px !important; }
+  .new-items-table td.making-charge-cell { min-width: 210px; }
+  .making-charge-line { gap: 4px; }
+  .making-charge-mode-option { font-size: 12px !important; }
 }
 @media print {
   #invoice-print .making-charge-editor { display: none !important; }
