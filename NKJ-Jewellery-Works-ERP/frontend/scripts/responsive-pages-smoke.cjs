@@ -516,7 +516,7 @@ async function fillNewInvoiceForMobile(page, width) {
 
   const table = page.locator("#invoice-print .new-items-table");
   const fillRow = async (rowIndex, values) => {
-    const inputs = table.locator("tbody tr").nth(rowIndex).locator("td input");
+    const inputs = table.locator("tbody tr").nth(rowIndex).locator('td input:not([type="radio"])');
     for (let index = 0; index < values.length; index += 1) {
       await inputs.nth(index).fill(String(values[index]));
     }
@@ -711,6 +711,44 @@ async function testNewInvoiceMobile(browser, width) {
     await context.close();
   }
 }
+async function testInvoiceMakingChargeModes(browser) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    const row = page.locator("#invoice-print .new-items-table tbody tr").first();
+    const weightInput = row.locator("td").nth(3).locator("input");
+    const rateInput = row.locator("td").nth(4).locator("input");
+    const flatMode = row.locator('.making-charge-mode-option input[value="amount"]');
+    const percentMode = row.locator('.making-charge-mode-option input[value="percent"]');
+
+    await weightInput.fill("5.25");
+    await rateInput.fill("6900");
+    await flatMode.check();
+    await row.locator(".making-charge-flat-input").fill("5000");
+    let rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\\d.-]/g, ""));
+    assert(Math.abs(rowTotal - 41375) < 0.01, "Fixed ₹5,000 making charge total is incorrect: " + rowTotal);
+
+    await percentMode.check();
+    await row.locator(".making-charge-percent-input").fill("12");
+    const preview = await row.locator(".making-charge-preview strong").innerText();
+    const makingAmount = Number(preview.replace(/[^\\d.-]/g, ""));
+    assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
+
+    rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\\d.-]/g, ""));
+    assert(Math.abs(rowTotal - 40722) < 0.01, "Percentage mode ornament total is incorrect: " + rowTotal);
+
+    await rateInput.fill("7000");
+    const recalculated = Number((await row.locator(".making-charge-preview strong").innerText()).replace(/[^\\d.-]/g, ""));
+    assert(Math.abs(recalculated - 4410) < 0.01, "Percentage charge did not recalculate after rate changed: " + recalculated);
+    process.stdout.write("PASS invoice making charge percent/rupee selection and live totals\\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testInvoiceCalculatorPopup(browser, width) {
   const viewport = { name: "invoice-calculator-" + width, width, height: width <= 760 ? 820 : 900 };
   const context = await browser.newContext({ viewport });
@@ -1562,6 +1600,7 @@ async function testPublicNavigation(browser) {
     for (const width of [360, 390, 430]) {
       await testNewInvoiceMobile(browser, width);
     }
+    await testInvoiceMakingChargeModes(browser);
     for (const width of [360, 390, 768, 1366]) {
       await testInvoiceCalculatorPopup(browser, width);
     }
