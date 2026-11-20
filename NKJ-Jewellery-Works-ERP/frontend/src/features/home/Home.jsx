@@ -323,25 +323,27 @@ export function Home() {
           <section className="nkj-public-collection">
             <div className="nkj-public-collection-heading">
               <h2><Crown /> Our Jewellery Collection</h2>
-              <span>View More <b>→</b></span>
+              <Link className="nkj-public-collection-view-more" to="/designs" aria-label="View all jewellery designs">
+                View More <b aria-hidden="true">→</b>
+              </Link>
             </div>
             <div className="nkj-public-collection-grid">
-              <article className="nkj-public-collection-card">
-                <img src="/collection-necklaces.png" alt="Gold necklace collection" />
+              <Link className="nkj-public-collection-card" to="/designs?collection=necklaces" aria-label="Browse necklace designs">
+                <img src="/collection-necklaces.png" alt="Gold necklace collection" loading="lazy" />
                 <div><b>Necklaces</b><span aria-hidden="true">→</span></div>
-              </article>
-              <article className="nkj-public-collection-card">
-                <img src="/collection-earrings.png" alt="Gold earrings collection" />
+              </Link>
+              <Link className="nkj-public-collection-card" to="/designs?collection=earrings" aria-label="Browse earring designs">
+                <img src="/collection-earrings.png" alt="Gold earrings collection" loading="lazy" />
                 <div><b>Earrings</b><span aria-hidden="true">→</span></div>
-              </article>
-              <article className="nkj-public-collection-card">
-                <img src="/collection-bangles.png" alt="Gold bangles collection" />
+              </Link>
+              <Link className="nkj-public-collection-card" to="/designs?collection=bangles" aria-label="Browse bangle designs">
+                <img src="/collection-bangles.png" alt="Gold bangles collection" loading="lazy" />
                 <div><b>Bangles</b><span aria-hidden="true">→</span></div>
-              </article>
-              <article className="nkj-public-collection-card">
-                <img src="/collection-rings.png" alt="Gold rings collection" />
+              </Link>
+              <Link className="nkj-public-collection-card" to="/designs?collection=rings" aria-label="Browse ring designs">
+                <img src="/collection-rings.png" alt="Gold rings collection" loading="lazy" />
                 <div><b>Rings</b><span aria-hidden="true">→</span></div>
-              </article>
+              </Link>
             </div>
           </section>
         </div>
