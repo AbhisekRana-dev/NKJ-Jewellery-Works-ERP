@@ -447,15 +447,20 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
           cellCount: cells.length,
           cells: cells.map((cell) => {
             const cellRect = cell.getBoundingClientRect();
-            const field = cell.querySelector("input, select, textarea");
-            const fieldRect = field?.getBoundingClientRect();
+            // Mode radio buttons are controls, not the editable value field.
+            // Measure the numeric/text field so a 15px %/₹ radio cannot make
+            // the mobile card test falsely report a squeezed input.
+            const valueFields = Array.from(cell.querySelectorAll(
+              'input:not([type="radio"]), select, textarea'
+            ));
+            const fieldRect = valueFields[0]?.getBoundingClientRect();
             return {
               width: cellRect.width,
               height: cellRect.height,
               labelWidth: cellRect.width,
               fieldWidth: fieldRect?.width || 0,
               fieldHeight: fieldRect?.height || 0,
-              fieldCount: field ? 1 : 0,
+              fieldCount: valueFields.length,
             };
           }),
         };
