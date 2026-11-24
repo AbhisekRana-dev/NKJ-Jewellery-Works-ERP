@@ -1741,8 +1741,22 @@ async function testPublicNavigation(browser) {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
     });
     try {
-      for (const path of publicRoutes) {
-        await checkViewport(publicPage, path, { name: "public-mobile", width: 390, height: 844 });
+      // The public-facing routes need the same viewport coverage as the
+      // authenticated ERP screens; checking them only at one phone width
+      // misses tablet, landscape, and desktop layout regressions.
+      for (const viewport of viewports) {
+        await publicPage.setViewportSize({
+          width: viewport.width,
+          height: viewport.height,
+        });
+        for (const path of publicRoutes) {
+          process.stdout.write("CHECK public " + viewport.name + " " + path + "\\n");
+          await checkViewport(publicPage, path, viewport);
+        }
+        process.stdout.write(
+          "PASS all " + publicRoutes.length + " public routes at "
+          + viewport.name + " " + viewport.width + "x" + viewport.height + "\\n"
+        );
       }
       await testManualCalculatorEqualsGate(publicPage);
       await testRateBoardPage(browser);
