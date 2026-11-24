@@ -2133,6 +2133,15 @@
     max-height: none !important;
     box-sizing: border-box !important;
   }
+
+  /* Keep the calculated value the same height as the 48px mobile input. */
+  body.invoice-page #invoice-print .new-items-table > tbody > tr > td.making-charge-cell .making-charge-percent-row .making-charge-result,
+  body.nkj-owner-layout .nkj-invoice-detail-sheet #invoice-print .new-items-table > tbody > tr > td.making-charge-cell .making-charge-percent-row .making-charge-result {
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    box-sizing: border-box !important;
+  }
 }
 
 
