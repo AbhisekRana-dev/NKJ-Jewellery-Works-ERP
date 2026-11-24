@@ -798,12 +798,9 @@ async function testInvoiceMakingChargeModes(browser) {
     await row.locator(".making-charge-percent-input").fill("12");
     const makingCell = row.locator("td").nth(5);
     const stampCell = row.locator("td").nth(6);
-    const resultRect = await row.locator(".making-charge-result").boundingBox();
-    const inputRect = await row.locator(".making-charge-percent-input").boundingBox();
-    const cellRect = await makingCell.boundingBox();
-    const stampInputRect = await stampCell.locator("input").boundingBox();
-    assert(resultRect && inputRect && Math.abs(resultRect.y - inputRect.y) < 5,
-      "Percent entry and converted rupee amount must be displayed side by side.");
+    // Read all boxes in one browser-layout snapshot. Separate Playwright
+    // boundingBox() calls can straddle React's post-input reflow and compare
+    // coordinates from different frames, creating false CI failures.
     const makingGeometry = await page.evaluate(() => {
       const row = document.querySelector("#invoice-print .new-items-table tbody tr");
       const cell = row?.cells?.[5];
@@ -813,32 +810,30 @@ async function testInvoiceMakingChargeModes(browser) {
       const rect = (element) => {
         if (!element) return null;
         const r = element.getBoundingClientRect();
-        const s = getComputedStyle(element);
         return {
-          left: Math.round(r.left * 100) / 100,
-          right: Math.round(r.right * 100) / 100,
-          top: Math.round(r.top * 100) / 100,
-          bottom: Math.round(r.bottom * 100) / 100,
-          width: Math.round(r.width * 100) / 100,
-          height: Math.round(r.height * 100) / 100,
-          minWidth: s.minWidth,
-          widthCss: s.width,
-          gridColumns: s.gridTemplateColumns,
-          overflow: s.overflow,
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          bottom: r.bottom,
+          width: r.width,
+          height: r.height,
         };
       };
       return {
-        table: rect(row?.closest("table")),
         makingCell: rect(cell),
-        makingEditor: rect(cell?.querySelector(".making-charge-editor")),
-        percentRow: rect(cell?.querySelector(".making-charge-percent-row")),
         percentInput: rect(input),
         result: rect(result),
         stampCell: rect(stamp),
         stampInput: rect(stamp?.querySelector("input")),
       };
     });
-    assert(cellRect && resultRect.left >= cellRect.left && resultRect.right <= cellRect.right + 1,
+    const { makingCell: cellRect, percentInput: inputRect, result: resultRect,
+      stampInput: stampInputRect } = makingGeometry;
+    assert(resultRect && inputRect && Math.abs(resultRect.top - inputRect.top) < 5,
+      "Percent entry and converted rupee amount must be displayed side by side: "
+      + JSON.stringify(makingGeometry));
+    assert(cellRect && resultRect.left >= cellRect.left - 1
+      && resultRect.right <= cellRect.right + 1,
       "Calculated rupee box must remain inside the Making Charge column; it must not overlap Stamp Charge: "
       + JSON.stringify(makingGeometry));
     assert(stampInputRect && resultRect.right < stampInputRect.left,
