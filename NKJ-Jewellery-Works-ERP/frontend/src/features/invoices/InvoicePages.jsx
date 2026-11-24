@@ -912,7 +912,6 @@ export function InvoicePage() {
   }
 
   async function requestPrintPin() {
-    setCalculatorOpen(false);
     setError("");
     if (!saved || !invoiceId) {
       // Never create or update a record before the SAVE PIN is verified.
