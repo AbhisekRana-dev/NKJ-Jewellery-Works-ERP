@@ -630,6 +630,8 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
     return {
       width: invoice ? parseFloat(getComputedStyle(invoice).width) : 0,
       actionsDisplay: actions ? getComputedStyle(actions).display : "missing",
+      breakInside: invoice ? getComputedStyle(invoice).breakInside : "missing",
+      pageBreakInside: invoice ? getComputedStyle(invoice).pageBreakInside : "missing",
     };
   });
   assert(
@@ -639,6 +641,11 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
   assert(
     printLayout.actionsDisplay === "none",
     invoiceKind + " print stylesheet did not hide on-screen invoice actions."
+  );
+  assert(
+    printLayout.breakInside !== "avoid" && printLayout.pageBreakInside !== "avoid",
+    invoiceKind + " print sheet must flow naturally instead of being forced onto a separate page: "
+      + JSON.stringify(printLayout)
   );
 
   const printGeometry = await page.evaluate(() => {
