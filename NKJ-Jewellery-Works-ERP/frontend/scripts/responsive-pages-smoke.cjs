@@ -855,6 +855,59 @@ async function testInvoiceMakingChargeModes(browser) {
   }
 }
 
+async function testInvoiceMakingChargeMobile(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    const row = page.locator("#invoice-print .new-items-table tbody tr").first();
+    await row.locator("td").nth(3).locator("input").fill("5.25");
+    await row.locator("td").nth(4).locator("input").fill("6900");
+    await row.locator("td").nth(6).locator("input").fill("150");
+    await row.locator('.making-charge-mode-option input[value="percent"]').check();
+    await row.locator(".making-charge-percent-input").fill("12");
+
+    const geometry = await page.evaluate(() => {
+      const row = document.querySelector("#invoice-print .new-items-table tbody tr");
+      const making = row?.cells?.[5];
+      const stamp = row?.cells?.[6];
+      const input = row?.querySelector(".making-charge-percent-input");
+      const result = row?.querySelector(".making-charge-result");
+      const rect = (element) => {
+        if (!element) return null;
+        const r = element.getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+      };
+      return { making: rect(making), stamp: rect(stamp), input: rect(input), result: rect(result) };
+    });
+    const { making, stamp, input, result } = geometry;
+    assert(making && stamp && input && result,
+      "Mobile invoice must render the making-charge input, rupee result and stamp field: " + JSON.stringify(geometry));
+    assert(Math.abs(result.top - input.top) < 5 && Math.abs(result.height - input.height) < 3,
+      "Mobile percentage input and converted rupee result must align at the same height: " + JSON.stringify(geometry));
+    assert(result.left >= making.left - 1 && result.right <= making.right + 1,
+      "Mobile converted rupee result must stay inside the Making Charge card: " + JSON.stringify(geometry));
+    const overlapsStamp = result.left < stamp.right && result.right > stamp.left
+      && result.top < stamp.bottom && result.bottom > stamp.top;
+    assert(!overlapsStamp,
+      "Mobile converted rupee result must not overlap the Stamp Charge card: " + JSON.stringify(geometry));
+
+    const preview = await row.locator(".making-charge-result").innerText();
+    const makingAmount = Number(preview.replace(/[^\\d.-]/g, ""));
+    assert(Math.abs(makingAmount - 4347) < 0.01,
+      "Mobile 12% making charge should equal ₹4,347.00: " + preview);
+    const rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\\d.-]/g, ""));
+    assert(Math.abs(rowTotal - 40722) < 0.01,
+      "Mobile percentage mode ornament total is incorrect: " + rowTotal);
+
+    process.stdout.write("PASS mobile invoice making charge percentage/result alignment and totals\\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testInvoiceToolbarAndDeleteControls(browser) {
   for (const width of [390, 1440]) {
     const context = await browser.newContext({
