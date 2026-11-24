@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { request } from "../../core/api/client";
 import { Nav } from "../../shared/layouts/OwnerShell";
 import "./DigitalRateBoardPage.css";
