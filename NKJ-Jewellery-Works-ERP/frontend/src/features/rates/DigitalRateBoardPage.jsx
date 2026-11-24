@@ -4,9 +4,14 @@ import { request } from "../../core/api/client";
 import { Nav } from "../../shared/layouts/OwnerShell";
 import "./DigitalRateBoardPage.css";
 
+// Demo-only values are shown until the ERP returns verified rates.
+const DEMO_RATES_PER_GRAM = {
+  gold22kRate: 12540, // ₹1,25,400 per 10 grams
+  silverRate: 156,    // ₹1,560 per 10 grams
+};
+
 const initialRates = {
-  gold22kRate: 0,
-  silverRate: 0,
+  ...DEMO_RATES_PER_GRAM,
   ownerVerified: false,
   newspaperVerified: false,
 };
@@ -35,9 +40,11 @@ const formatKolkataTime = (date) => date.toLocaleTimeString("en-IN", {
 }).toUpperCase();
 
 function RateBoardArtwork({ rates, now }) {
-  const ready = Boolean(rates.ownerVerified || rates.newspaperVerified)
+  const useVerifiedRates = Boolean(rates.ownerVerified || rates.newspaperVerified)
     && Number(rates.gold22kRate) > 0
     && Number(rates.silverRate) > 0;
+  const goldDisplayRate = Number(useVerifiedRates ? rates.gold22kRate : DEMO_RATES_PER_GRAM.gold22kRate) * 10;
+  const silverDisplayRate = Number(useVerifiedRates ? rates.silverRate : DEMO_RATES_PER_GRAM.silverRate) * 10;
 
   return (
     <svg className="nkj-rate-board-svg" viewBox="0 0 1672 941" role="img" aria-label="Nandikishor Jewellery Works Gold and Silver Rate Board">
@@ -246,8 +253,8 @@ function RateBoardArtwork({ rates, now }) {
       <rect x="955" y="709" width="570" height="85" rx="31" fill="none" stroke="#fff7ac" strokeWidth="3" />
       <text x="1010" y="656" fontFamily="Arial,sans-serif" fontWeight="900" fontSize="61" fill="#fff">₹</text>
       <text x="1010" y="778" fontFamily="Arial,sans-serif" fontWeight="900" fontSize="61" fill="#fff">₹</text>
-      <text x="1280" y="653" textAnchor="middle" fontFamily="Georgia,'Times New Roman',serif" fontWeight="900" fontSize="77" letterSpacing="1" fill="#ffe42b" stroke="#523300" strokeWidth="2" paintOrder="stroke">{ready ? formatRate(Number(rates.gold22kRate) * 10) : "—"}</text>
-      <text x="1280" y="775" textAnchor="middle" fontFamily="Georgia,'Times New Roman',serif" fontWeight="900" fontSize="77" letterSpacing="1" fill="#ffe42b" stroke="#523300" strokeWidth="2" paintOrder="stroke">{ready ? formatRate(Number(rates.silverRate) * 10) : "—"}</text>
+      <text x="1280" y="653" textAnchor="middle" fontFamily="Georgia,'Times New Roman',serif" fontWeight="900" fontSize="77" letterSpacing="1" fill="#ffe42b" stroke="#523300" strokeWidth="2" paintOrder="stroke">{formatRate(goldDisplayRate)}</text>
+      <text x="1280" y="775" textAnchor="middle" fontFamily="Georgia,'Times New Roman',serif" fontWeight="900" fontSize="77" letterSpacing="1" fill="#ffe42b" stroke="#523300" strokeWidth="2" paintOrder="stroke">{formatRate(silverDisplayRate)}</text>
 
       {/* GST and making charge banner */}
       <path d="M370 844 H1302 L1279 883 L1302 916 H370 L393 883 Z" fill="url(#nkj-blue)" stroke="url(#nkj-gold)" strokeWidth="7" filter="url(#nkj-shadow)" />
