@@ -287,6 +287,11 @@ export default function DigitalRateBoardPage() {
   }, []);
 
   useEffect(() => {
+    document.body.classList.add("nkj-rate-board-active");
+    return () => document.body.classList.remove("nkj-rate-board-active");
+  }, []);
+
+  useEffect(() => {
     refreshRates();
     const rateTimer = window.setInterval(refreshRates, 15000);
     const clockTimer = window.setInterval(() => setNow(new Date()), 1000);
