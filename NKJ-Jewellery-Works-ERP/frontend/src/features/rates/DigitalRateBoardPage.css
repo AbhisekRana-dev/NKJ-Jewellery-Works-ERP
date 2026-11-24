@@ -233,3 +233,5 @@
   .nkj-rate-board-fullscreen svg,
   .nkj-rate-board-edit svg {width:12px;height:12px}
 }
+
+@media(max-width:650px){.nkj-rate-board-fullscreen span,.nkj-rate-board-edit span{display:inline}}
