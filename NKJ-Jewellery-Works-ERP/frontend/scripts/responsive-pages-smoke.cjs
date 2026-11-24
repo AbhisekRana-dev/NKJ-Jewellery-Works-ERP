@@ -778,8 +778,9 @@ async function testInvoiceMakingChargeModes(browser) {
     const deleteIconRect = await deleteButton.locator("svg").boundingBox();
     assert(deleteButtonRect && deleteButtonRect.width >= 32 && deleteButtonRect.height >= 32,
       "New ornament delete button must have a visible 32px or larger hit target.");
-    assert(deleteIconRect && deleteIconRect.width >= 20 && deleteIconRect.height >= 20,
-      "New ornament trash icon must be clearly visible at 20px or larger.");
+    assert(deleteIconRect && deleteIconRect.width >= 11 && deleteIconRect.width <= 14
+      && deleteIconRect.height >= 11 && deleteIconRect.height <= 14,
+      "New ornament trash glyph must remain compact at about 12–13px.");
     const weightInput = row.locator("td").nth(3).locator("input");
     const rateInput = row.locator("td").nth(4).locator("input");
     const flatMode = row.locator('.making-charge-mode-option input[value="amount"]');
@@ -843,12 +844,12 @@ async function testInvoiceToolbarAndDeleteControls(browser) {
       for (const [label, button] of [["new ornament", newDelete], ["old ornament", oldDelete]]) {
         const buttonRect = await button.boundingBox();
         const iconRect = await button.locator("svg").boundingBox();
-        assert(buttonRect && buttonRect.width <= 26 && buttonRect.height <= 26,
-          label + " delete button should be compact (<=26px); got " + JSON.stringify(buttonRect));
+        assert(buttonRect && buttonRect.width >= 32 && buttonRect.height >= 32,
+          label + " delete control must retain a >=32px hit target; got " + JSON.stringify(buttonRect));
         assert(iconRect && iconRect.width >= 11 && iconRect.width <= 14 && iconRect.height >= 11 && iconRect.height <= 14,
           label + " trash icon should be about 12–13px; got " + JSON.stringify(iconRect));
       }
-      process.stdout.write("PASS invoice has no Calculator button and compact delete icons at " + width + "px\\n");
+      process.stdout.write("PASS invoice has no Calculator button and accessible delete targets with compact icons at " + width + "px\\n");
     } finally {
       await context.close();
     }

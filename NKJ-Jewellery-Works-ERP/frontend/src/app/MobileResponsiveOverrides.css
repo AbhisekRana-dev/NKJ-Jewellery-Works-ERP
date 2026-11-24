@@ -2153,3 +2153,44 @@
     box-sizing: border-box !important;
   }
 }
+
+
+/* Invoice delete buttons: small icon glyph with a consistent 36px click target. */
+@media screen {
+  #invoice-print .new-items-table th:last-child,
+  #invoice-print .new-items-table td:last-child,
+  #invoice-print .old-items-table th:last-child,
+  #invoice-print .old-items-table td:last-child {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    padding: 2px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn {
+    display: inline-grid !important;
+    place-items: center !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn svg {
+    display: block !important;
+    width: 13px !important;
+    min-width: 13px !important;
+    height: 13px !important;
+    min-height: 13px !important;
+    stroke-width: 2.2 !important;
+  }
+}
