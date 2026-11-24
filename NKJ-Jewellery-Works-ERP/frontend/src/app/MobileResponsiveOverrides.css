@@ -2121,10 +2121,10 @@
     border-radius: 7px !important;
   }
   #invoice-print .items-table > tbody > tr > td:last-child .icon-btn svg {
-    width: 16px !important;
-    min-width: 16px !important;
-    height: 16px !important;
-    min-height: 16px !important;
+    width: 13px !important;
+    min-width: 13px !important;
+    height: 13px !important;
+    min-height: 13px !important;
     stroke-width: 2.2 !important;
   }
 }
