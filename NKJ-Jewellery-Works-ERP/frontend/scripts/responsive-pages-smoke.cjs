@@ -895,14 +895,14 @@ async function testInvoiceMakingChargeMobile(browser) {
       "Mobile converted rupee result must not overlap the Stamp Charge card: " + JSON.stringify(geometry));
 
     const preview = await row.locator(".making-charge-result").innerText();
-    const makingAmount = Number(preview.replace(/[^\\d.-]/g, ""));
+    const makingAmount = Number(preview.replace(/[^\d.-]/g, ""));
     assert(Math.abs(makingAmount - 4347) < 0.01,
       "Mobile 12% making charge should equal ₹4,347.00: " + preview);
-    const rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\\d.-]/g, ""));
+    const rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
     assert(Math.abs(rowTotal - 40722) < 0.01,
       "Mobile percentage mode ornament total is incorrect: " + rowTotal);
 
-    process.stdout.write("PASS mobile invoice making charge percentage/result alignment and totals\\n");
+    process.stdout.write("PASS mobile invoice making charge percentage/result alignment and totals\n");
   } finally {
     await context.close();
   }
