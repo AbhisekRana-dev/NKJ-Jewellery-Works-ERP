@@ -205,7 +205,7 @@ jobs:
           TOTP_SECRET: JBSWY3DPEHPK3PXP
           DESIGNS_MOBILE_UPLOAD_BASE_URL: https://nkj-ci.example
         run: |
-          java -jar target/nkj-billing-1.0.0.jar --spring.flyway.target=19 > /tmp/nkj-v19.log 2>&1 &
+          java -jar target/nkj-billing-1.0.0.jar --spring.flyway.target=19 --spring.jpa.hibernate.ddl-auto=none > /tmp/nkj-v19.log 2>&1 &
           echo $! > /tmp/nkj-backend.pid
           for attempt in $(seq 1 90); do
             if psql "postgresql://postgres:postgres@localhost:5432/nkj_test" -tAc "SELECT COUNT(*) FROM flyway_schema_history WHERE version='19' AND success=true" 2>/dev/null | grep -q '^1$'; then
