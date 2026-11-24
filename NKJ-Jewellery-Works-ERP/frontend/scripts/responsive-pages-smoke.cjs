@@ -804,10 +804,45 @@ async function testInvoiceMakingChargeModes(browser) {
     const stampInputRect = await stampCell.locator("input").boundingBox();
     assert(resultRect && inputRect && Math.abs(resultRect.y - inputRect.y) < 5,
       "Percent entry and converted rupee amount must be displayed side by side.");
+    const makingGeometry = await page.evaluate(() => {
+      const row = document.querySelector("#invoice-print .new-items-table tbody tr");
+      const cell = row?.cells?.[5];
+      const stamp = row?.cells?.[6];
+      const result = row?.querySelector(".making-charge-result");
+      const input = row?.querySelector(".making-charge-percent-input");
+      const rect = (element) => {
+        if (!element) return null;
+        const r = element.getBoundingClientRect();
+        const s = getComputedStyle(element);
+        return {
+          left: Math.round(r.left * 100) / 100,
+          right: Math.round(r.right * 100) / 100,
+          top: Math.round(r.top * 100) / 100,
+          bottom: Math.round(r.bottom * 100) / 100,
+          width: Math.round(r.width * 100) / 100,
+          height: Math.round(r.height * 100) / 100,
+          minWidth: s.minWidth,
+          widthCss: s.width,
+          gridColumns: s.gridTemplateColumns,
+          overflow: s.overflow,
+        };
+      };
+      return {
+        table: rect(row?.closest("table")),
+        makingCell: rect(cell),
+        makingEditor: rect(cell?.querySelector(".making-charge-editor")),
+        percentRow: rect(cell?.querySelector(".making-charge-percent-row")),
+        percentInput: rect(input),
+        result: rect(result),
+        stampCell: rect(stamp),
+        stampInput: rect(stamp?.querySelector("input")),
+      };
+    });
     assert(cellRect && resultRect.left >= cellRect.left && resultRect.right <= cellRect.right + 1,
-      "Calculated rupee box must remain inside the Making Charge column; it must not overlap Stamp Charge.");
+      "Calculated rupee box must remain inside the Making Charge column; it must not overlap Stamp Charge: "
+      + JSON.stringify(makingGeometry));
     assert(stampInputRect && resultRect.right < stampInputRect.left,
-      "Calculated rupee box overlaps the Stamp Charge input.");
+      "Calculated rupee box overlaps the Stamp Charge input: " + JSON.stringify(makingGeometry));
     const preview = await row.locator(".making-charge-result").innerText();
     const makingAmount = Number(preview.replace(/[^\d.-]/g, ""));
     assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
