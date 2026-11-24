@@ -1,8 +1,9 @@
 name: Verify Jewellery ERP build and installment separation
 
 on:
+  # PR updates already validate feature branches; keep push checks for main.
   push:
-    branches: ["**"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
