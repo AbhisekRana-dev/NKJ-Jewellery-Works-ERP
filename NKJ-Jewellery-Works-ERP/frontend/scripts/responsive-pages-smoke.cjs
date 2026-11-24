@@ -1106,7 +1106,7 @@ async function testInvoiceSavePinGate(browser) {
     const printButton = page.locator(".invoice-actions button:not(.nkj-invoice-reset-button).secondary");
     await printButton.waitFor({ state: "visible", timeout: 5000 });
     const printButtonText = (await printButton.innerText()).trim();
-    assert(/Download\\s*\\/\\s*Print Invoice PDF/.test(printButtonText),
+    assert(/Download\s*\/\s*Print Invoice PDF/.test(printButtonText),
       "Expected the separate Download / Print Invoice PDF action, got: " + printButtonText);
     assert(await printButton.isEnabled(),
       "Print action remained disabled after the invoice was saved: " + printButtonText);
