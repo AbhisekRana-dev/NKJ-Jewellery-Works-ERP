@@ -1,10 +1,11 @@
 name: Jewellery ERP Build
 
 on:
+  # Feature branches are validated by pull_request events below.
+  # Keep push validation for main to avoid duplicate runs on PR commits.
   push:
     branches:
       - main
-      - "feature/**"
   pull_request:
 
 permissions:

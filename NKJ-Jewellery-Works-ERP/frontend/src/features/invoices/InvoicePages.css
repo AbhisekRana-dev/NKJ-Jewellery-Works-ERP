@@ -1336,12 +1336,15 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     border-radius: 0 !important;
     box-shadow: none !important;
 
-    break-before: avoid !important;
-    break-after: avoid !important;
-    break-inside: avoid !important;
-    page-break-before: avoid !important;
-    page-break-after: avoid !important;
-    page-break-inside: avoid !important;
+    /* Match the standalone New Invoice print flow. Treating this whole
+       saved sheet as an unbreakable block can make Chromium move it to a
+       second A4 page even when the content fits on page one. */
+    break-before: auto !important;
+    break-after: auto !important;
+    break-inside: auto !important;
+    page-break-before: auto !important;
+    page-break-after: auto !important;
+    page-break-inside: auto !important;
   }
 
   /* Keep all invoice text horizontal. */
@@ -2307,12 +2310,13 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     overflow: visible !important;
     zoom: 1 !important;
     transform: none !important;
-    break-before: avoid !important;
-    break-after: avoid !important;
-    break-inside: avoid !important;
-    page-break-before: avoid !important;
-    page-break-after: avoid !important;
-    page-break-inside: avoid !important;
+    /* Do not force the whole saved invoice into an unbreakable block. */
+    break-before: auto !important;
+    break-after: auto !important;
+    break-inside: auto !important;
+    page-break-before: auto !important;
+    page-break-after: auto !important;
+    page-break-inside: auto !important;
   }
 }
 
@@ -2484,11 +2488,11 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 /* Match the requested reference: enter % on the left and see the
    converted rupee making charge immediately on the same row. */
 .new-items-table th:nth-child(6) {
-  width: 16% !important;
+  width: 20% !important;
   min-width: 170px !important;
 }
 .new-items-table td.making-charge-cell {
-  width: 16% !important;
+  width: 20% !important;
   min-width: 170px !important;
 }
 .making-charge-editor { gap: 6px !important; }
@@ -2499,7 +2503,7 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 }
 .making-charge-percent-row {
   display: grid !important;
-  grid-template-columns: minmax(54px, .78fr) 15px minmax(82px, 1.22fr) !important;
+  grid-template-columns: minmax(50px, .78fr) 14px minmax(80px, 1.22fr) !important;
   align-items: center !important;
   gap: 5px !important;
   width: 100% !important;
@@ -2566,21 +2570,21 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   .invoice-sheet .new-items-table th:nth-child(1),
   .invoice-sheet .new-items-table td:nth-child(1) { width: 5% !important; }
   .invoice-sheet .new-items-table th:nth-child(2),
-  .invoice-sheet .new-items-table td:nth-child(2) { width: 17% !important; }
+  .invoice-sheet .new-items-table td:nth-child(2) { width: 15% !important; }
   .invoice-sheet .new-items-table th:nth-child(3),
   .invoice-sheet .new-items-table td:nth-child(3) { width: 8% !important; }
   .invoice-sheet .new-items-table th:nth-child(4),
-  .invoice-sheet .new-items-table td:nth-child(4) { width: 10% !important; }
+  .invoice-sheet .new-items-table td:nth-child(4) { width: 9% !important; }
   .invoice-sheet .new-items-table th:nth-child(5),
   .invoice-sheet .new-items-table td:nth-child(5) { width: 11% !important; }
   .invoice-sheet .new-items-table th:nth-child(6),
-  .invoice-sheet .new-items-table td:nth-child(6) { width: 16% !important; }
+  .invoice-sheet .new-items-table td:nth-child(6) { width: 20% !important; }
   .invoice-sheet .new-items-table th:nth-child(7),
   .invoice-sheet .new-items-table td:nth-child(7) { width: 9% !important; }
   .invoice-sheet .new-items-table th:nth-child(8),
   .invoice-sheet .new-items-table td:nth-child(8) { width: 11% !important; }
   .invoice-sheet .new-items-table th:nth-child(9),
-  .invoice-sheet .new-items-table td:nth-child(9) { width: 12% !important; }
+  .invoice-sheet .new-items-table td:nth-child(9) { width: 11% !important; }
   .invoice-sheet .new-items-table th:nth-child(10),
   .invoice-sheet .new-items-table td:nth-child(10) { width: 1% !important; }
 }
@@ -2591,7 +2595,7 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 }
 .making-charge-percent-row {
   box-sizing: border-box !important;
-  grid-template-columns: minmax(54px, .78fr) 15px minmax(82px, 1.22fr) !important;
+  grid-template-columns: minmax(50px, .78fr) 14px minmax(80px, 1.22fr) !important;
   max-width: 100% !important;
 }
 .making-charge-percent-entry,
@@ -2694,5 +2698,18 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     height: 12px !important;
     min-height: 12px !important;
     stroke-width: 2.2 !important;
+  }
+}
+
+/* Keep the percentage field vertically aligned with its live rupee result.
+   The shared compact invoice input rule used a 25px input inside a 36px
+   result box, which made the two controls appear on different baselines. */
+@media screen {
+  #invoice-print .making-charge-percent-entry input.making-charge-percent-input {
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    box-sizing: border-box !important;
+    align-self: center !important;
   }
 }

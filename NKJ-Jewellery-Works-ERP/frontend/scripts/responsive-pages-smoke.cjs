@@ -29,11 +29,12 @@ const ownerRoutes = [
   "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
 ];
 
-const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp"];
+const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/rate", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp", "/__nkj_unknown_route_smoke__"];
 
 // Authenticated compatibility routes may intentionally land on a canonical page.
 const expectedRoutePaths = {
   "/installment-payments": "/installments",
+  "/__nkj_unknown_route_smoke__": "/",
 };
 
 function assert(condition, message) {
@@ -629,6 +630,8 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
     return {
       width: invoice ? parseFloat(getComputedStyle(invoice).width) : 0,
       actionsDisplay: actions ? getComputedStyle(actions).display : "missing",
+      breakInside: invoice ? getComputedStyle(invoice).breakInside : "missing",
+      pageBreakInside: invoice ? getComputedStyle(invoice).pageBreakInside : "missing",
     };
   });
   assert(
@@ -638,6 +641,11 @@ async function verifyInvoicePrintPdf(page, invoiceKind) {
   assert(
     printLayout.actionsDisplay === "none",
     invoiceKind + " print stylesheet did not hide on-screen invoice actions."
+  );
+  assert(
+    printLayout.breakInside !== "avoid" && printLayout.pageBreakInside !== "avoid",
+    invoiceKind + " print sheet must flow naturally instead of being forced onto a separate page: "
+      + JSON.stringify(printLayout)
   );
 
   const printGeometry = await page.evaluate(() => {
@@ -759,7 +767,7 @@ async function testNewInvoiceNativePrintSinglePage(browser) {
     assert(pageCount === 1,
       "New invoice Ctrl+P must generate exactly one A4 landscape PDF page, not " + pageCount + ".");
 
-    process.stdout.write("PASS new invoice Ctrl+P prints from page 1 on one A4 landscape page\\n");
+    process.stdout.write("PASS new invoice Ctrl+P prints from page 1 on one A4 landscape page\n");
   } finally {
     await context.close();
   }
@@ -778,8 +786,9 @@ async function testInvoiceMakingChargeModes(browser) {
     const deleteIconRect = await deleteButton.locator("svg").boundingBox();
     assert(deleteButtonRect && deleteButtonRect.width >= 32 && deleteButtonRect.height >= 32,
       "New ornament delete button must have a visible 32px or larger hit target.");
-    assert(deleteIconRect && deleteIconRect.width >= 20 && deleteIconRect.height >= 20,
-      "New ornament trash icon must be clearly visible at 20px or larger.");
+    assert(deleteIconRect && deleteIconRect.width >= 11 && deleteIconRect.width <= 14
+      && deleteIconRect.height >= 11 && deleteIconRect.height <= 14,
+      "New ornament trash glyph must remain compact at about 12–13px.");
     const weightInput = row.locator("td").nth(3).locator("input");
     const rateInput = row.locator("td").nth(4).locator("input");
     const flatMode = row.locator('.making-charge-mode-option input[value="amount"]');
@@ -787,6 +796,7 @@ async function testInvoiceMakingChargeModes(browser) {
 
     await weightInput.fill("5.25");
     await rateInput.fill("6900");
+    await row.locator("td").nth(6).locator("input").fill("150");
     await flatMode.check();
     await row.locator(".making-charge-flat-input").fill("5000");
     let rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
@@ -796,16 +806,46 @@ async function testInvoiceMakingChargeModes(browser) {
     await row.locator(".making-charge-percent-input").fill("12");
     const makingCell = row.locator("td").nth(5);
     const stampCell = row.locator("td").nth(6);
-    const resultRect = await row.locator(".making-charge-result").boundingBox();
-    const inputRect = await row.locator(".making-charge-percent-input").boundingBox();
-    const cellRect = await makingCell.boundingBox();
-    const stampInputRect = await stampCell.locator("input").boundingBox();
-    assert(resultRect && inputRect && Math.abs(resultRect.y - inputRect.y) < 5,
-      "Percent entry and converted rupee amount must be displayed side by side.");
-    assert(cellRect && resultRect.left >= cellRect.left && resultRect.right <= cellRect.right + 1,
-      "Calculated rupee box must remain inside the Making Charge column; it must not overlap Stamp Charge.");
+    // Read all boxes in one browser-layout snapshot. Separate Playwright
+    // boundingBox() calls can straddle React's post-input reflow and compare
+    // coordinates from different frames, creating false CI failures.
+    const makingGeometry = await page.evaluate(() => {
+      const row = document.querySelector("#invoice-print .new-items-table tbody tr");
+      const cell = row?.cells?.[5];
+      const stamp = row?.cells?.[6];
+      const result = row?.querySelector(".making-charge-result");
+      const input = row?.querySelector(".making-charge-percent-input");
+      const rect = (element) => {
+        if (!element) return null;
+        const r = element.getBoundingClientRect();
+        return {
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          bottom: r.bottom,
+          width: r.width,
+          height: r.height,
+        };
+      };
+      return {
+        makingCell: rect(cell),
+        percentInput: rect(input),
+        result: rect(result),
+        stampCell: rect(stamp),
+        stampInput: rect(stamp?.querySelector("input")),
+      };
+    });
+    const { makingCell: cellRect, percentInput: inputRect, result: resultRect,
+      stampInput: stampInputRect } = makingGeometry;
+    assert(resultRect && inputRect && Math.abs(resultRect.top - inputRect.top) < 5,
+      "Percent entry and converted rupee amount must be displayed side by side: "
+      + JSON.stringify(makingGeometry));
+    assert(cellRect && resultRect.left >= cellRect.left - 1
+      && resultRect.right <= cellRect.right + 1,
+      "Calculated rupee box must remain inside the Making Charge column; it must not overlap Stamp Charge: "
+      + JSON.stringify(makingGeometry));
     assert(stampInputRect && resultRect.right < stampInputRect.left,
-      "Calculated rupee box overlaps the Stamp Charge input.");
+      "Calculated rupee box overlaps the Stamp Charge input: " + JSON.stringify(makingGeometry));
     const preview = await row.locator(".making-charge-result").innerText();
     const makingAmount = Number(preview.replace(/[^\d.-]/g, ""));
     assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
@@ -817,6 +857,59 @@ async function testInvoiceMakingChargeModes(browser) {
     const recalculated = Number((await row.locator(".making-charge-result").innerText()).replace(/[^\d.-]/g, ""));
     assert(Math.abs(recalculated - 4410) < 0.01, "Percentage charge did not recalculate after rate changed: " + recalculated);
     process.stdout.write("PASS invoice making charge percent/rupee selection and live totals\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testInvoiceMakingChargeMobile(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    const row = page.locator("#invoice-print .new-items-table tbody tr").first();
+    await row.locator("td").nth(3).locator("input").fill("5.25");
+    await row.locator("td").nth(4).locator("input").fill("6900");
+    await row.locator("td").nth(6).locator("input").fill("150");
+    await row.locator('.making-charge-mode-option input[value="percent"]').check();
+    await row.locator(".making-charge-percent-input").fill("12");
+
+    const geometry = await page.evaluate(() => {
+      const row = document.querySelector("#invoice-print .new-items-table tbody tr");
+      const making = row?.cells?.[5];
+      const stamp = row?.cells?.[6];
+      const input = row?.querySelector(".making-charge-percent-input");
+      const result = row?.querySelector(".making-charge-result");
+      const rect = (element) => {
+        if (!element) return null;
+        const r = element.getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+      };
+      return { making: rect(making), stamp: rect(stamp), input: rect(input), result: rect(result) };
+    });
+    const { making, stamp, input, result } = geometry;
+    assert(making && stamp && input && result,
+      "Mobile invoice must render the making-charge input, rupee result and stamp field: " + JSON.stringify(geometry));
+    assert(Math.abs(result.top - input.top) < 5 && Math.abs(result.height - input.height) < 3,
+      "Mobile percentage input and converted rupee result must align at the same height: " + JSON.stringify(geometry));
+    assert(result.left >= making.left - 1 && result.right <= making.right + 1,
+      "Mobile converted rupee result must stay inside the Making Charge card: " + JSON.stringify(geometry));
+    const overlapsStamp = result.left < stamp.right && result.right > stamp.left
+      && result.top < stamp.bottom && result.bottom > stamp.top;
+    assert(!overlapsStamp,
+      "Mobile converted rupee result must not overlap the Stamp Charge card: " + JSON.stringify(geometry));
+
+    const preview = await row.locator(".making-charge-result").innerText();
+    const makingAmount = Number(preview.replace(/[^\d.-]/g, ""));
+    assert(Math.abs(makingAmount - 4347) < 0.01,
+      "Mobile 12% making charge should equal ₹4,347.00: " + preview);
+    const rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
+    assert(Math.abs(rowTotal - 40722) < 0.01,
+      "Mobile percentage mode ornament total is incorrect: " + rowTotal);
+
+    process.stdout.write("PASS mobile invoice making charge percentage/result alignment and totals\n");
   } finally {
     await context.close();
   }
@@ -843,12 +936,12 @@ async function testInvoiceToolbarAndDeleteControls(browser) {
       for (const [label, button] of [["new ornament", newDelete], ["old ornament", oldDelete]]) {
         const buttonRect = await button.boundingBox();
         const iconRect = await button.locator("svg").boundingBox();
-        assert(buttonRect && buttonRect.width <= 26 && buttonRect.height <= 26,
-          label + " delete button should be compact (<=26px); got " + JSON.stringify(buttonRect));
+        assert(buttonRect && buttonRect.width >= 32 && buttonRect.height >= 32,
+          label + " delete control must retain a >=32px hit target; got " + JSON.stringify(buttonRect));
         assert(iconRect && iconRect.width >= 11 && iconRect.width <= 14 && iconRect.height >= 11 && iconRect.height <= 14,
           label + " trash icon should be about 12–13px; got " + JSON.stringify(iconRect));
       }
-      process.stdout.write("PASS invoice has no Calculator button and compact delete icons at " + width + "px\\n");
+      process.stdout.write("PASS invoice has no Calculator button and accessible delete targets with compact icons at " + width + "px\n");
     } finally {
       await context.close();
     }
@@ -964,8 +1057,40 @@ async function testInvoiceSavePinGate(browser) {
 
     const invoiceDraftKey = "nkj.invoice.draft.v2:admin2026:new";
     await page.waitForFunction((key) => Boolean(localStorage.getItem(key)), invoiceDraftKey);
-    await page.locator(".invoice-actions button.primary").click();
-    await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+
+    const invoicePageErrors = [];
+    page.on("pageerror", (error) => invoicePageErrors.push(error.message));
+    const saveButton = page.locator(".invoice-actions button.primary");
+    await saveButton.waitFor({ state: "visible", timeout: 5000 });
+    assert(await saveButton.isEnabled(),
+      "Save Invoice button was disabled before PIN-gate test: " + await saveButton.innerText());
+
+    await saveButton.click();
+    try {
+      await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => {
+        const button = document.querySelector(".invoice-actions button.primary");
+        const overlay = document.querySelector(".nkj-pin-overlay");
+        const root = document.querySelector("#root");
+        return {
+          path: location.pathname,
+          buttonText: button?.innerText || "",
+          buttonDisabled: button?.disabled ?? null,
+          buttonClass: button?.className || "",
+          overlayCount: document.querySelectorAll(".nkj-pin-overlay").length,
+          overlayDisplay: overlay ? getComputedStyle(overlay).display : "not-rendered",
+          rootText: (root?.innerText || "").slice(-1800),
+          draftPresent: Boolean(localStorage.getItem("nkj.invoice.draft.v2:admin2026:new")),
+        };
+      });
+      throw new Error(
+        "Save Invoice click did not open the SAVE PIN dialog. "
+        + JSON.stringify(diagnostic)
+        + "; browser errors: " + invoicePageErrors.join(" | ")
+        + "; " + error.message
+      );
+    }
 
     assert(saveCalls === 0, "New invoice reached POST /api/invoices before the SAVE PIN was verified.");
     assert(verifyCalls.length === 0, "A save request should not verify a PIN until the user submits the dialog.");
@@ -985,8 +1110,44 @@ async function testInvoiceSavePinGate(browser) {
     assert(!(await page.evaluate((key) => localStorage.getItem(key), invoiceDraftKey)),
       "A successfully saved invoice left its local draft behind.");
 
-    await page.locator(".invoice-actions button:not(.nkj-invoice-reset-button).secondary").click();
-    await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+    const printButton = page.locator(".invoice-actions button:not(.nkj-invoice-reset-button).secondary");
+    await printButton.waitFor({ state: "visible", timeout: 5000 });
+    const printButtonText = (await printButton.innerText()).trim();
+    assert(/Download\s*\/\s*Print Invoice PDF/.test(printButtonText),
+      "Expected the separate Download / Print Invoice PDF action, got: " + printButtonText);
+    assert(await printButton.isEnabled(),
+      "Print action remained disabled after the invoice was saved: " + printButtonText);
+
+    await printButton.click();
+    try {
+      await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => {
+        const button = document.querySelector(".invoice-actions button:not(.nkj-invoice-reset-button).secondary");
+        const overlay = document.querySelector(".nkj-pin-overlay");
+        const root = document.querySelector("#root");
+        return {
+          buttonText: button?.innerText || "",
+          buttonDisabled: button?.disabled ?? null,
+          overlayCount: document.querySelectorAll(".nkj-pin-overlay").length,
+          overlayDisplay: overlay ? getComputedStyle(overlay).display : "not-rendered",
+          invoiceActions: Array.from(document.querySelectorAll(".invoice-actions button")).map((item) => ({
+            text: item.innerText,
+            disabled: item.disabled,
+            className: item.className,
+          })),
+          rootText: (root?.innerText || "").slice(-1800),
+        };
+      });
+      throw new Error(
+        "Saved invoice print action did not open the separate PRINT PIN dialog. "
+        + JSON.stringify(diagnostic)
+        + "; PIN verifications: " + JSON.stringify(verifyCalls)
+        + "; consume calls: " + consumeCalls
+        + "; browser errors: " + invoicePageErrors.join(" | ")
+        + "; " + error.message
+      );
+    }
     await page.locator("#nkj-invoice-pin").fill("123456");
     await page.locator(".nkj-pin-dialog button[type='submit']").click();
     await page.waitForFunction(() => window.__nkjPrintDialogOpened === true, { timeout: 10000 });
@@ -1034,7 +1195,7 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
 
     await page.waitForFunction((key) => {
       const draft = JSON.parse(localStorage.getItem(key) || "null");
-      return draft?.version === 2 && draft?.customer?.name === "Draft Recovery Customer";
+      return draft?.version === 2 && draft?.customer?.name === "DRAFT RECOVERY CUSTOMER";
     }, draftKey);
     const storedDraft = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
     assert(storedDraft?.newItems?.[0]?.description === "Draft Gold Necklace",
@@ -1049,7 +1210,7 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+    assert((await customerInputs.nth(0).inputValue()) === "DRAFT RECOVERY CUSTOMER",
       "Home -> New Invoice navigation did not restore the customer.");
     assert((await newItemInputs.nth(0).inputValue()) === "Draft Gold Necklace",
       "Home -> New Invoice navigation did not restore ornament details.");
@@ -1057,7 +1218,7 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     // A direct browser reload must keep the draft, including its idempotency key.
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+    assert((await customerInputs.nth(0).inputValue()) === "DRAFT RECOVERY CUSTOMER",
       "Refreshing /invoice cleared the user's unfinished draft.");
     const afterReload = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
     assert(afterReload?.idempotencyKey === storedDraft.idempotencyKey,
@@ -1071,12 +1232,12 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     await page.keyboard.press("Escape");
     assert(escapeCancelMessage === "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
       "Escape did not show the required reset confirmation.");
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+    assert((await customerInputs.nth(0).inputValue()) === "DRAFT RECOVERY CUSTOMER",
       "Canceling the Escape confirmation changed invoice fields.");
 
     page.once("dialog", async (dialog) => { await dialog.dismiss(); });
     await page.locator(".nkj-invoice-reset-button").click();
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+    assert((await customerInputs.nth(0).inputValue()) === "DRAFT RECOVERY CUSTOMER",
       "Canceling the Reset button changed invoice fields.");
     assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
       "Canceling Reset deleted the local draft.");
@@ -1168,7 +1329,7 @@ async function testTenMinuteInactivityLogoutAcrossTabs(browser) {
     await page1.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
     const recoveredName = await page1.locator("#invoice-print .inv-two .inv-panel").first()
       .locator(".form-grid label input").nth(0).inputValue();
-    assert(recoveredName === "Keep after logout",
+    assert(recoveredName === "KEEP AFTER LOGOUT",
       "The user's unsaved invoice draft was not restored after login.");
     assert(Boolean(await page1.evaluate((key) => localStorage.getItem(key), otherUserDraftKey)),
       "Logging out/in changed another user's separate draft.");
@@ -1436,6 +1597,88 @@ async function testPhysicalMobileLayout(browser) {
   }
 }
 
+async function testRateBoardPage(browser) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+
+  try {
+    await page.goto(BASE_URL + "/rate", { waitUntil: "domcontentloaded" });
+    await page.locator(".nkj-rate-board-stage").waitFor({ state: "visible", timeout: 10000 });
+    await page.locator(".nkj-rate-board-edit-hotspot").waitFor({ state: "visible", timeout: 5000 });
+    await page.locator(".nkj-rate-board-fullscreen-hotspot").waitFor({ state: "visible", timeout: 5000 });
+
+    const board = await page.evaluate(() => {
+      const values = document.querySelector(".nkj-rate-board-stage svg.nkj-rate-board-svg[aria-label]");
+      const edit = document.querySelector(".nkj-rate-board-edit-hotspot");
+      const fullscreen = document.querySelector(".nkj-rate-board-fullscreen-hotspot");
+      const footer = document.querySelector(".jewellery-footer");
+      return {
+        dateTimeAndRates: values?.getAttribute("aria-label") || "",
+        editHref: edit ? new URL(edit.href).pathname : "",
+        fullscreenLabel: fullscreen?.getAttribute("aria-label") || "",
+        footerVisible: Boolean(footer && getComputedStyle(footer).display !== "none"
+          && footer.getBoundingClientRect().height > 0),
+        horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      };
+    });
+
+    assert(board.dateTimeAndRates.includes("Date ")
+      && board.dateTimeAndRates.includes("time ")
+      && board.dateTimeAndRates.includes("Gold 22K")
+      && board.dateTimeAndRates.includes("Silver"),
+      "Rate Board must expose Kolkata date/time and Gold/Silver values: " + JSON.stringify(board));
+    assert(board.dateTimeAndRates.includes("1,25,400")
+      && board.dateTimeAndRates.includes("1,560"),
+      "Rate Board must display demo defaults until verified ERP rates arrive: " + JSON.stringify(board));
+    assert(board.editHref === "/rates", "Rate Board Edit hotspot must open ERP rate management.");
+    assert(board.fullscreenLabel === "Full Screen", "Rate Board must expose a Full Screen control.");
+    assert(!board.footerVisible, "Rate Board must not render the global footer.");
+    assert(!board.horizontalOverflow, "Rate Board causes horizontal overflow at 1440x900.");
+
+    await page.locator(".nkj-rate-board-fullscreen-hotspot").click();
+    await page.waitForFunction(() => Boolean(document.fullscreenElement), { timeout: 5000 });
+    await page.keyboard.press("f");
+    await page.waitForFunction(() => !document.fullscreenElement, { timeout: 5000 });
+    await page.keyboard.press("f");
+    await page.waitForFunction(() => Boolean(document.fullscreenElement), { timeout: 5000 });
+    await page.keyboard.press("f");
+    await page.waitForFunction(() => !document.fullscreenElement, { timeout: 5000 });
+
+    // Exercise the actual Edit hotspot, not only its href. The smoke context
+    // carries a mocked administrator session, and all API writes are intercepted.
+    await page.locator(".nkj-rate-board-edit-hotspot").click();
+    await page.waitForURL((url) => url.pathname === "/rates", { timeout: 5000 });
+    await page.getByRole("heading", { name: "Gold & Silver Rate Management" }).waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
+
+    const rateInputs = page.locator("form.nkj-rate-edit-form input");
+    assert(await rateInputs.count() === 3,
+      "Edit must open the three Gold 24K, Gold 22K and Silver 999 inputs.");
+    await rateInputs.nth(0).fill("76000");
+    await rateInputs.nth(1).fill("70000");
+    await rateInputs.nth(2).fill("1600");
+
+    const saveResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/admin/rates")
+      && response.request().method() === "PUT"
+      && response.ok(),
+    { timeout: 5000 });
+    await page.getByRole("button", { name: /Save Manual Rates/ }).click();
+    await saveResponse;
+    await page.getByText(
+      "Manual Override Mode enabled. Your entered Kolkata rates are saved and automatic fetching will not overwrite them.",
+      { exact: true },
+    ).waitFor({ state: "visible", timeout: 5000 });
+
+    process.stdout.write("PASS Rate Board defaults, Kolkata clock, Edit navigation and save, Full Screen/F key and footer suppression\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testManualCalculatorEqualsGate(page) {
   await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
   await page.locator('[data-calculator-mode="manual"]').click();
@@ -1476,7 +1719,7 @@ async function testManualCalculatorEqualsGate(page) {
   assert((await result.textContent()).trim() === "",
     "Manual calculator must clear the previous result as soon as a new input is entered.");
 
-  process.stdout.write("PASS manual calculator shows 99*88 only after equals or Enter\\n");
+  process.stdout.write("PASS manual calculator shows 99*88 only after equals or Enter\n");
 }
 
 async function testHomeCollectionNavigation(browser) {
@@ -1507,7 +1750,7 @@ async function testHomeCollectionNavigation(browser) {
     await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
     await page.locator(".nkj-public-collection-view-more").click();
     await page.waitForURL((url) => url.pathname === "/designs", { timeout: 10000 });
-    process.stdout.write("PASS homepage collection cards open their matching catalogue categories and View More opens all designs\\n");
+    process.stdout.write("PASS homepage collection cards open their matching catalogue categories and View More opens all designs\n");
   } finally {
     await context.close();
   }
@@ -1546,7 +1789,7 @@ async function testOwnerLoginSingleClick(browser) {
     const storedToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
     assert(storedToken === "responsive-relogin-token",
       "A single Login click did not store the authenticated session token.");
-    process.stdout.write("PASS owner login completes from one click using the returned challenge ID\\n");
+    process.stdout.write("PASS owner login completes from one click using the returned challenge ID\n");
   } finally {
     await context.close();
   }
@@ -1627,10 +1870,25 @@ async function testPublicNavigation(browser) {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
     });
     try {
-      for (const path of publicRoutes) {
-        await checkViewport(publicPage, path, { name: "public-mobile", width: 390, height: 844 });
+      // The public-facing routes need the same viewport coverage as the
+      // authenticated ERP screens; checking them only at one phone width
+      // misses tablet, landscape, and desktop layout regressions.
+      for (const viewport of viewports) {
+        await publicPage.setViewportSize({
+          width: viewport.width,
+          height: viewport.height,
+        });
+        for (const path of publicRoutes) {
+          process.stdout.write("CHECK public " + viewport.name + " " + path + "\n");
+          await checkViewport(publicPage, path, viewport);
+        }
+        process.stdout.write(
+          "PASS all " + publicRoutes.length + " public routes at "
+          + viewport.name + " " + viewport.width + "x" + viewport.height + "\n"
+        );
       }
       await testManualCalculatorEqualsGate(publicPage);
+      await testRateBoardPage(browser);
     } finally {
       await publicContext.close();
     }
@@ -1639,6 +1897,7 @@ async function testPublicNavigation(browser) {
       await testNewInvoiceMobile(browser, width);
     }
     await testInvoiceMakingChargeModes(browser);
+    await testInvoiceMakingChargeMobile(browser);
     await testInvoiceToolbarAndDeleteControls(browser);
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftRecoveryAndReset(browser);

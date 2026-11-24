@@ -40,6 +40,14 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String,String>> internal(Exception e, HttpServletRequest request) {
+        if (isClientDisconnect(e)) {
+            // SSE clients routinely close tabs, navigate away or lose Wi-Fi.
+            // Tomcat wraps those normal disconnects as async request failures;
+            // they are not application/server errors and must not flood logs.
+            log.debug("Client disconnected while sending {} {}.",
+                    request.getMethod(), request.getRequestURI());
+            return ResponseEntity.noContent().build();
+        }
         Throwable root = e;
         while (root.getCause() != null && root.getCause() != root) {
             root = root.getCause();
@@ -82,4 +90,25 @@ public class RestExceptionHandler {
                 "message", "The server could not complete the request. Check the backend log for details."
         ));
     }
+    private boolean isClientDisconnect(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof org.apache.catalina.connector.ClientAbortException) {
+                return true;
+            }
+            if (current instanceof java.io.IOException || current instanceof java.net.SocketException) {
+                String message = current.getMessage() == null ? "" : current.getMessage().toLowerCase(java.util.Locale.ROOT);
+                if (message.contains("broken pipe")
+                        || message.contains("connection reset")
+                        || message.contains("connection aborted")
+                        || message.contains("forcibly closed")) {
+                    return true;
+                }
+            }
+            if (current.getCause() == current) break;
+            current = current.getCause();
+        }
+        return false;
+    }
+
 }
