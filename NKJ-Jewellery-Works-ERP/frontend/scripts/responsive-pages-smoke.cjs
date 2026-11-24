@@ -1188,7 +1188,7 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
 
     await page.waitForFunction((key) => {
       const draft = JSON.parse(localStorage.getItem(key) || "null");
-      return draft?.version === 2 && draft?.customer?.name === "Draft Recovery Customer";
+      return draft?.version === 2 && draft?.customer?.name === "DRAFT RECOVERY CUSTOMER";
     }, draftKey);
     const storedDraft = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
     assert(storedDraft?.newItems?.[0]?.description === "Draft Gold Necklace",
@@ -1203,7 +1203,7 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+    assert((await customerInputs.nth(0).inputValue()) === "DRAFT RECOVERY CUSTOMER",
       "Home -> New Invoice navigation did not restore the customer.");
     assert((await newItemInputs.nth(0).inputValue()) === "Draft Gold Necklace",
       "Home -> New Invoice navigation did not restore ornament details.");
@@ -1211,7 +1211,7 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     // A direct browser reload must keep the draft, including its idempotency key.
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+    assert((await customerInputs.nth(0).inputValue()) === "DRAFT RECOVERY CUSTOMER",
       "Refreshing /invoice cleared the user's unfinished draft.");
     const afterReload = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
     assert(afterReload?.idempotencyKey === storedDraft.idempotencyKey,
@@ -1225,12 +1225,12 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     await page.keyboard.press("Escape");
     assert(escapeCancelMessage === "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
       "Escape did not show the required reset confirmation.");
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+    assert((await customerInputs.nth(0).inputValue()) === "DRAFT RECOVERY CUSTOMER",
       "Canceling the Escape confirmation changed invoice fields.");
 
     page.once("dialog", async (dialog) => { await dialog.dismiss(); });
     await page.locator(".nkj-invoice-reset-button").click();
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
+    assert((await customerInputs.nth(0).inputValue()) === "DRAFT RECOVERY CUSTOMER",
       "Canceling the Reset button changed invoice fields.");
     assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
       "Canceling Reset deleted the local draft.");
@@ -1322,7 +1322,7 @@ async function testTenMinuteInactivityLogoutAcrossTabs(browser) {
     await page1.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
     const recoveredName = await page1.locator("#invoice-print .inv-two .inv-panel").first()
       .locator(".form-grid label input").nth(0).inputValue();
-    assert(recoveredName === "Keep after logout",
+    assert(recoveredName === "KEEP AFTER LOGOUT",
       "The user's unsaved invoice draft was not restored after login.");
     assert(Boolean(await page1.evaluate((key) => localStorage.getItem(key), otherUserDraftKey)),
       "Logging out/in changed another user's separate draft.");
