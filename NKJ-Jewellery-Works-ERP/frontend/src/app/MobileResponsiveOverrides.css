@@ -2128,3 +2128,28 @@
     stroke-width: 2.2 !important;
   }
 }
+
+
+/* New Invoice mobile cards: the delete action spans the whole card width.
+   Keep the small icon inside its full-width action row; don't inherit the
+   old 28px desktop delete-column width. Make custom MC inputs 48px tall. */
+@media screen and (max-width: 760px),
+       screen and (max-device-width: 760px),
+       screen and (max-width: 1100px) and (pointer: coarse) {
+  #invoice-print .items-table > tbody > tr > td:last-child {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  body.invoice-page #invoice-print .new-items-table > tbody > tr > td.making-charge-cell .making-charge-entry input,
+  body.nkj-owner-layout .nkj-invoice-detail-sheet #invoice-print .new-items-table > tbody > tr > td.making-charge-cell .making-charge-entry input {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+  }
+}

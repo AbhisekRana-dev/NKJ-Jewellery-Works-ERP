@@ -435,7 +435,8 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'status=$?; echo "Failed command: ${BASH_COMMAND}"; echo "Backend exception summary:"; grep -E "ERROR|Exception|Caused by|APPLICATION FAILED" /tmp/nkj-v20.log 2>/dev/null | tail -n 100 || true; exit "$status"' ERR
           DB="postgresql://postgres:postgres@localhost:5432/nkj_test"
 
           # Seed a second saved invoice that can be converted by the real API.
