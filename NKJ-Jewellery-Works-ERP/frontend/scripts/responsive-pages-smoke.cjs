@@ -1050,8 +1050,40 @@ async function testInvoiceSavePinGate(browser) {
 
     const invoiceDraftKey = "nkj.invoice.draft.v2:admin2026:new";
     await page.waitForFunction((key) => Boolean(localStorage.getItem(key)), invoiceDraftKey);
-    await page.locator(".invoice-actions button.primary").click();
-    await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+
+    const invoicePageErrors = [];
+    page.on("pageerror", (error) => invoicePageErrors.push(error.message));
+    const saveButton = page.locator(".invoice-actions button.primary");
+    await saveButton.waitFor({ state: "visible", timeout: 5000 });
+    assert(await saveButton.isEnabled(),
+      "Save Invoice button was disabled before PIN-gate test: " + await saveButton.innerText());
+
+    await saveButton.click();
+    try {
+      await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => {
+        const button = document.querySelector(".invoice-actions button.primary");
+        const overlay = document.querySelector(".nkj-pin-overlay");
+        const root = document.querySelector("#root");
+        return {
+          path: location.pathname,
+          buttonText: button?.innerText || "",
+          buttonDisabled: button?.disabled ?? null,
+          buttonClass: button?.className || "",
+          overlayCount: document.querySelectorAll(".nkj-pin-overlay").length,
+          overlayDisplay: overlay ? getComputedStyle(overlay).display : "not-rendered",
+          rootText: (root?.innerText || "").slice(-1800),
+          draftPresent: Boolean(localStorage.getItem("nkj.invoice.draft.v2:admin2026:new")),
+        };
+      });
+      throw new Error(
+        "Save Invoice click did not open the SAVE PIN dialog. "
+        + JSON.stringify(diagnostic)
+        + "; browser errors: " + invoicePageErrors.join(" | ")
+        + "; " + error.message
+      );
+    }
 
     assert(saveCalls === 0, "New invoice reached POST /api/invoices before the SAVE PIN was verified.");
     assert(verifyCalls.length === 0, "A save request should not verify a PIN until the user submits the dialog.");
