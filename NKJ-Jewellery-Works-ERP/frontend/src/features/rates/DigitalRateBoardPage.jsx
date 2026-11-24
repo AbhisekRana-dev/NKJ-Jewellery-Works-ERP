@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarDays, Clock3, Gem, Maximize2, Minimize2, Pencil, ShieldCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { CalendarDays, Clock3, Gem, Maximize2, Minimize2, ShieldCheck } from "lucide-react";
 import { Nav } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
 import "./DigitalRateBoardPage.css";
@@ -183,22 +182,16 @@ export default function DigitalRateBoardPage() {
               <span>NANDIKISHOR</span>
               <strong>JEWELLERY WORKS</strong>
             </div>
-            <div className="nkj-rate-board-actions">
-              <Link className="nkj-rate-board-edit" to="/rates" title="Edit gold and silver rates">
-                <Pencil size={17} />
-                <span>EDIT RATE</span>
-              </Link>
-              <button
-                className="nkj-rate-board-fullscreen"
-                type="button"
-                onClick={toggleFullscreen}
-                title={fullscreen ? "Exit fullscreen (F)" : "Enter fullscreen (F)"}
-                aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              >
-                {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                <span>{fullscreen ? "EXIT FULL SCREEN" : "FULL SCREEN"}</span>
-              </button>
-            </div>
+            <button
+              className="nkj-rate-board-fullscreen"
+              type="button"
+              onClick={toggleFullscreen}
+              title={fullscreen ? "Exit fullscreen (F)" : "Enter fullscreen (F)"}
+              aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+              <span>{fullscreen ? "EXIT" : "FULL SCREEN"}</span>
+            </button>
           </header>
 
           <div className="nkj-rate-board-main-title">
