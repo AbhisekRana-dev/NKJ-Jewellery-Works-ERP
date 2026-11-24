@@ -29,7 +29,7 @@ const ownerRoutes = [
   "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
 ];
 
-const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp"];
+const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/rate", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp"];
 
 // Authenticated compatibility routes may intentionally land on a canonical page.
 const expectedRoutePaths = {
@@ -1437,6 +1437,61 @@ async function testPhysicalMobileLayout(browser) {
   }
 }
 
+async function testRateBoardPage(browser) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+
+  try {
+    await page.goto(BASE_URL + "/rate", { waitUntil: "domcontentloaded" });
+    await page.locator(".nkj-rate-board-stage").waitFor({ state: "visible", timeout: 10000 });
+    await page.locator(".nkj-rate-board-edit-hotspot").waitFor({ state: "visible", timeout: 5000 });
+    await page.locator(".nkj-rate-board-fullscreen-hotspot").waitFor({ state: "visible", timeout: 5000 });
+
+    const board = await page.evaluate(() => {
+      const values = [...document.querySelectorAll(".nkj-rate-board-stage svg[aria-label]")]
+        .find((element) => (element.getAttribute("aria-label") || "").includes("Nandikishor Jewellery Works"));
+      const edit = document.querySelector(".nkj-rate-board-edit-hotspot");
+      const fullscreen = document.querySelector(".nkj-rate-board-fullscreen-hotspot");
+      const footer = document.querySelector(".jewellery-footer");
+      return {
+        dateTimeAndRates: values?.getAttribute("aria-label") || "",
+        editHref: edit ? new URL(edit.href).pathname : "",
+        fullscreenLabel: fullscreen?.getAttribute("aria-label") || "",
+        footerVisible: Boolean(footer && getComputedStyle(footer).display !== "none"
+          && footer.getBoundingClientRect().height > 0),
+        horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      };
+    });
+
+    assert(board.dateTimeAndRates.includes("Date ")
+      && board.dateTimeAndRates.includes("time ")
+      && board.dateTimeAndRates.includes("Gold 22K")
+      && board.dateTimeAndRates.includes("Silver"),
+      "Rate Board must expose Kolkata date/time and Gold/Silver values: " + JSON.stringify(board));
+    assert(board.dateTimeAndRates.includes("1,25,400")
+      && board.dateTimeAndRates.includes("1,560"),
+      "Rate Board must display demo defaults until verified ERP rates arrive: " + JSON.stringify(board));
+    assert(board.editHref === "/rates", "Rate Board Edit hotspot must open ERP rate management.");
+    assert(board.fullscreenLabel === "Full Screen", "Rate Board must expose a Full Screen control.");
+    assert(!board.footerVisible, "Rate Board must not render the global footer.");
+    assert(!board.horizontalOverflow, "Rate Board causes horizontal overflow at 1440x900.");
+
+    await page.locator(".nkj-rate-board-fullscreen-hotspot").click();
+    await page.waitForFunction(() => Boolean(document.fullscreenElement), { timeout: 5000 });
+    await page.keyboard.press("f");
+    await page.waitForFunction(() => !document.fullscreenElement, { timeout: 5000 });
+    await page.keyboard.press("f");
+    await page.waitForFunction(() => Boolean(document.fullscreenElement), { timeout: 5000 });
+    await page.keyboard.press("f");
+    await page.waitForFunction(() => !document.fullscreenElement, { timeout: 5000 });
+
+    process.stdout.write("PASS Rate Board defaults, Kolkata clock, Edit, Full Screen/F key and footer suppression\\n");
+  } finally {
+    await context.close();
+  }
+}
+
 async function testManualCalculatorEqualsGate(page) {
   await page.goto(BASE_URL + "/calculator", { waitUntil: "domcontentloaded" });
   await page.locator('[data-calculator-mode="manual"]').click();
@@ -1632,6 +1687,7 @@ async function testPublicNavigation(browser) {
         await checkViewport(publicPage, path, { name: "public-mobile", width: 390, height: 844 });
       }
       await testManualCalculatorEqualsGate(publicPage);
+      await testRateBoardPage(browser);
     } finally {
       await publicContext.close();
     }

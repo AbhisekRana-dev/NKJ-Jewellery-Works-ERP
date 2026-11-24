@@ -43,11 +43,3 @@ body.nkj-owner-layout .nkj-digital-rate-page:fullscreen .nkj-rate-board-stage {
 }
 
 
-/* App.jsx renders a shared Footer after every route. Keep it off the customer-facing rate board only. */
-body.nkj-rate-board-active .app-layout > footer,
-body.nkj-rate-board-active .app-layout > .app-footer {
-  display: none !important;
-}
-body.nkj-rate-board-active .app-layout {
-  min-height: 100dvh;
-}
