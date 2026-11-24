@@ -5,7 +5,6 @@ import { useAuth } from "../core/auth/AuthProvider";
 import Footer from "../shared/layouts/Footer";
 import Profile from "../features/profile/Profile";
 import { Home } from "../features/home/Home";
-import DigitalRateBoardPage from "../features/rates/DigitalRateBoardPage";
 import { AdminHome } from "../features/dashboard/AdminHome";
 import { InvoicePage, SavedInvoices } from "../features/invoices/InvoicePages";
 import { Login, TotpSetup } from "../features/auth/AuthPages";
@@ -47,7 +46,6 @@ export default function App() {
         <Routes>
           {/* Public access: Home, Jewellery Designs, Calculator and New Invoice. */}
           <Route path="/" element={<Home />} />
-          <Route path="/rate" element={<DigitalRateBoardPage />} />
           <Route path="/invoice" element={<InvoicePage />} />
           <Route path="/designs" element={<JewelleryDesignsPage />} />
           <Route path="/mobile-design-upload/:token" element={<MobileDesignUploadPage />} />
