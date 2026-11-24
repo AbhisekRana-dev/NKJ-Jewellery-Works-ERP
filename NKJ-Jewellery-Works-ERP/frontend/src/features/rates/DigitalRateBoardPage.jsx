@@ -19,12 +19,16 @@ const formatRate = (value) => Number(value || 0).toLocaleString("en-IN", {
   maximumFractionDigits: 2,
 });
 
-const formatKolkataDate = (date) => new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  timeZone: "Asia/Kolkata",
-}).format(date);
+const formatKolkataDate = (date) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type)?.value || "";
+  return part("day") + "-" + part("month") + "-" + part("year");
+};
 
 const formatKolkataTime = (date) => date.toLocaleTimeString("en-IN", {
   hour: "2-digit",
@@ -163,6 +167,8 @@ export default function DigitalRateBoardPage() {
           </div>
           <div className="nkj-rate-board-side-curtain curtain-left" aria-hidden="true" />
           <div className="nkj-rate-board-side-curtain curtain-right" aria-hidden="true" />
+          <span className="nkj-rate-board-lotus lotus-left" aria-hidden="true" />
+          <span className="nkj-rate-board-lotus lotus-right" aria-hidden="true" />
           <HangingLamp side="lamp-left" />
           <HangingLamp side="lamp-right" />
 
