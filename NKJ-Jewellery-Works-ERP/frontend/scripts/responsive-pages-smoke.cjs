@@ -759,7 +759,7 @@ async function testNewInvoiceNativePrintSinglePage(browser) {
     assert(pageCount === 1,
       "New invoice Ctrl+P must generate exactly one A4 landscape PDF page, not " + pageCount + ".");
 
-    process.stdout.write("PASS new invoice Ctrl+P prints from page 1 on one A4 landscape page\\n");
+    process.stdout.write("PASS new invoice Ctrl+P prints from page 1 on one A4 landscape page\n");
   } finally {
     await context.close();
   }
@@ -880,7 +880,7 @@ async function testInvoiceToolbarAndDeleteControls(browser) {
         assert(iconRect && iconRect.width >= 11 && iconRect.width <= 14 && iconRect.height >= 11 && iconRect.height <= 14,
           label + " trash icon should be about 12–13px; got " + JSON.stringify(iconRect));
       }
-      process.stdout.write("PASS invoice has no Calculator button and accessible delete targets with compact icons at " + width + "px\\n");
+      process.stdout.write("PASS invoice has no Calculator button and accessible delete targets with compact icons at " + width + "px\n");
     } finally {
       await context.close();
     }
@@ -1544,7 +1544,7 @@ async function testRateBoardPage(browser) {
       { exact: true },
     ).waitFor({ state: "visible", timeout: 5000 });
 
-    process.stdout.write("PASS Rate Board defaults, Kolkata clock, Edit navigation and save, Full Screen/F key and footer suppression\\n");
+    process.stdout.write("PASS Rate Board defaults, Kolkata clock, Edit navigation and save, Full Screen/F key and footer suppression\n");
   } finally {
     await context.close();
   }
@@ -1590,7 +1590,7 @@ async function testManualCalculatorEqualsGate(page) {
   assert((await result.textContent()).trim() === "",
     "Manual calculator must clear the previous result as soon as a new input is entered.");
 
-  process.stdout.write("PASS manual calculator shows 99*88 only after equals or Enter\\n");
+  process.stdout.write("PASS manual calculator shows 99*88 only after equals or Enter\n");
 }
 
 async function testHomeCollectionNavigation(browser) {
@@ -1621,7 +1621,7 @@ async function testHomeCollectionNavigation(browser) {
     await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
     await page.locator(".nkj-public-collection-view-more").click();
     await page.waitForURL((url) => url.pathname === "/designs", { timeout: 10000 });
-    process.stdout.write("PASS homepage collection cards open their matching catalogue categories and View More opens all designs\\n");
+    process.stdout.write("PASS homepage collection cards open their matching catalogue categories and View More opens all designs\n");
   } finally {
     await context.close();
   }
@@ -1660,7 +1660,7 @@ async function testOwnerLoginSingleClick(browser) {
     const storedToken = await page.evaluate(() => localStorage.getItem("nkj_token"));
     assert(storedToken === "responsive-relogin-token",
       "A single Login click did not store the authenticated session token.");
-    process.stdout.write("PASS owner login completes from one click using the returned challenge ID\\n");
+    process.stdout.write("PASS owner login completes from one click using the returned challenge ID\n");
   } finally {
     await context.close();
   }
@@ -1750,12 +1750,12 @@ async function testPublicNavigation(browser) {
           height: viewport.height,
         });
         for (const path of publicRoutes) {
-          process.stdout.write("CHECK public " + viewport.name + " " + path + "\\n");
+          process.stdout.write("CHECK public " + viewport.name + " " + path + "\n");
           await checkViewport(publicPage, path, viewport);
         }
         process.stdout.write(
           "PASS all " + publicRoutes.length + " public routes at "
-          + viewport.name + " " + viewport.width + "x" + viewport.height + "\\n"
+          + viewport.name + " " + viewport.width + "x" + viewport.height + "\n"
         );
       }
       await testManualCalculatorEqualsGate(publicPage);
