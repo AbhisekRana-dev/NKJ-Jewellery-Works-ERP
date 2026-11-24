@@ -1822,6 +1822,7 @@ async function testPublicNavigation(browser) {
       await testNewInvoiceMobile(browser, width);
     }
     await testInvoiceMakingChargeModes(browser);
+    await testInvoiceMakingChargeMobile(browser);
     await testInvoiceToolbarAndDeleteControls(browser);
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftRecoveryAndReset(browser);
