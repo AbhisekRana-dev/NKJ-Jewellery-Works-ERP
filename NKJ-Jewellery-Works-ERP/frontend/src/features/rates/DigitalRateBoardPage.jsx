@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Coins, Maximize2, Minimize2, RefreshCw, ShieldCheck } from "lucide-react";
+import { CalendarDays, Clock3, Coins, Gem, Maximize2, Minimize2, RefreshCw, ShieldCheck } from "lucide-react";
 import { Nav } from "../../shared/layouts/OwnerShell";
 import { request } from "../../core/api/client";
 import "./DigitalRateBoardPage.css";
@@ -7,7 +7,6 @@ import "./DigitalRateBoardPage.css";
 const initialRates = {
   gold22kRate: 0,
   silverRate: 0,
-  rateMode: "MANUAL",
   rateSource: "",
   rateDate: null,
   updatedAt: null,
@@ -15,24 +14,29 @@ const initialRates = {
   newspaperVerified: false,
 };
 
-const formatRate = (value) =>
-  Number(value || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
+const formatRate = (value) => Number(value || 0).toLocaleString("en-IN", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
 
-const formatRateDate = (value) => {
-  if (!value) return "—";
-  const match = String(value).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return String(value);
-  return new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00+05:30`)
-    .toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      timeZone: "Asia/Kolkata",
-    });
+// The clock is always rendered in Kolkata time, regardless of the TV/device timezone.
+const formatKolkataDate = (date) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type)?.value || "";
+  return `${part("day")}-${part("month")}-${part("year")}`;
 };
+
+const formatKolkataTime = (date) => date.toLocaleTimeString("en-IN", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "Asia/Kolkata",
+}).toUpperCase();
 
 export default function DigitalRateBoardPage() {
   const pageRef = useRef(null);
@@ -51,7 +55,7 @@ export default function DigitalRateBoardPage() {
       if (data) setRates({ ...initialRates, ...data });
       setRefreshError("");
     } catch (error) {
-      setRefreshError(error.message || "Unable to refresh rates.");
+      setRefreshError(error.message || "Unable to refresh rates. Please check the internet connection.");
     } finally {
       setLoading(false);
     }
@@ -80,10 +84,10 @@ export default function DigitalRateBoardPage() {
       } else if (pageRef.current?.requestFullscreen) {
         await pageRef.current.requestFullscreen({ navigationUI: "hide" });
       } else {
-        setRefreshError("Fullscreen is not supported by this browser. Use the display button or browser zoom.");
+        setRefreshError("Fullscreen is not supported by this browser. Use the browser's full-screen option.");
       }
     } catch {
-      setRefreshError("The browser blocked fullscreen. Use the fullscreen button or check browser permissions.");
+      setRefreshError("The browser blocked fullscreen. Use the on-screen fullscreen control or check browser permissions.");
     }
   }, []);
 
@@ -103,35 +107,22 @@ export default function DigitalRateBoardPage() {
   const verified = Boolean(rates.ownerVerified || rates.newspaperVerified)
     && Number(rates.gold22kRate) > 0
     && Number(rates.silverRate) > 0;
-  const rateTime = now.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Kolkata",
-  });
-  const today = now.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: "Asia/Kolkata",
-  });
 
   return (
     <div className={`nkj-digital-rate-page${fullscreen ? " is-fullscreen" : ""}`} ref={pageRef}>
       <Nav active="rate" />
       <main className="nkj-digital-rate-content">
-        <section className="nkj-digital-rate-board" aria-label="Nandikishor Jewellery Works digital rate board">
-          <div className="nkj-rate-board-corner nkj-rate-board-corner-tl" />
-          <div className="nkj-rate-board-corner nkj-rate-board-corner-tr" />
-          <div className="nkj-rate-board-corner nkj-rate-board-corner-bl" />
-          <div className="nkj-rate-board-corner nkj-rate-board-corner-br" />
+        <section className="nkj-digital-rate-board" aria-label="Nandikishor Jewellery Works gold and silver rate board">
+          <div className="nkj-rate-board-frame-corner corner-tl" aria-hidden="true">❧</div>
+          <div className="nkj-rate-board-frame-corner corner-tr" aria-hidden="true">❧</div>
+          <div className="nkj-rate-board-frame-corner corner-bl" aria-hidden="true">❧</div>
+          <div className="nkj-rate-board-frame-corner corner-br" aria-hidden="true">❧</div>
 
-          <div className="nkj-rate-board-topline">
-            <span className="nkj-rate-board-brand-mark"><Coins size={23} /></span>
-            <div className="nkj-rate-board-brand">
+          <header className="nkj-rate-board-brand-plaque">
+            <div className="nkj-rate-board-emblem"><Gem size={36} strokeWidth={1.5} /><span>NKJ</span></div>
+            <div className="nkj-rate-board-brand-copy">
               <span>NANDIKISHOR</span>
               <strong>JEWELLERY WORKS</strong>
-              <small>TRADITION • TRUST • PURITY</small>
             </div>
             <button
               className="nkj-rate-board-fullscreen"
@@ -141,63 +132,76 @@ export default function DigitalRateBoardPage() {
               aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             >
               {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-              <span>{fullscreen ? "EXIT FULL SCREEN" : "FULL SCREEN"}</span>
+              <span>{fullscreen ? "EXIT" : "FULL SCREEN"}</span>
             </button>
+          </header>
+
+          <div className="nkj-rate-board-main-title">
+            <span className="nkj-rate-board-gem" aria-hidden="true">◆</span>
+            <h1>GOLD &amp; SILVER RATE</h1>
+            <span className="nkj-rate-board-gem" aria-hidden="true">◆</span>
           </div>
 
-          <div className="nkj-rate-board-title-wrap">
-            <span className="nkj-rate-board-title-rule" />
-            <h1>TODAY'S RATE</h1>
-            <span className="nkj-rate-board-title-rule" />
+          <div className="nkj-rate-board-date-time">
+            <div className="nkj-rate-board-date-time-cell">
+              <CalendarDays size={31} />
+              <span>DATE :</span>
+              <strong>{formatKolkataDate(now)}</strong>
+            </div>
+            <div className="nkj-rate-board-date-time-cell">
+              <Clock3 size={31} />
+              <span>TIME :</span>
+              <strong>{formatKolkataTime(now)}</strong>
+            </div>
           </div>
 
-          <div className="nkj-rate-board-meta">
-            <div><span>DATE</span><strong>{today}</strong></div>
-            <div className="nkj-rate-board-meta-divider" />
-            <div><span>TIME</span><strong>{rateTime}</strong></div>
+          <div className="nkj-rate-board-hallmark">
+            <ShieldCheck size={34} />
+            <strong>916 HALLMARK CERTIFIED JEWELLERY</strong>
+            <ShieldCheck size={34} />
           </div>
 
-          <div className="nkj-rate-board-certification">
-            <ShieldCheck size={21} />
-            <span>916 HALLMARK CERTIFIED JEWELLERY</span>
-            <i />
-            <b>RATE PER 10 GRAMS</b>
+          <div className="nkj-rate-board-per-gram">
+            <span />
+            <strong>RATE PER 10 GRAM</strong>
+            <span />
           </div>
 
-          <div className="nkj-rate-board-values">
-            <article className="nkj-rate-board-metal nkj-rate-board-gold">
-              <div className="nkj-rate-board-metal-heading">
-                <span className="nkj-rate-board-metal-symbol">Au</span>
-                <div><small>HALLMARK GOLD</small><h2>GOLD 22K (916)</h2></div>
+          <div className="nkj-rate-board-metal-list">
+            <article className="nkj-rate-board-metal-row gold-row">
+              <div className="nkj-rate-board-metal-icon gold-icon"><Gem size={43} /></div>
+              <div className="nkj-rate-board-metal-name">
+                <small>HALLMARK GOLD</small>
+                <h2>GOLD 22K (916)</h2>
               </div>
-              <div className="nkj-rate-board-value">
+              <div className="nkj-rate-board-price">
                 <span>₹</span>
-                <strong>{verified ? formatRate(Number(rates.gold22kRate) * 10) : "RATE PENDING"}</strong>
+                <strong>{verified ? formatRate(Number(rates.gold22kRate) * 10) : "—"}</strong>
               </div>
-              <small className="nkj-rate-board-unit">INDIAN RUPEES • PER 10 GRAMS</small>
             </article>
 
-            <article className="nkj-rate-board-metal nkj-rate-board-silver">
-              <div className="nkj-rate-board-metal-heading">
-                <span className="nkj-rate-board-metal-symbol">Ag</span>
-                <div><small>PURE SILVER</small><h2>SILVER</h2></div>
+            <article className="nkj-rate-board-metal-row silver-row">
+              <div className="nkj-rate-board-metal-icon silver-icon"><Coins size={43} /></div>
+              <div className="nkj-rate-board-metal-name">
+                <small>PURE SILVER</small>
+                <h2>SILVER</h2>
               </div>
-              <div className="nkj-rate-board-value">
+              <div className="nkj-rate-board-price">
                 <span>₹</span>
-                <strong>{verified ? formatRate(Number(rates.silverRate) * 10) : "RATE PENDING"}</strong>
+                <strong>{verified ? formatRate(Number(rates.silverRate) * 10) : "—"}</strong>
               </div>
-              <small className="nkj-rate-board-unit">INDIAN RUPEES • PER 10 GRAMS</small>
             </article>
           </div>
 
-          <div className="nkj-rate-board-bottom">
+          <footer className="nkj-rate-board-disclaimer">
+            <span>◆</span>
             <strong>GST AND MAKING CHARGES EXTRA</strong>
-            <span>{verified ? `Rate date: ${formatRateDate(rates.rateDate)}` : "RATE NOT VERIFIED — PLEASE CONFIRM WITH THE STORE"}</span>
-          </div>
+            <span>◆</span>
+          </footer>
         </section>
 
         <div className="nkj-rate-board-screen-footer">
-          <span>{refreshError || (loading ? "Loading latest rates…" : `Rates refresh automatically every 15 seconds • Source: ${rates.rateSource || "ERP Rate Management"}`)}</span>
+          <span role="status">{refreshError || (loading ? "Loading rates…" : `Rates refresh automatically • ${rates.rateSource || "ERP Rate Management"}`)}</span>
           <button type="button" onClick={refreshRates} aria-label="Refresh rates" title="Refresh rates">
             <RefreshCw size={15} /> Refresh
           </button>
