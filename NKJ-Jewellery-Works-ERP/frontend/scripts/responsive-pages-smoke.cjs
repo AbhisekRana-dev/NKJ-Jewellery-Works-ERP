@@ -29,11 +29,12 @@ const ownerRoutes = [
   "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
 ];
 
-const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/rate", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp"];
+const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/rate", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp", "/__nkj_unknown_route_smoke__"];
 
 // Authenticated compatibility routes may intentionally land on a canonical page.
 const expectedRoutePaths = {
   "/installment-payments": "/installments",
+  "/__nkj_unknown_route_smoke__": "/",
 };
 
 function assert(condition, message) {
