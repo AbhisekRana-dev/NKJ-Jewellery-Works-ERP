@@ -2696,3 +2696,16 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     stroke-width: 2.2 !important;
   }
 }
+
+/* Keep the percentage field vertically aligned with its live rupee result.
+   The shared compact invoice input rule used a 25px input inside a 36px
+   result box, which made the two controls appear on different baselines. */
+@media screen {
+  #invoice-print .making-charge-percent-entry input.making-charge-percent-input {
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    box-sizing: border-box !important;
+    align-self: center !important;
+  }
+}
