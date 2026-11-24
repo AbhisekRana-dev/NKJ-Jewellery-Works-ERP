@@ -327,6 +327,7 @@ export function Nav({ active = "home" }) {
             <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
             <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
             <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
+            <Link className={`nkj-navbar-link${active === "rate" ? " active" : ""}`} to="/rate"><Coins /> <span>Rate</span></Link>
             <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
             <span className="nkj-navbar-user"><User size={20} /> <b>{user || "Owner"}</b><ChevronDown size={15} aria-hidden="true" /></span>
           </nav>
@@ -354,6 +355,7 @@ export function Nav({ active = "home" }) {
         <Link className={active === "home" ? "active" : ""} to="/" onClick={() => setPublicMenuOpen(false)}><HomeIcon />Home</Link>
         <Link className={active === "designs" ? "active" : ""} to="/designs" onClick={() => setPublicMenuOpen(false)}><Gem />Jewellery Designs</Link>
         <Link className={active === "calculator" ? "active" : ""} to="/calculator" onClick={() => setPublicMenuOpen(false)}><CalculatorIcon />Calculator</Link>
+        <Link className={active === "rate" ? "active" : ""} to="/rate" onClick={() => setPublicMenuOpen(false)}><Coins />Rate</Link>
         <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }} onClick={() => setPublicMenuOpen(false)}><FileText />New Invoice</Link>
         {isAdmin ? <>
           <Link className={active === "saved" ? "active" : ""} to="/saved-invoices" onClick={() => setPublicMenuOpen(false)}><Files />All Invoices</Link>
