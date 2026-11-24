@@ -1486,7 +1486,35 @@ async function testRateBoardPage(browser) {
     await page.keyboard.press("f");
     await page.waitForFunction(() => !document.fullscreenElement, { timeout: 5000 });
 
-    process.stdout.write("PASS Rate Board defaults, Kolkata clock, Edit, Full Screen/F key and footer suppression\\n");
+    // Exercise the actual Edit hotspot, not only its href. The smoke context
+    // carries a mocked administrator session, and all API writes are intercepted.
+    await page.locator(".nkj-rate-board-edit-hotspot").click();
+    await page.waitForURL((url) => url.pathname === "/rates", { timeout: 5000 });
+    await page.getByRole("heading", { name: "Gold & Silver Rate Management" }).waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
+
+    const rateInputs = page.locator("form.nkj-rate-edit-form input");
+    assert(await rateInputs.count() === 3,
+      "Edit must open the three Gold 24K, Gold 22K and Silver 999 inputs.");
+    await rateInputs.nth(0).fill("76000");
+    await rateInputs.nth(1).fill("70000");
+    await rateInputs.nth(2).fill("1600");
+
+    const saveResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/admin/rates")
+      && response.request().method() === "PUT"
+      && response.ok(),
+    { timeout: 5000 });
+    await page.getByRole("button", { name: /Save Manual Rates/ }).click();
+    await saveResponse;
+    await page.getByText(
+      "Manual Override Mode enabled. Your entered Kolkata rates are saved and automatic fetching will not overwrite them.",
+      { exact: true },
+    ).waitFor({ state: "visible", timeout: 5000 });
+
+    process.stdout.write("PASS Rate Board defaults, Kolkata clock, Edit navigation and save, Full Screen/F key and footer suppression\\n");
   } finally {
     await context.close();
   }
