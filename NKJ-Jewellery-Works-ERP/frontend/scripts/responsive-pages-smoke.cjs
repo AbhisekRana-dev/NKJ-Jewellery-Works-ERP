@@ -1103,8 +1103,44 @@ async function testInvoiceSavePinGate(browser) {
     assert(!(await page.evaluate((key) => localStorage.getItem(key), invoiceDraftKey)),
       "A successfully saved invoice left its local draft behind.");
 
-    await page.locator(".invoice-actions button:not(.nkj-invoice-reset-button).secondary").click();
-    await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+    const printButton = page.locator(".invoice-actions button:not(.nkj-invoice-reset-button).secondary");
+    await printButton.waitFor({ state: "visible", timeout: 5000 });
+    const printButtonText = (await printButton.innerText()).trim();
+    assert(/Download\\s*\\/\\s*Print Invoice PDF/.test(printButtonText),
+      "Expected the separate Download / Print Invoice PDF action, got: " + printButtonText);
+    assert(await printButton.isEnabled(),
+      "Print action remained disabled after the invoice was saved: " + printButtonText);
+
+    await printButton.click();
+    try {
+      await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => {
+        const button = document.querySelector(".invoice-actions button:not(.nkj-invoice-reset-button).secondary");
+        const overlay = document.querySelector(".nkj-pin-overlay");
+        const root = document.querySelector("#root");
+        return {
+          buttonText: button?.innerText || "",
+          buttonDisabled: button?.disabled ?? null,
+          overlayCount: document.querySelectorAll(".nkj-pin-overlay").length,
+          overlayDisplay: overlay ? getComputedStyle(overlay).display : "not-rendered",
+          invoiceActions: Array.from(document.querySelectorAll(".invoice-actions button")).map((item) => ({
+            text: item.innerText,
+            disabled: item.disabled,
+            className: item.className,
+          })),
+          rootText: (root?.innerText || "").slice(-1800),
+        };
+      });
+      throw new Error(
+        "Saved invoice print action did not open the separate PRINT PIN dialog. "
+        + JSON.stringify(diagnostic)
+        + "; PIN verifications: " + JSON.stringify(verifyCalls)
+        + "; consume calls: " + consumeCalls
+        + "; browser errors: " + invoicePageErrors.join(" | ")
+        + "; " + error.message
+      );
+    }
     await page.locator("#nkj-invoice-pin").fill("123456");
     await page.locator(".nkj-pin-dialog button[type='submit']").click();
     await page.waitForFunction(() => window.__nkjPrintDialogOpened === true, { timeout: 10000 });
