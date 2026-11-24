@@ -1,10 +1,11 @@
 name: NKJ Responsive UI Smoke Test
 
 on:
+  # Pull request synchronize events cover feature/fix branches.
+  # Run a separate push check only after changes reach main.
   push:
     branches:
-      - "feature/**"
-      - "fix/**"
+      - main
   pull_request:
     branches:
       - main
