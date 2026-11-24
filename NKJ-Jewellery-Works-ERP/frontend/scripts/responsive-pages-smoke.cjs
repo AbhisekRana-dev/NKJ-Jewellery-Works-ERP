@@ -788,6 +788,7 @@ async function testInvoiceMakingChargeModes(browser) {
 
     await weightInput.fill("5.25");
     await rateInput.fill("6900");
+    await row.locator("td").nth(6).locator("input").fill("150");
     await flatMode.check();
     await row.locator(".making-charge-flat-input").fill("5000");
     let rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
