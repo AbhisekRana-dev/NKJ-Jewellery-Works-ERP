@@ -47,7 +47,12 @@ function RateBoardArtwork({ rates, now }) {
   const silverDisplayRate = Number(useVerifiedRates ? rates.silverRate : DEMO_RATES_PER_GRAM.silverRate) * 10;
 
   return (
-    <svg className="nkj-rate-board-svg" viewBox="0 0 1672 941" role="img" aria-label="Nandikishor Jewellery Works Gold and Silver Rate Board">
+    <svg
+      className="nkj-rate-board-svg"
+      viewBox="0 0 1672 941"
+      role="img"
+      aria-label={`Nandikishor Jewellery Works Gold and Silver Rate Board. Date ${formatKolkataDate(now)}, time ${formatKolkataTime(now)}, Gold 22K ${formatRate(goldDisplayRate)}, Silver ${formatRate(silverDisplayRate)} per 10 grams.`}
+    >
       <defs>
         <linearGradient id="nkj-ivory" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#fff8e9" /><stop offset=".48" stopColor="#fffdf5" /><stop offset="1" stopColor="#f1dfbd" />

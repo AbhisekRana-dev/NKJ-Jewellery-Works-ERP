@@ -1449,8 +1449,7 @@ async function testRateBoardPage(browser) {
     await page.locator(".nkj-rate-board-fullscreen-hotspot").waitFor({ state: "visible", timeout: 5000 });
 
     const board = await page.evaluate(() => {
-      const values = [...document.querySelectorAll(".nkj-rate-board-stage svg[aria-label]")]
-        .find((element) => (element.getAttribute("aria-label") || "").includes("Nandikishor Jewellery Works"));
+      const values = document.querySelector(".nkj-rate-board-stage svg.nkj-rate-board-svg[aria-label]");
       const edit = document.querySelector(".nkj-rate-board-edit-hotspot");
       const fullscreen = document.querySelector(".nkj-rate-board-fullscreen-hotspot");
       const footer = document.querySelector(".jewellery-footer");
