@@ -13,3 +13,31 @@
 @media(max-width:760px){.nkj-digital-rate-content{height:calc(100dvh - 138px);padding:4px}.nkj-rate-board-stage{width:min(calc(100vw - 8px),calc((100dvh - 146px)*1.77683))}}
 @media(max-width:760px) and (orientation:portrait){.nkj-digital-rate-content{height:auto;min-height:calc(100dvh - 120px);overflow:visible}.nkj-rate-board-stage{width:calc(100vw - 10px);height:auto;aspect-ratio:1672/941}}
 @media(max-height:650px) and (min-width:761px){.nkj-digital-rate-content{height:calc(100dvh - 90px)}.nkj-rate-board-stage{width:min(calc(100vw - 12px),calc((100dvh - 96px)*1.77683))}}
+
+
+/* When an owner is signed in, centre the board in the workspace beside the sidebar. */
+body.nkj-owner-layout .nkj-digital-rate-content {
+  width: calc(100vw - var(--nkj-owner-sidebar-width, 258px));
+  height: calc(100dvh - 74px);
+  margin-left: var(--nkj-owner-sidebar-width, 258px);
+}
+body.nkj-owner-layout .nkj-rate-board-stage {
+  width: min(
+    calc(100vw - var(--nkj-owner-sidebar-width, 258px) - 20px),
+    calc((100dvh - 84px) * 1.77683)
+  );
+}
+body.nkj-owner-layout .nkj-owner-sidebar.is-collapsed ~ .nkj-digital-rate-content {
+  width: calc(100vw - var(--nkj-owner-collapsed-width, 82px));
+}
+
+/* Fullscreen must reclaim the entire screen even in the owner workspace. */
+body.nkj-owner-layout .nkj-digital-rate-page:fullscreen .nkj-digital-rate-content {
+  width: 100vw;
+  height: 100vh;
+  margin-left: 0;
+}
+body.nkj-owner-layout .nkj-digital-rate-page:fullscreen .nkj-rate-board-stage {
+  width: 100vw;
+  height: 100vh;
+}
