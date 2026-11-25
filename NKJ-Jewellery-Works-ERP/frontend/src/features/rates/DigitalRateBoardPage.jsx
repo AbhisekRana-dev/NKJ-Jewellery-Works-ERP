@@ -182,86 +182,25 @@ function LotusFlower({ side }) {
 
 function NecklaceArtwork() {
   return (
-    <svg className="nkj-rate-jewel-svg" viewBox="0 0 330 190" role="img" aria-label="Gold necklace illustration">
-      <defs>
-        <linearGradient id="nkj-necklace-gold" x1="0" y1="0" x2="0.85" y2="1">
-          <stop offset="0" stopColor="#fff5af" />
-          <stop offset=".22" stopColor="#ffda42" />
-          <stop offset=".5" stopColor="#b76b05" />
-          <stop offset=".72" stopColor="#fff1a0" />
-          <stop offset="1" stopColor="#8d3d00" />
-        </linearGradient>
-        <radialGradient id="nkj-necklace-ruby">
-          <stop offset="0" stopColor="#ffb9c7" />
-          <stop offset=".45" stopColor="#ed1e4c" />
-          <stop offset="1" stopColor="#710018" />
-        </radialGradient>
-      </defs>
-      <path d="M29 20 C43 105 100 134 165 140 C230 134 287 105 301 20" fill="none" stroke="#6f3905" strokeWidth="12" strokeLinecap="round" />
-      <path d="M29 18 C43 103 100 132 165 138 C230 132 287 103 301 18" fill="none" stroke="url(#nkj-necklace-gold)" strokeWidth="8" strokeLinecap="round" />
-      <path d="M43 34 C65 102 110 119 165 123 C220 119 265 102 287 34" fill="none" stroke="#ffed9a" strokeWidth="5" />
-      <path d="M55 51 C79 105 119 111 165 114 C211 111 251 105 275 51" fill="none" stroke="url(#nkj-necklace-gold)" strokeWidth="5" />
-      {Array.from({ length: 23 }, (_, i) => {
-        const t = i / 22;
-        const x = 42 + t * 246;
-        const y = 52 + Math.sin(t * Math.PI) * 55;
-        return <g key={i}><circle cx={x} cy={y} r="6.2" fill="url(#nkj-necklace-gold)" stroke="#fff1a1" strokeWidth="1.6" /><circle cx={x-1.5} cy={y-2} r="1.7" fill="#fff" /></g>;
-      })}
-      <g fill="url(#nkj-necklace-gold)" stroke="#7f4200" strokeWidth="2.3">
-        <path d="M123 96 L137 77 L165 69 L193 77 L207 96 L194 119 L165 138 L136 119 Z" />
-        <path d="M144 119 L165 138 L186 119 L178 148 L165 165 L152 148 Z" />
-        <path d="M151 93 L165 80 L179 93 L165 112 Z" />
-      </g>
-      <path d="M165 84 L177 95 L165 109 L153 95 Z" fill="url(#nkj-necklace-ruby)" stroke="#fff0a1" strokeWidth="2.8" />
-      <path d="M165 140 L152 156 L165 184 L178 156 Z" fill="url(#nkj-necklace-ruby)" stroke="#ffe7a0" strokeWidth="3" />
-      <g fill="#fff1b2" stroke="#9e5a08" strokeWidth="1">
-        {Array.from({ length: 7 }, (_, i) => <circle key={i} cx={135 + i * 10} cy={142 + (i===3?9:Math.abs(3-i)*3)} r="4.4" />)}
-      </g>
-      <g fill="#fff6c7" opacity=".9">
-        <path d="M77 64 l4-12 4 12 12 4-12 4-4 12-4-12-12-4 Z" />
-        <path d="M250 70 l3-9 3 9 9 3-9 3-3 9-3-9-9-3 Z" />
-      </g>
-    </svg>
+    <img
+      className="nkj-rate-jewel-photo"
+      src="/nkj-design-samples/gold-temple-necklace.jpg"
+      alt="Traditional gold temple necklace"
+      loading="eager"
+      decoding="async"
+    />
   );
 }
 
 function SilverBanglesArtwork() {
   return (
-    <svg className="nkj-rate-jewel-svg" viewBox="0 0 330 190" role="img" aria-label="Silver bangles illustration">
-      <defs>
-        <linearGradient id="nkj-silver-bangle" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff" />
-          <stop offset=".16" stopColor="#b9c0ca" />
-          <stop offset=".34" stopColor="#f7fbff" />
-          <stop offset=".57" stopColor="#737d8c" />
-          <stop offset=".78" stopColor="#eef4fa" />
-          <stop offset="1" stopColor="#7c8490" />
-        </linearGradient>
-      </defs>
-      <g fill="none" stroke="#515866" strokeWidth="18">
-        <ellipse cx="133" cy="106" rx="105" ry="44" transform="rotate(-7 133 106)" />
-        <ellipse cx="201" cy="91" rx="101" ry="42" transform="rotate(8 201 91)" />
-        <ellipse cx="164" cy="76" rx="103" ry="42" transform="rotate(-2 164 76)" />
-      </g>
-      <g fill="none" stroke="url(#nkj-silver-bangle)" strokeWidth="14">
-        <ellipse cx="133" cy="106" rx="105" ry="44" transform="rotate(-7 133 106)" />
-        <ellipse cx="201" cy="91" rx="101" ry="42" transform="rotate(8 201 91)" />
-        <ellipse cx="164" cy="76" rx="103" ry="42" transform="rotate(-2 164 76)" />
-      </g>
-      <g fill="none" stroke="#fff" strokeWidth="3" opacity=".9">
-        <ellipse cx="133" cy="99" rx="99" ry="39" transform="rotate(-7 133 99)" />
-        <ellipse cx="201" cy="84" rx="95" ry="37" transform="rotate(8 201 84)" />
-        <ellipse cx="164" cy="69" rx="98" ry="37" transform="rotate(-2 164 69)" />
-      </g>
-      <g fill="#dfe5ee" stroke="#687181" strokeWidth="1.5">
-        {Array.from({ length: 21 }, (_, i) => {
-          const x = 42 + i * 11.8;
-          const y = 75 - Math.sin((i / 20) * Math.PI) * 29;
-          return <path key={i} d={"M" + x + " " + y + " l5 -7 5 7 -5 7 Z"} />;
-        })}
-      </g>
-      <g fill="#fff" opacity=".8"><circle cx="72" cy="42" r="4" /><circle cx="260" cy="48" r="3" /><circle cx="278" cy="116" r="3" /></g>
-    </svg>
+    <img
+      className="nkj-rate-jewel-photo is-silver"
+      src="/collection-bangles.png"
+      alt="Detailed jewellery bangles"
+      loading="eager"
+      decoding="async"
+    />
   );
 }
 
@@ -275,6 +214,40 @@ function DecorativeScroll({ side }) {
     </svg>
   );
 }
+
+function BISFloralSpray({ side }) {
+  return (
+    <svg className={"nkj-rate-bis-spray " + side} viewBox="0 0 180 92" aria-hidden="true">
+      <defs>
+        <linearGradient id={"nkj-bis-leaf-" + side} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff2a2" />
+          <stop offset=".34" stopColor="#d99a22" />
+          <stop offset=".7" stopColor="#a45b08" />
+          <stop offset="1" stopColor="#ffe58b" />
+        </linearGradient>
+      </defs>
+      <g fill="none" stroke={"url(#nkj-bis-leaf-" + side + ")"} strokeWidth="4" strokeLinecap="round">
+        <path d="M8 78 C48 70 65 45 82 15 C91 1 105 8 100 23" />
+        <path d="M34 72 C22 52 25 37 43 30 C55 25 67 32 65 43" />
+        <path d="M53 60 C54 39 71 28 89 30 C102 31 107 43 99 51" />
+        <path d="M76 39 C70 18 84 4 100 6" />
+      </g>
+      <g fill={"url(#nkj-bis-leaf-" + side + ")"} stroke="#9c580c" strokeWidth="1.5">
+        <path d="M41 35 C24 18 14 21 12 35 C24 47 34 47 41 35 Z" />
+        <path d="M52 51 C31 45 21 53 27 68 C41 69 50 62 52 51 Z" />
+        <path d="M70 43 C61 23 68 14 84 17 C88 30 82 40 70 43 Z" />
+        <path d="M91 22 C83 6 91 -1 105 4 C108 15 102 22 91 22 Z" />
+        <path d="M80 66 C80 47 94 40 107 49 C103 63 94 68 80 66 Z" />
+      </g>
+      <g fill="#fff4b0" opacity=".95">
+        <circle cx="40" cy="34" r="2.2" />
+        <circle cx="70" cy="43" r="2.2" />
+        <circle cx="93" cy="22" r="2.2" />
+      </g>
+    </svg>
+  );
+}
+
 
 function BisMark() {
   return (
@@ -492,8 +465,10 @@ export default function DigitalRateBoardPage() {
         <CornerFiligree className="top-right" />
         <CornerFiligree className="bottom-left" />
         <CornerFiligree className="bottom-right" />
-        <HangingDiya side="left" />
-        <HangingDiya side="right" />
+        <HangingDiya side="left-outer" />
+        <HangingDiya side="left-inner" />
+        <HangingDiya side="right-inner" />
+        <HangingDiya side="right-outer" />
         <LotusFlower side="left" />
         <LotusFlower side="right" />
 
@@ -540,11 +515,11 @@ export default function DigitalRateBoardPage() {
         </div>
 
         <div className="nkj-rate-hallmark">
-          <span className="nkj-rate-hallmark-leaves" aria-hidden="true">❧</span>
+          <BISFloralSpray side="left" />
           <BisMark />
           <strong>916 HALLMARK CERTIFIED JEWELLERY</strong>
           <BisMark />
-          <span className="nkj-rate-hallmark-leaves" aria-hidden="true">❧</span>
+          <BISFloralSpray side="right" />
         </div>
 
         <div className="nkj-rate-per-gram">
