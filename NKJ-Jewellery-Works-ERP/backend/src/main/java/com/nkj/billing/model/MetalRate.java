@@ -24,7 +24,7 @@ public class MetalRate {
     private BigDecimal gold22kRate = new BigDecimal("11045.00");
     @Column(name = "silver_rate", nullable = false, precision = 14, scale = 2)
     private BigDecimal silverRate = new BigDecimal("134.00");
-    @Column(name = "diamond_rate", nullable = false, precision = 14, scale = 2)
+    @Column(name = "diamond_rate", precision = 14, scale = 2)
     private BigDecimal diamondRate = BigDecimal.ZERO;
     @Column(name = "rate_mode", nullable = false, length = 20)
     private String rateMode = "MANUAL";
