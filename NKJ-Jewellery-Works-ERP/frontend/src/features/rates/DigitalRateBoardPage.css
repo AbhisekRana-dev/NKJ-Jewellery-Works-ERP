@@ -1644,3 +1644,11 @@
     filter:drop-shadow(0 2px 3px rgba(0,0,0,.32));
   }
 }
+
+/* Prevent the complete Gold 22K (916) label from colliding with the price plaque. */
+@media (min-width:901px) {
+  .nkj-rate-metal-row:first-child .nkj-rate-metal-name h2 {
+    font-size:3.22cqw;
+    letter-spacing:-.025em;
+  }
+}
