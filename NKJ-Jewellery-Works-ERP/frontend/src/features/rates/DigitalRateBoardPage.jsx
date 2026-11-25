@@ -448,18 +448,14 @@ export default function DigitalRateBoardPage() {
     setSaving(true);
     setEditError("");
     try {
-      // The existing ERP rate endpoint stores values per gram.
-      // Preserve the saved 24K/diamond values while changing only the two
-      // values exposed on this public rate board.
-      const gold24PerGram = Number(rates.gold24kRate) > 0
-        ? Number(rates.gold24kRate)
-        : (gold22 / 10) / 0.916;
+      // The board endpoint accepts only 22K and silver, so the stored 24K
+      // and diamond rates remain unchanged even if this short-lived capability
+      // is used outside the expected browser UI.
       const payload = {
-        gold24kRate: gold24PerGram,
         gold22kRate: gold22 / 10,
         silverRate: silver / 10,
       };
-      const saved = await request("/admin/rates", {
+      const saved = await request("/admin/rates/board", {
         method: "PUT",
         body: JSON.stringify(payload),
         headers: { "X-NKJ-Rate-Edit-Token": rateEditToken },

@@ -97,7 +97,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         // A password-verified, short-lived capability is allowed only for the
         // exact manual-rate update endpoint. It cannot access other /api/admin routes.
-        if ("PUT".equalsIgnoreCase(req.getMethod()) && "/api/admin/rates".equals(requestPath)) {
+        if ("PUT".equalsIgnoreCase(req.getMethod()) && "/api/admin/rates/board".equals(requestPath)) {
             String editToken = req.getHeader("X-NKJ-Rate-Edit-Token");
             if (editToken != null && !editToken.isBlank()) {
                 if (auth.validRateBoardEditGrant(editToken, req.getRemoteAddr())) {
