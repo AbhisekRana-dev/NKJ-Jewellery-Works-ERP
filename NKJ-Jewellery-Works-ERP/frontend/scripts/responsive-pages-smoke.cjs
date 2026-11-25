@@ -985,6 +985,31 @@ async function testInvoiceSavePinGate(browser) {
     assert(!(await page.evaluate((key) => localStorage.getItem(key), invoiceDraftKey)),
       "A successfully saved invoice left its local draft behind.");
 
+    const lockedInvoiceFields = await page.evaluate(() => {
+      const root = document.querySelector("#invoice-print");
+      const customerInputs = root.querySelectorAll(".inv-two .inv-panel:first-child .form-grid input");
+      const newRow = root.querySelector(".new-items-table tbody tr");
+      return {
+        customerNameReadOnly: customerInputs[0]?.readOnly === true,
+        customerMobileReadOnly: customerInputs[1]?.readOnly === true,
+        customerAddressReadOnly: customerInputs[2]?.readOnly === true,
+        paymentModeDisabled: root.querySelector(".inv-two select")?.disabled === true,
+        ornamentDescriptionReadOnly: newRow?.querySelector("td:nth-child(2) input")?.readOnly === true,
+        ornamentWeightDisabled: newRow?.querySelector("td:nth-child(4) input")?.disabled === true,
+        makingChargeModesDisabled: Array.from(newRow?.querySelectorAll(".making-charge-mode-picker input") || [])
+          .every((input) => input.disabled),
+        removeOrnamentDisabled: newRow?.querySelector(".icon-btn")?.disabled === true,
+        addOrnamentDisabled: root.querySelector(".new-items-table")?.closest(".ornament-panel")
+          ?.querySelector(".row-end button")?.disabled === true,
+        gstDisabled: root.querySelector(".gst-percent-input")?.disabled === true,
+        discountDisabled: root.querySelector('input[aria-label="Discount"]')?.disabled === true,
+        totalPaidReadOnly: root.querySelector('input[aria-label="Total Paid"]')?.readOnly === true,
+        descriptionReadOnly: root.querySelector(".description-panel textarea")?.readOnly === true,
+      };
+    });
+    assert(Object.values(lockedInvoiceFields).every(Boolean),
+      "A saved invoice still has editable fields or row actions: " + JSON.stringify(lockedInvoiceFields));
+
     await page.locator(".invoice-actions button:not(.nkj-invoice-reset-button).secondary").click();
     await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
     await page.locator("#nkj-invoice-pin").fill("123456");
@@ -1005,7 +1030,7 @@ async function testInvoiceSavePinGate(browser) {
   }
 }
 
-async function testInvoiceDraftRecoveryAndReset(browser) {
+async function testInvoiceDraftRecoveryAndIsolation(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await installApiMocks(page);
@@ -1063,44 +1088,14 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     assert(afterReload?.idempotencyKey === storedDraft.idempotencyKey,
       "Refreshing /invoice replaced the draft idempotency key.");
 
-    let escapeCancelMessage = "";
-    page.once("dialog", async (dialog) => {
-      escapeCancelMessage = dialog.message();
-      await dialog.dismiss();
-    });
-    await page.keyboard.press("Escape");
-    assert(escapeCancelMessage === "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
-      "Escape did not show the required reset confirmation.");
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Canceling the Escape confirmation changed invoice fields.");
-
-    page.once("dialog", async (dialog) => { await dialog.dismiss(); });
-    await page.locator(".nkj-invoice-reset-button").click();
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Canceling the Reset button changed invoice fields.");
+    // The application intentionally has no Reset/Escape shortcut. A reload
+    // must preserve the account draft and its idempotency key instead.
     assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Canceling Reset deleted the local draft.");
-
-    page.once("dialog", async (dialog) => { await dialog.accept(); });
-    await page.locator(".nkj-invoice-reset-button").click();
-    assert((await customerInputs.nth(0).inputValue()) === "",
-      "Confirming Reset did not clear customer fields.");
-    assert(!(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Confirming Reset did not delete the account's draft.");
+      "Reload recovery removed the active account draft.");
     assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), otherUserDraftKey)),
-      "Reset incorrectly removed another user's draft.");
+      "Reload recovery changed another user's draft.");
 
-    // Independently exercise Escape-confirm as well as Escape-cancel.
-    await customerInputs.nth(0).fill("Escape Confirm Customer");
-    await page.waitForFunction((key) => Boolean(localStorage.getItem(key)), draftKey);
-    page.once("dialog", async (dialog) => { await dialog.accept(); });
-    await page.keyboard.press("Escape");
-    assert((await customerInputs.nth(0).inputValue()) === "",
-      "Confirming the Escape reset did not clear the current invoice.");
-    assert(!(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Confirming the Escape reset did not delete the draft.");
-
-    process.stdout.write("PASS per-user draft autosave, Home/return, reload recovery, Esc cancel/confirm and Reset cancel/confirm\n");
+    process.stdout.write("PASS per-user draft autosave, Home/return, reload recovery and account isolation\n");
   } finally {
     await context.close();
   }
@@ -1213,6 +1208,12 @@ async function testSavedInvoiceMobile(browser) {
       .waitFor({ state: "visible", timeout: 12000 });
     await inspectInvoiceMobileLayout(page, viewport, "Old/Saved Invoice");
     await assertInvoiceTablesUseMobileCards(page, "Old/Saved Invoice");
+    const displayedInvoiceDate = await page.locator(".nkj-saved-invoice-sheet .inv-meta span").nth(1).locator("strong").textContent();
+    const displayedInvoiceTime = await page.locator(".nkj-saved-invoice-sheet .inv-meta span").nth(2).locator("strong").textContent();
+    assert(displayedInvoiceDate.trim() === "17-11-2026",
+      "Saved invoice date should be displayed as DD-MM-YYYY: " + displayedInvoiceDate);
+    assert(displayedInvoiceTime.trim() === "10:15 AM",
+      "Saved invoice time should be displayed in 12-hour format: " + displayedInvoiceTime);
     await verifyInvoicePrintPdf(page, "Old/Saved Invoice");
     await verifyRealSharedPdf(page);
     process.stdout.write("PASS populated Old Invoice modal, browser print and actual PDF share file\n");
@@ -1641,7 +1642,7 @@ async function testPublicNavigation(browser) {
     await testInvoiceMakingChargeModes(browser);
     await testInvoiceToolbarAndDeleteControls(browser);
     await testInvoiceSavePinGate(browser);
-    await testInvoiceDraftRecoveryAndReset(browser);
+    await testInvoiceDraftRecoveryAndIsolation(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
     // Verify public navbar placement before the independent saved-invoice print fixture.
     await testPublicNavigation(browser);
