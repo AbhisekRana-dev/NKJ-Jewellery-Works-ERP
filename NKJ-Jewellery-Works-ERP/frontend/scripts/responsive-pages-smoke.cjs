@@ -957,6 +957,14 @@ async function testInvoiceSavePinGate(browser) {
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
 
+    // Invalid forms should show validation feedback before asking for the
+    // owner's security PIN; the modal must not block the user from correcting fields.
+    await page.locator(".invoice-actions button.primary").click();
+    assert(await page.locator(".nkj-pin-overlay").count() === 0,
+      "An invalid invoice opened the SAVE PIN dialog before validation.");
+    assert((await page.locator(".error.no-print").first().innerText()).includes("Please enter customer name"),
+      "An invalid invoice did not show the customer-name validation message.");
+
     await page.locator("#invoice-print .inv-two .inv-panel").first()
       .locator(".form-grid label input").first().fill("PIN Gate QA Customer");
     await page.locator("#invoice-print .new-items-table tbody tr:first-child td input")
