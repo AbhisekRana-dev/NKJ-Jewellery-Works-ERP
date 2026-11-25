@@ -862,7 +862,17 @@ export function InvoicePage() {
   }
 
   async function save() {
-    if (saved && invoiceId) return;
+    if (saving || (saved && invoiceId)) return;
+
+    const validationError = validateInvoiceForm();
+    if (validationError) {
+      setError(validationError);
+      setSuccessMessage("");
+      return;
+    }
+
+    setError("");
+    setSuccessMessage("");
     setPendingPrintAfterSave(false);
     setShowSavePin(true);
   }
