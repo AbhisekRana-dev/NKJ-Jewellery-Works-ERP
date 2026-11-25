@@ -708,6 +708,7 @@ export function InvoicePage() {
     setInvoiceNo("");
     setInvoiceId(null);
     setError("");
+    setSuccessMessage("");
     setShowInvoicePin(false);
     setShowSavePin(false);
     setPendingPrintAfterSave(false);
@@ -931,9 +932,8 @@ export function InvoicePage() {
       // (whether printed or cancelled), start a clean invoice on this page.
       window.print();
 
-      // Most desktop browsers fire afterprint before window.print() returns.
-      // This idempotent fallback also handles browsers that omit afterprint.
-      finishAfterPrint();
+      // Keep the form intact while the browser print dialog is open. The
+      // afterprint event resets it only after that dialog has been closed.
     } catch (error) {
       if (printDialogStarted && !printFinished) {
         window.removeEventListener("afterprint", finishAfterPrint);
