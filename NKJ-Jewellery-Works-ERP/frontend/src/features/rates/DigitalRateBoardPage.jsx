@@ -145,14 +145,14 @@ function HangingDiya({ side }) {
           <stop offset="1" stopColor="#f45a00" stopOpacity="0" />
         </radialGradient>
       </defs>
-      <path d="M60 0 V116" stroke="url(#nkj-diya-metal-left)" strokeWidth="3" />
-      <path d="M60 15 l-8 7 8 7 8-7 Z M60 39 l-8 7 8 7 8-7 Z" fill="url(#nkj-diya-metal-left)" />
-      <path d="M43 117 Q60 101 77 117" fill="none" stroke="url(#nkj-diya-metal-left)" strokeWidth="7" />
-      <path d="M24 136 Q60 167 96 136 Q88 183 60 187 Q32 183 24 136 Z" fill="url(#nkj-diya-metal-left)" stroke="#8f4a06" strokeWidth="3" />
+      <path d="M60 0 V116" stroke={"url(#nkj-diya-metal-" + side + ")"} strokeWidth="3" />
+      <path d="M60 15 l-8 7 8 7 8-7 Z M60 39 l-8 7 8 7 8-7 Z" fill={"url(#nkj-diya-metal-" + side + ")"} />
+      <path d="M43 117 Q60 101 77 117" fill="none" stroke={"url(#nkj-diya-metal-" + side + ")"} strokeWidth="7" />
+      <path d="M24 136 Q60 167 96 136 Q88 183 60 187 Q32 183 24 136 Z" fill={"url(#nkj-diya-metal-" + side + ")"} stroke="#8f4a06" strokeWidth="3" />
       <ellipse cx="60" cy="138" rx="37" ry="8" fill="#fff0a1" stroke="#b66b08" strokeWidth="3" />
       <path d="M60 133 C39 113 50 91 60 78 C70 95 81 115 60 133 Z" fill={"url(#nkj-diya-flame-" + side + ")"} />
       <path d="M60 133 C52 116 58 103 60 98 C66 114 67 124 60 133 Z" fill="#fff" opacity=".85" />
-      <path d="M54 187 Q60 203 66 187" fill="none" stroke="url(#nkj-diya-metal-left)" strokeWidth="5" />
+      <path d="M54 187 Q60 203 66 187" fill="none" stroke={"url(#nkj-diya-metal-" + side + ")"} strokeWidth="5" />
       <circle cx="60" cy="214" r="5" fill="#f0bd38" stroke="#8d4a05" strokeWidth="2" />
     </svg>
   );
@@ -407,7 +407,6 @@ export default function DigitalRateBoardPage() {
         gold24kRate: gold24PerGram,
         gold22kRate: gold22 / 10,
         silverRate: silver / 10,
-        diamondRate: Number(rates.diamondRate || 0),
       };
       const saved = await request("/admin/rates", {
         method: "PUT",
