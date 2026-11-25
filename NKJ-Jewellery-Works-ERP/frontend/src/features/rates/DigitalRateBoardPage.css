@@ -1198,3 +1198,20 @@
   .nkj-rate-hallmark {width:97%;}
   .nkj-rate-metal-panel {width:98%;}
 }
+
+
+/* Desktop micro-alignment: match the master image's outer extents and centerlines. */
+@media (min-width:901px) {
+  .nkj-rate-board-logo {transform:translateX(-8%);}
+  .nkj-rate-board-brand {transform:translateX(1.6%) scaleX(1.085);transform-origin:center;}
+  .nkj-rate-board-actions {transform:translateX(27%) scaleX(1.12);transform-origin:center;}
+  .nkj-rate-title-banner {transform:scaleX(1.09);transform-origin:center;}
+  .nkj-rate-date-time {width:91%;}
+  .nkj-rate-per-gram strong {transform:scaleX(1.045);transform-origin:center;}
+  .nkj-rate-metal-panel {transform:scaleX(1.013);transform-origin:center;}
+  .nkj-rate-gst-banner {transform:scaleX(1.015);transform-origin:center;}
+}
+@media (max-width:900px) {
+  .nkj-rate-board-logo,.nkj-rate-board-brand,.nkj-rate-board-actions,
+  .nkj-rate-title-banner,.nkj-rate-per-gram strong,.nkj-rate-metal-panel,.nkj-rate-gst-banner {transform:none;}
+}
