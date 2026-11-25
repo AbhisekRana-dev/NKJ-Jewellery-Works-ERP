@@ -2128,3 +2128,19 @@
     stroke-width: 2.2 !important;
   }
 }
+
+
+/* Final invoice Making Charge touch-target override.
+   This file loads after InvoicePages.css, so the high-specificity rule must live here. */
+@media screen and (max-width: 760px) {
+  #invoice-print .items-table td.making-charge-cell .making-charge-entry input {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+  }
+
+  #invoice-print .items-table td.making-charge-cell .making-charge-entry {
+    min-height: 44px !important;
+  }
+}
