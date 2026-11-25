@@ -555,7 +555,7 @@ export default function DigitalRateBoardPage() {
         <div className="nkj-rate-hallmark">
           <BISFloralSpray side="left" />
           <BisMark />
-          <strong>916 HALLMARK CERTIFIED JEWELLERY</strong>
+          <strong aria-label="22 karat hallmark 916 certified jewellery">22K HALLMARK (916) CERTIFIED JEWELLERY</strong>
           <BisMark />
           <BISFloralSpray side="right" />
         </div>
