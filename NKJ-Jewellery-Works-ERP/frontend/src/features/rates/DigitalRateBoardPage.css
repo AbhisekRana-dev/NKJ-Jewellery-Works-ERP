@@ -1587,3 +1587,22 @@
   .nkj-rate-bis-spray {display:none;}
   .nkj-rate-hallmark {overflow:hidden;gap:.5%;padding:0 1%;}
 }
+
+/* Legibility finishing pass: keep the BIS emblem clear and lift silver detail on maroon. */
+@media (min-width:901px) {
+  .nkj-rate-hallmark strong {font-size:2.48cqw;letter-spacing:.008em;}
+  .nkj-rate-hallmark {gap:.55%;}
+}
+.nkj-rate-jewel-photo.is-silver {
+  filter:brightness(1.82) contrast(1.08) saturate(.58)
+    drop-shadow(0 2px 3px rgba(255,255,255,.16))
+    drop-shadow(0 3px 4px rgba(0,0,0,.36));
+}
+@media (max-width:620px) {
+  .nkj-rate-hallmark strong {font-size:2.55cqw;}
+  .nkj-rate-jewel-photo.is-silver {
+    filter:brightness(1.7) contrast(1.08) saturate(.58)
+      drop-shadow(0 2px 3px rgba(255,255,255,.12))
+      drop-shadow(0 2px 3px rgba(0,0,0,.34));
+  }
+}
