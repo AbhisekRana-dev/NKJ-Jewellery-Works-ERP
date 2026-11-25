@@ -1356,3 +1356,30 @@
   .nkj-rate-jewel-photo {width:100%;height:90%;max-height:90%;}
   .nkj-rate-jewel-photo.is-silver {width:100%;height:85%;max-height:85%;}
 }
+
+
+/* Match the reference's jewellery scale while keeping each image inside its own row. */
+.nkj-rate-jewel-cell {overflow:visible;}
+.nkj-rate-jewel-photo {
+  width:96%;
+  height:88%;
+  max-width:100%;
+  max-height:88%;
+  transform:scale(1.48,1.12);
+  transform-origin:center;
+}
+.nkj-rate-jewel-photo.is-silver {
+  width:98%;
+  height:84%;
+  max-height:84%;
+  transform:scale(1.34,1.22);
+  filter:brightness(1.28) contrast(1.12) drop-shadow(0 3px 4px rgba(0,0,0,.42));
+}
+@media (max-width:620px) {
+  .nkj-rate-jewel-cell {overflow:visible;}
+  .nkj-rate-jewel-photo {transform:scale(1.2,1.08);}
+  .nkj-rate-jewel-photo.is-silver {
+    transform:scale(1.15,1.12);
+    filter:brightness(1.22) contrast(1.1) drop-shadow(0 2px 3px rgba(0,0,0,.38));
+  }
+}
