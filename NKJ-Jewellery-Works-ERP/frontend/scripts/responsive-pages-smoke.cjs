@@ -982,6 +982,7 @@ async function testInvoiceSavePinGate(browser) {
           showGstin: body.showGstin !== false,
           customerName: body.customerName,
           grandTotal: body.grandTotal || 0,
+          invoiceTime: "16:32:00",
         }),
       });
       return;
@@ -1044,6 +1045,9 @@ async function testInvoiceSavePinGate(browser) {
       "The invoice POST did not include its idempotency key.");
     assert(!(await page.evaluate((key) => localStorage.getItem(key), invoiceDraftKey)),
       "A successfully saved invoice left its local draft behind.");
+    const savedTime = await page.locator("#invoice-print .inv-meta span").nth(2).locator("strong").innerText();
+    assert(savedTime.trim() === "04:32 PM",
+      "The invoice header did not switch to the backend-confirmed save time: " + savedTime);
 
     const lockedInvoiceFields = await page.evaluate(() => {
       const root = document.querySelector("#invoice-print");
