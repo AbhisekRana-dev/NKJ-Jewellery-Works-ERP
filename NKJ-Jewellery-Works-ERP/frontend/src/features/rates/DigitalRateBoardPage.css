@@ -1539,3 +1539,51 @@
   .nkj-rate-diamond {width:4.6cqw;height:4.1cqw;}
   .nkj-rate-jewel-photo.is-silver {transform:scale(1.1,1.08);}
 }
+
+/* Full-height gold side pillars echo the reference's vertical ornamental frame. */
+.nkj-rate-board-rail {
+  position:absolute;
+  z-index:2;
+  top:1.35%;
+  bottom:1.35%;
+  width:2.55%;
+  pointer-events:none;
+  border:1px solid #9b5a08;
+  background:
+    repeating-linear-gradient(0deg,transparent 0 17px,rgba(255,243,177,.62) 17px 19px,transparent 20px 34px),
+    linear-gradient(90deg,#6f3305 0%,#c88417 15%,#fff0a0 34%,#e7ac31 52%,#a85f0a 77%,#613006 100%);
+  box-shadow:0 0 0 2px rgba(255,233,144,.75),inset 0 0 0 2px rgba(255,249,204,.62),0 0 7px rgba(87,42,0,.32);
+}
+.nkj-rate-board-rail:after {
+  content:"";
+  position:absolute;
+  inset:2.2% 19%;
+  border:1px solid rgba(255,238,165,.78);
+  background:
+    repeating-linear-gradient(0deg,transparent 0 14px,rgba(119,57,0,.28) 14px 16px,transparent 16px 28px);
+  box-shadow:inset 0 0 0 1px rgba(103,47,0,.25);
+}
+.nkj-rate-board-rail.is-left {left:1.1%;}
+.nkj-rate-board-rail.is-right {right:1.1%;transform:scaleX(-1);}
+.nkj-rate-board-curtain {width:8.7%;}
+.nkj-rate-hallmark {
+  overflow:hidden;
+  gap:.35%;
+  padding:0 .8%;
+}
+.nkj-rate-bis-spray {flex:0 0 8.5%;width:8.5%;height:88%;overflow:hidden;}
+.nkj-rate-bis-logo {width:6.4%;}
+.nkj-rate-hallmark strong {min-width:0;}
+.nkj-rate-jewel-photo.is-silver {
+  filter:brightness(1.5) contrast(1.12) saturate(.65)
+    drop-shadow(0 2px 3px rgba(255,255,255,.1))
+    drop-shadow(0 3px 4px rgba(0,0,0,.42));
+}
+@media (max-width:900px) {
+  .nkj-rate-board-rail {width:2.1%;top:1.2%;bottom:1.2%;}
+}
+@media (max-width:620px) {
+  .nkj-rate-board-rail {width:2%;top:5px;bottom:5px;}
+  .nkj-rate-bis-spray {display:none;}
+  .nkj-rate-hallmark {overflow:hidden;gap:.5%;padding:0 1%;}
+}

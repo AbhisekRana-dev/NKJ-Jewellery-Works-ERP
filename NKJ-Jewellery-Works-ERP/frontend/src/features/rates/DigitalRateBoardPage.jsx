@@ -479,6 +479,8 @@ export default function DigitalRateBoardPage() {
     <div className="nkj-rate-board-page" ref={pageRef}>
       <div className="nkj-rate-board-canvas" aria-label="Nandikishor Jewellery Works Gold and Silver Rate Board">
         <div className="nkj-rate-board-marble" aria-hidden="true" />
+        <div className="nkj-rate-board-rail is-left" aria-hidden="true" />
+        <div className="nkj-rate-board-rail is-right" aria-hidden="true" />
         <div className="nkj-rate-board-curtain is-left" aria-hidden="true" />
         <div className="nkj-rate-board-curtain is-right" aria-hidden="true" />
         <CornerFiligree className="top-left" />
