@@ -1383,3 +1383,23 @@
     filter:brightness(1.22) contrast(1.1) drop-shadow(0 2px 3px rgba(0,0,0,.38));
   }
 }
+
+
+/* Last jewellery scale correction from the live preview at 16:9 desktop size. */
+.nkj-rate-jewel-cell {overflow:hidden;}
+.nkj-rate-jewel-photo {
+  transform:scale(1.82,1.24);
+  transform-origin:center;
+}
+.nkj-rate-jewel-photo.is-silver {
+  transform:scale(1.55,1.26);
+  filter:brightness(1.58) contrast(1.24) drop-shadow(0 3px 4px rgba(0,0,0,.42));
+}
+@media (max-width:620px) {
+  .nkj-rate-jewel-cell {overflow:hidden;}
+  .nkj-rate-jewel-photo {transform:scale(1.28,1.1);}
+  .nkj-rate-jewel-photo.is-silver {
+    transform:scale(1.23,1.12);
+    filter:brightness(1.45) contrast(1.18) drop-shadow(0 2px 3px rgba(0,0,0,.38));
+  }
+}
