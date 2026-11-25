@@ -95,6 +95,21 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // A password-verified, short-lived capability is allowed only for the
+        // exact manual-rate update endpoint. It cannot access other /api/admin routes.
+        if ("PUT".equalsIgnoreCase(req.getMethod()) && "/api/admin/rates".equals(requestPath)) {
+            String editToken = req.getHeader("X-NKJ-Rate-Edit-Token");
+            if (editToken != null && !editToken.isBlank()) {
+                if (auth.validRateBoardEditGrant(editToken, req.getRemoteAddr())) {
+                    return true;
+                }
+                res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                res.setContentType("application/json");
+                res.getWriter().write("{\"message\":\"Rate edit authorization expired. Verify the administrator password again.\"}");
+                return false;
+            }
+        }
+
         boolean idleExpired = auth.wasIdleExpired(token);
         res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         res.setContentType("application/json");

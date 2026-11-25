@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   Clock3,
@@ -291,20 +290,29 @@ function BisMark() {
 
 export default function DigitalRateBoardPage() {
   const pageRef = useRef(null);
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
+  const [unusedAuthContext] = useState(null);
   const [rates, setRates] = useState(initialRates);
   const [now, setNow] = useState(() => new Date());
   const [loading, setLoading] = useState(true);
   const [refreshError, setRefreshError] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [passwordVerified, setPasswordVerified] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [rateEditToken, setRateEditToken] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
   const [toast, setToast] = useState("");
   const [form, setForm] = useState({ gold22: "", silver: "" });
 
   const refreshRates = useCallback(async () => {
+    let timedOut = false;
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      setLoading(false);
+      setRefreshError("Rate service is taking longer than expected. Please check the connection.");
+    }, 8000);
     try {
       const data = await request("/rates", { cache: "no-store", publicRequest: true });
       if (data) setRates({ ...initialRates, ...data });
@@ -312,7 +320,8 @@ export default function DigitalRateBoardPage() {
     } catch (error) {
       setRefreshError(error.message || "Unable to refresh rates.");
     } finally {
-      setLoading(false);
+      window.clearTimeout(timeout);
+      if (!timedOut) setLoading(false);
     }
   }, []);
 
@@ -376,13 +385,54 @@ export default function DigitalRateBoardPage() {
   const dateText = useMemo(() => formatKolkataDate(now), [now]);
   const timeText = useMemo(() => formatKolkataTime(now), [now]);
 
+  const closeEditor = () => {
+    if (unlocking || saving) return;
+    setEditOpen(false);
+    setPasswordVerified(false);
+    setAdminPassword("");
+    setRateEditToken("");
+    setEditError("");
+  };
+
   const openEditor = () => {
     setEditError("");
+    setAdminPassword("");
+    setRateEditToken("");
+    setPasswordVerified(false);
     setForm({
       gold22: rates.gold22kRate ? String(Number(rates.gold22kRate) * 10) : "",
       silver: rates.silverRate ? String(Number(rates.silverRate) * 10) : "",
     });
     setEditOpen(true);
+  };
+
+  const verifyAdminPassword = async (event) => {
+    event.preventDefault();
+    if (!adminPassword.trim()) {
+      setEditError("Enter the administrator password.");
+      return;
+    }
+
+    setUnlocking(true);
+    setEditError("");
+    try {
+      const result = await request("/auth/rate-board/unlock", {
+        method: "POST",
+        body: JSON.stringify({ password: adminPassword }),
+        publicRequest: true,
+        suppressSessionExpiry: true,
+        skipActivityBarrier: true,
+      });
+      if (!result?.editToken) throw new Error("The server did not return a rate-edit authorization. Please try again.");
+      setRateEditToken(result.editToken);
+      setPasswordVerified(true);
+      setAdminPassword("");
+      setEditError("");
+    } catch (error) {
+      setEditError(error.message || "Administrator password verification failed.");
+    } finally {
+      setUnlocking(false);
+    }
   };
 
   const saveRates = async (event) => {
@@ -411,13 +461,19 @@ export default function DigitalRateBoardPage() {
       const saved = await request("/admin/rates", {
         method: "PUT",
         body: JSON.stringify(payload),
+        headers: { "X-NKJ-Rate-Edit-Token": rateEditToken },
+        publicRequest: true,
+        suppressSessionExpiry: true,
+        skipActivityBarrier: true,
       });
       setRates({ ...initialRates, ...saved });
       setEditOpen(false);
+      setPasswordVerified(false);
+      setRateEditToken("");
       setToast("Rates saved successfully. Manual override is now active.");
       window.setTimeout(() => setToast(""), 4500);
     } catch (error) {
-      setEditError(error.message || "Unable to save rates. Please sign in as owner.");
+      setEditError(error.message || "Unable to save rates. Verify the administrator password again.");
     } finally {
       setSaving(false);
     }
@@ -500,7 +556,7 @@ export default function DigitalRateBoardPage() {
             <div className="nkj-rate-metal-name"><h2>GOLD 22K (916)</h2></div>
             <div className="nkj-rate-metal-price">
               <span>₹</span>
-              <strong>{verified ? money(Number(rates.gold22kRate) * 10) : (loading ? "Loading…" : "—")}</strong>
+              <strong>{verified ? money(Number(rates.gold22kRate) * 10) : (loading ? "Checking…" : "VERIFY")}</strong>
             </div>
           </article>
           <article className="nkj-rate-metal-row is-silver">
@@ -508,7 +564,7 @@ export default function DigitalRateBoardPage() {
             <div className="nkj-rate-metal-name"><h2>SILVER</h2></div>
             <div className="nkj-rate-metal-price">
               <span>₹</span>
-              <strong>{verified ? money(Number(rates.silverRate) * 10) : (loading ? "Loading…" : "—")}</strong>
+              <strong>{verified ? money(Number(rates.silverRate) * 10) : (loading ? "Checking…" : "VERIFY")}</strong>
             </div>
           </article>
         </section>
@@ -518,19 +574,47 @@ export default function DigitalRateBoardPage() {
         </div>
 
         <div className="nkj-rate-board-status" role="status" aria-live="polite">
-          {refreshError || (loading ? "Connecting to live ERP rates…" : toast || (rates.rateSource ? "Verified source: " + rates.rateSource : "Rates update automatically from the ERP"))}
+          {refreshError || (loading ? "Connecting to live ERP rates…" : toast || (verified ? (rates.rateSource ? "Verified source: " + rates.rateSource : "Rates update automatically from the ERP") : "Rates are not verified. Confirm rates before using them for billing."))}
         </div>
       </div>
 
       {editOpen && (
-        <div className="nkj-rate-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditOpen(false); }}>
+        <div className="nkj-rate-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>
           <section className="nkj-rate-edit-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-rate-edit-title">
             <header>
               <div className="nkj-rate-modal-icon"><Gem size={24} /></div>
-              <div><span>OWNER RATE CONTROL</span><h2 id="nkj-rate-edit-title">Edit Gold &amp; Silver Rates</h2></div>
-              <button type="button" className="nkj-rate-modal-close" onClick={() => setEditOpen(false)} aria-label="Close edit dialog"><X /></button>
+              <div>
+                <span>{passwordVerified ? "RATE CONTROL UNLOCKED" : "SECURE RATE CONTROL"}</span>
+                <h2 id="nkj-rate-edit-title">{passwordVerified ? "Edit Gold &amp; Silver Rates" : "Verify Administrator"}</h2>
+              </div>
+              <button type="button" className="nkj-rate-modal-close" onClick={closeEditor} aria-label="Close edit dialog" disabled={saving || unlocking}><X /></button>
             </header>
-            {isAdmin ? (
+            {!passwordVerified ? (
+              <form className="nkj-rate-password-step" onSubmit={verifyAdminPassword}>
+                <p>Enter the administrator password to unlock rate editing. You do not need to open the Owner Login page.</p>
+                <label>
+                  <span>Administrator password</span>
+                  <div className="nkj-rate-input-wrap">
+                    <b>•••</b>
+                    <input
+                      type="password"
+                      value={adminPassword}
+                      onChange={(event) => setAdminPassword(event.target.value)}
+                      autoComplete="current-password"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </label>
+                {editError && <p className="nkj-rate-edit-error" role="alert">{editError}</p>}
+                <footer>
+                  <button type="button" className="nkj-rate-cancel" onClick={closeEditor} disabled={unlocking}>Cancel</button>
+                  <button type="submit" className="nkj-rate-save" disabled={unlocking || !adminPassword}>
+                    <ShieldCheck size={17} />{unlocking ? "Verifying…" : "Verify Password"}
+                  </button>
+                </footer>
+              </form>
+            ) : (
               <form onSubmit={saveRates}>
                 <label>
                   <span>Gold 22K (916) · ₹ / 10 grams</span>
@@ -540,19 +624,13 @@ export default function DigitalRateBoardPage() {
                   <span>Silver 999 · ₹ / 10 grams</span>
                   <div className="nkj-rate-input-wrap"><b>₹</b><input type="number" min="0.01" step="0.01" value={form.silver} onChange={(event) => setForm((old) => ({ ...old, silver: event.target.value }))} required /></div>
                 </label>
-                <p className="nkj-rate-modal-note"><ShieldCheck size={16} /> Date and time stay live in Kolkata time. Saving rates uses the existing ERP rate history and switches to Manual Override Mode.</p>
+                <p className="nkj-rate-modal-note"><ShieldCheck size={16} /> Password verified. This one-time edit authorization expires in three minutes. Date and time remain automatic in Kolkata time.</p>
                 {editError && <p className="nkj-rate-edit-error" role="alert">{editError}</p>}
                 <footer>
-                  <button type="button" className="nkj-rate-cancel" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</button>
-                  <button type="submit" className="nkj-rate-save" disabled={saving}><Save size={17} />{saving ? "Saving…" : "Save Rates"}</button>
+                  <button type="button" className="nkj-rate-cancel" onClick={closeEditor} disabled={saving}>Cancel</button>
+                  <button type="submit" className="nkj-rate-save" disabled={saving || !rateEditToken}><Save size={17} />{saving ? "Saving…" : "Save Rates"}</button>
                 </footer>
               </form>
-            ) : (
-              <div className="nkj-rate-login-prompt">
-                <p>Only the signed-in owner can change jewellery rates.</p>
-                <p>Date and time continue to update automatically using Asia/Kolkata.</p>
-                <button type="button" onClick={() => navigate("/login", { state: { from: { pathname: "/rate" } } })}>Owner Login</button>
-              </div>
             )}
           </section>
         </div>
