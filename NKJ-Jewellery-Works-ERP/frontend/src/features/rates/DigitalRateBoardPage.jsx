@@ -184,7 +184,7 @@ function NecklaceArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo"
-      src="/nkj-design-samples/gold-temple-necklace.jpg"
+      src="/collection-necklaces.png"
       alt="Traditional gold temple necklace"
       loading="eager"
       decoding="async"
