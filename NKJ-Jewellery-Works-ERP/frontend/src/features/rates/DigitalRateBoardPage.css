@@ -1300,3 +1300,59 @@
   .nkj-rate-jewel-photo.is-silver {transform:scale(1.03);}
   .nkj-rate-corner {width:21%;height:18%;}
 }
+
+
+/* Clamp each metal row to its own half of the rate panel; images may never set row height. */
+.nkj-rate-metal-panel {
+  display:grid;
+  grid-template-rows:minmax(0,1fr) minmax(0,1fr);
+  min-height:0;
+  overflow:hidden;
+}
+.nkj-rate-metal-row {
+  display:grid;
+  grid-template-columns:22% 35% 43%;
+  min-width:0;
+  min-height:0;
+  height:100%;
+  overflow:hidden;
+  align-items:center;
+}
+.nkj-rate-jewel-cell {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  padding:2% 4%;
+  overflow:hidden;
+}
+.nkj-rate-jewel-photo {
+  display:block;
+  width:96%;
+  height:88%;
+  max-width:100%;
+  max-height:88%;
+  min-width:0;
+  min-height:0;
+  object-fit:contain;
+  object-position:center;
+  transform:none;
+  clip-path:none;
+}
+.nkj-rate-jewel-photo.is-silver {
+  width:98%;
+  height:84%;
+  max-height:84%;
+  transform:none;
+}
+.nkj-rate-metal-name,
+.nkj-rate-metal-price {min-width:0;min-height:0;}
+@media (max-width:620px) {
+  .nkj-rate-metal-row {grid-template-columns:20% 34% 46%;}
+  .nkj-rate-jewel-cell {padding:2% 1%;overflow:hidden;}
+  .nkj-rate-jewel-photo {width:100%;height:90%;max-height:90%;}
+  .nkj-rate-jewel-photo.is-silver {width:100%;height:85%;max-height:85%;}
+}
