@@ -85,12 +85,12 @@ const ownerNavigation = [
   ]},
 ];
 
-export function Nav({ active = "home" }) {
+export function Nav({ active = "home", forcePublic = false }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
   const [publicMenuOpen, setPublicMenuOpen] = useState(false);
   const sidebarNavRef = useRef(null);
-  const ownerWorkspace = isAdmin && active !== "login";
+  const ownerWorkspace = isAdmin && active !== "login" && !forcePublic;
   const persistSidebarState = (collapsed) => {
     try {
       if (window.matchMedia?.("(max-width: 760px)").matches) return;
