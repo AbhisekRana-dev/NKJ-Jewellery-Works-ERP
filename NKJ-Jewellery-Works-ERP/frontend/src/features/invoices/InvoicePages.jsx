@@ -347,7 +347,7 @@ function getTodayIndiaDate() {
 }
 
 function formatInvoiceDateForDisplay(value) {
-  const match = String(value || "").match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || "—");
 }
 
@@ -574,7 +574,7 @@ export function InvoicePage() {
 
   const numberProps = {
     type: "number",
-
+    disabled: saving || saved,
     min: "0",
 
     onWheel: (e) => e.currentTarget.blur(),
@@ -1059,7 +1059,7 @@ export function InvoicePage() {
                     type="date"
                     value={invoiceDate}
                     max={maxInvoiceDate}
-                    disabled={saving || isEditingSavedInvoice}
+                    disabled={saving || saved || isEditingSavedInvoice}
                     onChange={(e) => {
                       setInvoiceDate(e.target.value);
                       setError("");
@@ -1093,6 +1093,7 @@ export function InvoicePage() {
                   inputMode="text"
                   autoCapitalize="characters"
                   autoComplete="name"
+                  readOnly={saving || saved}
                   value={customer.name}
                   onChange={(e) => {
                     setCustomer({
@@ -1116,6 +1117,7 @@ export function InvoicePage() {
                   inputMode="numeric"
                   pattern="[0-9]{10}"
                   maxLength={10}
+                  readOnly={saving || saved}
                   value={customer.mobile}
                   onChange={(e) => {
                     const digits = e.target.value.replace(/[^0-9]/g, "");
@@ -1148,6 +1150,7 @@ export function InvoicePage() {
                   inputMode="text"
                   autoCapitalize="characters"
                   autoComplete="street-address"
+                  readOnly={saving || saved}
                   value={customer.address}
                   onChange={(e) =>
                     setCustomer({
@@ -1172,6 +1175,7 @@ export function InvoicePage() {
                 <i>:</i>
 
                 <select
+                  disabled={saving || saved}
                   value={paymentMode}
                   onChange={(e) => setPaymentMode(e.target.value)}
                 >
@@ -1189,6 +1193,7 @@ export function InvoicePage() {
                 <i>:</i>
 
                 <input
+                  readOnly={saving || saved}
                   value={referenceNo}
                   onChange={(e) => setReferenceNo(e.target.value)}
                   placeholder="Optional transaction reference"
@@ -1243,6 +1248,7 @@ export function InvoicePage() {
                         <td>
                           <input
                             value={x.description}
+                            readOnly={saving || saved}
                             onChange={(e) =>
                               update(
                                 setNewItems,
@@ -1263,6 +1269,7 @@ export function InvoicePage() {
                         <td>
                           <input
                             value={x.purity}
+                            readOnly={saving || saved}
                             onChange={(e) =>
                               update(
                                 setNewItems,
@@ -1331,6 +1338,7 @@ export function InvoicePage() {
                                   type="radio"
                                   name={`making-charge-mode-${i}`}
                                   value="percent"
+                                  disabled={saving || saved}
                                   checked={x.makingChargeMode === "percent"}
                                   onChange={() => update(setNewItems, newItems, i, "makingChargeMode", "percent")}
                                 />
@@ -1341,6 +1349,7 @@ export function InvoicePage() {
                                   type="radio"
                                   name={`making-charge-mode-${i}`}
                                   value="amount"
+                                  disabled={saving || saved}
                                   checked={x.makingChargeMode !== "percent"}
                                   onChange={() => update(setNewItems, newItems, i, "makingChargeMode", "amount")}
                                 />
@@ -1441,6 +1450,7 @@ export function InvoicePage() {
                             type="button"
                             className="icon-btn"
                             aria-label={`Remove new ornament row ${i + 1}`}
+                            disabled={saving || saved}
                             onClick={() => removeNewOrnamentRow(i)}
                           >
                             <Trash2 size={14} />
@@ -1456,6 +1466,7 @@ export function InvoicePage() {
                 <button
                   type="button"
                   className="small-action no-print"
+                  disabled={saving || saved}
                   onClick={addNewOrnamentRow}
                 >
                   + Add Ornament
@@ -1505,6 +1516,7 @@ export function InvoicePage() {
                         <td>
                           <input
                             value={x.description}
+                            readOnly={saving || saved}
                             onChange={(e) =>
                               update(
                                 setOldItems,
@@ -1525,6 +1537,7 @@ export function InvoicePage() {
                         <td>
                           <input
                             value={x.purity}
+                            readOnly={saving || saved}
                             onChange={(e) =>
                               update(
                                 setOldItems,
@@ -1592,6 +1605,7 @@ export function InvoicePage() {
                             type="button"
                             className="icon-btn"
                             aria-label={`Remove old ornament row ${i + 1}`}
+                            disabled={saving || saved}
                             onClick={() => removeOldOrnamentRow(i)}
                           >
                             <Trash2 size={14} />
@@ -1607,6 +1621,7 @@ export function InvoicePage() {
                 <button
                   type="button"
                   className="small-action no-print"
+                  disabled={saving || saved}
                   onClick={addOldOrnamentRow}
                 >
                   + Add Old Ornament
@@ -1641,6 +1656,7 @@ export function InvoicePage() {
                       aria-label="GST percentage"
                       type="number"
                       min="0"
+                      disabled={saving || saved}
                       onWheel={(e) => e.currentTarget.blur()}
                       value={gst}
                       onChange={(e) => setGst(e.target.value)}
@@ -1663,6 +1679,7 @@ export function InvoicePage() {
                   type="number"
                   min="0"
                   placeholder="0.00"
+                  disabled={saving || saved}
                   onWheel={(e) => e.currentTarget.blur()}
                   value={discount}
                   onChange={(e) => setDiscount(e.target.value)}
@@ -1696,7 +1713,7 @@ export function InvoicePage() {
                   max={grand}
                   step="0.01"
                   value={totalPaid === null ? grand.toFixed(2) : totalPaid}
-                  readOnly={isEditingSavedInvoice || saved}
+                  readOnly={saving || isEditingSavedInvoice || saved}
                   onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) => setTotalPaid(event.target.value)}
                 />
@@ -1715,6 +1732,7 @@ export function InvoicePage() {
             <h3>✎ Additional Description :</h3>
 
             <textarea
+              readOnly={saving || saved}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
