@@ -1446,3 +1446,96 @@
 @media (max-width:620px) {
   .nkj-rate-jewel-photo.is-silver {transform:scale(1.1,1.08);}
 }
+
+/* Reference calibration pass: bring the central content back to the original artwork's margins. */
+@media (min-width:901px) {
+  .nkj-rate-board-header {
+    width:85%;
+    margin-left:8.5%;
+    grid-template-columns:16% 64% 15%;
+    gap:2.5%;
+  }
+  .nkj-rate-board-logo {transform:translateX(-5%);}
+  .nkj-rate-board-brand {
+    transform:translateX(1.5%) scaleX(.92);
+    transform-origin:center;
+  }
+  .nkj-rate-brand-title {font-size:5.95cqw;}
+  .nkj-rate-board-actions {
+    transform:translateX(16%) scaleX(.98);
+    transform-origin:center;
+    justify-content:flex-start;
+    gap:6%;
+  }
+  .nkj-rate-action {
+    width:43%;
+    height:52%;
+    gap:5%;
+    border-radius:1.1cqw;
+  }
+  .nkj-rate-action svg {width:28% !important;height:28% !important;}
+  .nkj-rate-action span {font-size:1.45cqw;line-height:1.02;}
+  .nkj-rate-title-row {width:85%;}
+  .nkj-rate-title-banner {
+    width:60%;
+    transform:none;
+    border-radius:2.15cqw;
+  }
+  .nkj-rate-title-banner h1 {font-size:3.85cqw;}
+  .nkj-rate-diamond {width:3.35cqw;height:3cqw;flex:none;filter:drop-shadow(0 2px 1px rgba(69,0,10,.45));}
+  .nkj-rate-date-time {
+    width:72%;
+    grid-template-columns:minmax(0,1fr) 2px minmax(0,1fr);
+    gap:8%;
+  }
+  .nkj-rate-time-card {height:88%;gap:1.8%;padding:0 1.7%;}
+  .nkj-rate-time-card span {font-size:2.25cqw;}
+  .nkj-rate-time-card strong {font-size:2.65cqw;}
+  .nkj-rate-hallmark {width:78%;gap:1%;}
+  .nkj-rate-hallmark strong {font-size:2.7cqw;}
+  .nkj-rate-bis-logo {width:7%;height:94%;}
+  .nkj-rate-bis-spray {flex:0 0 12%;width:12%;height:94%;}
+  .nkj-rate-per-gram {width:74%;}
+  .nkj-rate-per-gram strong {min-width:52%;transform:none;font-size:2.45cqw;}
+  .nkj-rate-per-gram .nkj-rate-scroll {width:22%;}
+  .nkj-rate-metal-panel {
+    width:78%;
+    transform:none;
+    border-radius:1.9cqw;
+  }
+  .nkj-rate-metal-row {grid-template-columns:21% 35% 44%;padding:.8% 1.2%;}
+  .nkj-rate-metal-name {padding:0 4%;}
+  .nkj-rate-metal-name h2 {font-size:3.55cqw;}
+  .nkj-rate-metal-price {height:83%;padding:0 1.7%;}
+  .nkj-rate-metal-price strong {font-size:4.8cqw;}
+  .nkj-rate-jewel-cell {padding:0 1%;overflow:hidden;}
+  .nkj-rate-jewel-photo {
+    width:100%;
+    height:100%;
+    max-width:100%;
+    max-height:100%;
+    transform:scale(1.22,1.08);
+    filter:drop-shadow(0 3px 4px rgba(0,0,0,.4));
+  }
+  .nkj-rate-jewel-photo.is-silver {
+    width:100%;
+    height:100%;
+    max-height:100%;
+    transform:scale(1.16,1.1);
+    filter:drop-shadow(0 3px 4px rgba(0,0,0,.42));
+  }
+  .nkj-rate-gst-banner {width:55%;transform:none;}
+  .nkj-rate-gst-banner strong {font-size:2.25cqw;}
+}
+@media (min-width:621px) and (max-width:900px) {
+  .nkj-rate-date-time {width:80%;gap:5%;}
+  .nkj-rate-hallmark {width:84%;}
+  .nkj-rate-metal-panel {width:89%;}
+  .nkj-rate-per-gram {width:78%;}
+  .nkj-rate-gst-banner {width:62%;}
+  .nkj-rate-board-actions {transform:translateX(10%);}
+}
+@media (max-width:620px) {
+  .nkj-rate-diamond {width:4.6cqw;height:4.1cqw;}
+  .nkj-rate-jewel-photo.is-silver {transform:scale(1.1,1.08);}
+}

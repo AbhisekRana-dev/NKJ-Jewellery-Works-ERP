@@ -198,13 +198,29 @@ function SilverBanglesArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo is-silver"
-      src="/rate-silver-bangles-clean.webp"
-      width="160"
-      height="94"
+      src="/rate-silver-bangles.webp"
+      width="560"
+      height="278"
       alt="Traditional silver bangles"
       loading="eager"
       decoding="async"
     />
+  );
+}
+
+function RateDiamond() {
+  return (
+    <svg className="nkj-rate-diamond" viewBox="0 0 64 56" aria-hidden="true">
+      <path d="M32 2 L61 27 L32 54 L3 27 Z" fill="#85001c" stroke="#6d0017" strokeWidth="2" />
+      <path d="M32 2 L46 23 L32 54 L18 23 Z" fill="#e20b42" />
+      <path d="M3 27 L18 23 L32 54 Z" fill="#b90032" />
+      <path d="M61 27 L46 23 L32 54 Z" fill="#8d0025" />
+      <path d="M18 23 L25 12 L46 23 L32 30 Z" fill="#ff6488" />
+      <path d="M25 12 L32 2 L46 23 Z" fill="#ff9ab0" />
+      <path d="M18 23 L32 30 L46 23" fill="none" stroke="#ffd9df" strokeWidth="1.8" />
+      <path d="M32 30 L32 54" stroke="#6f0017" strokeWidth="1.5" />
+      <path d="M25 12 L18 23 L3 27" fill="none" stroke="#ffd9df" strokeWidth="1.2" />
+    </svg>
   );
 }
 
@@ -497,7 +513,7 @@ export default function DigitalRateBoardPage() {
         <div className="nkj-rate-title-row">
           <DecorativeScroll side="left" />
           <div className="nkj-rate-title-banner">
-            <span className="nkj-rate-diamond">◆</span>
+            <RateDiamond />
             <h1>GOLD &amp; SILVER RATE</h1>
             <span className="nkj-rate-diamond">◆</span>
           </div>
