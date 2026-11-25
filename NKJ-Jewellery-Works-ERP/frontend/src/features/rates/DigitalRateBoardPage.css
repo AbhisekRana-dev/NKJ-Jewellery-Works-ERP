@@ -1140,3 +1140,39 @@
   .nkj-rate-metal-name h2 {font-size:3.25cqw;}
   .nkj-rate-metal-price strong {font-size:4.6cqw;}
 }
+
+
+/* Last visual refinements against the supplied 960 x 540 master reference. */
+.nkj-rate-board-marble {
+  opacity:.86;
+  background:
+    radial-gradient(ellipse at 5% 35%, transparent 0 14%, rgba(170,119,62,.09) 14.15%, transparent 14.8%),
+    radial-gradient(ellipse at 95% 38%, transparent 0 15%, rgba(170,119,62,.085) 15.15%, transparent 15.8%),
+    radial-gradient(ellipse at 15% 72%, transparent 0 10%, rgba(170,119,62,.075) 10.15%, transparent 10.8%),
+    radial-gradient(ellipse at 85% 73%, transparent 0 11%, rgba(170,119,62,.075) 11.15%, transparent 11.8%),
+    repeating-linear-gradient(132deg,rgba(164,119,52,.045) 0 1px,transparent 1px 18px),
+    repeating-linear-gradient(26deg,transparent 0 68px,rgba(183,134,71,.035) 69px 70px,transparent 71px 138px);
+}
+.nkj-rate-seal {transform:scale(1.07);transform-origin:center;}
+.nkj-rate-logo-image {mix-blend-mode:multiply;}
+.nkj-rate-brand-title {font-size:6.35cqw;}
+.nkj-rate-brand-divider b {font-size:2.78cqw;letter-spacing:.18em;}
+.nkj-rate-per-gram {width:75%;}
+.nkj-rate-jewel-cell {padding:0 3%;overflow:hidden;}
+.nkj-rate-jewel-photo {
+  transform:scale(1.14);
+  transform-origin:center;
+  clip-path:inset(0 0 5.5% 0);
+}
+.nkj-rate-jewel-photo.is-silver {transform:scale(1.18);filter:grayscale(1) contrast(1.14) drop-shadow(0 3px 3px rgba(0,0,0,.35));}
+.nkj-rate-lotus {
+  z-index:11;
+  bottom:0;
+  width:21.35%;
+  height:11.48%;
+  object-fit:fill;
+  border:0;
+  filter:none;
+}
+.nkj-rate-lotus.left {left:0;transform:none;}
+.nkj-rate-lotus.right {right:0;transform:none;}

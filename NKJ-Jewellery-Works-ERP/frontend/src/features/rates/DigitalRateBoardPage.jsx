@@ -166,28 +166,14 @@ function HangingDiya({ side }) {
 
 function LotusFlower({ side }) {
   return (
-    <svg className={"nkj-rate-lotus " + side} viewBox="0 0 260 150" aria-hidden="true">
-      <defs>
-        <linearGradient id={"nkj-lotus-petal-" + side} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffd4e7" />
-          <stop offset=".5" stopColor="#fb5da5" />
-          <stop offset="1" stopColor="#b80a55" />
-        </linearGradient>
-      </defs>
-      <g stroke="#a50049" strokeWidth="2">
-        <path d="M130 139 C75 111 78 68 130 15 C182 68 185 111 130 139 Z" fill={"url(#nkj-lotus-petal-" + side + ")"} />
-        <path d="M128 139 C30 128 19 82 46 48 C95 57 125 91 128 139 Z" fill={"url(#nkj-lotus-petal-" + side + ")"} />
-        <path d="M132 139 C230 128 241 82 214 48 C165 57 135 91 132 139 Z" fill={"url(#nkj-lotus-petal-" + side + ")"} />
-        <path d="M128 139 C43 145 8 118 10 91 C65 78 110 100 128 139 Z" fill="#d21a68" />
-        <path d="M132 139 C217 145 252 118 250 91 C195 78 150 100 132 139 Z" fill="#d21a68" />
-        <path d="M130 139 C91 111 95 75 130 39 C165 75 169 111 130 139 Z" fill="#ff9ac5" stroke="#fff0db" strokeWidth="2" />
-        <path d="M128 139 C65 129 54 91 77 67 C107 81 126 109 128 139 Z" fill="#f83f91" stroke="#ffd1e5" strokeWidth="2" />
-        <path d="M132 139 C195 129 206 91 183 67 C153 81 134 109 132 139 Z" fill="#f83f91" stroke="#ffd1e5" strokeWidth="2" />
-        <path d="M130 139 Q82 80 130 15 Q178 80 130 139 M130 139 L130 43 M130 139 L89 75 M130 139 L171 75" fill="none" stroke="#ffe5a5" strokeWidth="3" />
-      </g>
-      <path d="M32 137 Q130 112 228 137 Q180 160 130 145 Q80 160 32 137 Z" fill="#287c32" stroke="#10521e" strokeWidth="3" />
-      <ellipse cx="130" cy="137" rx="22" ry="8" fill="#ffd748" stroke="#a86607" strokeWidth="2" />
-    </svg>
+    <img
+      className={"nkj-rate-lotus " + side}
+      src={side === "left" ? "/rate-lotus-left-reference.jpg" : "/rate-lotus-right-reference.jpg"}
+      alt=""
+      aria-hidden="true"
+      loading="eager"
+      decoding="async"
+    />
   );
 }
 
