@@ -366,6 +366,9 @@ export default function DigitalRateBoardPage() {
         && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
       if (event.key === "Escape" && editOpen) {
         setEditOpen(false);
+        setPasswordVerified(false);
+        setAdminPassword("");
+        setRateEditToken("");
         return;
       }
       if (event.key.toLowerCase() !== "f" || event.repeat || event.altKey || event.ctrlKey || event.metaKey || isTyping || editOpen) return;
@@ -593,7 +596,7 @@ export default function DigitalRateBoardPage() {
                 <label>
                   <span>Administrator password</span>
                   <div className="nkj-rate-input-wrap">
-                    <b>•••</b>
+                    <b><ShieldCheck size={17} /></b>
                     <input
                       type="password"
                       value={adminPassword}
@@ -622,7 +625,7 @@ export default function DigitalRateBoardPage() {
                   <span>Silver 999 · ₹ / 10 grams</span>
                   <div className="nkj-rate-input-wrap"><b>₹</b><input type="number" min="0.01" step="0.01" value={form.silver} onChange={(event) => setForm((old) => ({ ...old, silver: event.target.value }))} required /></div>
                 </label>
-                <p className="nkj-rate-modal-note"><ShieldCheck size={16} /> Password verified. This one-time edit authorization expires in three minutes. Date and time remain automatic in Kolkata time.</p>
+                <p className="nkj-rate-modal-note"><ShieldCheck size={16} /> Password verified. This temporary edit authorization expires in three minutes. Date and time remain automatic in Kolkata time.</p>
                 {editError && <p className="nkj-rate-edit-error" role="alert">{editError}</p>}
                 <footer>
                   <button type="button" className="nkj-rate-cancel" onClick={closeEditor} disabled={saving}>Cancel</button>
