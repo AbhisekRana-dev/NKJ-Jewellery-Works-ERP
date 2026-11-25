@@ -470,7 +470,13 @@ export default function DigitalRateBoardPage() {
       setToast("Rates saved successfully. Manual override is now active.");
       window.setTimeout(() => setToast(""), 4500);
     } catch (error) {
-      setEditError(error.message || "Unable to save rates. Verify the administrator password again.");
+      const message = error.message || "Unable to save rates. Verify the administrator password again.";
+      setEditError(message);
+      if (message.toLowerCase().includes("authorization expired")) {
+        setPasswordVerified(false);
+        setRateEditToken("");
+        setAdminPassword("");
+      }
     } finally {
       setSaving(false);
     }
