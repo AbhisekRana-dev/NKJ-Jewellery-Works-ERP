@@ -1628,3 +1628,13 @@
     clip-path:none;
   }
 }
+
+/* Reference proportion: widen the contained product images without clipping them. */
+@media (min-width:761px) {
+  .nkj-rate-jewel-photo {transform:scaleX(1.55);transform-origin:center;}
+  .nkj-rate-jewel-photo.is-silver {transform:scaleX(1.3);transform-origin:center;}
+}
+@media (max-width:760px) {
+  .nkj-rate-jewel-photo {transform:scaleX(1.25);transform-origin:center;}
+  .nkj-rate-jewel-photo.is-silver {transform:scaleX(1.18);transform-origin:center;}
+}
