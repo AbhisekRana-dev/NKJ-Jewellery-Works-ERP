@@ -1437,3 +1437,12 @@
     filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));
   }
 }
+
+
+/* Balance the visual weight of the silver pair with the gold necklace. */
+.nkj-rate-jewel-photo.is-silver {
+  transform:scale(1.24,1.12);
+}
+@media (max-width:620px) {
+  .nkj-rate-jewel-photo.is-silver {transform:scale(1.1,1.08);}
+}
