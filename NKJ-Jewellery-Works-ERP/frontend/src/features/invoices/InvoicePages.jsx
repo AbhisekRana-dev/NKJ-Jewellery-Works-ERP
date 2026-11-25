@@ -679,78 +679,6 @@ export function InvoicePage() {
     };
   }
 
-  function resetInvoiceFields({ allowSaved = false } = {}) {
-    if (saving || (saved && !allowSaved)) return;
-
-    skipNextDraftPersistRef.current = true;
-    try { window.localStorage.removeItem(draftStorageKey); } catch {}
-
-    setInvoiceDate(getTodayIndiaDate());
-    setShowGstin(true);
-    setCustomer({ name: "", mobile: "", address: "" });
-    setPaymentMode("Cash");
-    setReferenceNo("");
-    setTotalPaid(null);
-    setNewItems([blankNew()]);
-    setOldItems([blankOld()]);
-    setDiscount("");
-    setGst("0");
-    setDescription("");
-    setSaved(false);
-    setDraftRestored(false);
-    setDraftStorageError(false);
-    setIsEditingSavedInvoice(false);
-    setDraftStorageKey(getInvoiceDraftStorageKey(invoiceOwnerRef.current, false, null));
-    setIdempotencyKey(createInvoiceDraftKey());
-    setSuccessMessage("");
-    setInvoiceNo("");
-    setInvoiceId(null);
-    setError("");
-    setShowInvoicePin(false);
-    setShowSavePin(false);
-    setPendingPrintAfterSave(false);
-    setIsPrintPreparing(false);
-  }
-
-  function confirmResetInvoice() {
-    if (saving || saved) return;
-    const confirmed = window.confirm(
-      "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
-    );
-    if (!confirmed) return;
-    resetInvoiceFields();
-  }
-
-  useEffect(() => {
-    if (saved) return undefined;
-
-    const onResetShortcut = (event) => {
-      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
-      if (saving || showSavePin || showInvoicePin || isPrintPreparing) return;
-
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest(
-        "select,input[type='date'],[role='combobox'],[aria-haspopup='listbox'],[role='listbox'],[role='menu'],.nkj-pin-overlay,.nkj-invoice-detail-overlay"
-      )) return;
-
-      const isMobileViewport = window.matchMedia?.("(max-width: 760px)").matches;
-      const mobileNavigationOpen = Boolean(isMobileViewport
-        && document.querySelector(".nkj-owner-sidebar:not(.is-collapsed)"));
-      const otherOverlayOpen = Boolean(document.querySelector(
-        ".nkj-pin-overlay,[role='dialog'],.nkj-invoice-detail-overlay,.nkj-catalog-modal-backdrop,.nkj-public-topbar nav.is-open"
-      ));
-      if (mobileNavigationOpen || otherOverlayOpen) return;
-
-      event.preventDefault();
-      confirmResetInvoice();
-    };
-
-    // Bubble phase: calculator/dialog/menu/dropdown handlers get the first chance
-    // to consume Escape before this page-level reset confirmation runs.
-    window.addEventListener("keydown", onResetShortcut);
-    return () => window.removeEventListener("keydown", onResetShortcut);
-  }, [saved, saving, showSavePin, showInvoicePin, isPrintPreparing]);
-
   function validateInvoiceForm() {
     if (!invoiceDate) return "Please select an invoice date.";
     if (invoiceDate > maxInvoiceDate) return "Invoice date cannot be in the future.";
@@ -931,20 +859,29 @@ export function InvoicePage() {
     setIsPrintPreparing(true);
     setError("");
     try {
+      if (!invoiceId || !invoiceNo) {
+        throw new Error("Save the invoice successfully before generating its PDF.");
+      }
+
       await request("/invoices/consume-print-ticket", {
         method: "POST",
         body: JSON.stringify({ ticket, invoiceId }),
       });
-      setShowInvoicePin(false);
 
-      // Open the native browser print dialog only after the security PIN
-      // has been verified and the one-time print ticket has been consumed.
-      // The invoice @page / @media print rules format it as A4 landscape.
-      window.print();
-      setSuccessMessage(`Print dialog opened for invoice ${invoiceNo}.`);
+      // Generate a real PDF from the same A4-landscape invoice layout used
+      // by Saved Invoices. This downloads the file directly instead of merely
+      // opening the browser print dialog and waiting for the user to choose PDF.
+      const pdfFile = await createInvoiceSharePdfFile({ id: invoiceId, invoiceNo });
+      if (!(pdfFile instanceof File) || pdfFile.type !== "application/pdf" || pdfFile.size < 1000) {
+        throw new Error("The PDF file could not be generated. Please try again.");
+      }
+
+      downloadInvoicePdfFile(pdfFile);
+      setShowInvoicePin(false);
+      setSuccessMessage(`Invoice ${invoiceNo} PDF downloaded successfully.`);
     } catch (error) {
       setShowInvoicePin(false);
-      setError(error.message || "Could not prepare the invoice PDF.");
+      setError(error.message || "Could not generate or download the invoice PDF.");
     } finally {
       setIsPrintPreparing(false);
     }
@@ -1753,22 +1690,12 @@ export function InvoicePage() {
 
         <button
           type="button"
-          className="secondary nkj-invoice-reset-button"
-          onClick={confirmResetInvoice}
-          disabled={saving || saved}
-          title="Reset this unsaved invoice and delete its local draft"
-        >
-          Reset
-        </button>
-
-        <button
-          type="button"
           className="secondary"
           onClick={requestPrintPin}
-          disabled={saving || showInvoicePin || showSavePin}
-          title="Verify the invoice security PIN before saving and generating a clean A4 landscape PDF"
+          disabled={saving || isPrintPreparing || showInvoicePin || showSavePin}
+          title="Verify the invoice security PIN before generating and downloading an A4 landscape PDF"
         >
-          <Printer /> {saving ? "Saving..." : "Download / Print Invoice PDF"}
+          <Printer /> {isPrintPreparing ? "Generating PDF..." : saving ? "Saving..." : "Download / Print Invoice PDF"}
         </button>
 
       </div>
