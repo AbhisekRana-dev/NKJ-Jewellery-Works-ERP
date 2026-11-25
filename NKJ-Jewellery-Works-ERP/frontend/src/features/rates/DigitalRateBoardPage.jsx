@@ -588,7 +588,7 @@ export default function DigitalRateBoardPage() {
               <div className="nkj-rate-modal-icon"><Gem size={24} /></div>
               <div>
                 <span>{passwordVerified ? "RATE CONTROL UNLOCKED" : "SECURE RATE CONTROL"}</span>
-                <h2 id="nkj-rate-edit-title">{passwordVerified ? "Edit Gold &amp; Silver Rates" : "Verify Administrator"}</h2>
+                <h2 id="nkj-rate-edit-title">{passwordVerified ? "Edit Gold & Silver Rates" : "Verify Administrator"}</h2>
               </div>
               <button type="button" className="nkj-rate-modal-close" onClick={closeEditor} aria-label="Close edit dialog" disabled={saving || unlocking}><X /></button>
             </header>
