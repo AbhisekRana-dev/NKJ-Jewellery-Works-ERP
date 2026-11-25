@@ -1215,3 +1215,62 @@
   .nkj-rate-board-logo,.nkj-rate-board-brand,.nkj-rate-board-actions,
   .nkj-rate-title-banner,.nkj-rate-per-gram strong,.nkj-rate-metal-panel,.nkj-rate-gst-banner {transform:none;}
 }
+
+
+/* Shared navigation sits above the board; the artwork remains a 16:9 canvas. */
+.nkj-rate-board-page {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1;
+  width: 100%;
+  height: calc(100vh - var(--nkj-rate-nav-height, 98px));
+  height: calc(100dvh - var(--nkj-rate-nav-height, 98px));
+  min-height: 0;
+  max-height: calc(100vh - var(--nkj-rate-nav-height, 98px));
+  max-height: calc(100dvh - var(--nkj-rate-nav-height, 98px));
+  overflow: hidden;
+}
+
+.nkj-rate-board-canvas {
+  width: min(100vw, calc((100vh - var(--nkj-rate-nav-height, 98px)) * 1.777778));
+  width: min(100vw, calc((100dvh - var(--nkj-rate-nav-height, 98px)) * 1.777778));
+  height: min(calc(100vh - var(--nkj-rate-nav-height, 98px)), 56.25vw);
+  height: min(calc(100dvh - var(--nkj-rate-nav-height, 98px)), 56.25vw);
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* Tablet and landscape-phone screens keep the reference's 16:9 composition. */
+@media (min-width: 621px) and (max-width: 900px) {
+  .nkj-rate-board-page {
+    height: calc(100vh - var(--nkj-rate-nav-height, 98px));
+    height: calc(100dvh - var(--nkj-rate-nav-height, 98px));
+  }
+
+  .nkj-rate-board-canvas {
+    width: min(100vw, calc((100dvh - var(--nkj-rate-nav-height, 98px)) * 1.777778));
+    height: min(calc(100dvh - var(--nkj-rate-nav-height, 98px)), 56.25vw);
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* Phone portrait keeps readable stacked content and may scroll below the navbar. */
+@media (max-width: 620px) {
+  .nkj-rate-board-page {
+    height: auto;
+    min-height: calc(100vh - var(--nkj-rate-nav-height, 62px));
+    min-height: calc(100dvh - var(--nkj-rate-nav-height, 62px));
+    max-height: none;
+    overflow: visible;
+  }
+
+  .nkj-rate-board-canvas {
+    width: 100vw;
+    height: auto;
+    min-height: calc(100vh - var(--nkj-rate-nav-height, 62px));
+    min-height: calc(100dvh - var(--nkj-rate-nav-height, 62px));
+    max-height: none;
+    aspect-ratio: auto;
+  }
+}
