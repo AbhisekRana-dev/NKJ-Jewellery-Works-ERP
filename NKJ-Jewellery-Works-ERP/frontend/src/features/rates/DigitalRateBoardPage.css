@@ -732,56 +732,262 @@
 
 
 
-/* Final reference-accurate Rate Board composition (16:9 desktop canvas). */
+
+/* ============================================================
+   REFERENCE-MATCHED RATE BOARD — FINAL SINGLE SOURCE OF STYLES
+   ============================================================ */
+
+/* The shared site navbar sits above the board. The board itself uses the
+   full available width; lettering scales against the shorter page dimension. */
+.nkj-rate-board-page {
+  position:fixed;
+  z-index:9999;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  gap:0;
+  overflow:hidden;
+  padding:0;
+  background:#260006;
+  color:#fff7e7;
+  isolation:isolate;
+  font-family:Georgia,"Times New Roman",serif;
+}
+
+.nkj-rate-board-page > .nkj-public-topbar {
+  position:relative !important;
+  inset:auto !important;
+  z-index:10003 !important;
+  flex:0 0 58px !important;
+  display:grid !important;
+  grid-template-columns:minmax(240px,26%) minmax(90px,16%) minmax(0,58%) !important;
+  grid-template-rows:minmax(0,1fr) !important;
+  align-items:center !important;
+  justify-content:stretch !important;
+  gap:0 !important;
+  width:100% !important;
+  height:58px !important;
+  min-height:58px !important;
+  max-height:58px !important;
+  margin:0 !important;
+  padding:4px 2.2% !important;
+  overflow:visible !important;
+  border:0 !important;
+  border-bottom:2px solid #d6a331 !important;
+  border-radius:0 !important;
+  background:
+    linear-gradient(90deg,rgba(255,222,126,.08),transparent 30%,rgba(255,222,126,.08)),
+    linear-gradient(180deg,#720018 0%,#47000d 100%) !important;
+  box-shadow:0 3px 10px rgba(31,0,5,.3),inset 0 -1px 0 rgba(255,239,180,.25) !important;
+  color:#fff2d0 !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar::before {
+  grid-column:2 !important;
+  grid-row:1 !important;
+  width:70% !important;
+  height:70% !important;
+  margin:auto !important;
+  border:0 !important;
+  background:
+    linear-gradient(135deg,transparent 46%,#d5a13b 47% 49%,transparent 50%),
+    linear-gradient(45deg,transparent 46%,#d5a13b 47% 49%,transparent 50%) !important;
+  opacity:.72 !important;
+  pointer-events:none !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar > .brand {
+  grid-column:1 !important;
+  grid-row:1 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-self:start !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  padding:0 !important;
+  border:0 !important;
+  color:#fff6df !important;
+  text-decoration:none !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar > .brand b {
+  display:block !important;
+  overflow:hidden !important;
+  color:#fff2ca !important;
+  font:800 15px/1.1 Georgia,"Times New Roman",serif !important;
+  letter-spacing:.025em !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  text-shadow:0 1px 2px #250006 !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar > .brand small {
+  display:block !important;
+  margin-top:3px !important;
+  color:#e8cc8b !important;
+  font:600 10px/1.1 Arial,sans-serif !important;
+  letter-spacing:.04em !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar > nav {
+  grid-column:3 !important;
+  grid-row:1 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:clamp(4px,.45vw,9px) !important;
+  width:100% !important;
+  min-width:0 !important;
+  height:100% !important;
+  margin:0 !important;
+  padding:0 !important;
+  overflow:visible !important;
+  background:transparent !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar > nav > a,
+.nkj-rate-board-page > .nkj-public-topbar > nav > button {
+  min-width:0 !important;
+  min-height:34px !important;
+  height:34px !important;
+  display:inline-flex !important;
+  flex:0 1 auto !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:6px !important;
+  padding:5px clamp(7px,.65vw,13px) !important;
+  border:1px solid rgba(239,198,99,.55) !important;
+  border-radius:7px !important;
+  background:rgba(255,240,190,.06) !important;
+  color:#fff2d2 !important;
+  font:700 11px/1 Arial,sans-serif !important;
+  text-decoration:none !important;
+  white-space:nowrap !important;
+  box-shadow:none !important;
+  transition:background .15s ease,color .15s ease,border-color .15s ease !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar > nav > a svg,
+.nkj-rate-board-page > .nkj-public-topbar > nav > button svg {
+  width:15px !important;
+  height:15px !important;
+  flex:0 0 15px !important;
+  color:#f1ce78 !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar > nav > a.active,
+.nkj-rate-board-page > .nkj-public-topbar > nav > a:hover,
+.nkj-rate-board-page > .nkj-public-topbar > nav > button:hover {
+  border-color:#f3d17a !important;
+  background:linear-gradient(180deg,#ffeab0,#e7bf63) !important;
+  color:#590b1a !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar > nav > a.active svg,
+.nkj-rate-board-page > .nkj-public-topbar > nav > a:hover svg {
+  color:#650d21 !important;
+}
+.nkj-rate-board-page > .nkj-public-topbar .nkj-public-menu-button {
+  display:none !important;
+}
+
+/* Wide edge-to-edge frame; the cqh clamp preserves proportions on ultrawide screens. */
 .nkj-rate-board-canvas {
+  --rate-gold:#f4c34b;
+  --rate-gold-light:#fff4b2;
+  --rate-gold-deep:#8f4b08;
+  --rate-maroon:#6a0016;
+  --rate-burgundy:#350009;
+  --rate-blue:#082b91;
+  position:relative;
+  flex:1 1 0;
+  width:100%;
+  height:auto;
+  min-width:0;
+  min-height:0;
+  max-width:none;
+  max-height:none;
+  aspect-ratio:auto;
+  container-type:size;
   display:grid;
   grid-template-columns:minmax(0,1fr);
-  grid-template-rows:2.08fr 1.08fr 1.07fr .89fr .73fr 2.89fr .76fr;
+  grid-template-rows:19fr 9.5fr 10fr 8.5fr 7.5fr 29fr 7.5fr;
   grid-auto-rows:minmax(0,1fr);
-  row-gap:.55%;
-  column-gap:0;
+  row-gap:.42%;
   align-content:stretch;
-  justify-content:stretch;
   justify-items:center;
   align-items:stretch;
-  padding:.8% 2.7% 1.15%;
-  border:clamp(8px,.92cqw,13px) ridge #d9a12d;
+  padding:.55% 2.65% .75%;
+  overflow:hidden;
+  border:clamp(6px,.9cqh,11px) ridge #d69a23;
+  border-top:0;
+  border-radius:0;
   background:
-    radial-gradient(ellipse at 50% 45%,rgba(255,255,255,.85),transparent 64%),
-    radial-gradient(ellipse at 10% 14%,rgba(255,236,205,.65),transparent 30%),
-    radial-gradient(ellipse at 92% 75%,rgba(239,211,167,.38),transparent 32%),
-    repeating-linear-gradient(132deg,rgba(159,112,48,.035) 0 1px,transparent 1px 18px),
-    linear-gradient(135deg,#fff8ec 0%,#fff0d8 48%,#fff9ed 100%);
+    radial-gradient(ellipse at 50% 43%,rgba(255,255,255,.94),transparent 65%),
+    radial-gradient(ellipse at 9% 16%,rgba(250,218,167,.4),transparent 28%),
+    radial-gradient(ellipse at 91% 76%,rgba(231,194,127,.3),transparent 30%),
+    repeating-linear-gradient(132deg,rgba(164,119,52,.045) 0 1px,transparent 1px 18px),
+    linear-gradient(135deg,#fffaf0 0%,#fff0d8 46%,#fff9eb 100%);
   box-shadow:
     inset 0 0 0 3px #fff0a6,
     inset 0 0 0 7px #9f5a0a,
     inset 0 0 0 11px #ffe7a0,
-    inset 0 0 32px rgba(116,54,0,.32),
-    0 0 0 2px #532500;
+    inset 0 0 34px rgba(116,54,0,.3);
 }
-.nkj-rate-board-canvas:before {inset:1.05%;border:2px solid #bd7812;box-shadow:inset 0 0 0 3px rgba(255,245,187,.62),0 0 5px rgba(118,62,0,.24);}
-.nkj-rate-board-canvas:after {inset:1.85%;border:1px solid rgba(212,158,47,.8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);}
-
+.nkj-rate-board-canvas::before {
+  content:"";
+  position:absolute;
+  z-index:8;
+  inset:1.15%;
+  border:2px solid rgba(180,113,22,.9);
+  box-shadow:inset 0 0 0 3px rgba(255,245,187,.6),0 0 5px rgba(118,62,0,.25);
+  pointer-events:none;
+}
+.nkj-rate-board-canvas::after {
+  content:"";
+  position:absolute;
+  z-index:8;
+  inset:2%;
+  border:1px solid rgba(212,158,47,.72);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.34);
+  pointer-events:none;
+}
 .nkj-rate-board-marble {
   z-index:0;
   inset:1.1%;
-  opacity:.76;
+  opacity:.82;
   background:
-    radial-gradient(ellipse at 8% 38%,transparent 0 9%,rgba(166,117,59,.09) 9.2%,transparent 9.9%),
-    radial-gradient(ellipse at 93% 36%,transparent 0 10%,rgba(166,117,59,.08) 10.2%,transparent 10.9%),
-    radial-gradient(ellipse at 14% 78%,transparent 0 12%,rgba(166,117,59,.07) 12.2%,transparent 12.8%),
-    radial-gradient(ellipse at 86% 77%,transparent 0 12%,rgba(166,117,59,.07) 12.2%,transparent 12.8%),
-    repeating-linear-gradient(132deg,rgba(164,119,52,.04) 0 1px,transparent 1px 19px),
-    radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.2),transparent 72%);
+    radial-gradient(ellipse at 5% 35%,transparent 0 14%,rgba(170,119,62,.09) 14.15%,transparent 14.8%),
+    radial-gradient(ellipse at 95% 38%,transparent 0 15%,rgba(170,119,62,.085) 15.15%,transparent 15.8%),
+    radial-gradient(ellipse at 15% 72%,transparent 0 10%,rgba(170,119,62,.075) 10.15%,transparent 10.8%),
+    radial-gradient(ellipse at 85% 73%,transparent 0 11%,rgba(170,119,62,.075) 11.15%,transparent 11.8%),
+    repeating-linear-gradient(132deg,rgba(164,119,52,.045) 0 1px,transparent 1px 18px),
+    repeating-linear-gradient(26deg,transparent 0 68px,rgba(183,134,71,.035) 69px 70px,transparent 71px 138px);
 }
+.nkj-rate-board-rail {
+  position:absolute;
+  z-index:2;
+  top:1.15%;
+  bottom:1.15%;
+  width:2.25%;
+  pointer-events:none;
+  border:1px solid #9b5a08;
+  background:
+    repeating-linear-gradient(0deg,transparent 0 17px,rgba(255,243,177,.62) 17px 19px,transparent 20px 34px),
+    linear-gradient(90deg,#6f3305 0%,#c88417 15%,#fff0a0 34%,#e7ac31 52%,#a85f0a 77%,#613006 100%);
+  box-shadow:0 0 0 2px rgba(255,233,144,.75),inset 0 0 0 2px rgba(255,249,204,.62),0 0 7px rgba(87,42,0,.32);
+}
+.nkj-rate-board-rail::after {
+  content:"";
+  position:absolute;
+  inset:2.2% 19%;
+  border:1px solid rgba(255,238,165,.78);
+  background:repeating-linear-gradient(0deg,transparent 0 14px,rgba(119,57,0,.28) 14px 16px,transparent 16px 28px);
+  box-shadow:inset 0 0 0 1px rgba(103,47,0,.25);
+}
+.nkj-rate-board-rail.is-left {left:1.05%;}
+.nkj-rate-board-rail.is-right {right:1.05%;transform:scaleX(-1);}
 
-/* The side curtains remain in the upper corners, with visible satin folds and gold trim. */
 .nkj-rate-board-curtain {
   z-index:1;
   top:0;
   bottom:auto;
-  width:10.5%;
-  height:36%;
+  width:9.2%;
+  height:35%;
   opacity:1;
   background:
     repeating-linear-gradient(90deg,rgba(255,235,243,.5) 0 2px,rgba(116,0,35,.12) 3px 7px,transparent 8px 14px),
@@ -789,7 +995,7 @@
   filter:drop-shadow(4px 0 7px rgba(64,0,15,.38));
   clip-path:polygon(0 0,100% 0,96% 9%,85% 16%,94% 24%,100% 34%,88% 45%,100% 57%,86% 70%,98% 83%,88% 100%,0 100%);
 }
-.nkj-rate-board-curtain:before {
+.nkj-rate-board-curtain::before {
   content:"";
   position:absolute;
   inset:0;
@@ -797,7 +1003,7 @@
     repeating-linear-gradient(90deg,transparent 0 12%,rgba(255,248,248,.22) 13%,transparent 18%),
     linear-gradient(180deg,rgba(255,255,255,.23),transparent 38%,rgba(52,0,17,.2));
 }
-.nkj-rate-board-curtain:after {
+.nkj-rate-board-curtain::after {
   content:"";
   position:absolute;
   top:0;
@@ -810,7 +1016,6 @@
 .nkj-rate-board-curtain.is-left {left:0;}
 .nkj-rate-board-curtain.is-right {right:0;transform:scaleX(-1);}
 
-/* More intricate gold scrollwork frames the board without covering live content. */
 .nkj-rate-corner {
   z-index:9;
   width:19%;
@@ -836,27 +1041,30 @@
 
 .nkj-rate-lotus {
   z-index:10;
-  bottom:-.45%;
-  width:18.5%;
-  height:17%;
+  bottom:0;
+  width:19%;
+  height:14%;
+  object-fit:fill;
+  border:0;
   filter:drop-shadow(0 4px 4px rgba(86,0,42,.34));
 }
-.nkj-rate-lotus.left {left:-.9%;}
-.nkj-rate-lotus.right {right:-.9%;transform:scaleX(-1);}
+.nkj-rate-lotus.left {left:0;transform:none;}
+.nkj-rate-lotus.right {right:0;transform:none;}
 
-/* Header is aligned to the reference's compact logo / wide wordmark / two small controls. */
+/* Header matches the reference's smaller seal, wide wordmark and compact controls. */
 .nkj-rate-board-header {
   grid-row:1;
   z-index:12;
   position:relative;
-  width:83%;
+  width:84%;
   height:100%;
-  margin-left:11.5%;
-  justify-self:start;
+  margin:0;
+  justify-self:center;
   flex:none;
   min-height:0;
-  grid-template-columns:15.7% 65.7% 14%;
-  gap:2.3%;
+  display:grid;
+  grid-template-columns:15.5% minmax(0,1fr) 15%;
+  gap:2%;
   padding:0;
   align-items:center;
 }
@@ -864,7 +1072,7 @@
 .nkj-rate-seal {
   display:block;
   width:100%;
-  height:112%;
+  height:94%;
   max-width:none;
   object-fit:contain;
   transform:none;
@@ -874,13 +1082,15 @@
   border-radius:50%;
   clip-path:circle(49% at 50% 50%);
   object-position:center;
+  mix-blend-mode:multiply;
 }
 .nkj-rate-board-brand {
-  height:91%;
+  height:86%;
+  min-width:0;
   min-height:0;
   padding:1% 2%;
-  border:clamp(3px,.42cqw,6px) double #ffe18a;
-  border-radius:2.3cqw;
+  border:clamp(3px,.45cqh,6px) double #ffe18a;
+  border-radius:2.2cqw;
   background:
     radial-gradient(ellipse at 50% 5%,rgba(197,30,54,.72),transparent 60%),
     linear-gradient(180deg,#8b001c 0%,#5a0011 52%,#280006 100%);
@@ -894,7 +1104,7 @@
 }
 .nkj-rate-brand-title {
   max-width:100%;
-  font-size:6.05cqw;
+  font-size:min(6.05cqw,10.75cqh);
   letter-spacing:.035em;
   line-height:.94;
   background:linear-gradient(180deg,#fffbd1 0%,#ffe98e 17%,#ffce2b 40%,#b56a08 55%,#fff0a0 75%,#c17a0a 88%,#fff6c3 100%);
@@ -905,29 +1115,39 @@
 }
 .nkj-rate-brand-divider {width:88%;gap:2.2%;margin-top:.65%;}
 .nkj-rate-brand-divider i {height:2px;background:linear-gradient(90deg,transparent,#a96009 12%,#fff0a5 48%,#d58f17 80%,transparent);box-shadow:0 1px 2px rgba(0,0,0,.38);}
-.nkj-rate-brand-divider b {font-size:2.65cqw;letter-spacing:.17em;color:#fffaf0;text-shadow:0 2px 0 #310008,0 0 7px rgba(255,255,255,.28);}
-
-.nkj-rate-board-actions {height:100%;gap:6%;justify-content:space-between;}
+.nkj-rate-brand-divider b {
+  font-size:min(2.75cqw,4.9cqh);
+  letter-spacing:.17em;
+  color:#fffaf0;
+  text-shadow:0 2px 0 #310008,0 0 7px rgba(255,255,255,.28);
+}
+.nkj-rate-board-actions {
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:5%;
+}
 .nkj-rate-action {
-  width:44%;
-  height:59%;
+  width:45%;
+  height:55%;
   min-width:0;
-  gap:3%;
+  gap:4%;
   padding:2% 1%;
-  border:clamp(2px,.28cqw,4px) double #ffe16b;
-  border-radius:1.15cqw;
+  border:clamp(2px,.28cqh,4px) double #ffe16b;
+  border-radius:1.05cqw;
   background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 38%),linear-gradient(180deg,#85001b 0%,#600011 48%,#300007 100%);
   box-shadow:0 4px 0 #733800,0 0 11px rgba(255,194,44,.47),inset 0 0 0 2px rgba(255,250,205,.2),inset 0 -5px 8px rgba(0,0,0,.32);
   color:#fff7e7;
 }
-.nkj-rate-action svg {width:30% !important;height:30% !important;min-width:0;min-height:0;color:#ffe171;stroke-width:2.15;}
-.nkj-rate-action span {max-width:92%;font-size:1.3cqw;line-height:.96;text-align:center;white-space:normal;color:#fff7e7;text-shadow:0 2px 2px #210006;}
+.nkj-rate-action svg {width:20px !important;height:20px !important;min-width:0;min-height:0;color:#ffe171;stroke-width:2.15;}
+.nkj-rate-action span {max-width:92%;font-size:min(1.45cqw,2.58cqh);line-height:.98;text-align:center;white-space:normal;color:#fff7e7;text-shadow:0 2px 2px #210006;}
 
-/* The separate title ribbon has the same diamond / flourish rhythm as the master image. */
+/* Separate gold title ribbon with gem details and balanced scrollwork. */
 .nkj-rate-title-row {
   grid-row:2;
   z-index:12;
-  width:87%;
+  width:82%;
   height:100%;
   flex:none;
   display:flex;
@@ -936,63 +1156,81 @@
   gap:0;
   overflow:visible;
 }
-.nkj-rate-title-row .nkj-rate-scroll {width:17%;height:82%;}
+.nkj-rate-title-row .nkj-rate-scroll {width:15%;height:82%;}
 .nkj-rate-title-banner {
-  width:66%;
+  width:70%;
   height:84%;
-  gap:2.7%;
+  gap:2.8%;
   padding:0 2.2%;
-  border:clamp(3px,.38cqw,6px) double #a75b05;
-  border-radius:2.4cqw;
+  border:clamp(3px,.38cqh,6px) double #a75b05;
+  border-radius:2.25cqw;
   background:linear-gradient(180deg,#fff8c7 0%,#ffe476 28%,#ffc72a 61%,#d88d13 100%);
   box-shadow:0 5px 0 #793c00,0 0 13px rgba(234,164,26,.52),inset 0 3px 0 #fff,inset 0 -5px 9px rgba(108,47,0,.3);
 }
-.nkj-rate-title-banner h1 {font-size:3.95cqw;letter-spacing:.045em;color:#650012;text-shadow:0 2px 0 #fff5bb,0 4px 2px rgba(69,0,10,.34);}
-.nkj-rate-diamond {font-size:3.3cqw;text-shadow:0 2px 1px #fff,0 0 8px rgba(255,255,255,.5);}
+.nkj-rate-title-banner h1 {
+  font-size:min(3.85cqw,6.85cqh);
+  letter-spacing:.045em;
+  color:#650012;
+  text-shadow:0 2px 0 #fff5bb,0 4px 2px rgba(69,0,10,.34);
+}
+.nkj-rate-diamond {width:min(3.1cqw,5.5cqh);height:min(2.75cqw,4.9cqh);flex:none;filter:drop-shadow(0 2px 1px rgba(69,0,10,.45));}
 
-/* Wide maroon date/time panels with the reference's compact center divider. */
+/* Balanced date and time cards with one centered divider. */
 .nkj-rate-date-time {
   grid-row:3;
   z-index:12;
-  width:84.8%;
+  width:85%;
   height:100%;
   flex:none;
+  display:grid;
   grid-template-columns:minmax(0,1fr) 2px minmax(0,1fr);
   gap:2.1%;
+  align-items:center;
 }
 .nkj-rate-time-card {
-  height:90%;
-  gap:2%;
-  padding:0 2%;
-  border-width:clamp(3px,.38cqw,6px);
+  height:88%;
+  min-width:0;
+  gap:1.8%;
+  padding:0 1.7%;
+  border-width:clamp(3px,.38cqh,6px);
   border-radius:4cqw;
   background:linear-gradient(180deg,rgba(255,255,255,.14),transparent 42%),linear-gradient(180deg,#8b001a 0%,#650012 52%,#310007 100%);
   box-shadow:0 5px 0 #824500,0 0 12px rgba(255,192,37,.56),inset 0 0 0 2px rgba(255,244,187,.58),inset 0 -6px 10px rgba(0,0,0,.3);
 }
-.nkj-rate-time-card svg {width:3.25cqw;height:3.25cqw;flex:none;}
-.nkj-rate-time-card span {font-size:2.35cqw;letter-spacing:.045em;}
-.nkj-rate-time-card strong {font-size:2.82cqw;}
+.nkj-rate-time-card svg {width:min(3.1cqw,5.5cqh);height:min(3.1cqw,5.5cqh);flex:none;}
+.nkj-rate-time-card span {font-size:min(2.25cqw,4cqh);letter-spacing:.045em;}
+.nkj-rate-time-card strong {font-size:min(2.7cqw,4.8cqh);}
 .nkj-rate-time-separator {height:80%;}
 
-/* BIS ribbon: wide ivory-gold pill with blue lettering and mirrored emblems. */
+/* BIS certification strip: the full heading remains clear of both BIS marks. */
 .nkj-rate-hallmark {
   grid-row:4;
   z-index:12;
-  width:84.5%;
-  height:91%;
+  width:85%;
+  height:90%;
   flex:none;
-  gap:.8%;
+  gap:.7%;
   padding:0 1.1%;
-  border-width:clamp(3px,.32cqw,5px);
+  overflow:hidden;
+  border-width:clamp(3px,.32cqh,5px);
   background:linear-gradient(180deg,#fffbd0 0%,#ffe995 42%,#eebc48 100%);
   box-shadow:0 5px 0 #91520a,0 0 13px rgba(230,168,37,.45),inset 0 2px 0 #fff,inset 0 -5px 7px rgba(121,64,0,.22);
 }
-.nkj-rate-hallmark strong {font-size:2.75cqw;letter-spacing:.012em;color:#06258d;}
-.nkj-rate-bis-logo {width:6.1%;height:92%;}
-.nkj-rate-bis-spray {flex:0 0 10%;width:10%;height:90%;overflow:visible;filter:drop-shadow(0 2px 1px rgba(127,71,0,.28));}
+.nkj-rate-hallmark strong {
+  flex:1 1 auto;
+  min-width:0;
+  font-size:min(2.55cqw,4.55cqh);
+  letter-spacing:.008em;
+  color:#06258d;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:clip;
+}
+.nkj-rate-bis-logo {flex:0 0 6%;width:6%;height:92%;}
+.nkj-rate-bis-spray {flex:0 0 8%;width:8%;height:86%;overflow:hidden;filter:drop-shadow(0 2px 1px rgba(127,71,0,.28));}
 .nkj-rate-bis-spray.right {transform:scaleX(-1);}
 
-/* Central maroon RATE PER 10 GRAM plaque and balanced gold curls. */
+/* Compact rate-per-10-gram plaque, centered between golden ornaments. */
 .nkj-rate-per-gram {
   grid-row:5;
   z-index:12;
@@ -1006,649 +1244,334 @@
   min-width:56%;
   height:88%;
   padding:0 2.8%;
-  font-size:2.55cqw;
-  border:clamp(3px,.34cqw,6px) double #f5d05e;
+  font-size:min(2.45cqw,4.35cqh);
+  border:clamp(3px,.34cqh,6px) double #f5d05e;
   border-radius:3cqw;
   background:linear-gradient(180deg,#a00024 0%,#710016 45%,#43000b 100%);
   box-shadow:0 5px 0 #7b4000,0 0 12px rgba(239,168,32,.5),inset 0 0 0 2px rgba(255,255,255,.18);
 }
 
-/* Two-row table: original reference jewellery crops, golden divider, neon pink separator. */
+/* Wider rate table: 21% jewellery, 37% label, 42% rate plaque.
+   This prevents the Gold 22K (916) text from sitting under the price cell. */
 .nkj-rate-metal-panel {
   grid-row:6;
   z-index:12;
-  width:96%;
+  width:90%;
   height:100%;
+  min-height:0;
   flex:none;
+  display:grid;
   grid-template-rows:minmax(0,1fr) minmax(0,1fr);
-  border:clamp(5px,.52cqw,9px) ridge #efbd2c;
+  overflow:hidden;
+  border:clamp(5px,.58cqh,9px) ridge #efbd2c;
   border-radius:1.85cqw;
   background:linear-gradient(110deg,#4b000e 0%,#780018 54%,#46000d 100%);
   box-shadow:0 8px 0 #7d4100,0 12px 20px rgba(47,0,7,.35),inset 0 0 0 3px rgba(255,242,171,.6);
 }
-.nkj-rate-metal-row {grid-template-columns:22% 35% 43%;padding:.7% 1.1%;}
+.nkj-rate-metal-row {
+  min-width:0;
+  min-height:0;
+  height:100%;
+  display:grid;
+  grid-template-columns:21% 37% 42%;
+  align-items:center;
+  padding:.6% 1%;
+  overflow:hidden;
+}
 .nkj-rate-metal-row + .nkj-rate-metal-row {
-  border-top:clamp(3px,.32cqw,5px) solid #ff1680;
+  border-top:clamp(3px,.3cqh,5px) solid #ff1680;
   box-shadow:0 -2px 4px rgba(255,255,255,.48),0 0 8px rgba(255,22,128,.78),inset 0 2px 0 rgba(255,255,255,.12);
 }
-.nkj-rate-jewel-cell {height:100%;padding:0 4%;overflow:hidden;}
+.nkj-rate-jewel-cell {
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 3%;
+  overflow:hidden;
+}
 .nkj-rate-jewel-photo {
   display:block;
   width:100%;
-  height:100%;
+  height:94%;
+  max-width:100%;
+  max-height:94%;
   object-fit:contain;
   object-position:center;
   border:0;
   border-radius:0;
   background:transparent;
   transform:none;
+  clip-path:none;
   filter:drop-shadow(0 3px 3px rgba(0,0,0,.38));
 }
-.nkj-rate-jewel-photo.is-silver {mix-blend-mode:normal;filter:grayscale(1) contrast(1.12) drop-shadow(0 3px 3px rgba(0,0,0,.35));}
-.nkj-rate-metal-name {height:92%;padding:0 4.6%;border-left:2px solid #f0c64e;box-shadow:inset 1px 0 0 rgba(255,255,255,.17);}
-.nkj-rate-metal-name h2 {font-size:3.75cqw;letter-spacing:-.01em;text-shadow:0 3px 1px #210006,0 0 8px rgba(255,235,182,.27);}
+.nkj-rate-jewel-photo.is-silver {
+  width:100%;
+  height:90%;
+  max-height:90%;
+  object-fit:contain;
+  object-position:center;
+  transform:none;
+  clip-path:none;
+  mix-blend-mode:normal;
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.32));
+}
+.nkj-rate-metal-name {
+  min-width:0;
+  width:100%;
+  height:90%;
+  display:flex;
+  align-items:center;
+  padding:0 4%;
+  overflow:hidden;
+  border-left:2px solid #f0c64e;
+  box-shadow:inset 1px 0 0 rgba(255,255,255,.17);
+}
+.nkj-rate-metal-name h2 {
+  max-width:100%;
+  margin:0;
+  overflow:hidden;
+  color:#fff7e8;
+  font-size:min(3.25cqw,5.78cqh);
+  font-weight:900;
+  letter-spacing:-.025em;
+  line-height:1;
+  white-space:nowrap;
+  text-overflow:clip;
+  text-shadow:0 3px 1px #210006,0 0 8px rgba(255,235,182,.27);
+}
 .nkj-rate-metal-price {
+  width:100%;
+  min-width:0;
   height:84%;
-  padding:0 2%;
-  border:clamp(4px,.4cqw,7px) double #ffe66b;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:2%;
+  padding:0 1.6%;
+  overflow:hidden;
+  border:clamp(4px,.42cqh,7px) double #ffe66b;
   border-radius:1.5cqw;
   background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 43%),linear-gradient(180deg,#00ab1f 0%,#00820d 50%,#005c0b 100%);
   box-shadow:0 0 0 2px #fff1a0,0 5px 0 #895000,0 0 14px rgba(255,219,61,.72),inset 0 3px 9px rgba(255,255,255,.4),inset 0 -6px 11px rgba(0,0,0,.3);
 }
-.nkj-rate-metal-price span {font-size:3.55cqw;text-shadow:0 2px 2px rgba(0,0,0,.55);}
-.nkj-rate-metal-price strong {max-width:90%;font-size:4.95cqw;letter-spacing:-.025em;text-shadow:0 3px 2px #4b2b00,0 0 8px rgba(255,245,83,.42);}
+.nkj-rate-metal-price span {
+  flex:0 0 auto;
+  color:#fff;
+  font-size:min(3.4cqw,6.05cqh);
+  font-weight:900;
+  text-shadow:0 2px 2px rgba(0,0,0,.55);
+}
+.nkj-rate-metal-price strong {
+  flex:0 1 auto;
+  max-width:90%;
+  overflow:hidden;
+  color:#fff000;
+  font-size:min(4.7cqw,8.35cqh);
+  font-weight:900;
+  line-height:1;
+  letter-spacing:-.035em;
+  white-space:nowrap;
+  text-overflow:clip;
+  text-shadow:0 3px 2px #4b2b00,0 0 8px rgba(255,245,83,.42);
+}
 
-/* Centered royal-blue GST strip. */
+/* Royal-blue footer ribbon, kept clear of the corner lotus artwork. */
 .nkj-rate-gst-banner {
   grid-row:7;
   z-index:14;
-  width:60%;
-  height:90%;
+  width:58%;
+  height:89%;
   flex:none;
-  gap:3%;
-  padding:0 2%;
-  border:clamp(4px,.36cqw,6px) double #f6c63e;
-  background:linear-gradient(180deg,rgba(255,255,255,.2),transparent 42%),linear-gradient(180deg,#073fae 0%,#03288e 56%,#061650 100%);
-  box-shadow:0 5px 0 #7f4400,0 0 14px rgba(225,164,34,.5),inset 0 0 0 2px rgba(255,255,255,.22);
-}
-.nkj-rate-gst-banner strong {font-size:2.3cqw;letter-spacing:.04em;}
-.nkj-rate-gst-banner span {font-size:2.2cqw;}
-.nkj-rate-board-status {display:none;}
-
-/* Keep the mobile board readable: it may scroll vertically, never horizontally. */
-@media (max-width:900px) {
-  .nkj-rate-board-canvas {padding:1% 2.5% 1.25%;}
-  .nkj-rate-board-header {width:88%;margin-left:8%;grid-template-columns:15.7% 65.7% 14%;gap:2.3%;}
-  .nkj-rate-brand-title {font-size:5.7cqw;}
-  .nkj-rate-action span {font-size:1.5cqw;}
-  .nkj-rate-title-row {width:90%;}
-  .nkj-rate-title-banner h1 {font-size:4cqw;}
-  .nkj-rate-date-time {width:90%;}
-  .nkj-rate-time-card span {font-size:2.3cqw;}
-  .nkj-rate-time-card strong {font-size:2.7cqw;}
-  .nkj-rate-hallmark {width:89%;}
-  .nkj-rate-hallmark strong {font-size:2.8cqw;}
-  .nkj-rate-metal-name h2 {font-size:3.7cqw;}
-  .nkj-rate-metal-price strong {font-size:4.8cqw;}
-}
-@media (max-width:620px) {
-  .nkj-rate-board-page {overflow-y:auto;place-items:start center;}
-  .nkj-rate-board-canvas {
-    width:100vw;height:auto;min-height:100svh;aspect-ratio:auto;
-    display:grid;
-    grid-template-rows:112px 52px 54px 56px 44px 190px 46px;
-    grid-auto-rows:auto;row-gap:10px;align-content:start;
-    padding:12px 8px 28px;border-width:5px;
-  }
-  .nkj-rate-board-header {width:100%;margin:0;grid-template-columns:18% minmax(0,1fr) 22%;gap:1%;}
-  .nkj-rate-seal {height:94%;width:100%;}
-  .nkj-rate-board-brand {height:80%;padding:4px;border-radius:12px;}
-  .nkj-rate-brand-title {font-size:5.2cqw;}
-  .nkj-rate-brand-divider b {font-size:2.45cqw;letter-spacing:.1em;}
-  .nkj-rate-action {width:47%;height:64%;border-radius:8px;}
-  .nkj-rate-action svg {width:30% !important;height:30% !important;}
-  .nkj-rate-action span {font-size:1.9cqw;}
-  .nkj-rate-board-curtain {height:35%;width:8%;}
-  .nkj-rate-diya {height:16%;width:7%;}
-  .nkj-rate-title-row {width:96%;}
-  .nkj-rate-title-banner {width:70%;border-radius:22px;}
-  .nkj-rate-title-banner h1 {font-size:4.25cqw;}
-  .nkj-rate-date-time {width:97%;gap:1.2%;}
-  .nkj-rate-time-card {gap:1%;padding:0 1%;border-width:2px;}
-  .nkj-rate-time-card svg {width:3.4cqw;height:3.4cqw;}
-  .nkj-rate-time-card span {font-size:2.35cqw;}
-  .nkj-rate-time-card strong {font-size:2.6cqw;}
-  .nkj-rate-hallmark {width:97%;padding:0 1%;gap:.5%;}
-  .nkj-rate-hallmark strong {font-size:2.7cqw;}
-  .nkj-rate-bis-spray {display:none;}
-  .nkj-rate-per-gram {width:88%;}
-  .nkj-rate-per-gram strong {min-width:56%;font-size:3.1cqw;}
-  .nkj-rate-metal-panel {width:98%;border-radius:13px;}
-  .nkj-rate-metal-row {grid-template-columns:20% 34% 46%;padding:2% 1.2%;}
-  .nkj-rate-jewel-cell {padding:0 1%;}
-  .nkj-rate-metal-name {padding:0 3%;}
-  .nkj-rate-metal-name h2 {font-size:3.5cqw;white-space:normal;}
-  .nkj-rate-metal-price {gap:1%;padding:0 1%;border-radius:9px;}
-  .nkj-rate-metal-price span {font-size:3.7cqw;}
-  .nkj-rate-metal-price strong {font-size:4.9cqw;}
-  .nkj-rate-gst-banner {width:82%;}
-  .nkj-rate-gst-banner strong {font-size:2.75cqw;}
-  .nkj-rate-lotus {width:22%;height:92px;}
-}
-@media (max-width:380px) {
-  .nkj-rate-board-canvas {grid-template-rows:108px 48px 52px 53px 42px 180px 44px;}
-  .nkj-rate-metal-name h2 {font-size:3.25cqw;}
-  .nkj-rate-metal-price strong {font-size:4.6cqw;}
-}
-
-
-/* Last visual refinements against the supplied 960 x 540 master reference. */
-.nkj-rate-board-marble {
-  opacity:.86;
-  background:
-    radial-gradient(ellipse at 5% 35%, transparent 0 14%, rgba(170,119,62,.09) 14.15%, transparent 14.8%),
-    radial-gradient(ellipse at 95% 38%, transparent 0 15%, rgba(170,119,62,.085) 15.15%, transparent 15.8%),
-    radial-gradient(ellipse at 15% 72%, transparent 0 10%, rgba(170,119,62,.075) 10.15%, transparent 10.8%),
-    radial-gradient(ellipse at 85% 73%, transparent 0 11%, rgba(170,119,62,.075) 11.15%, transparent 11.8%),
-    repeating-linear-gradient(132deg,rgba(164,119,52,.045) 0 1px,transparent 1px 18px),
-    repeating-linear-gradient(26deg,transparent 0 68px,rgba(183,134,71,.035) 69px 70px,transparent 71px 138px);
-}
-.nkj-rate-seal {transform:scale(1.07);transform-origin:center;}
-.nkj-rate-logo-image {mix-blend-mode:multiply;}
-.nkj-rate-brand-title {font-size:6.35cqw;}
-.nkj-rate-brand-divider b {font-size:2.78cqw;letter-spacing:.18em;}
-.nkj-rate-per-gram {width:75%;}
-.nkj-rate-jewel-cell {padding:0 3%;overflow:hidden;}
-.nkj-rate-jewel-photo {
-  transform:scale(1.14);
-  transform-origin:center;
-  clip-path:inset(0 0 5.5% 0);
-}
-.nkj-rate-jewel-photo.is-silver {transform:scale(1.18);filter:grayscale(1) contrast(1.14) drop-shadow(0 3px 3px rgba(0,0,0,.35));}
-.nkj-rate-lotus {
-  z-index:11;
-  bottom:0;
-  width:21.35%;
-  height:11.48%;
-  object-fit:fill;
-  border:0;
-  filter:none;
-}
-.nkj-rate-lotus.left {left:0;transform:none;}
-.nkj-rate-lotus.right {right:0;transform:none;}
-
-
-/* Final spacing correction after side-by-side browser comparison. */
-.nkj-rate-board-header {transform:translateY(-.7%);}
-.nkj-rate-seal {transform:scale(1.12);transform-origin:center;}
-.nkj-rate-date-time {width:89.5%;}
-.nkj-rate-hallmark {width:87.5%;}
-.nkj-rate-per-gram {width:76.5%;}
-.nkj-rate-metal-panel {width:97%;}
-.nkj-rate-jewel-photo {transform:scale(1.17);clip-path:inset(0 0 8.5% 0);}
-.nkj-rate-jewel-photo.is-silver {transform:scale(1.2);clip-path:inset(0 0 6% 0);}
-@media (max-width:900px) {
-  .nkj-rate-date-time {width:92%;}
-  .nkj-rate-hallmark {width:90%;}
-  .nkj-rate-metal-panel {width:97.5%;}
-}
-@media (max-width:620px) {
-  .nkj-rate-board-header {transform:none;}
-  .nkj-rate-date-time {width:97%;}
-  .nkj-rate-hallmark {width:97%;}
-  .nkj-rate-metal-panel {width:98%;}
-}
-
-
-/* Desktop micro-alignment: match the master image's outer extents and centerlines. */
-@media (min-width:901px) {
-  .nkj-rate-board-logo {transform:translateX(-8%);}
-  .nkj-rate-board-brand {transform:translateX(1.6%) scaleX(1.085);transform-origin:center;}
-  .nkj-rate-board-actions {transform:translateX(27%) scaleX(1.12);transform-origin:center;}
-  .nkj-rate-title-banner {transform:scaleX(1.09);transform-origin:center;}
-  .nkj-rate-date-time {width:91%;}
-  .nkj-rate-per-gram strong {transform:scaleX(1.045);transform-origin:center;}
-  .nkj-rate-metal-panel {transform:scaleX(1.013);transform-origin:center;}
-  .nkj-rate-gst-banner {transform:scaleX(1.015);transform-origin:center;}
-}
-@media (max-width:900px) {
-  .nkj-rate-board-logo,.nkj-rate-board-brand,.nkj-rate-board-actions,
-  .nkj-rate-title-banner,.nkj-rate-per-gram strong,.nkj-rate-metal-panel,.nkj-rate-gst-banner {transform:none;}
-}
-
-
-/* Premium reference finish: the ornamental frame and jewellery stay crisp at every zoom. */
-.nkj-rate-board-canvas {
-  border:clamp(7px,.72cqw,12px) ridge #d8a02b;
-  background:
-    radial-gradient(ellipse at 50% 43%,rgba(255,255,255,.94),transparent 62%),
-    radial-gradient(ellipse at 12% 17%,rgba(250,218,167,.36),transparent 30%),
-    radial-gradient(ellipse at 88% 76%,rgba(231,194,127,.26),transparent 30%),
-    repeating-linear-gradient(132deg,rgba(164,119,52,.04) 0 1px,transparent 1px 17px),
-    linear-gradient(135deg,#fffaf0 0%,#fff0d8 46%,#fff9eb 100%);
-  box-shadow:
-    inset 0 0 0 4px #fff4b4,
-    inset 0 0 0 8px #96550b,
-    inset 0 0 0 12px #ffedaa,
-    inset 0 0 42px rgba(116,54,0,.32),
-    0 0 0 2px #502400;
-}
-.nkj-rate-board-canvas:before {inset:1.35%;border:1px solid rgba(170,105,17,.9);box-shadow:inset 0 0 0 3px rgba(255,255,255,.48),0 0 5px rgba(124,70,5,.28);}
-.nkj-rate-board-canvas:after {inset:2.05%;border-color:rgba(218,169,69,.7);box-shadow:inset 0 0 0 1px rgba(255,255,255,.38);}
-.nkj-rate-corner {
-  width:19.5%;
-  height:24%;
-  filter:drop-shadow(0 2px 2px rgba(78,33,0,.4)) drop-shadow(0 0 7px rgba(247,190,57,.18));
-}
-.nkj-rate-board-curtain {
-  width:11.2%;
-  opacity:1;
-  background:
-    repeating-linear-gradient(90deg,rgba(255,236,245,.43) 0 2px,rgba(103,0,35,.12) 3px 7px,transparent 8px 14px),
-    linear-gradient(90deg,#570019 0%,#a00b40 15%,#f47ba8 34%,#ffd4e3 43%,#e6508a 59%,#8e002f 83%,#47000e 100%);
-  filter:drop-shadow(5px 0 8px rgba(49,0,12,.4));
-}
-.nkj-rate-board-curtain:before {
-  background:
-    repeating-linear-gradient(90deg,transparent 0 13%,rgba(255,248,250,.2) 14%,transparent 19%),
-    linear-gradient(180deg,rgba(255,255,255,.2),transparent 42%,rgba(48,0,15,.16));
-}
-.nkj-rate-diya {filter:drop-shadow(0 5px 4px rgba(70,26,0,.38)) drop-shadow(0 0 8px rgba(248,174,30,.2));}
-.nkj-rate-lotus {filter:drop-shadow(0 4px 4px rgba(86,0,42,.34));}
-.nkj-rate-jewel-cell {padding:0 2%;overflow:visible;}
-.nkj-rate-jewel-photo {
-  width:100%;
-  height:100%;
-  display:block;
-  object-fit:contain;
-  object-position:center;
-  background:transparent;
-  border:0;
-  border-radius:0;
-  box-shadow:none;
-  transform:scale(1.1);
-  clip-path:none;
-  filter:drop-shadow(0 3px 4px rgba(0,0,0,.38));
-  mix-blend-mode:normal;
-}
-.nkj-rate-jewel-photo.is-silver {
-  transform:scale(1.08);
-  filter:drop-shadow(0 3px 4px rgba(0,0,0,.42));
-  mix-blend-mode:normal;
-}
-.nkj-rate-metal-panel {
-  border-color:#efc44a;
-  background:linear-gradient(110deg,#4a000c 0%,#790018 53%,#46000d 100%);
-  box-shadow:0 8px 0 #824300,0 12px 20px rgba(47,0,7,.34),inset 0 0 0 3px rgba(255,242,171,.62),inset 0 0 22px rgba(0,0,0,.18);
-}
-.nkj-rate-metal-row + .nkj-rate-metal-row {
-  border-top-color:#ff238b;
-  box-shadow:0 -2px 0 rgba(255,239,158,.56),0 0 9px rgba(255,22,128,.72),inset 0 2px 0 rgba(255,255,255,.16);
-}
-.nkj-rate-metal-price {
-  border-color:#ffe66f;
-  background:linear-gradient(180deg,rgba(255,255,255,.24),transparent 42%),linear-gradient(180deg,#00aa1c 0%,#00800c 50%,#005a0b 100%);
-  box-shadow:0 0 0 2px #fff0a0,0 5px 0 #895000,0 0 14px rgba(255,219,61,.7),inset 0 3px 9px rgba(255,255,255,.38),inset 0 -6px 10px rgba(0,0,0,.3);
-}
-.nkj-rate-gst-banner {
-  background:linear-gradient(180deg,rgba(255,255,255,.2),transparent 42%),linear-gradient(180deg,#0a43b4 0%,#05288f 57%,#06164c 100%);
-  box-shadow:0 5px 0 #7f4400,0 0 16px rgba(225,164,34,.52),inset 0 0 0 2px rgba(255,255,255,.22),inset 0 -6px 10px rgba(0,0,0,.22);
-}
-@media (max-width:620px) {
-  .nkj-rate-jewel-cell {padding:0 1%;overflow:visible;}
-  .nkj-rate-jewel-photo {transform:scale(1.04);}
-  .nkj-rate-jewel-photo.is-silver {transform:scale(1.03);}
-  .nkj-rate-corner {width:21%;height:18%;}
-}
-
-
-/* Clamp each metal row to its own half of the rate panel; images may never set row height. */
-.nkj-rate-metal-panel {
-  display:grid;
-  grid-template-rows:minmax(0,1fr) minmax(0,1fr);
-  min-height:0;
-  overflow:hidden;
-}
-.nkj-rate-metal-row {
-  display:grid;
-  grid-template-columns:22% 35% 43%;
-  min-width:0;
-  min-height:0;
-  height:100%;
-  overflow:hidden;
-  align-items:center;
-}
-.nkj-rate-jewel-cell {
   display:flex;
   align-items:center;
   justify-content:center;
-  width:100%;
-  height:100%;
-  min-width:0;
-  min-height:0;
-  padding:2% 4%;
+  gap:3%;
+  padding:0 2%;
   overflow:hidden;
+  border:clamp(4px,.4cqh,6px) double #f6c63e;
+  border-radius:3cqw;
+  background:linear-gradient(180deg,rgba(255,255,255,.2),transparent 42%),linear-gradient(180deg,#073fae 0%,#03288e 56%,#061650 100%);
+  box-shadow:0 5px 0 #7f4400,0 0 14px rgba(225,164,34,.5),inset 0 0 0 2px rgba(255,255,255,.22);
+  color:#fff6dc;
+  text-align:center;
 }
-.nkj-rate-jewel-photo {
-  display:block;
-  width:96%;
-  height:88%;
-  max-width:100%;
-  max-height:88%;
-  min-width:0;
-  min-height:0;
-  object-fit:contain;
-  object-position:center;
-  transform:none;
-  clip-path:none;
+.nkj-rate-gst-banner strong {
+  font-size:min(2.15cqw,3.82cqh);
+  letter-spacing:.04em;
+  line-height:1;
+  white-space:nowrap;
+  text-shadow:0 2px 2px #061044;
 }
-.nkj-rate-jewel-photo.is-silver {
-  width:98%;
-  height:84%;
-  max-height:84%;
-  transform:none;
-}
-.nkj-rate-metal-name,
-.nkj-rate-metal-price {min-width:0;min-height:0;}
-@media (max-width:620px) {
-  .nkj-rate-metal-row {grid-template-columns:20% 34% 46%;}
-  .nkj-rate-jewel-cell {padding:2% 1%;overflow:hidden;}
-  .nkj-rate-jewel-photo {width:100%;height:90%;max-height:90%;}
-  .nkj-rate-jewel-photo.is-silver {width:100%;height:85%;max-height:85%;}
-}
+.nkj-rate-gst-banner span {font-size:min(2.2cqw,3.9cqh);color:#ffe15b;text-shadow:0 1px #641900;}
+.nkj-rate-board-status {display:none;}
 
-
-/* Match the reference's jewellery scale while keeping each image inside its own row. */
-.nkj-rate-jewel-cell {overflow:visible;}
-.nkj-rate-jewel-photo {
-  width:96%;
-  height:88%;
-  max-width:100%;
-  max-height:88%;
-  transform:scale(1.48,1.12);
-  transform-origin:center;
-}
-.nkj-rate-jewel-photo.is-silver {
-  width:98%;
-  height:84%;
-  max-height:84%;
-  transform:scale(1.34,1.22);
-  filter:brightness(1.28) contrast(1.12) drop-shadow(0 3px 4px rgba(0,0,0,.42));
-}
-@media (max-width:620px) {
-  .nkj-rate-jewel-cell {overflow:visible;}
-  .nkj-rate-jewel-photo {transform:scale(1.2,1.08);}
-  .nkj-rate-jewel-photo.is-silver {
-    transform:scale(1.15,1.12);
-    filter:brightness(1.22) contrast(1.1) drop-shadow(0 2px 3px rgba(0,0,0,.38));
+/* Tablet: keep the page-width frame while maintaining readable labels. */
+@media (min-width:761px) and (max-width:1100px) {
+  .nkj-rate-board-page > .nkj-public-topbar {
+    flex-basis:54px !important;
+    height:54px !important;
+    min-height:54px !important;
+    max-height:54px !important;
+    grid-template-columns:minmax(190px,25%) minmax(45px,7%) minmax(0,68%) !important;
+    padding-inline:1.6% !important;
   }
-}
-
-
-/* Last jewellery scale correction from the live preview at 16:9 desktop size. */
-.nkj-rate-jewel-cell {overflow:hidden;}
-.nkj-rate-jewel-photo {
-  transform:scale(1.82,1.24);
-  transform-origin:center;
-}
-.nkj-rate-jewel-photo.is-silver {
-  transform:scale(1.55,1.26);
-  filter:brightness(1.58) contrast(1.24) drop-shadow(0 3px 4px rgba(0,0,0,.42));
-}
-@media (max-width:620px) {
-  .nkj-rate-jewel-cell {overflow:hidden;}
-  .nkj-rate-jewel-photo {transform:scale(1.28,1.1);}
-  .nkj-rate-jewel-photo.is-silver {
-    transform:scale(1.23,1.12);
-    filter:brightness(1.45) contrast(1.18) drop-shadow(0 2px 3px rgba(0,0,0,.38));
+  .nkj-rate-board-page > .nkj-public-topbar > nav {gap:3px !important;}
+  .nkj-rate-board-page > .nkj-public-topbar > nav > a {
+    gap:4px !important;
+    padding-inline:6px !important;
+    font-size:10px !important;
   }
+  .nkj-rate-board-page > .nkj-public-topbar > nav > a svg {width:13px !important;height:13px !important;flex-basis:13px !important;}
+  .nkj-rate-board-brand {border-radius:14px;}
+  .nkj-rate-action span {font-size:min(1.7cqw,2.8cqh);}
 }
 
-
-/* Increase silver linework contrast without reintroducing a rectangular image background. */
-.nkj-rate-jewel-photo.is-silver {
-  filter:brightness(2.2) contrast(1.38) saturate(.55)
-    drop-shadow(0 2px 3px rgba(255,255,255,.16))
-    drop-shadow(0 3px 4px rgba(0,0,0,.48));
-}
-@media (max-width:620px) {
-  .nkj-rate-jewel-photo.is-silver {
-    filter:brightness(2.05) contrast(1.32) saturate(.55)
-      drop-shadow(0 2px 3px rgba(0,0,0,.4));
+/* Mobile: real compact hamburger navbar followed by a vertically scrollable board. */
+@media (max-width:760px) {
+  .nkj-rate-board-page {
+    position:fixed;
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior:contain;
   }
-}
-
-
-/* Use the clean, high-detail silver cutout at its natural scale. */
-.nkj-rate-jewel-photo.is-silver {
-  width:98%;
-  height:94%;
-  max-height:94%;
-  transform:scale(1.03,1.04);
-  filter:drop-shadow(0 3px 4px rgba(0,0,0,.4));
-  mix-blend-mode:normal;
-}
-@media (max-width:620px) {
-  .nkj-rate-jewel-photo.is-silver {
+  .nkj-rate-board-page > .nkj-public-topbar {
+    flex:0 0 54px !important;
+    display:flex !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:10px !important;
+    width:100% !important;
+    height:54px !important;
+    min-height:54px !important;
+    max-height:54px !important;
+    padding:5px 12px !important;
+  }
+  .nkj-rate-board-page > .nkj-public-topbar::before {display:none !important;}
+  .nkj-rate-board-page > .nkj-public-topbar > .brand {
+    flex:1 1 auto !important;
+    min-width:0 !important;
+  }
+  .nkj-rate-board-page > .nkj-public-topbar > .brand b {font-size:14px !important;}
+  .nkj-rate-board-page > .nkj-public-topbar > .brand small {font-size:9px !important;}
+  .nkj-rate-board-page > .nkj-public-topbar .nkj-public-menu-button {
+    position:relative !important;
+    z-index:3 !important;
+    display:grid !important;
+    place-items:center !important;
+    flex:0 0 38px !important;
+    width:38px !important;
+    height:38px !important;
+    min-height:38px !important;
+    padding:0 !important;
+    border:1px solid rgba(239,198,99,.7) !important;
+    border-radius:8px !important;
+    background:rgba(255,240,190,.08) !important;
+    color:#ffe6a1 !important;
+  }
+  .nkj-rate-board-page > .nkj-public-topbar > nav {
+    position:absolute !important;
+    top:100% !important;
+    left:0 !important;
+    right:0 !important;
+    z-index:2 !important;
+    display:none !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    justify-content:flex-start !important;
+    gap:0 !important;
+    height:auto !important;
+    padding:7px 12px 10px !important;
+    border-bottom:2px solid #cf982e !important;
+    background:linear-gradient(180deg,#6d0018,#3c000a) !important;
+    box-shadow:0 8px 16px rgba(30,0,6,.34) !important;
+  }
+  .nkj-rate-board-page > .nkj-public-topbar > nav.is-open {display:flex !important;}
+  .nkj-rate-board-page > .nkj-public-topbar > nav > a,
+  .nkj-rate-board-page > .nkj-public-topbar > nav > button {
+    width:100% !important;
+    height:40px !important;
+    min-height:40px !important;
+    justify-content:flex-start !important;
+    padding:7px 11px !important;
+    border:0 !important;
+    border-bottom:1px solid rgba(255,228,159,.12) !important;
+    border-radius:0 !important;
+    font-size:12px !important;
+  }
+  .nkj-rate-board-canvas {
+    flex:0 0 auto;
     width:100%;
-    height:92%;
-    max-height:92%;
-    transform:scale(1.02,1.02);
-    filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));
+    height:auto;
+    min-height:calc(100svh - 54px);
+    max-height:none;
+    aspect-ratio:auto;
+    container-type:inline-size;
+    display:grid;
+    grid-template-rows:112px 50px 54px 56px 46px 204px 48px;
+    grid-auto-rows:auto;
+    row-gap:9px;
+    align-content:start;
+    justify-items:center;
+    padding:10px 8px 24px;
+    border-width:5px;
+    border-top:0;
   }
-}
-
-
-/* Balance the visual weight of the silver pair with the gold necklace. */
-.nkj-rate-jewel-photo.is-silver {
-  transform:scale(1.24,1.12);
-}
-@media (max-width:620px) {
-  .nkj-rate-jewel-photo.is-silver {transform:scale(1.1,1.08);}
-}
-
-/* Reference calibration pass: bring the central content back to the original artwork's margins. */
-@media (min-width:901px) {
-  .nkj-rate-board-header {
-    width:85%;
-    margin-left:8.5%;
-    grid-template-columns:16% 64% 15%;
-    gap:2.5%;
-  }
-  .nkj-rate-board-logo {transform:translateX(-5%);}
-  .nkj-rate-board-brand {
-    transform:translateX(1.5%) scaleX(.92);
-    transform-origin:center;
-  }
-  .nkj-rate-brand-title {font-size:5.95cqw;}
-  .nkj-rate-board-actions {
-    transform:translateX(16%) scaleX(.98);
-    transform-origin:center;
-    justify-content:flex-start;
-    gap:6%;
-  }
-  .nkj-rate-action {
-    width:43%;
-    height:52%;
-    gap:5%;
-    border-radius:1.1cqw;
-  }
-  .nkj-rate-action svg {width:28% !important;height:28% !important;}
-  .nkj-rate-action span {font-size:1.45cqw;line-height:1.02;}
-  .nkj-rate-title-row {width:85%;}
-  .nkj-rate-title-banner {
-    width:60%;
-    transform:none;
-    border-radius:2.15cqw;
-  }
-  .nkj-rate-title-banner h1 {font-size:3.85cqw;}
-  .nkj-rate-diamond {width:3.35cqw;height:3cqw;flex:none;filter:drop-shadow(0 2px 1px rgba(69,0,10,.45));}
-  .nkj-rate-date-time {
-    width:72%;
-    grid-template-columns:minmax(0,1fr) 2px minmax(0,1fr);
-    gap:8%;
-  }
-  .nkj-rate-time-card {height:88%;gap:1.8%;padding:0 1.7%;}
-  .nkj-rate-time-card span {font-size:2.25cqw;}
-  .nkj-rate-time-card strong {font-size:2.65cqw;}
-  .nkj-rate-hallmark {width:78%;gap:1%;}
-  .nkj-rate-hallmark strong {font-size:2.7cqw;}
-  .nkj-rate-bis-logo {width:7%;height:94%;}
-  .nkj-rate-bis-spray {flex:0 0 12%;width:12%;height:94%;}
-  .nkj-rate-per-gram {width:74%;}
-  .nkj-rate-per-gram strong {min-width:52%;transform:none;font-size:2.45cqw;}
-  .nkj-rate-per-gram .nkj-rate-scroll {width:22%;}
-  .nkj-rate-metal-panel {
-    width:78%;
-    transform:none;
-    border-radius:1.9cqw;
-  }
-  .nkj-rate-metal-row {grid-template-columns:21% 35% 44%;padding:.8% 1.2%;}
-  .nkj-rate-metal-name {padding:0 4%;}
-  .nkj-rate-metal-name h2 {font-size:3.55cqw;}
-  .nkj-rate-metal-price {height:83%;padding:0 1.7%;}
-  .nkj-rate-metal-price strong {font-size:4.8cqw;}
-  .nkj-rate-jewel-cell {padding:0 1%;overflow:hidden;}
-  .nkj-rate-jewel-photo {
-    width:100%;
-    height:100%;
-    max-width:100%;
-    max-height:100%;
-    transform:scale(1.22,1.08);
-    filter:drop-shadow(0 3px 4px rgba(0,0,0,.4));
-  }
-  .nkj-rate-jewel-photo.is-silver {
-    width:100%;
-    height:100%;
-    max-height:100%;
-    transform:scale(1.16,1.1);
-    filter:drop-shadow(0 3px 4px rgba(0,0,0,.42));
-  }
-  .nkj-rate-gst-banner {width:55%;transform:none;}
-  .nkj-rate-gst-banner strong {font-size:2.25cqw;}
-}
-@media (min-width:621px) and (max-width:900px) {
-  .nkj-rate-date-time {width:80%;gap:5%;}
-  .nkj-rate-hallmark {width:84%;}
-  .nkj-rate-metal-panel {width:89%;}
-  .nkj-rate-per-gram {width:78%;}
-  .nkj-rate-gst-banner {width:62%;}
-  .nkj-rate-board-actions {transform:translateX(10%);}
-}
-@media (max-width:620px) {
-  .nkj-rate-diamond {width:4.6cqw;height:4.1cqw;}
-  .nkj-rate-jewel-photo.is-silver {transform:scale(1.1,1.08);}
-}
-
-/* Full-height gold side pillars echo the reference's vertical ornamental frame. */
-.nkj-rate-board-rail {
-  position:absolute;
-  z-index:2;
-  top:1.35%;
-  bottom:1.35%;
-  width:2.55%;
-  pointer-events:none;
-  border:1px solid #9b5a08;
-  background:
-    repeating-linear-gradient(0deg,transparent 0 17px,rgba(255,243,177,.62) 17px 19px,transparent 20px 34px),
-    linear-gradient(90deg,#6f3305 0%,#c88417 15%,#fff0a0 34%,#e7ac31 52%,#a85f0a 77%,#613006 100%);
-  box-shadow:0 0 0 2px rgba(255,233,144,.75),inset 0 0 0 2px rgba(255,249,204,.62),0 0 7px rgba(87,42,0,.32);
-}
-.nkj-rate-board-rail:after {
-  content:"";
-  position:absolute;
-  inset:2.2% 19%;
-  border:1px solid rgba(255,238,165,.78);
-  background:
-    repeating-linear-gradient(0deg,transparent 0 14px,rgba(119,57,0,.28) 14px 16px,transparent 16px 28px);
-  box-shadow:inset 0 0 0 1px rgba(103,47,0,.25);
-}
-.nkj-rate-board-rail.is-left {left:1.1%;}
-.nkj-rate-board-rail.is-right {right:1.1%;transform:scaleX(-1);}
-.nkj-rate-board-curtain {width:8.7%;}
-.nkj-rate-hallmark {
-  overflow:hidden;
-  gap:.35%;
-  padding:0 .8%;
-}
-.nkj-rate-bis-spray {flex:0 0 8.5%;width:8.5%;height:88%;overflow:hidden;}
-.nkj-rate-bis-logo {width:6.4%;}
-.nkj-rate-hallmark strong {min-width:0;}
-.nkj-rate-jewel-photo.is-silver {
-  filter:brightness(1.5) contrast(1.12) saturate(.65)
-    drop-shadow(0 2px 3px rgba(255,255,255,.1))
-    drop-shadow(0 3px 4px rgba(0,0,0,.42));
-}
-@media (max-width:900px) {
-  .nkj-rate-board-rail {width:2.1%;top:1.2%;bottom:1.2%;}
-}
-@media (max-width:620px) {
   .nkj-rate-board-rail {width:2%;top:5px;bottom:5px;}
-  .nkj-rate-bis-spray {display:none;}
-  .nkj-rate-hallmark {overflow:hidden;gap:.5%;padding:0 1%;}
-}
-
-/* Legibility finishing pass: keep the BIS emblem clear and lift silver detail on maroon. */
-@media (min-width:901px) {
-  .nkj-rate-hallmark strong {font-size:2.48cqw;letter-spacing:.008em;}
-  .nkj-rate-hallmark {gap:.55%;}
-}
-.nkj-rate-jewel-photo.is-silver {
-  filter:brightness(1.82) contrast(1.08) saturate(.58)
-    drop-shadow(0 2px 3px rgba(255,255,255,.16))
-    drop-shadow(0 3px 4px rgba(0,0,0,.36));
-}
-@media (max-width:620px) {
-  .nkj-rate-hallmark strong {font-size:2.55cqw;}
-  .nkj-rate-jewel-photo.is-silver {
-    filter:brightness(1.7) contrast(1.08) saturate(.58)
-      drop-shadow(0 2px 3px rgba(255,255,255,.12))
-      drop-shadow(0 2px 3px rgba(0,0,0,.34));
-  }
-}
-
-/* Silver line-art should stay luminous on the burgundy panel, not sink into it. */
-.nkj-rate-jewel-photo.is-silver {
-  mix-blend-mode:screen;
-  filter:brightness(1.24) contrast(.96) saturate(.3)
-    drop-shadow(0 2px 3px rgba(255,255,255,.2))
-    drop-shadow(0 3px 4px rgba(0,0,0,.28));
-}
-@media (max-width:620px) {
-  .nkj-rate-jewel-photo.is-silver {
-    mix-blend-mode:screen;
-    filter:brightness(1.2) contrast(.98) saturate(.32)
-      drop-shadow(0 2px 3px rgba(0,0,0,.25));
-  }
-}
-
-/* Use the original silver bangle photograph from the reference, not the line-art cutout. */
-.nkj-rate-jewel-photo.is-silver {
-  width:100%;
-  height:88%;
-  max-width:100%;
-  max-height:88%;
-  object-fit:contain;
-  object-position:center;
-  transform:scale(1.16,1.08);
-  mix-blend-mode:normal;
-  filter:drop-shadow(0 3px 4px rgba(0,0,0,.36));
-  clip-path:none;
-}
-@media (max-width:620px) {
-  .nkj-rate-jewel-photo.is-silver {
+  .nkj-rate-board-curtain {height:32%;width:7.5%;}
+  .nkj-rate-corner {width:21%;height:18%;}
+  .nkj-rate-lotus {width:22%;height:11.5%;bottom:0;}
+  .nkj-rate-diya {height:15%;width:7%;}
+  .nkj-rate-board-header {
     width:100%;
-    height:88%;
-    max-height:88%;
-    transform:scale(1.08,1.04);
-    filter:drop-shadow(0 2px 3px rgba(0,0,0,.32));
+    height:100%;
+    grid-template-columns:18% minmax(0,1fr) 21%;
+    gap:1%;
+    margin:0;
   }
+  .nkj-rate-seal {height:90%;width:100%;}
+  .nkj-rate-board-brand {height:80%;padding:4px;border-radius:12px;}
+  .nkj-rate-brand-title {font-size:5.15cqw;}
+  .nkj-rate-brand-divider b {font-size:2.45cqw;letter-spacing:.1em;}
+  .nkj-rate-action {width:47%;height:62%;border-radius:8px;}
+  .nkj-rate-action svg {width:15px !important;height:15px !important;}
+  .nkj-rate-action span {font-size:1.85cqw;}
+  .nkj-rate-title-row {width:96%;height:100%;}
+  .nkj-rate-title-banner {width:72%;border-radius:22px;}
+  .nkj-rate-title-banner h1 {font-size:4.25cqw;}
+  .nkj-rate-diamond {width:4.6cqw;height:4.1cqw;}
+  .nkj-rate-scroll {width:11%;}
+  .nkj-rate-date-time {width:97%;height:100%;gap:1.2%;}
+  .nkj-rate-time-card {height:90%;gap:1%;padding:0 1%;border-width:2px;}
+  .nkj-rate-time-card svg {width:3.4cqw;height:3.4cqw;}
+  .nkj-rate-time-card span {font-size:2.35cqw;}
+  .nkj-rate-time-card strong {font-size:2.6cqw;}
+  .nkj-rate-hallmark {width:97%;height:100%;gap:.5%;padding:0 1%;}
+  .nkj-rate-hallmark strong {font-size:2.55cqw;}
+  .nkj-rate-bis-spray {display:none;}
+  .nkj-rate-bis-logo {width:7%;height:90%;}
+  .nkj-rate-per-gram {width:88%;height:100%;}
+  .nkj-rate-per-gram strong {min-width:56%;font-size:3.1cqw;}
+  .nkj-rate-metal-panel {width:98%;height:100%;border-radius:13px;}
+  .nkj-rate-metal-row {grid-template-columns:20% 35% 45%;padding:2% 1.2%;}
+  .nkj-rate-jewel-cell {padding:0 1%;}
+  .nkj-rate-metal-name {padding:0 3%;}
+  .nkj-rate-metal-name h2 {font-size:3.35cqw;white-space:nowrap;}
+  .nkj-rate-metal-price {gap:1%;padding:0 1%;border-radius:9px;}
+  .nkj-rate-metal-price span {font-size:3.7cqw;}
+  .nkj-rate-metal-price strong {font-size:4.85cqw;}
+  .nkj-rate-gst-banner {width:82%;height:100%;}
+  .nkj-rate-gst-banner strong {font-size:2.65cqw;}
+  .nkj-rate-board-status {display:block;bottom:5px;max-width:75%;font-size:8px;}
 }
-
-/* Prevent the complete Gold 22K (916) label from colliding with the price plaque. */
-@media (min-width:901px) {
-  .nkj-rate-metal-row:first-child .nkj-rate-metal-name h2 {
-    font-size:3.22cqw;
-    letter-spacing:-.025em;
-  }
+@media (max-width:380px) {
+  .nkj-rate-board-page > .nkj-public-topbar > .brand b {font-size:12px !important;}
+  .nkj-rate-board-canvas {grid-template-rows:105px 48px 50px 52px 42px 190px 44px;}
+  .nkj-rate-metal-row {grid-template-columns:19% 35% 46%;}
+  .nkj-rate-metal-name h2 {font-size:3.15cqw;}
+  .nkj-rate-metal-price strong {font-size:4.55cqw;}
 }

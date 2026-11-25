@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { request } from "../../core/api/client";
+import { Nav } from "../../shared/layouts/OwnerShell";
 import "./DigitalRateBoardPage.css";
 
 const initialRates = {
@@ -475,6 +476,7 @@ export default function DigitalRateBoardPage() {
 
   return (
     <div className="nkj-rate-board-page" ref={pageRef}>
+      <Nav active="rate" />
       <div className="nkj-rate-board-canvas" aria-label="Nandikishor Jewellery Works Gold and Silver Rate Board">
         <div className="nkj-rate-board-marble" aria-hidden="true" />
         <div className="nkj-rate-board-rail is-left" aria-hidden="true" />
@@ -500,11 +502,11 @@ export default function DigitalRateBoardPage() {
           </div>
           <div className="nkj-rate-board-actions">
             <button className="nkj-rate-action" type="button" onClick={openEditor} aria-label="Edit gold and silver rates">
-              <Pencil size={28} strokeWidth={2.4} />
+              <Pencil size={16} strokeWidth={2.2} />
               <span>Edit</span>
             </button>
             <button className="nkj-rate-action" type="button" onClick={toggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Enter full screen"}>
-              {fullscreen ? <Minimize2 size={27} /> : <Maximize2 size={27} />}
+              {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               <span>{fullscreen ? "Exit" : "Full Screen"}</span>
             </button>
           </div>
@@ -515,7 +517,7 @@ export default function DigitalRateBoardPage() {
           <div className="nkj-rate-title-banner">
             <RateDiamond />
             <h1>GOLD &amp; SILVER RATE</h1>
-            <span className="nkj-rate-diamond">◆</span>
+            <RateDiamond />
           </div>
           <DecorativeScroll side="right" />
         </div>
