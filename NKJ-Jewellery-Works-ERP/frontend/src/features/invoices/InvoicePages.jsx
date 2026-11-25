@@ -756,14 +756,16 @@ export function InvoicePage() {
 
   async function persistInvoice(pinTicket) {
     if (saved && invoiceId) return { id: invoiceId, invoiceNo };
-    if (saveInProgressRef.current) return null;
+    if (saveInProgressRef.current) {
+      throw new Error("The invoice is already being saved. Please wait.");
+    }
 
     setError("");
     setSuccessMessage("");
     const validationError = validateInvoiceForm();
     if (validationError) {
       setError(validationError);
-      return null;
+      throw new Error(validationError);
     }
 
     saveInProgressRef.current = true;
@@ -848,8 +850,11 @@ export function InvoicePage() {
       setSuccessMessage(`Invoice ${result.invoiceNo} ${isEditingSavedInvoice ? "updated" : "saved"} successfully. It is now available in Invoice History.`);
       return result;
     } catch (e) {
-      setError(e.message || "Could not save the invoice. Printing and PDF download have been stopped; your draft is still available.");
-      return null;
+      const message = e.message || "Could not save the invoice. Printing has been stopped; your draft is still available.";
+      setError(message);
+      // Propagate the failure to InvoicePinDialog so the PIN dialog remains
+      // open and the user receives an actionable message instead of a silent close.
+      throw new Error(message);
     } finally {
       saveInProgressRef.current = false;
       setSaving(false);
@@ -865,28 +870,44 @@ export function InvoicePage() {
   async function saveInvoiceWithPin(ticket) {
     const shouldPrintAfterSave = pendingPrintAfterSave;
     const result = await persistInvoice(ticket);
+    if (!result?.id || !result?.invoiceNo) {
+      throw new Error("The server did not confirm that the invoice was saved. Printing has been stopped; your draft is still available.");
+    }
+
     setShowSavePin(false);
     setPendingPrintAfterSave(false);
-    if (!result?.id || !result?.invoiceNo) return;
 
     if (shouldPrintAfterSave) {
-      setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN to open the print dialog.`);
+      setSuccessMessage(`Invoice ${result.invoiceNo} saved successfully. Step 2 of 2: verify the PRINT PIN to open the print preview.`);
       setShowInvoicePin(true);
     }
   }
 
-  async function requestPrintPin() {
+  function requestPrintPin() {
+    if (saving || isPrintPreparing || showSavePin || showInvoicePin) return;
+
     setCalculatorOpen(false);
     setError("");
+    setSuccessMessage("");
+
     if (!saved || !invoiceId) {
-      // Never create or update a record before the SAVE PIN is verified.
-      // The print flow then asks for a second, purpose-specific PRINT PIN.
+      const validationError = validateInvoiceForm();
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      // One click starts the two-stage secure flow:
+      // 1) SAVE PIN -> persist the invoice to PostgreSQL.
+      // 2) PRINT PIN -> authorize the native A4 landscape print preview.
       setPendingPrintAfterSave(true);
+      setSuccessMessage("Step 1 of 2: verify the SAVE PIN. The invoice will be saved before printing.");
       setShowSavePin(true);
       return;
     }
 
-    setSuccessMessage(`Invoice ${invoiceNo} is saved. Verify the invoice security PIN to print this invoice.`);
+    setPendingPrintAfterSave(false);
+    setSuccessMessage(`Invoice ${invoiceNo} is already saved. Verify the PRINT PIN to open the print preview.`);
     setShowInvoicePin(true);
   }
 
@@ -924,16 +945,21 @@ export function InvoicePage() {
       });
 
       setShowInvoicePin(false);
+
+      // Let React commit removal of the PIN overlay before opening the native
+      // print preview. This also prevents the mobile modal from covering the
+      // invoice during Chrome's print snapshot.
+      await new Promise((resolve) => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+      });
+
       printDialogStarted = true;
       window.addEventListener("afterprint", finishAfterPrint, { once: true });
 
-      // Use the browser's native print flow. The existing @media print rules
-      // format this invoice as A4 landscape. When the print dialog closes
-      // (whether printed or cancelled), start a clean invoice on this page.
+      // The existing @media print rules hide the ERP shell and format only
+      // #invoice-print as A4 landscape. afterprint resets the form after the
+      // browser print dialog closes, whether the user prints or cancels.
       window.print();
-
-      // Keep the form intact while the browser print dialog is open. The
-      // afterprint event resets it only after that dialog has been closed.
     } catch (error) {
       if (printDialogStarted && !printFinished) {
         window.removeEventListener("afterprint", finishAfterPrint);
@@ -1773,7 +1799,7 @@ export function InvoicePage() {
             setPendingPrintAfterSave(false);
           }}
           onVerified={saveInvoiceWithPin}
-          title={isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
+          title={pendingPrintAfterSave ? "Step 1 of 2: Save Invoice" : isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
         />
       )}
       {showInvoicePin && (
@@ -1785,7 +1811,7 @@ export function InvoicePage() {
             setIsPrintPreparing(false);
           }}
           onVerified={printCurrentInvoice}
-          title="Authorize saved invoice printing"
+          title="Step 2 of 2: Authorize Invoice Printing"
         />
       )}
     </Page>
