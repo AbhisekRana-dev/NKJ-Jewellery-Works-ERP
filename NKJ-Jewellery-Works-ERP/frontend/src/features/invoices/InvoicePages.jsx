@@ -1799,7 +1799,7 @@ export function InvoicePage() {
             setPendingPrintAfterSave(false);
           }}
           onVerified={saveInvoiceWithPin}
-          title={isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
+          title={pendingPrintAfterSave ? "Step 1 of 2: Save Invoice" : isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
         />
       )}
       {showInvoicePin && (
@@ -1811,7 +1811,7 @@ export function InvoicePage() {
             setIsPrintPreparing(false);
           }}
           onVerified={printCurrentInvoice}
-          title="Authorize saved invoice printing"
+          title="Step 2 of 2: Authorize Invoice Printing"
         />
       )}
     </Page>
