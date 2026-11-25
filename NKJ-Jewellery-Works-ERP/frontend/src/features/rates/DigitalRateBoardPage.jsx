@@ -489,7 +489,7 @@ export default function DigitalRateBoardPage() {
 
   return (
     <>
-      <Nav active="rate" />
+      <Nav active="rate" forcePublic />
       <div
         className="nkj-rate-board-page"
         ref={pageRef}
