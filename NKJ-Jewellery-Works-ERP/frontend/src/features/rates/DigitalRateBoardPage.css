@@ -1417,3 +1417,23 @@
       drop-shadow(0 2px 3px rgba(0,0,0,.4));
   }
 }
+
+
+/* Use the clean, high-detail silver cutout at its natural scale. */
+.nkj-rate-jewel-photo.is-silver {
+  width:98%;
+  height:94%;
+  max-height:94%;
+  transform:scale(1.03,1.04);
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.4));
+  mix-blend-mode:normal;
+}
+@media (max-width:620px) {
+  .nkj-rate-jewel-photo.is-silver {
+    width:100%;
+    height:92%;
+    max-height:92%;
+    transform:scale(1.02,1.02);
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));
+  }
+}
