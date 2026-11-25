@@ -44,10 +44,22 @@ public class WebConfig implements WebMvcConfigurer {
                 "http://172.24.*:*", "http://172.25.*:*", "http://172.26.*:*", "http://172.27.*:*",
                 "http://172.28.*:*", "http://172.29.*:*", "http://172.30.*:*", "http://172.31.*:*"
         };
-        this.allowedOrigins = allowPrivateHttpMobileUploads
-                ? Stream.concat(Arrays.stream(configuredOrigins), Arrays.stream(privateLanOrigins))
-                        .distinct().toArray(String[]::new)
-                : configuredOrigins;
+        // Always allow the exact Netlify site and this site's deploy-preview
+        // hostname family. Netlify proxies /api requests to the Render API, but
+        // forwards the browser Origin header; without these patterns Spring
+        // rejects the password-unlock OPTIONS preflight as "Invalid CORS request".
+        // These patterns are scoped to this project's Netlify site (never "*").
+        String[] nkjNetlifyOrigins = {
+                "https://nkj-jewellery-works-erp.netlify.app",
+                "https://deploy-preview-*--nkj-jewellery-works-erp.netlify.app"
+        };
+        Stream<String> originStream = Stream.concat(
+                Arrays.stream(configuredOrigins),
+                Arrays.stream(nkjNetlifyOrigins));
+        if (allowPrivateHttpMobileUploads) {
+            originStream = Stream.concat(originStream, Arrays.stream(privateLanOrigins));
+        }
+        this.allowedOrigins = originStream.distinct().toArray(String[]::new);
     }
 
     @Bean
