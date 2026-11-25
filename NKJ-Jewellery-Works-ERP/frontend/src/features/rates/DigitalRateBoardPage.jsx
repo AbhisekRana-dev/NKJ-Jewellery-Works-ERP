@@ -115,11 +115,19 @@ function CornerFiligree({ className = "" }) {
         <path d="M5 24 C30 25 26 82 74 89 C106 95 128 77 111 62 C99 51 82 61 86 74" />
         <path d="M17 8 C26 34 64 31 63 7 M185 6 C193 29 225 28 231 5" />
         <path d="M4 112 C42 87 56 112 49 132 C42 152 18 148 18 130 C18 117 33 111 39 122" />
+        <path d="M8 166 C46 151 60 174 86 164 C113 153 109 127 88 128 C70 129 68 147 82 151 C95 155 103 143 96 137" />
+        <path d="M25 9 C46 36 83 39 101 57 C118 74 108 93 91 91 C74 89 72 73 85 68" />
+        <path d="M119 10 C147 25 150 52 174 55 C199 58 211 40 197 29 C184 19 172 28 175 39" />
+        <path d="M13 83 C35 77 39 58 29 47 C19 37 8 45 12 55" />
       </g>
       <g fill="#f5c74b" stroke="#914d08" strokeWidth="2">
         <path d="M93 8 l10 14 -10 14 -10 -14 Z" />
         <path d="M211 78 l9 12 -9 12 -9 -12 Z" />
         <circle cx="65" cy="156" r="7" /><circle cx="154" cy="86" r="6" />
+        <path d="M48 12 C54 2 69 2 73 14 C64 21 55 20 48 12 Z" />
+        <path d="M122 18 C135 6 148 10 150 24 C139 30 128 27 122 18 Z" />
+        <path d="M22 138 C9 127 11 114 24 111 C34 120 33 131 22 138 Z" />
+        <path d="M182 106 C195 93 208 98 207 112 C195 119 185 116 182 106 Z" />
       </g>
     </svg>
   );
@@ -172,7 +180,10 @@ function LotusFlower({ side }) {
         <path d="M132 139 C230 128 241 82 214 48 C165 57 135 91 132 139 Z" fill={"url(#nkj-lotus-petal-" + side + ")"} />
         <path d="M128 139 C43 145 8 118 10 91 C65 78 110 100 128 139 Z" fill="#d21a68" />
         <path d="M132 139 C217 145 252 118 250 91 C195 78 150 100 132 139 Z" fill="#d21a68" />
-        <path d="M130 139 Q82 80 130 15 Q178 80 130 139" fill="none" stroke="#ffe5a5" strokeWidth="3" />
+        <path d="M130 139 C91 111 95 75 130 39 C165 75 169 111 130 139 Z" fill="#ff9ac5" stroke="#fff0db" strokeWidth="2" />
+        <path d="M128 139 C65 129 54 91 77 67 C107 81 126 109 128 139 Z" fill="#f83f91" stroke="#ffd1e5" strokeWidth="2" />
+        <path d="M132 139 C195 129 206 91 183 67 C153 81 134 109 132 139 Z" fill="#f83f91" stroke="#ffd1e5" strokeWidth="2" />
+        <path d="M130 139 Q82 80 130 15 Q178 80 130 139 M130 139 L130 43 M130 139 L89 75 M130 139 L171 75" fill="none" stroke="#ffe5a5" strokeWidth="3" />
       </g>
       <path d="M32 137 Q130 112 228 137 Q180 160 130 145 Q80 160 32 137 Z" fill="#287c32" stroke="#10521e" strokeWidth="3" />
       <ellipse cx="130" cy="137" rx="22" ry="8" fill="#ffd748" stroke="#a86607" strokeWidth="2" />
@@ -184,7 +195,7 @@ function NecklaceArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo"
-      src="/rate-gold-necklace.webp"
+      src="/rate-gold-necklace-reference.webp"
       alt="Traditional gold temple necklace"
       loading="eager"
       decoding="async"
@@ -196,7 +207,7 @@ function SilverBanglesArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo is-silver"
-      src="/rate-silver-bangles.webp"
+      src="/rate-silver-bangles-reference.webp"
       alt="Detailed jewellery bangles"
       loading="eager"
       decoding="async"
@@ -473,7 +484,7 @@ export default function DigitalRateBoardPage() {
         <LotusFlower side="right" />
 
         <header className="nkj-rate-board-header">
-          <div className="nkj-rate-board-logo"><BrandSeal /></div>
+          <div className="nkj-rate-board-logo"><img className="nkj-rate-seal nkj-rate-logo-image" src="/rate-board-nkj-logo.webp" alt="NKJ Jewellery Works emblem" loading="eager" /></div>
           <div className="nkj-rate-board-brand">
             <span className="nkj-rate-brand-title">NANDIKISHOR</span>
             <div className="nkj-rate-brand-divider"><i /> <b>JEWELLERY WORKS</b> <i /></div>
