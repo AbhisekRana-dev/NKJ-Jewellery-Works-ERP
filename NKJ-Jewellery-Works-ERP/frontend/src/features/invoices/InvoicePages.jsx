@@ -679,6 +679,42 @@ export function InvoicePage() {
     };
   }
 
+  // Internal form initializer used only after a completed print or when
+  // the user explicitly starts a new invoice from the application navigation.
+  // There is intentionally no visible Reset action or Escape-key reset shortcut.
+  function resetInvoiceFields({ allowSaved = false } = {}) {
+    if (saving || (saved && !allowSaved)) return;
+
+    skipNextDraftPersistRef.current = true;
+    try { window.localStorage.removeItem(draftStorageKey); } catch {}
+
+    setInvoiceDate(getTodayIndiaDate());
+    setShowGstin(true);
+    setCustomer({ name: "", mobile: "", address: "" });
+    setPaymentMode("Cash");
+    setReferenceNo("");
+    setTotalPaid(null);
+    setNewItems([blankNew()]);
+    setOldItems([blankOld()]);
+    setDiscount("");
+    setGst("0");
+    setDescription("");
+    setSaved(false);
+    setDraftRestored(false);
+    setDraftStorageError(false);
+    setIsEditingSavedInvoice(false);
+    setDraftStorageKey(getInvoiceDraftStorageKey(invoiceOwnerRef.current, false, null));
+    setIdempotencyKey(createInvoiceDraftKey());
+    setInvoiceNo("");
+    setInvoiceId(null);
+    setError("");
+    setSuccessMessage("");
+    setShowInvoicePin(false);
+    setShowSavePin(false);
+    setPendingPrintAfterSave(false);
+    setIsPrintPreparing(false);
+  }
+
   function validateInvoiceForm() {
     if (!invoiceDate) return "Please select an invoice date.";
     if (invoiceDate > maxInvoiceDate) return "Invoice date cannot be in the future.";
@@ -834,7 +870,7 @@ export function InvoicePage() {
     if (!result?.id || !result?.invoiceNo) return;
 
     if (shouldPrintAfterSave) {
-      setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN again to print or save as PDF.`);
+      setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN to open the print dialog.`);
       setShowInvoicePin(true);
     }
   }
@@ -850,16 +886,36 @@ export function InvoicePage() {
       return;
     }
 
-    setSuccessMessage(`Invoice ${invoiceNo} is saved. Verify the invoice security PIN to download its PDF.`);
+    setSuccessMessage(`Invoice ${invoiceNo} is saved. Verify the invoice security PIN to print this invoice.`);
     setShowInvoicePin(true);
   }
 
   async function printCurrentInvoice(ticket) {
     setIsPrintPreparing(true);
     setError("");
+
+    const printedInvoiceNo = invoiceNo;
+    let printDialogStarted = false;
+    let printFinished = false;
+
+    const finishAfterPrint = () => {
+      if (printFinished) return;
+      printFinished = true;
+      window.removeEventListener("afterprint", finishAfterPrint);
+
+      // The invoice is already safely saved on the server. Clear only the
+      // local form/draft and return this same page to a fresh invoice.
+      resetInvoiceFields({ allowSaved: true });
+      setSuccessMessage(
+        printedInvoiceNo
+          ? `Invoice ${printedInvoiceNo} print dialog closed. Ready for a new invoice.`
+          : "Print dialog closed. Ready for a new invoice.",
+      );
+    };
+
     try {
       if (!invoiceId || !invoiceNo) {
-        throw new Error("Save the invoice successfully before generating its PDF.");
+        throw new Error("Save the invoice successfully before printing.");
       }
 
       await request("/invoices/consume-print-ticket", {
@@ -867,22 +923,24 @@ export function InvoicePage() {
         body: JSON.stringify({ ticket, invoiceId }),
       });
 
-      // Generate a real PDF from the same A4-landscape invoice layout used
-      // by Saved Invoices. This downloads the file directly instead of merely
-      // opening the browser print dialog and waiting for the user to choose PDF.
-      const pdfFile = await createInvoiceSharePdfFile({ id: invoiceId, invoiceNo });
-      if (!(pdfFile instanceof File) || pdfFile.type !== "application/pdf" || pdfFile.size < 1000) {
-        throw new Error("The PDF file could not be generated. Please try again.");
-      }
+      setShowInvoicePin(false);
+      printDialogStarted = true;
+      window.addEventListener("afterprint", finishAfterPrint, { once: true });
 
-      downloadInvoicePdfFile(pdfFile);
-      setShowInvoicePin(false);
-      setSuccessMessage(`Invoice ${invoiceNo} PDF downloaded successfully.`);
+      // Use the browser's native print flow. The existing @media print rules
+      // format this invoice as A4 landscape. When the print dialog closes
+      // (whether printed or cancelled), start a clean invoice on this page.
+      window.print();
+
+      // Keep the form intact while the browser print dialog is open. The
+      // afterprint event resets it only after that dialog has been closed.
     } catch (error) {
+      if (printDialogStarted && !printFinished) {
+        window.removeEventListener("afterprint", finishAfterPrint);
+      }
       setShowInvoicePin(false);
-      setError(error.message || "Could not generate or download the invoice PDF.");
-    } finally {
       setIsPrintPreparing(false);
+      setError(error.message || "Could not open the invoice print dialog.");
     }
   }
 
@@ -1692,9 +1750,9 @@ export function InvoicePage() {
           className="secondary"
           onClick={requestPrintPin}
           disabled={saving || isPrintPreparing || showInvoicePin || showSavePin}
-          title="Verify the invoice security PIN before generating and downloading an A4 landscape PDF"
+          title="Verify the invoice security PIN before opening the A4 landscape print dialog"
         >
-          <Printer /> {isPrintPreparing ? "Generating PDF..." : saving ? "Saving..." : "Download / Print Invoice PDF"}
+          <Printer /> {isPrintPreparing ? "Opening Print..." : saving ? "Saving..." : "Download / Print Invoice PDF"}
         </button>
 
       </div>
