@@ -184,7 +184,7 @@ function NecklaceArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo"
-      src="/collection-necklaces.png"
+      src="/rate-gold-necklace.webp"
       alt="Traditional gold temple necklace"
       loading="eager"
       decoding="async"
@@ -196,7 +196,7 @@ function SilverBanglesArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo is-silver"
-      src="/collection-bangles.png"
+      src="/rate-silver-bangles.webp"
       alt="Detailed jewellery bangles"
       loading="eager"
       decoding="async"
