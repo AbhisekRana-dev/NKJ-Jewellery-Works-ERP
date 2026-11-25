@@ -1403,3 +1403,17 @@
     filter:brightness(1.45) contrast(1.18) drop-shadow(0 2px 3px rgba(0,0,0,.38));
   }
 }
+
+
+/* Increase silver linework contrast without reintroducing a rectangular image background. */
+.nkj-rate-jewel-photo.is-silver {
+  filter:brightness(2.2) contrast(1.38) saturate(.55)
+    drop-shadow(0 2px 3px rgba(255,255,255,.16))
+    drop-shadow(0 3px 4px rgba(0,0,0,.48));
+}
+@media (max-width:620px) {
+  .nkj-rate-jewel-photo.is-silver {
+    filter:brightness(2.05) contrast(1.32) saturate(.55)
+      drop-shadow(0 2px 3px rgba(0,0,0,.4));
+  }
+}
