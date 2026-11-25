@@ -1176,3 +1176,25 @@
 }
 .nkj-rate-lotus.left {left:0;transform:none;}
 .nkj-rate-lotus.right {right:0;transform:none;}
+
+
+/* Final spacing correction after side-by-side browser comparison. */
+.nkj-rate-board-header {transform:translateY(-.7%);}
+.nkj-rate-seal {transform:scale(1.12);transform-origin:center;}
+.nkj-rate-date-time {width:89.5%;}
+.nkj-rate-hallmark {width:87.5%;}
+.nkj-rate-per-gram {width:76.5%;}
+.nkj-rate-metal-panel {width:97%;}
+.nkj-rate-jewel-photo {transform:scale(1.17);clip-path:inset(0 0 8.5% 0);}
+.nkj-rate-jewel-photo.is-silver {transform:scale(1.2);clip-path:inset(0 0 6% 0);}
+@media (max-width:900px) {
+  .nkj-rate-date-time {width:92%;}
+  .nkj-rate-hallmark {width:90%;}
+  .nkj-rate-metal-panel {width:97.5%;}
+}
+@media (max-width:620px) {
+  .nkj-rate-board-header {transform:none;}
+  .nkj-rate-date-time {width:97%;}
+  .nkj-rate-hallmark {width:97%;}
+  .nkj-rate-metal-panel {width:98%;}
+}
