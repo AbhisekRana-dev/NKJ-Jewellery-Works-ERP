@@ -493,7 +493,7 @@ export default function DigitalRateBoardPage() {
       <div
         className="nkj-rate-board-page"
         ref={pageRef}
-        style={{ "--nkj-rate-nav-height": `${navHeight}px` }}
+        style={{ "--nkj-rate-nav-height": fullscreen ? "0px" : `${navHeight}px` }}
       >
       <div className="nkj-rate-board-canvas" aria-label="Nandikishor Jewellery Works Gold and Silver Rate Board">
         <div className="nkj-rate-board-marble" aria-hidden="true" />
