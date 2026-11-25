@@ -398,6 +398,11 @@ export function InvoicePage() {
   const [invoiceDate, setInvoiceDate] = useState(() =>
     invoiceSeed?.invoiceDate || initialDraft?.invoiceDate || getTodayIndiaDate()
   );
+  const [invoiceTime, setInvoiceTime] = useState(() =>
+    isEditingSavedInvoice && invoiceSeed?.invoiceTime
+      ? displaySavedInvoiceTime(invoiceSeed.invoiceTime)
+      : ""
+  );
   const [showGstin, setShowGstin] = useState(() =>
     Boolean(invoiceSeed?.showGstin ?? initialDraft?.showGstin ?? true)
   );
@@ -689,6 +694,7 @@ export function InvoicePage() {
     try { window.localStorage.removeItem(draftStorageKey); } catch {}
 
     setInvoiceDate(getTodayIndiaDate());
+    setInvoiceTime("");
     setShowGstin(true);
     setCustomer({ name: "", mobile: "", address: "" });
     setPaymentMode("Cash");
@@ -843,6 +849,15 @@ export function InvoicePage() {
       try { window.localStorage.removeItem(draftStorageKey); } catch {}
       setInvoiceId(result.id);
       setInvoiceNo(result.invoiceNo);
+      const confirmedInvoiceTime = displaySavedInvoiceTime(result.invoiceTime);
+      setInvoiceTime(confirmedInvoiceTime === "—"
+        ? new Intl.DateTimeFormat("en-IN", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }).format(new Date())
+        : confirmedInvoiceTime);
       setSaved(true);
       window.dispatchEvent(new Event("nkj:customers-updated"));
       setDraftRestored(false);
@@ -980,13 +995,12 @@ export function InvoicePage() {
     }
   }
 
-  const now = new Date();
-
-  const time = now.toLocaleTimeString("en-IN", {
+  const time = invoiceTime || new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
     hour: "2-digit",
-
     minute: "2-digit",
-  });
+    hour12: true,
+  }).format(new Date());
 
   return (
     <Page active="invoice">
