@@ -198,9 +198,7 @@ function SilverBanglesArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo is-silver"
-      src="/rate-silver-bangles.webp"
-      width="560"
-      height="278"
+      src="/rate-silver-bangles-reference.webp"
       alt="Traditional silver bangles"
       loading="eager"
       decoding="async"
