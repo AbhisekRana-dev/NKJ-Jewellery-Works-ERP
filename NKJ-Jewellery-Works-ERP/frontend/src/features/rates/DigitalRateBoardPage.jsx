@@ -10,7 +10,6 @@ import {
   Gem,
   ShieldCheck,
 } from "lucide-react";
-import { useAuth } from "../../core/auth/AuthProvider";
 import { request } from "../../core/api/client";
 import "./DigitalRateBoardPage.css";
 
@@ -290,7 +289,6 @@ function BisMark() {
 
 export default function DigitalRateBoardPage() {
   const pageRef = useRef(null);
-  const [unusedAuthContext] = useState(null);
   const [rates, setRates] = useState(initialRates);
   const [now, setNow] = useState(() => new Date());
   const [loading, setLoading] = useState(true);
