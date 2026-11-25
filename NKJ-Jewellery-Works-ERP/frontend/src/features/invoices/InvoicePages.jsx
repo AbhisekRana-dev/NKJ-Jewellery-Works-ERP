@@ -850,8 +850,7 @@ export function InvoicePage() {
       return;
     }
 
-    setIsPrintPreparing(true);
-    setSuccessMessage(`Invoice ${invoiceNo} is saved. Verify the invoice security PIN to print or save as PDF.`);
+    setSuccessMessage(`Invoice ${invoiceNo} is saved. Verify the invoice security PIN to download its PDF.`);
     setShowInvoicePin(true);
   }
 
