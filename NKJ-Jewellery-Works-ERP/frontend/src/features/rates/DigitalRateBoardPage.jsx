@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { request } from "../../core/api/client";
 import "./DigitalRateBoardPage.css";
+import { Nav } from "../../shared/layouts/OwnerShell";
 
 const initialRates = {
   gold24kRate: 0,
@@ -259,6 +260,7 @@ function BisMark() {
 
 export default function DigitalRateBoardPage() {
   const pageRef = useRef(null);
+  const [navHeight, setNavHeight] = useState(98);
   const [rates, setRates] = useState(initialRates);
   const [now, setNow] = useState(() => new Date());
   const [loading, setLoading] = useState(true);
@@ -304,9 +306,42 @@ export default function DigitalRateBoardPage() {
   }, [refreshRates]);
 
   useEffect(() => {
-    const oldOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = oldOverflow; };
+    const header = document.querySelector(".topbar");
+    if (!header) return undefined;
+
+    const syncNavbarHeight = () => {
+      const nextHeight = Math.ceil(header.getBoundingClientRect().height);
+      if (nextHeight > 0) setNavHeight(nextHeight);
+    };
+
+    syncNavbarHeight();
+    const observer = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(syncNavbarHeight)
+      : null;
+    observer?.observe(header);
+    window.addEventListener("resize", syncNavbarHeight);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", syncNavbarHeight);
+    };
+  }, []);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const mobileQuery = window.matchMedia("(max-width: 620px)");
+    const applyOverflow = () => {
+      // The board stays viewport-fitted on desktop; the compact mobile layout
+      // is allowed to scroll vertically below the shared navigation.
+      document.body.style.overflow = mobileQuery.matches ? previousOverflow : "hidden";
+    };
+
+    applyOverflow();
+    mobileQuery.addEventListener?.("change", applyOverflow);
+    return () => {
+      mobileQuery.removeEventListener?.("change", applyOverflow);
+      document.body.style.overflow = previousOverflow;
+    };
   }, []);
 
   useEffect(() => {
@@ -453,7 +488,13 @@ export default function DigitalRateBoardPage() {
   };
 
   return (
-    <div className="nkj-rate-board-page" ref={pageRef}>
+    <>
+      <Nav active="rate" />
+      <div
+        className="nkj-rate-board-page"
+        ref={pageRef}
+        style={{ "--nkj-rate-nav-height": `${navHeight}px` }}
+      >
       <div className="nkj-rate-board-canvas" aria-label="Nandikishor Jewellery Works Gold and Silver Rate Board">
         <div className="nkj-rate-board-marble" aria-hidden="true" />
         <div className="nkj-rate-board-curtain is-left" aria-hidden="true" />
@@ -610,6 +651,7 @@ export default function DigitalRateBoardPage() {
           </section>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
