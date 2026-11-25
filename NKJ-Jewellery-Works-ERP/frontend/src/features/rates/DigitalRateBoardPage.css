@@ -1215,3 +1215,88 @@
   .nkj-rate-board-logo,.nkj-rate-board-brand,.nkj-rate-board-actions,
   .nkj-rate-title-banner,.nkj-rate-per-gram strong,.nkj-rate-metal-panel,.nkj-rate-gst-banner {transform:none;}
 }
+
+
+/* Premium reference finish: the ornamental frame and jewellery stay crisp at every zoom. */
+.nkj-rate-board-canvas {
+  border:clamp(7px,.72cqw,12px) ridge #d8a02b;
+  background:
+    radial-gradient(ellipse at 50% 43%,rgba(255,255,255,.94),transparent 62%),
+    radial-gradient(ellipse at 12% 17%,rgba(250,218,167,.36),transparent 30%),
+    radial-gradient(ellipse at 88% 76%,rgba(231,194,127,.26),transparent 30%),
+    repeating-linear-gradient(132deg,rgba(164,119,52,.04) 0 1px,transparent 1px 17px),
+    linear-gradient(135deg,#fffaf0 0%,#fff0d8 46%,#fff9eb 100%);
+  box-shadow:
+    inset 0 0 0 4px #fff4b4,
+    inset 0 0 0 8px #96550b,
+    inset 0 0 0 12px #ffedaa,
+    inset 0 0 42px rgba(116,54,0,.32),
+    0 0 0 2px #502400;
+}
+.nkj-rate-board-canvas:before {inset:1.35%;border:1px solid rgba(170,105,17,.9);box-shadow:inset 0 0 0 3px rgba(255,255,255,.48),0 0 5px rgba(124,70,5,.28);}
+.nkj-rate-board-canvas:after {inset:2.05%;border-color:rgba(218,169,69,.7);box-shadow:inset 0 0 0 1px rgba(255,255,255,.38);}
+.nkj-rate-corner {
+  width:19.5%;
+  height:24%;
+  filter:drop-shadow(0 2px 2px rgba(78,33,0,.4)) drop-shadow(0 0 7px rgba(247,190,57,.18));
+}
+.nkj-rate-board-curtain {
+  width:11.2%;
+  opacity:1;
+  background:
+    repeating-linear-gradient(90deg,rgba(255,236,245,.43) 0 2px,rgba(103,0,35,.12) 3px 7px,transparent 8px 14px),
+    linear-gradient(90deg,#570019 0%,#a00b40 15%,#f47ba8 34%,#ffd4e3 43%,#e6508a 59%,#8e002f 83%,#47000e 100%);
+  filter:drop-shadow(5px 0 8px rgba(49,0,12,.4));
+}
+.nkj-rate-board-curtain:before {
+  background:
+    repeating-linear-gradient(90deg,transparent 0 13%,rgba(255,248,250,.2) 14%,transparent 19%),
+    linear-gradient(180deg,rgba(255,255,255,.2),transparent 42%,rgba(48,0,15,.16));
+}
+.nkj-rate-diya {filter:drop-shadow(0 5px 4px rgba(70,26,0,.38)) drop-shadow(0 0 8px rgba(248,174,30,.2));}
+.nkj-rate-lotus {filter:drop-shadow(0 4px 4px rgba(86,0,42,.34));}
+.nkj-rate-jewel-cell {padding:0 2%;overflow:visible;}
+.nkj-rate-jewel-photo {
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:contain;
+  object-position:center;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  transform:scale(1.1);
+  clip-path:none;
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.38));
+  mix-blend-mode:normal;
+}
+.nkj-rate-jewel-photo.is-silver {
+  transform:scale(1.08);
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.42));
+  mix-blend-mode:normal;
+}
+.nkj-rate-metal-panel {
+  border-color:#efc44a;
+  background:linear-gradient(110deg,#4a000c 0%,#790018 53%,#46000d 100%);
+  box-shadow:0 8px 0 #824300,0 12px 20px rgba(47,0,7,.34),inset 0 0 0 3px rgba(255,242,171,.62),inset 0 0 22px rgba(0,0,0,.18);
+}
+.nkj-rate-metal-row + .nkj-rate-metal-row {
+  border-top-color:#ff238b;
+  box-shadow:0 -2px 0 rgba(255,239,158,.56),0 0 9px rgba(255,22,128,.72),inset 0 2px 0 rgba(255,255,255,.16);
+}
+.nkj-rate-metal-price {
+  border-color:#ffe66f;
+  background:linear-gradient(180deg,rgba(255,255,255,.24),transparent 42%),linear-gradient(180deg,#00aa1c 0%,#00800c 50%,#005a0b 100%);
+  box-shadow:0 0 0 2px #fff0a0,0 5px 0 #895000,0 0 14px rgba(255,219,61,.7),inset 0 3px 9px rgba(255,255,255,.38),inset 0 -6px 10px rgba(0,0,0,.3);
+}
+.nkj-rate-gst-banner {
+  background:linear-gradient(180deg,rgba(255,255,255,.2),transparent 42%),linear-gradient(180deg,#0a43b4 0%,#05288f 57%,#06164c 100%);
+  box-shadow:0 5px 0 #7f4400,0 0 16px rgba(225,164,34,.52),inset 0 0 0 2px rgba(255,255,255,.22),inset 0 -6px 10px rgba(0,0,0,.22);
+}
+@media (max-width:620px) {
+  .nkj-rate-jewel-cell {padding:0 1%;overflow:visible;}
+  .nkj-rate-jewel-photo {transform:scale(1.04);}
+  .nkj-rate-jewel-photo.is-silver {transform:scale(1.03);}
+  .nkj-rate-corner {width:21%;height:18%;}
+}

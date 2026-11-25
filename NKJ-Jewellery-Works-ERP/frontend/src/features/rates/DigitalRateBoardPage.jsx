@@ -128,6 +128,9 @@ function CornerFiligree({ className = "" }) {
         <path d="M122 18 C135 6 148 10 150 24 C139 30 128 27 122 18 Z" />
         <path d="M22 138 C9 127 11 114 24 111 C34 120 33 131 22 138 Z" />
         <path d="M182 106 C195 93 208 98 207 112 C195 119 185 116 182 106 Z" />
+        <path d="M83 168 C88 152 104 149 113 161 C107 175 94 178 83 168 Z" />
+        <path d="M170 157 C177 144 192 145 198 157 C189 169 178 168 170 157 Z" />
+        <path d="M108 104 C118 89 134 91 140 105 C128 117 116 116 108 104 Z" />
       </g>
     </svg>
   );
@@ -181,7 +184,9 @@ function NecklaceArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo"
-      src="/rate-gold-necklace-reference.webp"
+      src="/rate-gold-necklace.webp"
+      width="560"
+      height="442"
       alt="Traditional gold temple necklace"
       loading="eager"
       decoding="async"
@@ -193,8 +198,10 @@ function SilverBanglesArtwork() {
   return (
     <img
       className="nkj-rate-jewel-photo is-silver"
-      src="/rate-silver-bangles-reference.webp"
-      alt="Detailed jewellery bangles"
+      src="/rate-silver-bangles.webp"
+      width="560"
+      height="278"
+      alt="Traditional silver bangles"
       loading="eager"
       decoding="async"
     />
