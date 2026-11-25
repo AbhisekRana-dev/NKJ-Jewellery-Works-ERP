@@ -855,6 +855,58 @@ async function testInvoiceToolbarAndDeleteControls(browser) {
   }
 }
 
+async function testInvoiceRowActions(browser) {
+  for (const width of [390, 1440]) {
+    const context = await browser.newContext({
+      viewport: { width, height: width <= 760 ? 844 : 950 },
+    });
+    const page = await context.newPage();
+    await installApiMocks(page);
+    try {
+      await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+      await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+      const newPanel = page.locator("#invoice-print .inv-left .ornament-panel").nth(0);
+      const newRows = newPanel.locator(".new-items-table tbody tr");
+      const addNew = newPanel.locator(".row-end button");
+      assert(await newRows.count() === 1, "A new invoice should start with one new-ornament row.");
+      await addNew.click();
+      assert(await newRows.count() === 1,
+        "Add Ornament should reject an empty previous row instead of creating blank rows.");
+      assert((await page.locator(".error.no-print").innerText()).includes("previous ornament row"),
+        "Add Ornament did not explain why the blank row could not be added.");
+      await newRows.first().locator("td:nth-child(2) input").fill("QA gold necklace");
+      await addNew.click();
+      assert(await newRows.count() === 2, "Add Ornament did not add a row after valid details were entered.");
+      await newRows.first().locator(".icon-btn").click();
+      assert(await newRows.count() === 1, "Remove new ornament did not delete the selected row.");
+      assert((await newRows.first().locator("td:nth-child(2) input").inputValue()) === "",
+        "Removing the only entered new ornament should leave one clean blank row.");
+
+      const oldPanel = page.locator("#invoice-print .inv-left .ornament-panel").nth(1);
+      const oldRows = oldPanel.locator(".old-items-table tbody tr");
+      const addOld = oldPanel.locator(".row-end button");
+      assert(await oldRows.count() === 1, "A new invoice should start with one old-ornament row.");
+      await addOld.click();
+      assert(await oldRows.count() === 1,
+        "Add Old Ornament should reject an empty previous row.");
+      await oldRows.first().locator("td:nth-child(2) input").fill("QA old gold chain");
+      await addOld.click();
+      assert(await oldRows.count() === 2,
+        "Add Old Ornament did not add a row after valid details were entered.");
+      await oldRows.first().locator(".icon-btn").click();
+      assert(await oldRows.count() === 1,
+        "Remove old ornament did not delete the selected row.");
+      assert((await oldRows.first().locator("td:nth-child(2) input").inputValue()) === "",
+        "Removing the only entered old ornament should leave one clean blank row.");
+
+      process.stdout.write("PASS Add/Remove New and Old Ornament row actions at " + width + "px\\n");
+    } finally {
+      await context.close();
+    }
+  }
+}
+
 async function testInvoiceSavePinGate(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -1649,6 +1701,7 @@ async function testPublicNavigation(browser) {
     }
     await testInvoiceMakingChargeModes(browser);
     await testInvoiceToolbarAndDeleteControls(browser);
+    await testInvoiceRowActions(browser);
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftRecoveryAndIsolation(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
