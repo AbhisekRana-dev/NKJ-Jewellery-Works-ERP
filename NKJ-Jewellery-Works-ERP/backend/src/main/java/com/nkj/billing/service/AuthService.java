@@ -40,11 +40,11 @@ public class AuthService {
     private static final long IDLE_EXPIRY_REASON_TTL_MILLIS = 60 * 1000L;
     private static final long SESSION_MANAGER_LOCK_MILLIS = 15 * 60 * 1000L;
     private static final int MAX_SESSION_MANAGER_ATTEMPTS = 5;
-    private static final long RATE_BOARD_EDIT_GRANT_TTL_MILLIS = 3 * 60 * 1000L;
+    private static final long RATE_BOARD_EDIT_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
     private static final int MAX_RATE_BOARD_PASSWORD_ATTEMPTS = 5;
 
     @Value("${nkj.admin.username:admin2026}") private String username;
-    @Value("${nkj.auth.session-idle-timeout-ms:600000}") private long sessionIdleTimeoutMillis = 600_000L;
+    @Value("${nkj.auth.session-idle-timeout-ms:900000}") private long sessionIdleTimeoutMillis = 900_000L;
     @Value("${nkj.admin.password:}") private String password;
     @Value("${nkj.admin.session-manager-password:}") private String sessionManagerPassword;
     @Value("${nkj.totp.secret:}") private String secret;

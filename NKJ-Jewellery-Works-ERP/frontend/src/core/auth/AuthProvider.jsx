@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { recordAuthenticatedActivity, request } from "../api/client";
 
 const AuthContext = createContext(null);
-const DEFAULT_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+const DEFAULT_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 // A development-only override lets the Playwright smoke suite exercise expiry
 // quickly. Production builds always use the required ten-minute timeout.
 const testIdleTimeout = typeof window !== "undefined"
