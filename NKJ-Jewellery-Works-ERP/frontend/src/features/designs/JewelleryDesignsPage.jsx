@@ -126,7 +126,7 @@ function SampleArtwork({ design }) {
 
 function DesignImage({ design }) {
   const rawSources = design.imageStatus === "READY"
-    ? [design.thumbnailUrl, design.displayUrl, design.originalUrl]
+    ? [design.displayUrl, design.originalUrl, design.thumbnailUrl]
     : [];
   const sources = Array.from(new Set(rawSources.map(assetUrl).filter(Boolean)));
   const sourceKey = sources.join("|");
