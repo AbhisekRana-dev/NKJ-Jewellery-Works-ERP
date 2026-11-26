@@ -93,36 +93,9 @@ const loadFavorites = () => {
   }
 };
 
-function sampleArtworkPhoto(design) {
-  const description = [
-    design?.metalType,
-    design?.subcategoryName,
-    design?.designName,
-    design?.designCode,
-  ].filter(Boolean).join(" ").toLowerCase();
-  const code = String(design?.designCode || design?.designId || "");
-  const suffix = Number(code.match(/(\d{4})$/)?.[1] || 0);
-
-  // These photographs are existing, clearly-labelled sample inspiration assets.
-  // Locket sample IDs 0021–0025 correspond to the 00721–00725 image set.
-  if (description.includes("locket")) {
-    const imageNumber = suffix >= 21 && suffix <= 25 ? suffix + 700 : 724;
-    return `/nkj-design-samples/gold-locket-${String(imageNumber).padStart(5, "0")}.jpg`;
-  }
-  if (description.includes("jhumka") || description.includes("earring")) {
-    return "/nkj-design-samples/gold-jhumka-earrings.jpg";
-  }
-  if (description.includes("anklet") || description.includes("payal") || description.includes("silver")) {
-    return "/nkj-design-samples/silver-payal-anklets.jpg";
-  }
-  if (description.includes("diamond")) {
-    return "/nkj-design-samples/diamond-halo-ring.jpg";
-  }
-  if (description.includes("necklace") || description.includes("haram")) {
-    return "/nkj-design-samples/gold-temple-necklace.jpg";
-  }
-  if (description.includes("bangle")) return "/collection-bangles.png";
-  if (description.includes("ring")) return "/collection-rings.png";
+function sampleArtworkPhoto() {
+  // Sample concepts have no verified full-resolution product photograph.
+  // Keep them as crisp vector inspiration art; only real uploaded photos use <img>.
   return "";
 }
 
@@ -986,13 +959,15 @@ export default function JewelleryDesignsPage() {
                         <div className="nkj-catalog-view-no-photo"><ImagePlus size={48} /><b>No photograph uploaded</b><span>Edit this design to add product photographs.</span></div>
                       )}
                     </div>
-                    <div className="nkj-catalog-view-gallery-thumbs">
-                      {(selected.images || []).map((image, index) => (
-                        <button type="button" key={image.id} className={index === activeImageIndex ? "active" : ""} onClick={() => { setActiveImageIndex(index); setAdminPhotoZoom(1); }} aria-label={`View photograph ${index + 1}`}>
-                          <img src={assetUrl(image.thumbnailUrl || image.displayUrl || image.originalUrl)} alt={image.altText || `Design photograph ${index + 1}`} loading="lazy" />
-                        </button>
-                      ))}
-                    </div>
+                    {selected.images?.length > 0 && (
+                      <div className="nkj-catalog-view-gallery-thumbs">
+                        {selected.images.map((image, index) => (
+                          <button type="button" key={image.id} className={index === activeImageIndex ? "active" : ""} onClick={() => { setActiveImageIndex(index); setAdminPhotoZoom(1); }} aria-label={`View photograph ${index + 1}`}>
+                            <img src={assetUrl(image.thumbnailUrl || image.displayUrl || image.originalUrl)} alt={image.altText || `Design photograph ${index + 1}`} loading="lazy" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </section>
 
                   <section className="nkj-catalog-view-information">
