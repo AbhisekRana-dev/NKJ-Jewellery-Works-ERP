@@ -6025,3 +6025,220 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   .nkj-designs-page .nkj-design-card h3 { font-size: 13px !important; }
   .nkj-designs-page .nkj-design-art-image { min-height: 128px !important; }
 }
+
+
+/* ============================================================
+   IMAGE CLARITY + DETAIL VIEWPORT CORRECTIONS
+============================================================ */
+
+/* Sample designs remain crisp vector inspiration until a real full-resolution
+   product photo is uploaded. Uploaded photographs are rendered unchanged. */
+.nkj-designs-page .nkj-design-art {
+  position: relative !important;
+  display: grid !important;
+  place-items: center !important;
+  min-height: 220px !important;
+  aspect-ratio: 1.18 / 1 !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 244, 220, .24), transparent 38%),
+    radial-gradient(circle at 16% 12%, rgba(255,255,255,.12), transparent 30%),
+    linear-gradient(145deg, hsl(var(--design-hue, 42) 52% 30%), hsl(calc(var(--design-hue, 42) + 16) 55% 18%) 62%, #321225) !important;
+  color: hsl(var(--design-hue, 42) 85% 78%) !important;
+}
+.nkj-designs-page .nkj-design-art::before {
+  width: min(66%, 188px) !important;
+  aspect-ratio: 1 !important;
+  height: auto !important;
+  border: 1px solid rgba(247, 213, 148, .5) !important;
+  box-shadow: 0 0 0 12px rgba(245, 205, 128, .045), 0 0 0 25px rgba(245, 205, 128, .035) !important;
+  opacity: .7 !important;
+}
+.nkj-designs-page .nkj-design-art::after {
+  width: min(82%, 232px) !important;
+  aspect-ratio: 1 !important;
+  height: auto !important;
+  border: 1px dashed rgba(247, 213, 148, .38) !important;
+  opacity: .5 !important;
+}
+.nkj-designs-page .nkj-design-art-center {
+  width: clamp(94px, 7vw, 128px) !important;
+  height: auto !important;
+  aspect-ratio: 1 !important;
+  border: 1px solid rgba(255, 230, 182, .6) !important;
+  background: radial-gradient(circle at 32% 24%, #fffdf4, #f2ddb2 80%) !important;
+  color: #875319 !important;
+  box-shadow: 0 10px 24px rgba(20, 4, 15, .28), inset 0 0 0 6px rgba(255,255,255,.2) !important;
+}
+.nkj-designs-page .nkj-design-art-center svg {
+  width: 58% !important;
+  height: 58% !important;
+  stroke-width: 1.45 !important;
+}
+.nkj-designs-page .nkj-design-art-orbit {
+  border: 1px solid rgba(255, 228, 173, .75) !important;
+  background: #fff0c9 !important;
+  box-shadow: 0 0 12px rgba(246, 205, 123, .35) !important;
+}
+.nkj-designs-page .nkj-design-art-spark {
+  color: #ffe4a0 !important;
+  text-shadow: 0 1px 10px rgba(246, 198, 104, .5) !important;
+}
+.nkj-designs-page .nkj-design-art-caption {
+  position: absolute !important;
+  left: 10px !important;
+  bottom: 10px !important;
+  padding: 5px 9px !important;
+  border: 1px solid rgba(255, 235, 196, .48) !important;
+  border-radius: 999px !important;
+  background: rgba(86, 12, 47, .86) !important;
+  color: #fff1d0 !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  letter-spacing: .45px !important;
+  z-index: 3 !important;
+}
+.nkj-designs-page .nkj-design-art-code {
+  position: absolute !important;
+  right: 10px !important;
+  bottom: 11px !important;
+  color: rgba(255, 233, 190, .8) !important;
+  font-size: 8px !important;
+  z-index: 3 !important;
+}
+.nkj-designs-page .nkj-design-art.has-product-photo { display: none !important; }
+
+/* Give the actual uploaded photos enough room and never upscale thumbnails as the
+   primary source when the original/display URL is available. */
+.nkj-designs-page .nkj-design-photo {
+  min-height: 220px !important;
+  background: #fffaf1 !important;
+}
+.nkj-designs-page .nkj-design-photo img {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 220px !important;
+  object-fit: contain !important;
+  image-rendering: auto !important;
+}
+
+/* The information column starts at its own top edge. The title remains visible
+   while scrolling details, preventing the title from opening half-clipped. */
+.nkj-catalog-view-information {
+  padding: 10px 5px 12px 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  scroll-padding-top: 8px !important;
+}
+.nkj-catalog-view-title-row {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  margin: 0 46px 10px 0 !important;
+  padding: 12px 16px !important;
+  min-height: 70px !important;
+  align-items: center !important;
+  background: linear-gradient(110deg, #630d31 0%, #8b1946 62%, #58143a 100%) !important;
+}
+.nkj-catalog-view-title-row > div { min-width: 0 !important; }
+.nkj-catalog-view-title-row h2 {
+  display: block !important;
+  margin: 0 !important;
+  color: #fff6e7 !important;
+  font-size: clamp(25px, 2.2vw, 36px) !important;
+  line-height: 1.1 !important;
+  overflow-wrap: anywhere !important;
+}
+.nkj-catalog-view-title-row::after {
+  flex: 0 0 auto !important;
+  margin-left: 8px !important;
+  font-size: 17px !important;
+  color: #f5cb69 !important;
+}
+
+/* No-photo state fills the complete image well; no empty purple thumbnail shelf. */
+.nkj-catalog-view-gallery {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+.nkj-catalog-view-main-photo {
+  flex: 1 1 auto !important;
+  min-height: 360px !important;
+}
+.nkj-catalog-view-gallery-thumbs {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  padding: 8px 12px !important;
+}
+.nkj-catalog-view-gallery-thumbs:empty { display: none !important; }
+.nkj-catalog-view-no-photo {
+  width: min(86%, 420px) !important;
+  gap: 16px !important;
+  padding: 34px 18px !important;
+  border: 1px solid rgba(236, 198, 119, .32) !important;
+  border-radius: 15px !important;
+  background: rgba(71, 7, 38, .18) !important;
+}
+.nkj-catalog-view-no-photo svg {
+  width: 54px !important;
+  height: 54px !important;
+  stroke-width: 1.6 !important;
+  color: #f4c85e !important;
+}
+.nkj-catalog-view-no-photo b {
+  color: #fff5df !important;
+  font-size: clamp(19px, 1.5vw, 25px) !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+}
+.nkj-catalog-view-no-photo span {
+  color: #f1d9e0 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  text-align: center !important;
+}
+
+/* Clear contrast, even when the customer selects text while reading details. */
+.nkj-catalog-details-modal.nkj-catalog-view-modal,
+.nkj-catalog-details-modal.nkj-catalog-view-modal * {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.nkj-catalog-details-modal.nkj-catalog-view-modal ::selection {
+  background: #f0cf89 !important;
+  color: #432619 !important;
+}
+.nkj-catalog-view-detail-rows > div > span {
+  color: #5a3d49 !important;
+  font-weight: 800 !important;
+}
+.nkj-catalog-view-detail-rows > div > b {
+  color: #462433 !important;
+  font-weight: 850 !important;
+}
+.nkj-catalog-view-photos-card > header h3,
+.nkj-catalog-view-photos-card > header > span,
+.nkj-catalog-view-no-saved {
+  color: #682348 !important;
+}
+
+@media screen and (max-width: 1100px) {
+  .nkj-catalog-view-main-photo { min-height: 230px !important; }
+  .nkj-catalog-view-title-row { position: relative !important; top: auto !important; }
+}
+@media screen and (max-width: 680px) {
+  .nkj-catalog-view-main-photo {
+    min-height: 190px !important;
+    height: clamp(190px, 32dvh, 280px) !important;
+  }
+  .nkj-catalog-view-no-photo { padding: 22px 14px !important; }
+  .nkj-catalog-view-title-row {
+    margin: 0 38px 8px 0 !important;
+    min-height: 0 !important;
+    padding: 9px 11px !important;
+  }
+  .nkj-catalog-view-title-row h2 { font-size: clamp(22px, 6vw, 29px) !important; }
+}
