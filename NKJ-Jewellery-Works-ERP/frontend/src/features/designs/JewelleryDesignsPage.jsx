@@ -101,7 +101,7 @@ function sampleArtworkPhoto(design) {
     design?.designCode,
   ].filter(Boolean).join(" ").toLowerCase();
   const code = String(design?.designCode || design?.designId || "");
-  const suffix = Number(code.match(/(\\d{4})$/)?.[1] || 0);
+  const suffix = Number(code.match(/(\d{4})$/)?.[1] || 0);
 
   // These photographs are existing, clearly-labelled sample inspiration assets.
   // Locket sample IDs 0021–0025 correspond to the 00721–00725 image set.
@@ -112,14 +112,14 @@ function sampleArtworkPhoto(design) {
   if (description.includes("jhumka") || description.includes("earring")) {
     return "/nkj-design-samples/gold-jhumka-earrings.jpg";
   }
-  if (description.includes("necklace") || description.includes("haram")) {
-    return "/nkj-design-samples/gold-temple-necklace.jpg";
-  }
-  if (description.includes("diamond") || description.includes("ring")) {
-    return "/nkj-design-samples/diamond-halo-ring.jpg";
-  }
   if (description.includes("anklet") || description.includes("payal") || description.includes("silver")) {
     return "/nkj-design-samples/silver-payal-anklets.jpg";
+  }
+  if (description.includes("diamond")) {
+    return "/nkj-design-samples/diamond-halo-ring.jpg";
+  }
+  if (description.includes("necklace") || description.includes("haram")) {
+    return "/nkj-design-samples/gold-temple-necklace.jpg";
   }
   if (description.includes("bangle")) return "/collection-bangles.png";
   if (description.includes("ring")) return "/collection-rings.png";
