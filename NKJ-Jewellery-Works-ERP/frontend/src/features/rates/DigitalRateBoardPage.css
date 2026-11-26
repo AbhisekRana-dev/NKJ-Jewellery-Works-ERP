@@ -1452,3 +1452,24 @@
 .nkj-rate-bis-logo {
   filter: drop-shadow(0 1px 2px rgba(255,255,255,.65));
 }
+
+
+/* Authenticated Rate Board shares the same workspace geometry as Home.
+   The shared OwnerShell navbar and sidebar remain untouched; this route
+   simply reserves the sidebar rail and fills the remaining viewport. */
+body.nkj-owner-layout .nkj-rate-board-page {
+  box-sizing: border-box !important;
+  width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width, 258px))) !important;
+  max-width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width, 258px))) !important;
+  margin-left: var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width, 258px)) !important;
+}
+
+/* On phones, the owner sidebar becomes an overlay. The board uses the full
+   viewport width while the shared hamburger controls the sidebar. */
+@media screen and (max-width: 760px) {
+  body.nkj-owner-layout .nkj-rate-board-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+}

@@ -265,7 +265,7 @@ export function Nav({ active = "home", forcePublic = false }) {
               <section className="nkj-owner-nav-group" key={group.title}>
                 <small className="nkj-owner-nav-title">{group.title}</small>
                 {group.items.map(([key, label, to, Icon, shortLabel]) => {
-                  const selected = active === key || (key === "saved" && active === "saved");
+                  const selected = active === key || (key === "saved" && active === "saved") || (key === "rates" && active === "rate");
                   return (
                     <Link
                       key={key}
