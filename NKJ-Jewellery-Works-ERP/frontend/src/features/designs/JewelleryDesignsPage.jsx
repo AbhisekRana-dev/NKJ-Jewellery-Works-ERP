@@ -908,11 +908,11 @@ export default function JewelleryDesignsPage() {
         </section>
 
         {selected && (
-          <div className="nkj-catalog-modal-backdrop nkj-catalog-view-backdrop" role="presentation" onMouseDown={(event) => {
+          <div className={`nkj-catalog-modal-backdrop nkj-catalog-view-backdrop ${isAdmin ? "nkj-catalog-view-admin-backdrop" : ""}`} role="presentation" onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeSelectedModal();
           }}>
             
-              <section className="nkj-catalog-details-modal nkj-catalog-view-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-design-modal-title">
+              <section className={`nkj-catalog-details-modal nkj-catalog-view-modal ${isAdmin ? "nkj-catalog-view-admin" : ""}`} role="dialog" aria-modal="true" aria-labelledby="nkj-design-modal-title">
                 <button type="button" className="nkj-catalog-view-close" onClick={closeSelectedModal} aria-label="Close design details"><X size={23} /></button>
                 <div className="nkj-catalog-view-layout">
                   <section className="nkj-catalog-view-gallery" aria-label="Design photographs">
@@ -956,7 +956,7 @@ export default function JewelleryDesignsPage() {
                           )}
                         </>
                       ) : (
-                        selected.isSample ? (
+                        isAdmin && selected.isSample ? (
                           <div className="nkj-catalog-view-card-image-preview" aria-label="Same sample image shown on the design card">
                             <DesignImage design={selected} />
                             <span className="nkj-catalog-view-preview-label">DESIGN PREVIEW</span>
