@@ -6247,19 +6247,19 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
 /* Reuse and enlarge the exact same image/artwork used by the design card
    inside View Design when the design has no separate gallery upload. */
 .nkj-catalog-view-admin-backdrop .nkj-catalog-view-layout {
-  .nkj-catalog-view-admin-backdrop grid-template-columns: minmax(420px, .nkj-catalog-view-admin-backdrop 1.08fr) minmax(0, .nkj-catalog-view-admin-backdrop 1fr) !important;
-  gap: clamp(18px, .nkj-catalog-view-admin-backdrop 2vw, .nkj-catalog-view-admin-backdrop 28px) !important;
+  grid-template-columns: minmax(420px, 1.08fr) minmax(0, 1fr) !important;
+  gap: clamp(18px, 2vw, 28px) !important;
 }
-.nkj-catalog-view-gallery {
-  .nkj-catalog-view-admin-backdrop min-width: 0 !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-gallery {
+  min-width: 0 !important;
   min-height: 0 !important;
 }
-.nkj-catalog-view-main-photo {
-  .nkj-catalog-view-admin-backdrop min-width: 0 !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-main-photo {
+  min-width: 0 !important;
   overflow: hidden !important;
 }
-.nkj-catalog-view-card-image-preview {
-  .nkj-catalog-view-admin-backdrop position: absolute !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview {
+  position: absolute !important;
   inset: 0 !important;
   display: grid !important;
   place-items: stretch !important;
@@ -6268,10 +6268,10 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   min-height: 0 !important;
   overflow: hidden !important;
   border-radius: inherit !important;
-  background: linear-gradient(145deg, .nkj-catalog-view-admin-backdrop #3b0828, .nkj-catalog-view-admin-backdrop #681138 58%, .nkj-catalog-view-admin-backdrop #2b1737) !important;
+  background: linear-gradient(145deg, #3b0828, #681138 58%, #2b1737) !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo-missing {
-  .nkj-catalog-view-admin-backdrop position: absolute !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo-missing {
+  position: absolute !important;
   inset: 0 !important;
   display: grid !important;
   place-items: center !important;
@@ -6283,11 +6283,11 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   border-radius: 0 !important;
   overflow: hidden !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-photo {
-  .nkj-catalog-view-admin-backdrop background: #2d0d24 !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo {
+  background: #2d0d24 !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-photo img, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-image {
-  .nkj-catalog-view-admin-backdrop display: block !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo img, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-image {
+  display: block !important;
   width: 100% !important;
   height: 100% !important;
   min-height: 100% !important;
@@ -6299,58 +6299,59 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   image-rendering: auto !important;
   background: transparent !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art {
-  .nkj-catalog-view-admin-backdrop background:
-    radial-gradient(circle at 50% 46%, .nkj-catalog-view-admin-backdrop rgba(255, .nkj-catalog-view-admin-backdrop 244, .nkj-catalog-view-admin-backdrop 220, .nkj-catalog-view-admin-backdrop .24), .nkj-catalog-view-admin-backdrop transparent 38%), .nkj-catalog-view-admin-backdrop linear-gradient(145deg, .nkj-catalog-view-admin-backdrop hsl(var(--design-hue, .nkj-catalog-view-admin-backdrop 42) 58% 28%), .nkj-catalog-view-admin-backdrop hsl(calc(var(--design-hue, .nkj-catalog-view-admin-backdrop 42) + 18) 58% 18%) 62%, .nkj-catalog-view-admin-backdrop #2e1027) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255,244,220,.24), transparent 38%),
+    linear-gradient(145deg, hsl(var(--design-hue, 42) 58% 28%), hsl(calc(var(--design-hue, 42) + 18) 58% 18%) 62%, #2e1027) !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art-center {
-  .nkj-catalog-view-admin-backdrop width: clamp(150px, .nkj-catalog-view-admin-backdrop 15vw, .nkj-catalog-view-admin-backdrop 220px) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-center {
+  width: clamp(150px, 15vw, 220px) !important;
   height: auto !important;
   aspect-ratio: 1 !important;
-  background: radial-gradient(circle at 32% 24%, .nkj-catalog-view-admin-backdrop #fffdf4, .nkj-catalog-view-admin-backdrop #f0d8a6 82%) !important;
+  background: radial-gradient(circle at 32% 24%, #fffdf4, #f0d8a6 82%) !important;
   color: #815019 !important;
-  box-shadow: 0 14px 32px rgba(16, .nkj-catalog-view-admin-backdrop 3, .nkj-catalog-view-admin-backdrop 16, .nkj-catalog-view-admin-backdrop .34), .nkj-catalog-view-admin-backdrop inset 0 0 0 8px rgba(255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop .18) !important;
+  box-shadow: 0 14px 32px rgba(16, 3, 16, .34), inset 0 0 0 8px rgba(255,255,255,.18) !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art-center svg {
-  .nkj-catalog-view-admin-backdrop width: 62% !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-center svg {
+  width: 62% !important;
   height: 62% !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art::before {
-  .nkj-catalog-view-admin-backdrop width: min(72%, .nkj-catalog-view-admin-backdrop 310px) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art::before {
+  width: min(72%, 310px) !important;
   height: auto !important;
   aspect-ratio: 1 !important;
-  border-color: rgba(255, .nkj-catalog-view-admin-backdrop 226, .nkj-catalog-view-admin-backdrop 168, .nkj-catalog-view-admin-backdrop .55) !important;
+  border-color: rgba(255,226,168,.55) !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art::after {
-  .nkj-catalog-view-admin-backdrop width: min(88%, .nkj-catalog-view-admin-backdrop 370px) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art::after {
+  width: min(88%, 370px) !important;
   height: auto !important;
   aspect-ratio: 1 !important;
-  border-color: rgba(255, .nkj-catalog-view-admin-backdrop 226, .nkj-catalog-view-admin-backdrop 168, .nkj-catalog-view-admin-backdrop .34) !important;
+  border-color: rgba(255,226,168,.34) !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art-caption {
-  .nkj-catalog-view-admin-backdrop left: 16px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-caption {
+  left: 16px !important;
   right: auto !important;
   bottom: 15px !important;
   padding: 7px 12px !important;
-  border: 1px solid rgba(255, .nkj-catalog-view-admin-backdrop 235, .nkj-catalog-view-admin-backdrop 196, .nkj-catalog-view-admin-backdrop .55) !important;
+  border: 1px solid rgba(255,235,196,.55) !important;
   border-radius: 999px !important;
-  background: rgba(84, .nkj-catalog-view-admin-backdrop 10, .nkj-catalog-view-admin-backdrop 45, .nkj-catalog-view-admin-backdrop .88) !important;
+  background: rgba(84, 10, 45, .88) !important;
   color: #fff1cf !important;
   font-size: 10px !important;
   letter-spacing: .8px !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art-code {
-  .nkj-catalog-view-admin-backdrop display: none !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-code {
+  display: none !important;
 }
-.nkj-catalog-view-preview-label {
-  .nkj-catalog-view-admin-backdrop position: absolute !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-preview-label {
+  position: absolute !important;
   z-index: 5 !important;
   top: 15px !important;
   left: 15px !important;
   padding: 7px 12px !important;
-  border: 1px solid rgba(255, .nkj-catalog-view-admin-backdrop 226, .nkj-catalog-view-admin-backdrop 168, .nkj-catalog-view-admin-backdrop .6) !important;
+  border: 1px solid rgba(255,226,168,.6) !important;
   border-radius: 999px !important;
-  background: rgba(77, .nkj-catalog-view-admin-backdrop 7, .nkj-catalog-view-admin-backdrop 39, .nkj-catalog-view-admin-backdrop .84) !important;
+  background: rgba(77, 7, 39, .84) !important;
   color: #ffe8b6 !important;
   font-size: 10px !important;
   font-weight: 900 !important;
@@ -6359,27 +6360,27 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
 }
 @media screen and (min-width: 1101px) {
   .nkj-catalog-view-admin-backdrop .nkj-catalog-details-modal.nkj-catalog-view-modal {
-    .nkj-catalog-view-admin-backdrop width: min(1160px, .nkj-catalog-view-admin-backdrop calc(100vw - 64px)) !important;
-    height: min(740px, .nkj-catalog-view-admin-backdrop calc(100dvh - 64px)) !important;
+    width: min(1160px, calc(100vw - 64px)) !important;
+    height: min(740px, calc(100dvh - 64px)) !important;
     max-width: calc(100vw - 64px) !important;
     max-height: calc(100dvh - 64px) !important;
   }
 }
 @media screen and (max-width: 1100px) {
   .nkj-catalog-view-admin-backdrop .nkj-catalog-view-layout {
-    .nkj-catalog-view-admin-backdrop grid-template-columns: minmax(0, .nkj-catalog-view-admin-backdrop 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
-  .nkj-catalog-view-card-image-preview {
-    .nkj-catalog-view-admin-backdrop position: relative !important;
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview {
+    position: relative !important;
     min-height: 270px !important;
   }
 }
 @media screen and (max-width: 680px) {
-  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview { .nkj-catalog-view-admin-backdrop min-height: 220px !important; }
-  .nkj-catalog-view-card-image-preview .nkj-design-art-center {
-    .nkj-catalog-view-admin-backdrop width: clamp(105px, .nkj-catalog-view-admin-backdrop 34vw, .nkj-catalog-view-admin-backdrop 150px) !important;
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview { min-height: 220px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-center {
+    width: clamp(105px, 34vw, 150px) !important;
   }
-  .nkj-catalog-view-preview-label {
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-preview-label {
     top: 9px !important;
     left: 9px !important;
     font-size: 8px !important;
@@ -6393,15 +6394,15 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
    full-height image gallery at left, complete details and owner
    actions at right, and a permanently visible Close footer.
 ============================================================ */
-.nkj-catalog-modal-backdrop.nkj-catalog-view-backdrop {
-  .nkj-catalog-view-admin-backdrop padding: 14px !important;
+.nkj-catalog-view-admin-backdrop.nkj-catalog-modal-backdrop.nkj-catalog-view-backdrop {
+  padding: 14px !important;
   overflow: hidden !important;
 }
 
-.nkj-catalog-details-modal.nkj-catalog-view-modal {
-  .nkj-catalog-view-admin-backdrop box-sizing: border-box !important;
-  width: min(1580px, .nkj-catalog-view-admin-backdrop calc(100vw - 36px)) !important;
-  height: min(960px, .nkj-catalog-view-admin-backdrop calc(100dvh - 28px)) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-details-modal.nkj-catalog-view-modal {
+  box-sizing: border-box !important;
+  width: min(1580px, calc(100vw - 36px)) !important;
+  height: min(960px, calc(100dvh - 28px)) !important;
   min-height: 0 !important;
   max-height: calc(100dvh - 28px) !important;
   padding: 16px 18px 12px !important;
@@ -6409,22 +6410,24 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   border: 2px solid #d5a44b !important;
   border-radius: 22px !important;
   background:
-    radial-gradient(ellipse at 88% 7%, .nkj-catalog-view-admin-backdrop rgba(231, .nkj-catalog-view-admin-backdrop 188, .nkj-catalog-view-admin-backdrop 205, .nkj-catalog-view-admin-backdrop .24), .nkj-catalog-view-admin-backdrop transparent 34%), .nkj-catalog-view-admin-backdrop radial-gradient(ellipse at 8% 100%, .nkj-catalog-view-admin-backdrop rgba(240, .nkj-catalog-view-admin-backdrop 194, .nkj-catalog-view-admin-backdrop 110, .nkj-catalog-view-admin-backdrop .18), .nkj-catalog-view-admin-backdrop transparent 38%), .nkj-catalog-view-admin-backdrop linear-gradient(135deg, .nkj-catalog-view-admin-backdrop #fff8ed 0%, .nkj-catalog-view-admin-backdrop #fffaf3 50%, .nkj-catalog-view-admin-backdrop #fbf0ed 100%) !important;
+    radial-gradient(ellipse at 88% 7%, rgba(231, 188, 205, .24), transparent 34%),
+    radial-gradient(ellipse at 8% 100%, rgba(240, 194, 110, .18), transparent 38%),
+    linear-gradient(135deg, #fff8ed 0%, #fffaf3 50%, #fbf0ed 100%) !important;
   color: #46202f !important;
-  box-shadow: 0 24px 75px rgba(17, .nkj-catalog-view-admin-backdrop 2, .nkj-catalog-view-admin-backdrop 12, .nkj-catalog-view-admin-backdrop .52), .nkj-catalog-view-admin-backdrop inset 0 0 0 1px rgba(255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop .9) !important;
+  box-shadow: 0 24px 75px rgba(17, 2, 12, .52), inset 0 0 0 1px rgba(255,255,255,.9) !important;
 }
 
-.nkj-catalog-view-layout {
-  .nkj-catalog-view-admin-backdrop display: grid !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-layout {
+  display: grid !important;
   flex: 1 1 0 !important;
-  grid-template-columns: minmax(0, .nkj-catalog-view-admin-backdrop .94fr) minmax(0, .nkj-catalog-view-admin-backdrop 1.06fr) !important;
-  gap: clamp(14px, .nkj-catalog-view-admin-backdrop 1.6vw, .nkj-catalog-view-admin-backdrop 24px) !important;
+  grid-template-columns: minmax(0, .94fr) minmax(0, 1.06fr) !important;
+  gap: clamp(14px, 1.6vw, 24px) !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }
 
-.nkj-catalog-view-gallery {
-  .nkj-catalog-view-admin-backdrop display: flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-gallery {
+  display: flex !important;
   flex-direction: column !important;
   min-width: 0 !important;
   min-height: 0 !important;
@@ -6432,11 +6435,11 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   overflow: hidden !important;
   border: 2px solid #d8a84d !important;
   border-radius: 18px !important;
-  background: linear-gradient(145deg, .nkj-catalog-view-admin-backdrop #4b0629, .nkj-catalog-view-admin-backdrop #710d3c 60%, .nkj-catalog-view-admin-backdrop #390f32) !important;
-  box-shadow: 0 8px 20px rgba(85, .nkj-catalog-view-admin-backdrop 17, .nkj-catalog-view-admin-backdrop 47, .nkj-catalog-view-admin-backdrop .2) !important;
+  background: linear-gradient(145deg, #4b0629, #710d3c 60%, #390f32) !important;
+  box-shadow: 0 8px 20px rgba(85, 17, 47, .2) !important;
 }
 
-.nkj-catalog-view-main-photo {
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-main-photo {
   position: relative !important;
   display: grid !important;
   flex: 1 1 0 !important;
@@ -6451,40 +6454,41 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
 }
 
 /* No-upload state looks intentional, not like a broken empty photo frame. */
-.nkj-catalog-view-no-photo {
-  .nkj-catalog-view-admin-backdrop display: flex !important;
-  width: min(86%, .nkj-catalog-view-admin-backdrop 470px) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-no-photo {
+  display: flex !important;
+  width: min(86%, 470px) !important;
   min-height: 220px !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 13px !important;
-  padding: clamp(18px, .nkj-catalog-view-admin-backdrop 2.2vw, .nkj-catalog-view-admin-backdrop 34px) !important;
-  border: 1.5px dashed rgba(255, .nkj-catalog-view-admin-backdrop 222, .nkj-catalog-view-admin-backdrop 157, .nkj-catalog-view-admin-backdrop .74) !important;
+  padding: clamp(18px, 2.2vw, 34px) !important;
+  border: 1.5px dashed rgba(255, 222, 157, .74) !important;
   border-radius: 18px !important;
   background:
-    radial-gradient(ellipse at 50% 25%, .nkj-catalog-view-admin-backdrop rgba(167, .nkj-catalog-view-admin-backdrop 31, .nkj-catalog-view-admin-backdrop 79, .nkj-catalog-view-admin-backdrop .25), .nkj-catalog-view-admin-backdrop transparent 65%), .nkj-catalog-view-admin-backdrop rgba(64, .nkj-catalog-view-admin-backdrop 3, .nkj-catalog-view-admin-backdrop 34, .nkj-catalog-view-admin-backdrop .18) !important;
+    radial-gradient(ellipse at 50% 25%, rgba(167, 31, 79, .25), transparent 65%),
+    rgba(64, 3, 34, .18) !important;
   text-align: center !important;
 }
-.nkj-catalog-view-no-photo svg {
-  .nkj-catalog-view-admin-backdrop width: clamp(42px, .nkj-catalog-view-admin-backdrop 4vw, .nkj-catalog-view-admin-backdrop 66px) !important;
-  height: clamp(42px, .nkj-catalog-view-admin-backdrop 4vw, .nkj-catalog-view-admin-backdrop 66px) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-no-photo svg {
+  width: clamp(42px, 4vw, 66px) !important;
+  height: clamp(42px, 4vw, 66px) !important;
   color: #ffdc70 !important;
   stroke-width: 1.55 !important;
 }
-.nkj-catalog-view-no-photo b {
-  .nkj-catalog-view-admin-backdrop color: #fff4df !important;
-  font: 800 clamp(19px, .nkj-catalog-view-admin-backdrop 1.65vw, .nkj-catalog-view-admin-backdrop 28px)/1.16 Georgia, .nkj-catalog-view-admin-backdrop serif !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-no-photo b {
+  color: #fff4df !important;
+  font: 800 clamp(19px, 1.65vw, 28px)/1.16 Georgia, serif !important;
 }
-.nkj-catalog-view-no-photo span {
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-no-photo span {
   color: #f2dce3 !important;
   font-size: clamp(11px, .9vw, 14px) !important;
   line-height: 1.4 !important;
 }
 
 /* Same image/art as the card, enlarged cleanly to fill the left column. */
-.nkj-catalog-view-card-image-preview {
-  .nkj-catalog-view-admin-backdrop position: absolute !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview {
+  position: absolute !important;
   inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
@@ -6492,8 +6496,8 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   overflow: hidden !important;
   border-radius: inherit !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo-missing {
-  .nkj-catalog-view-admin-backdrop position: absolute !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo-missing {
+  position: absolute !important;
   inset: 0 !important;
   display: grid !important;
   place-items: center !important;
@@ -6505,8 +6509,8 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   border-radius: 0 !important;
   overflow: hidden !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-photo img, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-image {
-  .nkj-catalog-view-admin-backdrop width: 100% !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-photo img, .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-image {
+  width: 100% !important;
   height: 100% !important;
   min-height: 0 !important;
   max-width: 100% !important;
@@ -6516,39 +6520,39 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   object-position: center !important;
   image-rendering: auto !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art-center {
-  .nkj-catalog-view-admin-backdrop width: clamp(150px, .nkj-catalog-view-admin-backdrop 15vw, .nkj-catalog-view-admin-backdrop 230px) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-center {
+  width: clamp(150px, 15vw, 230px) !important;
   height: auto !important;
   aspect-ratio: 1 !important;
 }
-.nkj-catalog-view-card-image-preview .nkj-design-art-center svg {
-  .nkj-catalog-view-admin-backdrop width: 61% !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card-image-preview .nkj-design-art-center svg {
+  width: 61% !important;
   height: 61% !important;
 }
-.nkj-catalog-view-preview-label {
-  .nkj-catalog-view-admin-backdrop position: absolute !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-preview-label {
+  position: absolute !important;
   z-index: 5 !important;
   top: 14px !important;
   left: 14px !important;
   padding: 7px 12px !important;
-  border: 1px solid rgba(255, .nkj-catalog-view-admin-backdrop 226, .nkj-catalog-view-admin-backdrop 168, .nkj-catalog-view-admin-backdrop .62) !important;
+  border: 1px solid rgba(255, 226, 168, .62) !important;
   border-radius: 999px !important;
-  background: rgba(74, .nkj-catalog-view-admin-backdrop 5, .nkj-catalog-view-admin-backdrop 38, .nkj-catalog-view-admin-backdrop .85) !important;
+  background: rgba(74, 5, 38, .85) !important;
   color: #ffe9b9 !important;
   font-size: 9px !important;
   font-weight: 900 !important;
   letter-spacing: 1px !important;
 }
 
-.nkj-catalog-view-gallery-thumbs {
-  .nkj-catalog-view-admin-backdrop flex: 0 0 74px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-gallery-thumbs {
+  flex: 0 0 74px !important;
   min-height: 0 !important;
   gap: 9px !important;
   padding: 7px 10px !important;
-  border-top: 1px solid rgba(238, .nkj-catalog-view-admin-backdrop 196, .nkj-catalog-view-admin-backdrop 112, .nkj-catalog-view-admin-backdrop .3) !important;
-  background: linear-gradient(90deg, .nkj-catalog-view-admin-backdrop #3b0929, .nkj-catalog-view-admin-backdrop #5a0c36, .nkj-catalog-view-admin-backdrop #3d0d31) !important;
+  border-top: 1px solid rgba(238, 196, 112, .3) !important;
+  background: linear-gradient(90deg, #3b0929, #5a0c36, #3d0d31) !important;
 }
-.nkj-catalog-view-gallery-thumbs > button {
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-gallery-thumbs > button {
   flex: 0 0 58px !important;
   width: 58px !important;
   height: 56px !important;
@@ -6557,11 +6561,11 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
 
 /* Right column is a compact grid: all main sections fit without an inner
    scrollbar at normal laptop and desktop resolutions. */
-.nkj-catalog-view-information {
-  .nkj-catalog-view-admin-backdrop display: flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-information {
+  display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;
-  gap: clamp(7px, .nkj-catalog-view-admin-backdrop .9vh, .nkj-catalog-view-admin-backdrop 11px) !important;
+  gap: clamp(7px, .9vh, 11px) !important;
   min-width: 0 !important;
   min-height: 0 !important;
   height: 100% !important;
@@ -6569,10 +6573,10 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   padding: 4px 4px 3px 0 !important;
   scrollbar-width: none !important;
 }
-.nkj-catalog-view-information::-webkit-scrollbar { .nkj-catalog-view-admin-backdrop display: none !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-information::-webkit-scrollbar { display: none !important; }
 
-.nkj-catalog-view-title-row {
-  .nkj-catalog-view-admin-backdrop display: flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row {
+  display: flex !important;
   flex: 0 0 auto !important;
   align-items: center !important;
   min-height: 66px !important;
@@ -6580,24 +6584,24 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   padding: 10px 16px !important;
   border: 1.5px solid #d8a649 !important;
   border-radius: 14px !important;
-  background: linear-gradient(110deg, .nkj-catalog-view-admin-backdrop #650b31 0%, .nkj-catalog-view-admin-backdrop #8b1643 62%, .nkj-catalog-view-admin-backdrop #580f37 100%) !important;
-  box-shadow: 0 5px 12px rgba(95, .nkj-catalog-view-admin-backdrop 10, .nkj-catalog-view-admin-backdrop 45, .nkj-catalog-view-admin-backdrop .16) !important;
+  background: linear-gradient(110deg, #650b31 0%, #8b1643 62%, #580f37 100%) !important;
+  box-shadow: 0 5px 12px rgba(95, 10, 45, .16) !important;
 }
-.nkj-catalog-view-title-row > div { .nkj-catalog-view-admin-backdrop min-width: 0 !important; }
-.nkj-catalog-view-title-row h2 {
-  .nkj-catalog-view-admin-backdrop margin: 0 !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row > div { min-width: 0 !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row h2 {
+  margin: 0 !important;
   color: #fff5e7 !important;
-  font: 800 clamp(24px, .nkj-catalog-view-admin-backdrop 2.15vw, .nkj-catalog-view-admin-backdrop 39px)/1.08 Georgia, .nkj-catalog-view-admin-backdrop "Times New Roman", .nkj-catalog-view-admin-backdrop serif !important;
+  font: 800 clamp(24px, 2.15vw, 39px)/1.08 Georgia, "Times New Roman", serif !important;
   letter-spacing: -.3px !important;
   overflow-wrap: anywhere !important;
 }
-.nkj-catalog-view-title-row::after {
-  .nkj-catalog-view-admin-backdrop color: #f4c85d !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row::after {
+  color: #f4c85d !important;
   font-size: 18px !important;
 }
 
-.nkj-catalog-view-id {
-  .nkj-catalog-view-admin-backdrop display: inline-flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-id {
+  display: inline-flex !important;
   flex: 0 0 auto !important;
   align-items: center !important;
   align-self: flex-start !important;
@@ -6607,30 +6611,30 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   padding: 7px 14px !important;
   border: 1px solid #daa943 !important;
   border-radius: 999px !important;
-  background: linear-gradient(110deg, .nkj-catalog-view-admin-backdrop #ffedb7, .nkj-catalog-view-admin-backdrop #efc35e) !important;
+  background: linear-gradient(110deg, #ffedb7, #efc35e) !important;
   color: #4b2c0c !important;
-  box-shadow: 0 3px 8px rgba(149, .nkj-catalog-view-admin-backdrop 94, .nkj-catalog-view-admin-backdrop 24, .nkj-catalog-view-admin-backdrop .12) !important;
+  box-shadow: 0 3px 8px rgba(149, 94, 24, .12) !important;
 }
-.nkj-catalog-view-id > span { .nkj-catalog-view-admin-backdrop color: #84551e !important; font-size: 10px !important; }
-.nkj-catalog-view-id > b {
-  .nkj-catalog-view-admin-backdrop color: #341e0d !important;
-  font-size: clamp(10px, .nkj-catalog-view-admin-backdrop .82vw, .nkj-catalog-view-admin-backdrop 13px) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-id > span { color: #84551e !important; font-size: 10px !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-id > b {
+  color: #341e0d !important;
+  font-size: clamp(10px, .82vw, 13px) !important;
   overflow-wrap: anywhere !important;
 }
 
-.nkj-catalog-view-card {
-  .nkj-catalog-view-admin-backdrop flex: 0 0 auto !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-card {
+  flex: 0 0 auto !important;
   min-width: 0 !important;
   padding: 10px 14px !important;
   border-radius: 14px !important;
 }
-.nkj-catalog-view-detail-card {
-  .nkj-catalog-view-admin-backdrop border: 1.5px solid #dfa33f !important;
-  background: linear-gradient(145deg, .nkj-catalog-view-admin-backdrop #fffaf0, .nkj-catalog-view-admin-backdrop #fff3e2) !important;
-  box-shadow: 0 4px 12px rgba(112, .nkj-catalog-view-admin-backdrop 60, .nkj-catalog-view-admin-backdrop 28, .nkj-catalog-view-admin-backdrop .08) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-card {
+  border: 1.5px solid #dfa33f !important;
+  background: linear-gradient(145deg, #fffaf0, #fff3e2) !important;
+  box-shadow: 0 4px 12px rgba(112, 60, 28, .08) !important;
 }
-.nkj-catalog-view-detail-card > h3 {
-  .nkj-catalog-view-admin-backdrop display: flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-card > h3 {
+  display: flex !important;
   align-items: center !important;
   width: fit-content !important;
   min-width: 155px !important;
@@ -6638,38 +6642,38 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   padding: 6px 16px !important;
   border: 1px solid #d6a13f !important;
   border-radius: 11px 28px 10px 4px !important;
-  background: linear-gradient(110deg, .nkj-catalog-view-admin-backdrop #680d32, .nkj-catalog-view-admin-backdrop #8e1644) !important;
+  background: linear-gradient(110deg, #680d32, #8e1644) !important;
   color: #fff4df !important;
-  font: 900 15px/1.2 Georgia, .nkj-catalog-view-admin-backdrop serif !important;
+  font: 900 15px/1.2 Georgia, serif !important;
 }
-.nkj-catalog-view-detail-card > h3 svg { .nkj-catalog-view-admin-backdrop color: #ffdb77 !important; }
-.nkj-catalog-view-detail-rows {
-  .nkj-catalog-view-admin-backdrop display: grid !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-card > h3 svg { color: #ffdb77 !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows {
+  display: grid !important;
   margin-top: 4px !important;
   border-top: 1px solid #edd9bd !important;
 }
-.nkj-catalog-view-detail-rows > div {
-  .nkj-catalog-view-admin-backdrop display: grid !important;
-  grid-template-columns: 30px minmax(100px, .nkj-catalog-view-admin-backdrop .7fr) minmax(0, .nkj-catalog-view-admin-backdrop 1fr) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div {
+  display: grid !important;
+  grid-template-columns: 30px minmax(100px, .7fr) minmax(0, 1fr) !important;
   align-items: center !important;
   gap: 9px !important;
   min-height: 39px !important;
   padding: 5px 4px !important;
   border-bottom: 1px solid #f0dfc8 !important;
 }
-.nkj-catalog-view-detail-rows > div > svg { .nkj-catalog-view-admin-backdrop width: 20px !important; height: 20px !important; }
-.nkj-catalog-view-detail-rows > div > span {
-  .nkj-catalog-view-admin-backdrop color: #563b46 !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div > svg { width: 20px !important; height: 20px !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div > span {
+  color: #563b46 !important;
   font-size: 12px !important;
   font-weight: 850 !important;
 }
-.nkj-catalog-view-detail-rows > div > b {
-  .nkj-catalog-view-admin-backdrop justify-self: end !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div > b {
+  justify-self: end !important;
   max-width: 100% !important;
   padding: 5px 10px !important;
   border: 1px solid #ecc8a8 !important;
   border-radius: 999px !important;
-  background: linear-gradient(110deg, .nkj-catalog-view-admin-backdrop #ffebdc, .nkj-catalog-view-admin-backdrop #ffdfcd) !important;
+  background: linear-gradient(110deg, #ffebdc, #ffdfcd) !important;
   color: #61283a !important;
   font-size: 11px !important;
   font-weight: 900 !important;
@@ -6677,43 +6681,43 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   text-align: right !important;
   overflow-wrap: anywhere !important;
 }
-.nkj-catalog-view-detail-rows > div:nth-child(2) > b {
-  .nkj-catalog-view-admin-backdrop border-color: #e8b4d0 !important;
-  background: linear-gradient(110deg, .nkj-catalog-view-admin-backdrop #ffedf5, .nkj-catalog-view-admin-backdrop #f6d6e6) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div:nth-child(2) > b {
+  border-color: #e8b4d0 !important;
+  background: linear-gradient(110deg, #ffedf5, #f6d6e6) !important;
   color: #75234a !important;
 }
-.nkj-catalog-view-detail-rows > div:nth-child(3) > b {
-  .nkj-catalog-view-admin-backdrop border-color: #eec76f !important;
-  background: linear-gradient(110deg, .nkj-catalog-view-admin-backdrop #fff3d0, .nkj-catalog-view-admin-backdrop #ffe5a8) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div:nth-child(3) > b {
+  border-color: #eec76f !important;
+  background: linear-gradient(110deg, #fff3d0, #ffe5a8) !important;
   color: #68400d !important;
 }
-.nkj-catalog-view-detail-rows > div:nth-child(4) > b {
-  .nkj-catalog-view-admin-backdrop border-color: #efc1cf !important;
-  background: linear-gradient(110deg, .nkj-catalog-view-admin-backdrop #fff0f3, .nkj-catalog-view-admin-backdrop #f8dce5) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div:nth-child(4) > b {
+  border-color: #efc1cf !important;
+  background: linear-gradient(110deg, #fff0f3, #f8dce5) !important;
   color: #812c4b !important;
 }
 
-.nkj-catalog-view-photos-card {
-  .nkj-catalog-view-admin-backdrop flex: 0 0 auto !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photos-card {
+  flex: 0 0 auto !important;
   padding: 9px 13px !important;
   border: 1.5px solid #e6a9c7 !important;
   border-radius: 14px !important;
-  background: linear-gradient(135deg, .nkj-catalog-view-admin-backdrop #fff5f8, .nkj-catalog-view-admin-backdrop #fce8f0) !important;
-  box-shadow: 0 4px 12px rgba(133, .nkj-catalog-view-admin-backdrop 45, .nkj-catalog-view-admin-backdrop 87, .nkj-catalog-view-admin-backdrop .08) !important;
+  background: linear-gradient(135deg, #fff5f8, #fce8f0) !important;
+  box-shadow: 0 4px 12px rgba(133, 45, 87, .08) !important;
 }
-.nkj-catalog-view-photos-card > header {
-  .nkj-catalog-view-admin-backdrop display: flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photos-card > header {
+  display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   gap: 10px !important;
   margin: 0 0 6px !important;
 }
-.nkj-catalog-view-photos-card > header h3 {
-  .nkj-catalog-view-admin-backdrop color: #74183e !important;
-  font: 850 15px/1.2 Georgia, .nkj-catalog-view-admin-backdrop serif !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photos-card > header h3 {
+  color: #74183e !important;
+  font: 850 15px/1.2 Georgia, serif !important;
 }
-.nkj-catalog-view-photos-card > header > span {
-  .nkj-catalog-view-admin-backdrop padding: 5px 10px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photos-card > header > span {
+  padding: 5px 10px !important;
   border: 1px solid #eab3ce !important;
   border-radius: 999px !important;
   background: #fff0f6 !important;
@@ -6721,136 +6725,135 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   font-size: 11px !important;
   font-weight: 900 !important;
 }
-.nkj-catalog-view-photo-management {
-  .nkj-catalog-view-admin-backdrop display: flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-management {
+  display: flex !important;
   align-items: center !important;
   gap: 9px !important;
   min-height: 45px !important;
 }
-.nkj-catalog-view-photo-strip {
-  .nkj-catalog-view-admin-backdrop min-height: 42px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-strip {
+  min-height: 42px !important;
   gap: 7px !important;
   padding: 2px !important;
   border: 1px solid #ecc2d6 !important;
   border-radius: 9px !important;
-  background: rgba(255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop .58) !important;
+  background: rgba(255,255,255,.58) !important;
 }
-.nkj-catalog-view-photo-strip > button {
-  .nkj-catalog-view-admin-backdrop flex-basis: 42px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-strip > button {
+  flex-basis: 42px !important;
   width: 42px !important;
   height: 42px !important;
 }
-.nkj-catalog-view-no-saved {
-  .nkj-catalog-view-admin-backdrop padding: 8px 10px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-no-saved {
+  padding: 8px 10px !important;
   color: #775565 !important;
   font-size: 12px !important;
 }
-.nkj-catalog-view-photo-actions { .nkj-catalog-view-admin-backdrop gap: 7px !important; }
-.nkj-catalog-view-photo-actions button {
-  .nkj-catalog-view-admin-backdrop min-height: 38px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-actions { gap: 7px !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-actions button {
+  min-height: 38px !important;
   padding: 6px 10px !important;
   border-radius: 9px !important;
   font-size: 10px !important;
 }
-.nkj-catalog-view-photo-actions button.remove-photo { .nkj-catalog-view-admin-backdrop width: 40px !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-actions button.remove-photo { width: 40px !important; }
 
-.nkj-catalog-owner-controls {
-  .nkj-catalog-view-admin-backdrop flex: 0 0 auto !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls {
+  flex: 0 0 auto !important;
   padding: 10px 13px !important;
   border: 1.5px solid #9dc7a6 !important;
   border-radius: 14px !important;
-  background: linear-gradient(135deg, .nkj-catalog-view-admin-backdrop #f1fbf0, .nkj-catalog-view-admin-backdrop #e6f4e6) !important;
-  box-shadow: 0 4px 12px rgba(33, .nkj-catalog-view-admin-backdrop 99, .nkj-catalog-view-admin-backdrop 57, .nkj-catalog-view-admin-backdrop .07) !important;
+  background: linear-gradient(135deg, #f1fbf0, #e6f4e6) !important;
+  box-shadow: 0 4px 12px rgba(33, 99, 57, .07) !important;
 }
-.nkj-catalog-owner-controls-heading {
-  .nkj-catalog-view-admin-backdrop align-items: center !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading {
+  align-items: center !important;
   gap: 8px !important;
   margin: 0 0 7px !important;
   padding: 0 0 7px !important;
   border-bottom: 1px solid #cfe2d0 !important;
   color: #17603b !important;
 }
-.nkj-catalog-owner-controls-heading > div {
-  .nkj-catalog-view-admin-backdrop align-items: center !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading > div {
+  align-items: center !important;
   gap: 10px !important;
 }
-.nkj-catalog-owner-controls-heading > div > svg, .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading > svg {
-  .nkj-catalog-view-admin-backdrop width: 22px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading > div > svg, .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading > svg {
+  width: 22px !important;
   height: 22px !important;
   color: #155d3b !important;
 }
-.nkj-catalog-owner-controls-heading > div > span { .nkj-catalog-view-admin-backdrop gap: 2px !important; }
-.nkj-catalog-owner-controls-heading small {
-  .nkj-catalog-view-admin-backdrop color: #ac6615 !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading > div > span { gap: 2px !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading small {
+  color: #ac6615 !important;
   font-size: 9px !important;
   letter-spacing: 1.2px !important;
 }
-.nkj-catalog-owner-controls-heading b {
-  .nkj-catalog-view-admin-backdrop color: #174d34 !important;
-  font: 800 20px/1.08 Georgia, .nkj-catalog-view-admin-backdrop serif !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading b {
+  color: #174d34 !important;
+  font: 800 20px/1.08 Georgia, serif !important;
 }
-.nkj-catalog-owner-control-actions {
-  .nkj-catalog-view-admin-backdrop grid-template-columns: minmax(0, .nkj-catalog-view-admin-backdrop .9fr) minmax(0, .nkj-catalog-view-admin-backdrop 1fr) minmax(0, .nkj-catalog-view-admin-backdrop 1.55fr) !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions {
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.55fr) !important;
   gap: 8px !important;
 }
-.nkj-catalog-owner-control-actions button {
-  .nkj-catalog-view-admin-backdrop min-height: 42px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions button {
+  min-height: 42px !important;
   padding: 7px 9px !important;
   border-radius: 9px !important;
-  background: rgba(255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop .62) !important;
+  background: rgba(255,255,255,.62) !important;
   color: #4b1a2f !important;
   font-size: 10px !important;
   font-weight: 850 !important;
   line-height: 1.15 !important;
 }
-.nkj-catalog-owner-control-actions button.archive {
-  .nkj-catalog-view-admin-backdrop border-color: #e6a2bb !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions button.archive {
+  border-color: #e6a2bb !important;
   background: #fff0f5 !important;
   color: #971744 !important;
 }
-.nkj-catalog-owner-control-actions button.mobile-upload {
-  .nkj-catalog-view-admin-backdrop border-color: #e8c36d !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions button.mobile-upload {
+  border-color: #e8c36d !important;
   background: #fff6d9 !important;
   color: #68420e !important;
 }
-.nkj-catalog-view-computer-upload {
-  .nkj-catalog-view-admin-backdrop margin-top: 6px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-computer-upload {
+  margin-top: 6px !important;
   border: 1px solid #d9e6d4 !important;
   border-radius: 8px !important;
-  background: rgba(255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop 255, .nkj-catalog-view-admin-backdrop .45) !important;
+  background: rgba(255,255,255,.45) !important;
 }
-.nkj-catalog-view-computer-upload > summary {
-  .nkj-catalog-view-admin-backdrop min-height: 29px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-computer-upload > summary {
+  min-height: 29px !important;
   padding: 5px 8px !important;
   color: #2d4b38 !important;
   font-size: 11px !important;
   line-height: 1.2 !important;
   cursor: pointer !important;
 }
-.nkj-catalog-view-computer-upload[open] { background: #fff !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-computer-upload[open] { background: #fff !important; }
 
 /* The detail column has no scroll in the default state. If the admin expands
    the computer-upload tools or opens a mobile QR panel, that optional content
    can scroll without moving the Close button. */
-.nkj-catalog-view-information:has(.nkj-design-mobile-qr-panel),
-.nkj-catalog-view-information:has(.nkj-catalog-view-computer-upload[open]) {
-  .nkj-catalog-view-admin-backdrop overflow-y: auto !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-information:has(.nkj-design-mobile-qr-panel), .nkj-catalog-view-admin-backdrop .nkj-catalog-view-information:has(.nkj-catalog-view-computer-upload[open]) {
+  overflow-y: auto !important;
   scrollbar-width: thin !important;
   scrollbar-color: #d6b36d transparent !important;
 }
 
-.nkj-catalog-view-footer {
-  .nkj-catalog-view-admin-backdrop display: flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-footer {
+  display: flex !important;
   flex: 0 0 48px !important;
   align-items: center !important;
   justify-content: flex-end !important;
   min-height: 48px !important;
   margin: 0 !important;
   padding: 7px 0 0 !important;
-  border-top: 1px solid rgba(208, .nkj-catalog-view-admin-backdrop 166, .nkj-catalog-view-admin-backdrop 91, .nkj-catalog-view-admin-backdrop .36) !important;
+  border-top: 1px solid rgba(208, 166, 91, .36) !important;
 }
-.nkj-catalog-view-footer button {
-  .nkj-catalog-view-admin-backdrop display: inline-flex !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-footer button {
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   min-width: 160px !important;
@@ -6858,13 +6861,13 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   padding: 8px 22px !important;
   border: 1.5px solid #d4a13e !important;
   border-radius: 999px !important;
-  background: linear-gradient(110deg, .nkj-catalog-view-admin-backdrop #670d32, .nkj-catalog-view-admin-backdrop #901744) !important;
+  background: linear-gradient(110deg, #670d32, #901744) !important;
   color: #fff5e5 !important;
-  font: 850 15px Georgia, .nkj-catalog-view-admin-backdrop serif !important;
-  box-shadow: 0 4px 10px rgba(103, .nkj-catalog-view-admin-backdrop 13, .nkj-catalog-view-admin-backdrop 50, .nkj-catalog-view-admin-backdrop .18) !important;
+  font: 850 15px Georgia, serif !important;
+  box-shadow: 0 4px 10px rgba(103, 13, 50, .18) !important;
 }
-.nkj-catalog-view-close {
-  .nkj-catalog-view-admin-backdrop top: 13px !important;
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-close {
+  top: 13px !important;
   right: 13px !important;
   width: 42px !important;
   height: 42px !important;
@@ -6872,91 +6875,91 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   background: #fffaf0 !important;
   color: #75143b !important;
 }
-.nkj-catalog-view-close:hover { background: #ffedc5 !important; }
+.nkj-catalog-view-admin-backdrop .nkj-catalog-view-close:hover { background: #ffedc5 !important; }
 
 /* Compact laptop heights: preserve the complete modal without page scrolling. */
 @media screen and (min-width: 901px) and (max-height: 850px) {
   .nkj-catalog-view-admin-backdrop .nkj-catalog-details-modal.nkj-catalog-view-modal {
-    .nkj-catalog-view-admin-backdrop height: calc(100dvh - 20px) !important;
+    height: calc(100dvh - 20px) !important;
     max-height: calc(100dvh - 20px) !important;
     padding: 10px 13px 8px !important;
     gap: 6px !important;
   }
-  .nkj-catalog-view-information { .nkj-catalog-view-admin-backdrop gap: 6px !important; padding-top: 2px !important; }
-  .nkj-catalog-view-title-row { .nkj-catalog-view-admin-backdrop min-height: 54px !important; padding: 7px 12px !important; }
-  .nkj-catalog-view-title-row h2 { .nkj-catalog-view-admin-backdrop font-size: clamp(22px, .nkj-catalog-view-admin-backdrop 2vw, .nkj-catalog-view-admin-backdrop 31px) !important; }
-  .nkj-catalog-view-id { .nkj-catalog-view-admin-backdrop min-height: 36px !important; padding: 5px 10px !important; }
-  .nkj-catalog-view-card { .nkj-catalog-view-admin-backdrop padding: 7px 10px !important; }
-  .nkj-catalog-view-detail-rows > div { .nkj-catalog-view-admin-backdrop min-height: 33px !important; padding: 3px !important; }
-  .nkj-catalog-view-detail-card > h3 { .nkj-catalog-view-admin-backdrop padding: 5px 13px !important; margin-top: -8px !important; }
-  .nkj-catalog-view-photos-card { .nkj-catalog-view-admin-backdrop padding: 7px 10px !important; }
-  .nkj-catalog-view-photo-management { .nkj-catalog-view-admin-backdrop min-height: 36px !important; }
-  .nkj-catalog-view-photo-strip { .nkj-catalog-view-admin-backdrop min-height: 34px !important; }
-  .nkj-catalog-view-photo-actions button { .nkj-catalog-view-admin-backdrop min-height: 32px !important; }
-  .nkj-catalog-owner-controls { .nkj-catalog-view-admin-backdrop padding: 7px 10px !important; }
-  .nkj-catalog-owner-controls-heading { .nkj-catalog-view-admin-backdrop margin-bottom: 5px !important; padding-bottom: 5px !important; }
-  .nkj-catalog-owner-controls-heading b { .nkj-catalog-view-admin-backdrop font-size: 17px !important; }
-  .nkj-catalog-owner-control-actions button { .nkj-catalog-view-admin-backdrop min-height: 36px !important; padding: 5px 7px !important; font-size: 9px !important; }
-  .nkj-catalog-view-computer-upload { .nkj-catalog-view-admin-backdrop margin-top: 4px !important; }
-  .nkj-catalog-view-computer-upload > summary { .nkj-catalog-view-admin-backdrop min-height: 24px !important; padding: 3px 7px !important; }
-  .nkj-catalog-view-footer { .nkj-catalog-view-admin-backdrop flex-basis: 40px !important; min-height: 40px !important; padding-top: 4px !important; }
-  .nkj-catalog-view-footer button { min-height: 35px !important; min-width: 140px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-information { gap: 6px !important; padding-top: 2px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row { min-height: 54px !important; padding: 7px 12px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row h2 { font-size: clamp(22px, 2vw, 31px) !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-id { min-height: 36px !important; padding: 5px 10px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card { padding: 7px 10px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div { min-height: 33px !important; padding: 3px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-card > h3 { padding: 5px 13px !important; margin-top: -8px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-photos-card { padding: 7px 10px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-management { min-height: 36px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-strip { min-height: 34px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-photo-actions button { min-height: 32px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls { padding: 7px 10px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading { margin-bottom: 5px !important; padding-bottom: 5px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading b { font-size: 17px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions button { min-height: 36px !important; padding: 5px 7px !important; font-size: 9px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-computer-upload { margin-top: 4px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-computer-upload > summary { min-height: 24px !important; padding: 3px 7px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-footer { flex-basis: 40px !important; min-height: 40px !important; padding-top: 4px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-footer button { min-height: 35px !important; min-width: 140px !important; }
 }
 
 /* Keep a two-column, no-page-scroll layout down to common laptop widths.
    Small tablets and phones use a vertical layout with controlled scrolling. */
 @media screen and (min-width: 901px) and (max-width: 1100px) {
   .nkj-catalog-view-admin-backdrop .nkj-catalog-details-modal.nkj-catalog-view-modal {
-    .nkj-catalog-view-admin-backdrop width: calc(100vw - 20px) !important;
+    width: calc(100vw - 20px) !important;
     height: calc(100dvh - 20px) !important;
     max-height: calc(100dvh - 20px) !important;
     padding: 9px !important;
   }
-  .nkj-catalog-view-layout {
-    .nkj-catalog-view-admin-backdrop grid-template-columns: minmax(300px, .nkj-catalog-view-admin-backdrop .82fr) minmax(0, .nkj-catalog-view-admin-backdrop 1.18fr) !important;
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-layout {
+    grid-template-columns: minmax(300px, .82fr) minmax(0, 1.18fr) !important;
     gap: 10px !important;
   }
-  .nkj-catalog-view-information { .nkj-catalog-view-admin-backdrop gap: 5px !important; }
-  .nkj-catalog-view-title-row h2 { .nkj-catalog-view-admin-backdrop font-size: clamp(20px, .nkj-catalog-view-admin-backdrop 2.2vw, .nkj-catalog-view-admin-backdrop 26px) !important; }
-  .nkj-catalog-view-detail-rows > div { .nkj-catalog-view-admin-backdrop grid-template-columns: 24px minmax(78px, .nkj-catalog-view-admin-backdrop .65fr) minmax(0, .nkj-catalog-view-admin-backdrop 1fr) !important; gap: 5px !important; }
-  .nkj-catalog-view-detail-rows > div > span { .nkj-catalog-view-admin-backdrop font-size: 10px !important; }
-  .nkj-catalog-view-detail-rows > div > b { .nkj-catalog-view-admin-backdrop font-size: 9px !important; padding: 4px 7px !important; }
-  .nkj-catalog-owner-control-actions { .nkj-catalog-view-admin-backdrop grid-template-columns: 1fr 1fr !important; }
-  .nkj-catalog-owner-control-actions button.mobile-upload { .nkj-catalog-view-admin-backdrop grid-column: 1 / -1 !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-information { gap: 5px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row h2 { font-size: clamp(20px, 2.2vw, 26px) !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div { grid-template-columns: 24px minmax(78px, .65fr) minmax(0, 1fr) !important; gap: 5px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div > span { font-size: 10px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div > b { font-size: 9px !important; padding: 4px 7px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions { grid-template-columns: 1fr 1fr !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions button.mobile-upload { grid-column: 1 / -1 !important; }
 }
 @media screen and (max-width: 900px) {
   .nkj-catalog-view-admin-backdrop.nkj-catalog-modal-backdrop.nkj-catalog-view-backdrop {
-    .nkj-catalog-view-admin-backdrop place-items: start center !important;
+    place-items: start center !important;
     overflow-y: auto !important;
     padding: 8px !important;
   }
-  .nkj-catalog-details-modal.nkj-catalog-view-modal {
-    .nkj-catalog-view-admin-backdrop width: min(100%, .nkj-catalog-view-admin-backdrop 760px) !important;
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: min(100%, 760px) !important;
     height: auto !important;
     max-height: none !important;
     min-height: 0 !important;
     overflow: visible !important;
     padding: 13px !important;
   }
-  .nkj-catalog-view-layout {
-    .nkj-catalog-view-admin-backdrop grid-template-columns: minmax(0, .nkj-catalog-view-admin-backdrop 1fr) !important;
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 10px !important;
     overflow: visible !important;
   }
-  .nkj-catalog-view-gallery { .nkj-catalog-view-admin-backdrop min-height: 270px !important; }
-  .nkj-catalog-view-main-photo { .nkj-catalog-view-admin-backdrop height: clamp(230px, .nkj-catalog-view-admin-backdrop 38dvh, .nkj-catalog-view-admin-backdrop 340px) !important; }
-  .nkj-catalog-view-information { .nkj-catalog-view-admin-backdrop height: auto !important; overflow: visible !important; gap: 9px !important; }
-  .nkj-catalog-view-title-row { .nkj-catalog-view-admin-backdrop margin-right: 40px !important; min-height: 56px !important; }
-  .nkj-catalog-view-footer { .nkj-catalog-view-admin-backdrop position: sticky !important; bottom: 0 !important; background: #fff8ed !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-gallery { min-height: 270px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-main-photo { height: clamp(230px, 38dvh, 340px) !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-information { height: auto !important; overflow: visible !important; gap: 9px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row { margin-right: 40px !important; min-height: 56px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-footer { position: sticky !important; bottom: 0 !important; background: #fff8ed !important; }
 }
 @media screen and (max-width: 560px) {
-  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-main-photo { .nkj-catalog-view-admin-backdrop height: 225px !important; }
-  .nkj-catalog-view-no-photo { .nkj-catalog-view-admin-backdrop min-height: 160px !important; }
-  .nkj-catalog-view-title-row h2 { .nkj-catalog-view-admin-backdrop font-size: 22px !important; }
-  .nkj-catalog-view-id { .nkj-catalog-view-admin-backdrop flex-wrap: wrap !important; border-radius: 12px !important; }
-  .nkj-catalog-view-detail-rows > div { .nkj-catalog-view-admin-backdrop grid-template-columns: 24px minmax(75px, .nkj-catalog-view-admin-backdrop .6fr) minmax(0, .nkj-catalog-view-admin-backdrop 1fr) !important; gap: 5px !important; }
-  .nkj-catalog-view-detail-rows > div > span { .nkj-catalog-view-admin-backdrop font-size: 10px !important; }
-  .nkj-catalog-view-detail-rows > div > b { .nkj-catalog-view-admin-backdrop font-size: 9px !important; }
-  .nkj-catalog-owner-control-actions { .nkj-catalog-view-admin-backdrop grid-template-columns: 1fr !important; }
-  .nkj-catalog-owner-control-actions button.mobile-upload { grid-column: auto !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-main-photo { height: 225px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-no-photo { min-height: 160px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row h2 { font-size: 22px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-id { flex-wrap: wrap !important; border-radius: 12px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div { grid-template-columns: 24px minmax(75px, .6fr) minmax(0, 1fr) !important; gap: 5px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div > span { font-size: 10px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div > b { font-size: 9px !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions { grid-template-columns: 1fr !important; }
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions button.mobile-upload { grid-column: auto !important; }
 }
