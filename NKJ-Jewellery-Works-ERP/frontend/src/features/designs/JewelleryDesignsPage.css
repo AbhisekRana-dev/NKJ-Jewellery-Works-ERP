@@ -3154,7 +3154,8 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
 }
 
 /* Shared full-size product viewer for public catalogue browsing. */
-#e5ba4c;
+.nkj-catalog-details-modal {
+  border-color: #e5ba4c;
 }
 
 
