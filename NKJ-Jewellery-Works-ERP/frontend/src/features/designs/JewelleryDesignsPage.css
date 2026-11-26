@@ -2739,7 +2739,7 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
 
 /* Tablet and mobile: controls wrap cleanly; no horizontal overflow. */
 @media (min-width: 1500px) {
-  .nkj-designs-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .nkj-designs-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
 @media (max-width: 1180px) {
   .nkj-designs-page { padding: 12px !important; }
