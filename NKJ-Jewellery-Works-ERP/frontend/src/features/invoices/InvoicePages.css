@@ -2911,10 +2911,9 @@ body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table .empty {
 ============================================================ */
 body.nkj-owner-layout .container.nkj-owner-container:has(.nkj-saved-hero) {
   box-sizing: border-box !important;
-  width: 100% !important;
+  width: calc(100% - var(--nkj-owner-sidebar-width, 258px)) !important;
   max-width: none !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  margin: 0 0 0 var(--nkj-owner-sidebar-width, 258px) !important;
   padding: 22px clamp(16px, 2.1vw, 36px) 30px !important;
   background: #fff9f2 !important;
 }
@@ -3362,4 +3361,34 @@ body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-delete-acti
   .nkj-saved-pagination-controls { align-self: flex-end !important; gap: 6px !important; }
   .nkj-saved-pagination-controls button,
   .nkj-saved-page-number { width: 37px !important; height: 37px !important; min-width: 37px !important; }
+}
+
+
+/* Keep the owner-shell sidebar offset while allowing the Saved Invoices
+   content area itself to occupy every remaining horizontal pixel. */
+body.nkj-owner-layout .container.nkj-owner-container:has(.nkj-saved-hero) {
+  width: calc(100% - var(--nkj-owner-sidebar-width, 258px)) !important;
+  margin-left: var(--nkj-owner-sidebar-width, 258px) !important;
+}
+.nkj-saved-hero-icon {
+  position: absolute !important;
+  left: 27px !important;
+  top: 50% !important;
+  width: 52px !important;
+  height: 52px !important;
+  transform: translateY(-50%) !important;
+  opacity: 1 !important;
+  color: #a66a24 !important;
+  filter: drop-shadow(0 3px 4px rgba(118, 68, 25, .14));
+}
+.nkj-saved-hero-copy { padding-left: 70px !important; }
+@media screen and (max-width: 900px) {
+  body.nkj-owner-layout .container.nkj-owner-container:has(.nkj-saved-hero) {
+    width: calc(100% - var(--nkj-owner-sidebar-width, 0px)) !important;
+    margin-left: var(--nkj-owner-sidebar-width, 0px) !important;
+  }
+}
+@media screen and (max-width: 560px) {
+  .nkj-saved-hero-icon { left: 15px !important; width: 42px !important; height: 42px !important; }
+  .nkj-saved-hero-copy { padding-left: 52px !important; }
 }
