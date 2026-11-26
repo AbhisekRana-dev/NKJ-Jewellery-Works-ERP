@@ -6242,3 +6242,150 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   }
   .nkj-catalog-view-title-row h2 { font-size: clamp(22px, 6vw, 29px) !important; }
 }
+
+
+/* Reuse and enlarge the exact same image/artwork used by the design card
+   inside View Design when the design has no separate gallery upload. */
+.nkj-catalog-view-layout {
+  grid-template-columns: minmax(420px, 1.08fr) minmax(0, 1fr) !important;
+  gap: clamp(18px, 2vw, 28px) !important;
+}
+.nkj-catalog-view-gallery {
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+.nkj-catalog-view-main-photo {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+.nkj-catalog-view-card-image-preview {
+  position: absolute !important;
+  inset: 0 !important;
+  display: grid !important;
+  place-items: stretch !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  border-radius: inherit !important;
+  background: linear-gradient(145deg, #3b0828, #681138 58%, #2b1737) !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-art,
+.nkj-catalog-view-card-image-preview .nkj-design-photo,
+.nkj-catalog-view-card-image-preview .nkj-design-photo-missing {
+  position: absolute !important;
+  inset: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  aspect-ratio: auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-photo {
+  background: #2d0d24 !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-photo img,
+.nkj-catalog-view-card-image-preview .nkj-design-art-image {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  aspect-ratio: auto !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  image-rendering: auto !important;
+  background: transparent !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-art {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255,244,220,.24), transparent 38%),
+    linear-gradient(145deg, hsl(var(--design-hue, 42) 58% 28%), hsl(calc(var(--design-hue, 42) + 18) 58% 18%) 62%, #2e1027) !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-art-center {
+  width: clamp(150px, 15vw, 220px) !important;
+  height: auto !important;
+  aspect-ratio: 1 !important;
+  background: radial-gradient(circle at 32% 24%, #fffdf4, #f0d8a6 82%) !important;
+  color: #815019 !important;
+  box-shadow: 0 14px 32px rgba(16, 3, 16, .34), inset 0 0 0 8px rgba(255,255,255,.18) !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-art-center svg {
+  width: 62% !important;
+  height: 62% !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-art::before {
+  width: min(72%, 310px) !important;
+  height: auto !important;
+  aspect-ratio: 1 !important;
+  border-color: rgba(255,226,168,.55) !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-art::after {
+  width: min(88%, 370px) !important;
+  height: auto !important;
+  aspect-ratio: 1 !important;
+  border-color: rgba(255,226,168,.34) !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-art-caption {
+  left: 16px !important;
+  right: auto !important;
+  bottom: 15px !important;
+  padding: 7px 12px !important;
+  border: 1px solid rgba(255,235,196,.55) !important;
+  border-radius: 999px !important;
+  background: rgba(84, 10, 45, .88) !important;
+  color: #fff1cf !important;
+  font-size: 10px !important;
+  letter-spacing: .8px !important;
+}
+.nkj-catalog-view-card-image-preview .nkj-design-art-code {
+  display: none !important;
+}
+.nkj-catalog-view-preview-label {
+  position: absolute !important;
+  z-index: 5 !important;
+  top: 15px !important;
+  left: 15px !important;
+  padding: 7px 12px !important;
+  border: 1px solid rgba(255,226,168,.6) !important;
+  border-radius: 999px !important;
+  background: rgba(77, 7, 39, .84) !important;
+  color: #ffe8b6 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1px !important;
+  pointer-events: none !important;
+}
+@media screen and (min-width: 1101px) {
+  .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: min(1160px, calc(100vw - 64px)) !important;
+    height: min(740px, calc(100dvh - 64px)) !important;
+    max-width: calc(100vw - 64px) !important;
+    max-height: calc(100dvh - 64px) !important;
+  }
+}
+@media screen and (max-width: 1100px) {
+  .nkj-catalog-view-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .nkj-catalog-view-card-image-preview {
+    position: relative !important;
+    min-height: 270px !important;
+  }
+}
+@media screen and (max-width: 680px) {
+  .nkj-catalog-view-card-image-preview { min-height: 220px !important; }
+  .nkj-catalog-view-card-image-preview .nkj-design-art-center {
+    width: clamp(105px, 34vw, 150px) !important;
+  }
+  .nkj-catalog-view-preview-label {
+    top: 9px !important;
+    left: 9px !important;
+    font-size: 8px !important;
+  }
+}
