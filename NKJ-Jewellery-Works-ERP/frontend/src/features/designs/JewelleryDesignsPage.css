@@ -4567,3 +4567,249 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   .nkj-catalog-view-card { padding: 11px !important; }
   .nkj-catalog-view-detail-rows > div { min-height: 42px !important; }
 }
+
+
+/* ============================================================
+   NKJ CATALOGUE — COHESIVE IVORY / BURGUNDY / CHAMPAGNE THEME
+   Keep the catalogue and its detail viewer visually consistent.
+============================================================ */
+.nkj-designs-page {
+  --nkj-page: #fbf8f2;
+  --nkj-surface: #fffefa;
+  --nkj-surface-soft: #f8f1e7;
+  --nkj-ink: #49383f;
+  --nkj-muted: #817278;
+  --nkj-wine: #78132f;
+  --nkj-wine-deep: #5f0d26;
+  --nkj-gold: #b18436;
+  --nkj-gold-soft: #ead8ad;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(245, 226, 190, .32), transparent 36%),
+    linear-gradient(180deg, #fffdf9 0%, #fbf8f2 48%, #f7f0e7 100%) !important;
+  border: 1px solid #e9dfd0 !important;
+  border-radius: 20px !important;
+  padding: clamp(15px, 2vw, 24px) !important;
+  color: var(--nkj-ink) !important;
+  color-scheme: light !important;
+  box-shadow: 0 10px 30px rgba(71, 45, 32, .055) !important;
+}
+
+/* Keep the introductory banner elegant, not overly saturated. */
+.nkj-designs-page .nkj-designs-hero {
+  border-color: #e6cc91 !important;
+  background:
+    radial-gradient(circle at 88% 22%, rgba(226, 189, 105, .28), transparent 26%),
+    linear-gradient(112deg, #fffaf0 0%, #fff2d8 58%, #f8e8c6 100%) !important;
+  box-shadow: 0 7px 20px rgba(104, 73, 34, .07) !important;
+}
+.nkj-designs-page .nkj-designs-hero h1,
+.nkj-designs-page .nkj-designs-gallery-heading h2,
+.nkj-designs-page .nkj-designs-section-heading h2,
+.nkj-designs-page .nkj-designs-metal-heading h2 {
+  color: #74112d !important;
+}
+.nkj-designs-page .nkj-designs-hero p { color: #76666a !important; }
+.nkj-designs-page .nkj-designs-eyebrow,
+.nkj-designs-page .nkj-designs-section-heading > div > span,
+.nkj-designs-page .nkj-designs-gallery-heading > div:first-child > span {
+  color: #a4772d !important;
+}
+
+/* Muted, distinct metal cards: champagne gold, platinum silver, soft diamond rose. */
+.nkj-designs-page .nkj-designs-metal-card.tone-gold {
+  border-color: #e8d09a !important;
+  background: linear-gradient(125deg, #fff9e9 0%, #f7e8c4 100%) !important;
+  color: #805719 !important;
+}
+.nkj-designs-page .nkj-designs-metal-card.tone-silver {
+  border-color: #d9e0e2 !important;
+  background: linear-gradient(125deg, #fcfdfd 0%, #eaf0f1 100%) !important;
+  color: #58656a !important;
+}
+.nkj-designs-page .nkj-designs-metal-card.tone-diamond {
+  border-color: #eccfd8 !important;
+  background: linear-gradient(125deg, #fff9fb 0%, #f7e5eb 100%) !important;
+  color: #8c3653 !important;
+}
+.nkj-designs-page .nkj-designs-metal-card.active {
+  outline: 2px solid #bd934b !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 5px 14px rgba(117, 75, 31, .12) !important;
+}
+.nkj-designs-page .nkj-designs-metal-symbol {
+  background: rgba(255,255,255,.82) !important;
+  box-shadow: inset 0 0 0 1px rgba(150, 112, 47, .15) !important;
+}
+.nkj-designs-page .nkj-designs-metal-copy small { color: inherit !important; opacity: .82 !important; }
+.nkj-designs-page .nkj-designs-metal-copy em { color: inherit !important; opacity: .72 !important; }
+
+/* Clear white category and catalogue controls with a restrained burgundy selection. */
+.nkj-designs-page .nkj-designs-category-box {
+  border-color: #e8dcc9 !important;
+  background: linear-gradient(145deg, #fffefa, #fff8ee) !important;
+  box-shadow: 0 3px 12px rgba(75, 45, 28, .04) !important;
+}
+.nkj-designs-page .nkj-designs-category-box button {
+  border-color: #e7d9c8 !important;
+  background: #fff !important;
+  color: #6f253b !important;
+}
+.nkj-designs-page .nkj-designs-category-box button svg { color: #ad8036 !important; }
+.nkj-designs-page .nkj-designs-category-box button small {
+  background: #f7f0e5 !important;
+  color: #826d62 !important;
+}
+.nkj-designs-page .nkj-designs-category-box button.active {
+  border-color: #78132f !important;
+  background: linear-gradient(110deg, #861535, #68102b) !important;
+  color: #fff9ef !important;
+}
+.nkj-designs-page .nkj-designs-category-box button.active svg,
+.nkj-designs-page .nkj-designs-category-box button.active small { color: #f4d994 !important; }
+.nkj-designs-page .nkj-designs-category-box button.active small { background: rgba(255,255,255,.13) !important; }
+
+.nkj-designs-page .nkj-designs-search,
+.nkj-designs-page .nkj-designs-sort,
+.nkj-designs-page .nkj-design-view-toggle button {
+  border-color: #e5d9c9 !important;
+  background: #fffefa !important;
+  color: #765d50 !important;
+}
+.nkj-designs-page .nkj-designs-search input,
+.nkj-designs-page .nkj-designs-sort select { color: #46363d !important; }
+.nkj-designs-page .nkj-designs-search:focus-within {
+  border-color: #c4a05d !important;
+  box-shadow: 0 0 0 3px rgba(196,160,93,.13) !important;
+}
+.nkj-designs-page .nkj-design-view-toggle button.active {
+  border-color: #78132f !important;
+  background: #78132f !important;
+  color: #fffaf0 !important;
+}
+
+/* Catalogue cards: clean white surfaces and soft photo wells. */
+.nkj-designs-page .nkj-design-card {
+  overflow: hidden !important;
+  border: 1px solid #e9dfd2 !important;
+  border-radius: 14px !important;
+  background: #fffefa !important;
+  box-shadow: 0 5px 17px rgba(73, 48, 34, .065) !important;
+}
+.nkj-designs-page .nkj-design-card:hover {
+  border-color: #ddc48f !important;
+  box-shadow: 0 10px 23px rgba(73, 48, 34, .11) !important;
+}
+.nkj-designs-page .nkj-design-card-image,
+.nkj-designs-page .nkj-design-image-trigger {
+  background: linear-gradient(145deg, #fffdf8, #f5eee3) !important;
+}
+.nkj-designs-page .nkj-design-photo,
+.nkj-designs-page .nkj-design-photo img {
+  background: #fffdf8 !important;
+}
+.nkj-designs-page .nkj-design-art {
+  background:
+    radial-gradient(circle at 50% 43%, rgba(255,255,255,.98), rgba(255,255,255,.48) 43%, transparent 72%),
+    linear-gradient(145deg, hsl(var(--design-hue, 42) 42% 98%), hsl(var(--design-hue, 42) 38% 92%) 58%, hsl(var(--design-hue, 42) 34% 87%)) !important;
+  color: hsl(var(--design-hue, 42) 40% 39%) !important;
+}
+.nkj-designs-page .nkj-design-art::before,
+.nkj-designs-page .nkj-design-art::after {
+  border-color: currentColor !important;
+  opacity: .16 !important;
+}
+.nkj-designs-page .nkj-design-art-center {
+  border-color: rgba(164, 125, 58, .28) !important;
+  background: rgba(255,255,255,.72) !important;
+  color: #916a2e !important;
+  box-shadow: 0 5px 16px rgba(102, 75, 39, .08) !important;
+}
+.nkj-designs-page .nkj-design-art-orbit {
+  border-color: rgba(151, 111, 49, .38) !important;
+  background: #fffdf8 !important;
+}
+.nkj-designs-page .nkj-design-art-spark,
+.nkj-designs-page .nkj-design-art-caption { color: #a57c3c !important; }
+.nkj-designs-page .nkj-design-art-code { color: #806f65 !important; }
+
+.nkj-designs-page .nkj-design-card-content {
+  background: #fffefa !important;
+  color: #49383f !important;
+}
+.nkj-designs-page .nkj-design-card-meta > span {
+  color: #9a7131 !important;
+}
+.nkj-designs-page .nkj-design-card-meta small,
+.nkj-designs-page .nkj-design-card p {
+  color: #7d7073 !important;
+}
+.nkj-designs-page .nkj-design-card h3 {
+  color: #71112e !important;
+}
+.nkj-designs-page .nkj-design-card p span { color: #bb9651 !important; }
+.nkj-designs-page .nkj-design-card-specs > span {
+  border-color: #eee1ce !important;
+  background: #faf5eb !important;
+  color: #715f53 !important;
+}
+.nkj-designs-page .nkj-design-card-content > button {
+  border: 1px solid #d9c18e !important;
+  background: linear-gradient(110deg, #fff8e8, #f7e8c6) !important;
+  color: #71132f !important;
+}
+.nkj-designs-page .nkj-design-card-content > button:hover {
+  border-color: #bd934b !important;
+  background: #f3dfb2 !important;
+}
+.nkj-designs-page .nkj-design-favorite {
+  border: 1px solid #e7d9c9 !important;
+  background: rgba(255,255,255,.96) !important;
+  color: #9a2449 !important;
+}
+.nkj-designs-page .nkj-design-new-label {
+  border-color: #d5a34a !important;
+  background: #8a1737 !important;
+  color: #fff8e8 !important;
+}
+.nkj-designs-page .nkj-design-featured,
+.nkj-designs-page .nkj-design-sample-label,
+.nkj-designs-page .nkj-design-real-label,
+.nkj-designs-page .nkj-design-photo-label {
+  border-color: #e9d7b2 !important;
+  background: rgba(255,250,239,.96) !important;
+  color: #76501c !important;
+  box-shadow: 0 2px 8px rgba(73,48,26,.07) !important;
+}
+.nkj-designs-page .nkj-design-image-zoom-hint {
+  border: 1px solid #e7d9c7 !important;
+  background: rgba(255,253,247,.95) !important;
+  color: #74132f !important;
+}
+.nkj-designs-page .nkj-design-photo-missing {
+  border-color: #e8dccb !important;
+  background: linear-gradient(145deg, #fffdf8, #f5eee3) !important;
+  color: #967a4e !important;
+}
+.nkj-designs-page .nkj-design-photo-missing button {
+  border-color: #d8c18f !important;
+  background: #fff7e5 !important;
+  color: #74132f !important;
+}
+
+/* Secondary states remain quiet and readable. */
+.nkj-designs-page .nkj-designs-pagination {
+  border-color: #e8ddce !important;
+  color: #786b70 !important;
+}
+.nkj-designs-page .nkj-designs-pagination button {
+  border-color: #d7bd84 !important;
+  background: #fff7e5 !important;
+  color: #74132f !important;
+}
+.nkj-designs-page .nkj-designs-loading,
+.nkj-designs-page .nkj-designs-empty { color: #7d7073 !important; }
+.nkj-designs-page .nkj-designs-empty {
+  border-color: #e7d9c7 !important;
+  background: #fffefa !important;
+}
+.nkj-designs-page .nkj-designs-empty b { color: #71112e !important; }
