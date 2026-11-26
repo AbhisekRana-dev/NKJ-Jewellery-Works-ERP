@@ -6963,3 +6963,95 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions { grid-template-columns: 1fr !important; }
   .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions button.mobile-upload { grid-column: auto !important; }
 }
+
+
+/* Admin-only sizing: match the compact reference popup (about 1160 × 690).
+   The public visitor modal keeps its original dimensions and spacing. */
+@media screen and (min-width: 1101px) {
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: min(1160px, calc(100vw - 64px)) !important;
+    max-width: min(1160px, calc(100vw - 64px)) !important;
+    height: min(690px, calc(100dvh - 64px)) !important;
+    max-height: min(690px, calc(100dvh - 64px)) !important;
+    padding: 13px 14px 10px !important;
+    gap: 8px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-layout {
+    grid-template-columns: minmax(0, .94fr) minmax(0, 1.06fr) !important;
+    gap: 14px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-gallery {
+    border-radius: 15px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row {
+    min-height: 57px !important;
+    margin-right: 42px !important;
+    padding: 8px 13px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-title-row h2 {
+    font-size: clamp(23px, 2vw, 32px) !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-id {
+    min-height: 37px !important;
+    padding: 5px 11px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-information {
+    gap: 6px !important;
+    padding-top: 2px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-card {
+    padding: 7px 10px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-detail-rows > div {
+    min-height: 34px !important;
+    padding: 3px 4px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-photos-card {
+    padding: 7px 10px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls {
+    padding: 7px 10px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading {
+    margin-bottom: 5px !important;
+    padding-bottom: 5px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-controls-heading b {
+    font-size: 17px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions {
+    gap: 6px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-owner-control-actions button {
+    min-height: 36px !important;
+    padding: 5px 7px !important;
+    font-size: 9px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-footer {
+    flex-basis: 40px !important;
+    min-height: 40px !important;
+    padding-top: 4px !important;
+  }
+
+  .nkj-catalog-view-admin-backdrop .nkj-catalog-view-footer button {
+    min-width: 138px !important;
+    min-height: 35px !important;
+    padding: 6px 16px !important;
+    font-size: 14px !important;
+  }
+}
