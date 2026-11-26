@@ -4813,3 +4813,359 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
   background: #fffefa !important;
 }
 .nkj-designs-page .nkj-designs-empty b { color: #71112e !important; }
+
+
+/* ============================================================
+   NKJ JEWELLERY DESIGNS — JEWEL-TONE VISUAL REFRESH
+   Rich ruby, emerald, sapphire, amethyst and champagne accents.
+   This intentionally replaces the previous plain-white treatment.
+============================================================ */
+.nkj-designs-page {
+  background:
+    radial-gradient(ellipse at 3% 0%, rgba(224, 125, 153, .20), transparent 34%),
+    radial-gradient(ellipse at 100% 18%, rgba(126, 105, 187, .15), transparent 32%),
+    radial-gradient(ellipse at 85% 100%, rgba(231, 183, 94, .18), transparent 35%),
+    linear-gradient(145deg, #fbf0e8 0%, #f4eaf2 46%, #f7eee0 100%) !important;
+  border-color: #e4c8cf !important;
+  box-shadow: 0 14px 38px rgba(83, 34, 60, .09) !important;
+}
+
+/* Ruby-to-rose hero banner gives the page a stronger first impression. */
+.nkj-designs-page .nkj-designs-hero {
+  position: relative !important;
+  isolation: isolate !important;
+  overflow: hidden !important;
+  min-height: 190px !important;
+  border: 1px solid #d5a45d !important;
+  background:
+    radial-gradient(circle at 88% 22%, rgba(255, 219, 137, .25), transparent 22%),
+    radial-gradient(circle at 74% 110%, rgba(220, 102, 142, .32), transparent 36%),
+    linear-gradient(112deg, #58112f 0%, #81183f 48%, #a63b62 78%, #6c1b49 100%) !important;
+  box-shadow: 0 12px 27px rgba(102, 22, 57, .20), inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+.nkj-designs-page .nkj-designs-hero::after {
+  content: "" !important;
+  position: absolute !important;
+  z-index: -1 !important;
+  width: 210px !important;
+  height: 210px !important;
+  right: 8% !important;
+  top: -65px !important;
+  border: 1px solid rgba(255, 220, 153, .32) !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 18px rgba(255, 220, 153, .055), 0 0 0 38px rgba(255, 220, 153, .04) !important;
+}
+.nkj-designs-page .nkj-designs-eyebrow { color: #f8d88f !important; }
+.nkj-designs-page .nkj-designs-hero h1 {
+  color: #fff8ef !important;
+  text-shadow: 0 2px 12px rgba(45, 4, 25, .25) !important;
+}
+.nkj-designs-page .nkj-designs-hero p { color: #f8dfe6 !important; }
+.nkj-designs-page .nkj-designs-hero-note {
+  border-color: rgba(255, 221, 158, .48) !important;
+  background: rgba(255, 247, 230, .12) !important;
+  color: #ffe7b2 !important;
+}
+.nkj-designs-page .nkj-designs-hero-mark,
+.nkj-designs-page .nkj-designs-hero-ring {
+  border-color: rgba(255, 219, 143, .58) !important;
+  color: #ffdf9b !important;
+  box-shadow: 0 0 0 9px rgba(255, 219, 143, .08), inset 0 0 28px rgba(255, 219, 143, .12) !important;
+}
+.nkj-designs-page .nkj-designs-hero-mark > span {
+  background: #75163d !important;
+  color: #ffdf9b !important;
+}
+
+/* Browse-by-metal becomes a rich plum panel, with three distinct metal colours. */
+.nkj-designs-page .nkj-designs-metal-section {
+  padding: 17px 18px 19px !important;
+  border: 1px solid rgba(207, 165, 99, .55) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(174, 83, 119, .28), transparent 45%),
+    linear-gradient(125deg, #3b2142 0%, #502344 52%, #352448 100%) !important;
+  box-shadow: 0 10px 23px rgba(49, 24, 48, .18), inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+.nkj-designs-page .nkj-designs-metal-heading h2 {
+  color: #ffe2a0 !important;
+  text-shadow: 0 2px 14px rgba(239, 191, 98, .16) !important;
+}
+.nkj-designs-page .nkj-designs-metal-heading > span {
+  background: linear-gradient(90deg, transparent, #d7ac62) !important;
+}
+.nkj-designs-page .nkj-designs-metal-heading > span:last-child {
+  background: linear-gradient(90deg, #d7ac62, transparent) !important;
+}
+.nkj-designs-page .nkj-designs-metal-card.tone-gold {
+  border: 1px solid #e7bd63 !important;
+  background: linear-gradient(130deg, #ffe9a5 0%, #f3c96e 54%, #dda34d 100%) !important;
+  color: #684014 !important;
+  box-shadow: 0 5px 14px rgba(20, 9, 22, .16), inset 0 1px 0 rgba(255,255,255,.55) !important;
+}
+.nkj-designs-page .nkj-designs-metal-card.tone-silver {
+  border: 1px solid #b7c9df !important;
+  background: linear-gradient(130deg, #edf5ff 0%, #cbdced 54%, #aabfd9 100%) !important;
+  color: #314b6a !important;
+  box-shadow: 0 5px 14px rgba(20, 9, 22, .16), inset 0 1px 0 rgba(255,255,255,.72) !important;
+}
+.nkj-designs-page .nkj-designs-metal-card.tone-diamond {
+  border: 1px solid #e3a8c4 !important;
+  background: linear-gradient(130deg, #ffe1ed 0%, #efbdd5 54%, #d998bc 100%) !important;
+  color: #70254c !important;
+  box-shadow: 0 5px 14px rgba(20, 9, 22, .16), inset 0 1px 0 rgba(255,255,255,.65) !important;
+}
+.nkj-designs-page .nkj-designs-metal-card.active {
+  outline: 2px solid #fff0bf !important;
+  outline-offset: 2px !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 9px 20px rgba(12, 4, 18, .25) !important;
+}
+.nkj-designs-page .nkj-designs-metal-symbol {
+  background: rgba(255,255,255,.72) !important;
+  box-shadow: inset 0 0 0 1px rgba(92, 54, 72, .13), 0 4px 10px rgba(64, 30, 50, .08) !important;
+}
+
+/* Category chooser: jewel-toned panel and colourful chips, not a grey slab. */
+.nkj-designs-page .nkj-designs-category-section {
+  padding: 17px 18px 18px !important;
+  border: 1px solid #d9b4ca !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(105, 145, 189, .20), transparent 38%),
+    linear-gradient(130deg, #612448 0%, #77305c 52%, #4b2d62 100%) !important;
+  box-shadow: 0 10px 22px rgba(72, 29, 68, .16), inset 0 1px 0 rgba(255,255,255,.09) !important;
+}
+.nkj-designs-page .nkj-designs-section-heading h2 { color: #fff4e6 !important; }
+.nkj-designs-page .nkj-designs-section-heading > div > span { color: #f2cc83 !important; }
+.nkj-designs-page .nkj-designs-section-heading > small { color: #f1dbe8 !important; }
+.nkj-designs-page .nkj-designs-category-box {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  padding: 13px !important;
+  border: 1px solid rgba(255, 227, 196, .3) !important;
+  border-radius: 13px !important;
+  background: linear-gradient(135deg, rgba(255,248,242,.97), rgba(250,237,247,.96)) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+}
+.nkj-designs-page .nkj-designs-category-box button {
+  border: 1px solid #e4c6d5 !important;
+  background: linear-gradient(140deg, #fff9f2, #f8eaf1) !important;
+  color: #71304f !important;
+  box-shadow: 0 2px 5px rgba(86, 42, 70, .07) !important;
+}
+.nkj-designs-page .nkj-designs-category-box button:nth-child(4n + 1) {
+  border-color: #e4c67e !important;
+  background: linear-gradient(135deg, #fff4d5, #f5dfaa) !important;
+  color: #765019 !important;
+}
+.nkj-designs-page .nkj-designs-category-box button:nth-child(4n + 2) {
+  border-color: #e7b8ca !important;
+  background: linear-gradient(135deg, #fff0f5, #f4d7e4) !important;
+  color: #812e53 !important;
+}
+.nkj-designs-page .nkj-designs-category-box button:nth-child(4n + 3) {
+  border-color: #b9d9c9 !important;
+  background: linear-gradient(135deg, #eef9f1, #d2eadb) !important;
+  color: #245b47 !important;
+}
+.nkj-designs-page .nkj-designs-category-box button:nth-child(4n + 4) {
+  border-color: #c9c0e7 !important;
+  background: linear-gradient(135deg, #f5f0ff, #e1daf6) !important;
+  color: #51427e !important;
+}
+.nkj-designs-page .nkj-designs-category-box button.active {
+  border-color: #77163e !important;
+  background: linear-gradient(115deg, #a12654, #6f1747) !important;
+  color: #fff8ed !important;
+  box-shadow: 0 4px 11px rgba(98, 21, 61, .23) !important;
+}
+.nkj-designs-page .nkj-designs-category-box button.active svg,
+.nkj-designs-page .nkj-designs-category-box button.active small { color: #ffe3a1 !important; }
+.nkj-designs-page .nkj-designs-category-box button small {
+  background: rgba(255,255,255,.72) !important;
+  color: inherit !important;
+}
+
+/* Gallery title gets a colourful jewel-tone underline and accent controls. */
+.nkj-designs-page .nkj-designs-gallery-heading {
+  border-bottom: 2px solid transparent !important;
+  border-image: linear-gradient(90deg, #a32150, #d7a74f, #4e8a72, #7060a4) 1 !important;
+}
+.nkj-designs-page .nkj-designs-gallery-heading h2 { color: #73163b !important; }
+.nkj-designs-page .nkj-designs-gallery-heading > div:first-child > span { color: #a26b2d !important; }
+.nkj-designs-page .nkj-designs-search,
+.nkj-designs-page .nkj-designs-sort,
+.nkj-designs-page .nkj-design-view-toggle button {
+  border-color: #dfc4d0 !important;
+  background: linear-gradient(145deg, #fffefa, #f8eff5) !important;
+  color: #79304f !important;
+  box-shadow: 0 3px 9px rgba(91, 39, 68, .07) !important;
+}
+.nkj-designs-page .nkj-design-view-toggle button.active {
+  border-color: #831640 !important;
+  background: linear-gradient(135deg, #9c2450, #65153f) !important;
+  color: #fff8ed !important;
+}
+
+/* Six coordinated card accents repeat through the catalogue. */
+.nkj-designs-page .nkj-design-card {
+  --card-accent: #b27a32;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 42%, #fff) !important;
+  border-top: 3px solid var(--card-accent) !important;
+  border-radius: 15px !important;
+  background: #fffaf2 !important;
+  box-shadow: 0 7px 17px rgba(70, 39, 57, .09) !important;
+}
+.nkj-designs-page .nkj-design-card:nth-child(6n + 1) { --card-accent: #b87a27; }
+.nkj-designs-page .nkj-design-card:nth-child(6n + 2) { --card-accent: #ae426d; }
+.nkj-designs-page .nkj-design-card:nth-child(6n + 3) { --card-accent: #43836c; }
+.nkj-designs-page .nkj-design-card:nth-child(6n + 4) { --card-accent: #567eae; }
+.nkj-designs-page .nkj-design-card:nth-child(6n + 5) { --card-accent: #7962a6; }
+.nkj-designs-page .nkj-design-card:nth-child(6n + 6) { --card-accent: #bd6654; }
+.nkj-designs-page .nkj-design-card:hover {
+  border-color: var(--card-accent) !important;
+  box-shadow: 0 12px 24px rgba(67, 31, 58, .14) !important;
+  transform: translateY(-3px) !important;
+}
+.nkj-designs-page .nkj-design-card-content {
+  background: linear-gradient(155deg, #fffefa 0%, color-mix(in srgb, var(--card-accent) 8%, #fffaf3) 100%) !important;
+}
+.nkj-designs-page .nkj-design-card-meta > span {
+  color: var(--card-accent) !important;
+}
+.nkj-designs-page .nkj-design-card h3 { color: #6d173b !important; }
+.nkj-designs-page .nkj-design-card-specs > span {
+  border-color: color-mix(in srgb, var(--card-accent) 22%, #fff) !important;
+  background: color-mix(in srgb, var(--card-accent) 9%, #fff) !important;
+  color: #604e58 !important;
+}
+.nkj-designs-page .nkj-design-card-content > button {
+  border-color: color-mix(in srgb, var(--card-accent) 45%, #fff) !important;
+  background: linear-gradient(115deg, color-mix(in srgb, var(--card-accent) 13%, #fff), #fff9ed) !important;
+  color: #68183d !important;
+}
+.nkj-designs-page .nkj-design-card-content > button:hover {
+  background: color-mix(in srgb, var(--card-accent) 22%, #fff) !important;
+}
+
+/* Sample illustrations carry real jewel colour while keeping their line art legible. */
+.nkj-designs-page .nkj-design-art {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255,255,255,.84), rgba(255,255,255,.16) 48%, transparent 72%),
+    linear-gradient(145deg,
+      hsl(var(--design-hue, 42) 68% 91%) 0%,
+      hsl(calc(var(--design-hue, 42) + 18) 59% 82%) 57%,
+      hsl(calc(var(--design-hue, 42) + 34) 50% 76%) 100%) !important;
+  color: hsl(var(--design-hue, 42) 63% 34%) !important;
+}
+.nkj-designs-page .nkj-design-art::before {
+  width: 152px !important;
+  height: 152px !important;
+  border: 1px solid currentColor !important;
+  opacity: .30 !important;
+}
+.nkj-designs-page .nkj-design-art::after {
+  width: 188px !important;
+  height: 188px !important;
+  border: 1px dashed currentColor !important;
+  opacity: .20 !important;
+}
+.nkj-designs-page .nkj-design-art-center {
+  width: 112px !important;
+  height: 112px !important;
+  border: 1px solid rgba(255,255,255,.78) !important;
+  background: linear-gradient(145deg, rgba(255,255,255,.9), rgba(255,255,255,.56)) !important;
+  color: hsl(var(--design-hue, 42) 68% 31%) !important;
+  box-shadow: 0 8px 22px rgba(58, 32, 50, .14), inset 0 0 0 5px rgba(255,255,255,.20) !important;
+}
+.nkj-designs-page .nkj-design-art-orbit {
+  border-color: currentColor !important;
+  background: rgba(255,255,255,.92) !important;
+}
+.nkj-designs-page .nkj-design-art-spark { color: hsl(var(--design-hue, 42) 68% 31%) !important; }
+.nkj-designs-page .nkj-design-art-caption,
+.nkj-designs-page .nkj-design-art-code {
+  color: hsl(var(--design-hue, 42) 52% 29%) !important;
+}
+
+/* Real product photographs remain neutral and colour-accurate. */
+.nkj-designs-page .nkj-design-photo,
+.nkj-designs-page .nkj-design-photo img {
+  background: #fffaf4 !important;
+}
+.nkj-designs-page .nkj-design-photo-missing {
+  background: linear-gradient(145deg, #fff2e5, #f3e8f6) !important;
+  color: #93603d !important;
+}
+.nkj-designs-page .nkj-design-photo-label,
+.nkj-designs-page .nkj-design-featured,
+.nkj-designs-page .nkj-design-sample-label,
+.nkj-designs-page .nkj-design-real-label {
+  border-color: rgba(255,255,255,.78) !important;
+  background: rgba(80, 25, 57, .86) !important;
+  color: #fff1d2 !important;
+}
+.nkj-designs-page .nkj-design-favorite {
+  border-color: rgba(255,255,255,.85) !important;
+  background: rgba(255,250,245,.95) !important;
+  color: #a22253 !important;
+}
+.nkj-designs-page .nkj-design-favorite.saved {
+  background: #a22253 !important;
+  color: #fff !important;
+}
+.nkj-designs-page .nkj-design-image-zoom-hint {
+  border-color: #d7b3c7 !important;
+  background: rgba(72, 25, 58, .88) !important;
+  color: #fff3df !important;
+}
+
+/* Detail sheet: warm pearl with controlled jewel-colour headings and icon accents. */
+.nkj-catalog-modal-backdrop.nkj-catalog-view-backdrop {
+  background: rgba(43, 17, 42, .56) !important;
+  backdrop-filter: blur(8px) saturate(1.12) !important;
+}
+.nkj-catalog-details-modal.nkj-catalog-view-modal {
+  border: 1.5px solid #d6ad64 !important;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(222, 146, 172, .15), transparent 34%),
+    radial-gradient(ellipse at 100% 0%, rgba(133, 137, 203, .13), transparent 32%),
+    linear-gradient(135deg, #fffaf0 0%, #fffefa 50%, #f8f0f6 100%) !important;
+  box-shadow: 0 25px 75px rgba(41, 17, 42, .32), inset 0 0 0 1px rgba(255,255,255,.75) !important;
+}
+.nkj-catalog-view-card:nth-of-type(1) {
+  border-color: #e5c9a0 !important;
+  background: linear-gradient(135deg, #fffdf7, #fff3e5) !important;
+}
+.nkj-catalog-view-card:nth-of-type(2) {
+  border-color: #e4c2d3 !important;
+  background: linear-gradient(135deg, #fffafd, #f9edf4) !important;
+}
+.nkj-catalog-view-card > h3,
+.nkj-catalog-view-photos-card > header h3 { color: #821b49 !important; }
+.nkj-catalog-view-detail-rows > div > svg { color: #b17b35 !important; }
+.nkj-catalog-view-footer button {
+  border-color: #bb8a3c !important;
+  background: linear-gradient(115deg, #ffe9ad, #e5b85e) !important;
+  color: #513111 !important;
+  box-shadow: 0 4px 10px rgba(153, 103, 31, .15) !important;
+}
+.nkj-catalog-view-close {
+  border-color: #d5b7ca !important;
+  background: #fff8f2 !important;
+  color: #821b49 !important;
+}
+
+/* Keep the richer panels balanced on tablets and phones. */
+@media screen and (max-width: 760px) {
+  .nkj-designs-page .nkj-designs-metal-section,
+  .nkj-designs-page .nkj-designs-category-section {
+    padding: 13px !important;
+    border-radius: 14px !important;
+  }
+  .nkj-designs-page .nkj-designs-metal-card { border-radius: 12px !important; }
+  .nkj-designs-page .nkj-designs-category-box { padding: 10px !important; gap: 6px !important; }
+  .nkj-designs-page .nkj-design-art-center { width: 94px !important; height: 94px !important; }
+}
