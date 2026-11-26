@@ -4443,3 +4443,127 @@ body:not(.nkj-theme-dark) .nkj-design-modal-done {
     background: linear-gradient(135deg, #fff9e9, #f8e6c1) !important;
   }
 }
+
+
+/* Compact design-detail viewer: match the centered reference panel. */
+@media screen and (min-width: 1101px) {
+  .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: min(1100px, calc(100vw - 64px)) !important;
+    height: min(700px, calc(100dvh - 80px)) !important;
+    max-width: calc(100vw - 64px) !important;
+    max-height: calc(100dvh - 80px) !important;
+    padding: 16px 18px 13px !important;
+    border-radius: 19px !important;
+  }
+  .nkj-catalog-view-layout {
+    grid-template-columns: minmax(330px, .9fr) minmax(0, 1.1fr) !important;
+    gap: clamp(15px, 1.65vw, 22px) !important;
+  }
+  .nkj-catalog-view-close {
+    top: 12px !important;
+    right: 12px !important;
+    width: 38px !important;
+    height: 38px !important;
+  }
+  .nkj-catalog-view-title-row { padding-right: 42px !important; }
+  .nkj-catalog-view-id {
+    min-height: 40px !important;
+    padding: 6px 11px !important;
+    gap: 8px !important;
+  }
+  .nkj-catalog-view-card {
+    padding: 11px 13px !important;
+    border-radius: 13px !important;
+  }
+  .nkj-catalog-view-card > h3,
+  .nkj-catalog-view-photos-card > header h3 {
+    font-size: 12px !important;
+    gap: 8px !important;
+  }
+  .nkj-catalog-view-detail-rows { margin-top: 8px !important; }
+  .nkj-catalog-view-detail-rows > div {
+    grid-template-columns: 28px minmax(90px, .7fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    min-height: 39px !important;
+    padding: 6px 3px !important;
+  }
+  .nkj-catalog-view-detail-rows > div > svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+  .nkj-catalog-view-detail-rows > div > span,
+  .nkj-catalog-view-detail-rows > div > b {
+    font-size: 11px !important;
+  }
+  .nkj-catalog-view-information { gap: 9px !important; }
+  .nkj-catalog-view-photos-card > header { margin-bottom: 7px !important; }
+  .nkj-catalog-view-photo-strip > button {
+    flex-basis: 78px !important;
+    width: 78px !important;
+    height: 78px !important;
+  }
+  .nkj-catalog-view-photo-actions button {
+    min-height: 36px !important;
+    padding: 6px 10px !important;
+  }
+  .nkj-catalog-view-gallery-thumbs {
+    flex-basis: 82px !important;
+    gap: 9px !important;
+    padding: 8px 13px !important;
+  }
+  .nkj-catalog-view-gallery-thumbs > button {
+    flex-basis: 78px !important;
+    width: 78px !important;
+    height: 64px !important;
+  }
+  .nkj-catalog-view-footer { margin-top: 8px !important; }
+  .nkj-catalog-view-footer button {
+    min-width: 145px !important;
+    min-height: 42px !important;
+    padding: 8px 18px !important;
+  }
+}
+
+/* Tablet: use a narrower, vertically scrollable details panel. */
+@media screen and (min-width: 681px) and (max-width: 1100px) {
+  .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: min(850px, calc(100vw - 36px)) !important;
+    height: auto !important;
+    max-height: calc(100dvh - 28px) !important;
+    padding: 14px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+  .nkj-catalog-view-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    overflow: visible !important;
+  }
+  .nkj-catalog-view-main-photo {
+    height: min(34dvh, 270px) !important;
+    min-height: 190px !important;
+  }
+  .nkj-catalog-view-gallery-thumbs { flex-basis: 76px !important; }
+  .nkj-catalog-view-information { overflow: visible !important; }
+}
+
+/* Phones keep a near-full-width, touch-friendly details sheet. */
+@media screen and (max-width: 680px) {
+  .nkj-catalog-modal-backdrop.nkj-catalog-view-backdrop { padding: 6px !important; }
+  .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    height: auto !important;
+    max-height: calc(100dvh - 12px) !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+    overflow-y: auto !important;
+  }
+  .nkj-catalog-view-main-photo {
+    height: clamp(180px, 30dvh, 270px) !important;
+    min-height: 180px !important;
+  }
+  .nkj-catalog-view-title-row h2 { font-size: clamp(23px, 7vw, 29px) !important; }
+  .nkj-catalog-view-card { padding: 11px !important; }
+  .nkj-catalog-view-detail-rows > div { min-height: 42px !important; }
+}
