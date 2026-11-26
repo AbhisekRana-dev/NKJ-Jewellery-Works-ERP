@@ -521,8 +521,7 @@ export default function JewelleryDesignsPage() {
     setAdminActionError("");
   };
 
-  const saveDesignDetails = async (event) => {
-    event.preventDefault();
+  const saveDesignDetails = async () => {
     if (!isAdmin || !selected || savingDetails) return;
     if (!editForm.designName.trim()) {
       setAdminActionError("Design name is required.");
@@ -1027,44 +1026,76 @@ export default function JewelleryDesignsPage() {
                           <Lock size={22} />
                         </div>
                         <div className="nkj-catalog-owner-control-actions">
-                          {!editMode && <button type="button" className="edit" onClick={beginEditingDetails}><Pencil size={18} /> Edit Details</button>}
-                          <button type="button" className="archive" onClick={archiveSelectedDesign}><Trash2 size={18} /> Delete / Archive</button>
-                          <button type="button" className="mobile-upload" onClick={generateMobileUploadQr} disabled={qrLoading}>{qrLoading ? <LoaderCircle size={16} className="spin" /> : <QrCode size={19} />} Upload from Mobile (QR Code)</button>
+                          {!editMode ? (
+                            <button type="button" className="edit" onClick={beginEditingDetails}>
+                              <Pencil size={18} /> Edit Details
+                            </button>
+                          ) : (
+                            <div className="nkj-catalog-edit-actions">
+                              <button type="button" className="save" onClick={saveDesignDetails} disabled={savingDetails}>
+                                {savingDetails ? <LoaderCircle size={16} className="spin" /> : <Save size={17} />}
+                                {savingDetails ? "Saving…" : "Save Changes"}
+                              </button>
+                              <button type="button" className="cancel" onClick={cancelEditingDetails} disabled={savingDetails} aria-label="Cancel editing" title="Cancel editing">
+                                <X size={17} />
+                              </button>
+                            </div>
+                          )}
+                          <button type="button" className="archive" onClick={archiveSelectedDesign}>
+                            <Trash2 size={18} /> Delete / Archive
+                          </button>
+                          <button type="button" className="mobile-upload" onClick={generateMobileUploadQr} disabled={qrLoading}>
+                            {qrLoading ? <LoaderCircle size={16} className="spin" /> : <QrCode size={19} />}
+                            Upload from Mobile (QR Code)
+                          </button>
+                          <div className="nkj-catalog-computer-upload-action">
+                            <div className="nkj-catalog-computer-upload-copy">
+                              <UploadCloud size={20} />
+                              <span>
+                                <b>Upload from Computer / Replace Primary Photograph</b>
+                                <small>Add one or multiple photographs to this design</small>
+                              </span>
+                            </div>
+                            <div className="nkj-catalog-computer-upload-options">
+                              <label className="nkj-design-admin-button nkj-catalog-choose-photos">
+                                <ImagePlus size={14} /> Choose Photos
+                                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={selectDesktopImages} disabled={uploadingImages} />
+                              </label>
+                              <label className={"nkj-design-replace-photo-button nkj-catalog-replace-primary" + (replacingPhoto ? " is-busy" : "")}>
+                                {replacingPhoto ? <LoaderCircle size={13} className="spin" /> : <ImagePlus size={13} />}
+                                <span>{replacingPhoto ? "Replacing…" : "Replace Primary"}</span>
+                                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={replacingPhoto} onChange={replaceSelectedPhoto} />
+                              </label>
+                            </div>
+                          </div>
                         </div>
-  
-                        <details className="nkj-catalog-view-computer-upload">
-                          <summary><UploadCloud size={15} /> Upload from Computer / Replace Primary Photograph</summary>
-                          <div className="nkj-design-upload-tools">
-                            <div><b>Upload from Computer</b><small>Add one or multiple photographs to this design. Existing photographs remain saved.</small></div>
-                            <label className="nkj-design-admin-button">
-                              <UploadCloud size={14} /> Choose Photos
-                              <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={selectDesktopImages} disabled={uploadingImages} />
-                            </label>
-                            {pendingImages.length > 0 && (
-                              <>
-                                <div className="nkj-design-desktop-preview-grid">
-                                  {pendingImages.map((item) => <article key={item.id}>
-                                    <img src={item.previewUrl} alt={item.file.name} />
-                                    <span title={item.file.name}>{item.file.name}</span>
-                                    <button type="button" onClick={() => removePendingImage(item.id)} aria-label="Remove selected photo"><X size={13} /></button>
-                                  </article>)}
-                                </div>
-                                <div className="nkj-design-admin-action-row">
-                                  <button type="button" className="nkj-design-admin-button" onClick={clearPendingImages}><RotateCcw size={13} /> Clear Selection</button>
-                                  <button type="button" className="nkj-design-admin-button primary" onClick={uploadSelectedImages} disabled={uploadingImages}>{uploadingImages ? <LoaderCircle size={14} className="spin" /> : <UploadCloud size={14} />} {uploadingImages ? "Uploading…" : "Save Photos"}</button>
-                                </div>
-                              </>
-                            )}
+
+                        {pendingImages.length > 0 && (
+                          <div className="nkj-design-upload-tools nkj-catalog-pending-upload">
+                            <div>
+                              <b>Selected photographs ({pendingImages.length})</b>
+                              <small>Review your selection, then save the photographs to this design.</small>
+                            </div>
+                            <div className="nkj-design-desktop-preview-grid">
+                              {pendingImages.map((item) => (
+                                <article key={item.id}>
+                                  <img src={item.previewUrl} alt={item.file.name} />
+                                  <span title={item.file.name}>{item.file.name}</span>
+                                  <button type="button" onClick={() => removePendingImage(item.id)} aria-label="Remove selected photo"><X size={13} /></button>
+                                </article>
+                              ))}
+                            </div>
+                            <div className="nkj-design-admin-action-row">
+                              <button type="button" className="nkj-design-admin-button" onClick={clearPendingImages}>
+                                <RotateCcw size={13} /> Clear Selection
+                              </button>
+                              <button type="button" className="nkj-design-admin-button primary" onClick={uploadSelectedImages} disabled={uploadingImages}>
+                                {uploadingImages ? <LoaderCircle size={14} className="spin" /> : <UploadCloud size={14} />}
+                                {uploadingImages ? "Uploading…" : "Save Photos"}
+                              </button>
+                            </div>
                           </div>
-                          <div className="nkj-design-replace-photo-tools">
-                            <div><b>Replace Primary Photograph</b><small>Replaces only the first photograph; other gallery images and the Design ID are preserved.</small></div>
-                            <label className={"nkj-design-replace-photo-button" + (replacingPhoto ? " is-busy" : "")}>
-                              {replacingPhoto ? <LoaderCircle size={16} className="spin" /> : <ImagePlus size={16} />}
-                              <span>{replacingPhoto ? "Replacing photograph…" : "Change / Replace photograph"}</span>
-                              <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={replacingPhoto} onChange={replaceSelectedPhoto} />
-                            </label>
-                          </div>
-                        </details>
+                        )}
   
                         {(qrLoading || qrSession || qrError) && (
                           <div className="nkj-design-mobile-qr-panel">
