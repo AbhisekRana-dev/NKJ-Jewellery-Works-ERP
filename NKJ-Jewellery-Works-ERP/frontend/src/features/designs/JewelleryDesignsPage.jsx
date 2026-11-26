@@ -13,7 +13,7 @@ import { useAuth } from "../../core/auth/AuthProvider";
 import { QRCodeSVG } from "qrcode.react";
 import "./JewelleryDesignsPage.css";
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 20;
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 const normalizeCollectionKey = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
