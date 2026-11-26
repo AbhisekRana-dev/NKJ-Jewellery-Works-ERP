@@ -956,7 +956,14 @@ export default function JewelleryDesignsPage() {
                           )}
                         </>
                       ) : (
-                        <div className="nkj-catalog-view-no-photo"><ImagePlus size={48} /><b>No photograph uploaded</b><span>Edit this design to add product photographs.</span></div>
+                        selected.isSample ? (
+                          <div className="nkj-catalog-view-card-image-preview" aria-label="Same sample image shown on the design card">
+                            <DesignImage design={selected} />
+                            <span className="nkj-catalog-view-preview-label">DESIGN PREVIEW</span>
+                          </div>
+                        ) : (
+                          <div className="nkj-catalog-view-no-photo"><ImagePlus size={48} /><b>No photograph uploaded</b><span>Edit this design to add product photographs.</span></div>
+                        )
                       )}
                     </div>
                     {selected.images?.length > 0 && (
