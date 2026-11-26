@@ -93,18 +93,58 @@ const loadFavorites = () => {
   }
 };
 
+function sampleArtworkPhoto(design) {
+  const description = [
+    design?.metalType,
+    design?.subcategoryName,
+    design?.designName,
+    design?.designCode,
+  ].filter(Boolean).join(" ").toLowerCase();
+  const code = String(design?.designCode || design?.designId || "");
+  const suffix = Number(code.match(/(\\d{4})$/)?.[1] || 0);
+
+  // These photographs are existing, clearly-labelled sample inspiration assets.
+  // Locket sample IDs 0021–0025 correspond to the 00721–00725 image set.
+  if (description.includes("locket")) {
+    const imageNumber = suffix >= 21 && suffix <= 25 ? suffix + 700 : 724;
+    return `/nkj-design-samples/gold-locket-${String(imageNumber).padStart(5, "0")}.jpg`;
+  }
+  if (description.includes("jhumka") || description.includes("earring")) {
+    return "/nkj-design-samples/gold-jhumka-earrings.jpg";
+  }
+  if (description.includes("necklace") || description.includes("haram")) {
+    return "/nkj-design-samples/gold-temple-necklace.jpg";
+  }
+  if (description.includes("diamond") || description.includes("ring")) {
+    return "/nkj-design-samples/diamond-halo-ring.jpg";
+  }
+  if (description.includes("anklet") || description.includes("payal") || description.includes("silver")) {
+    return "/nkj-design-samples/silver-payal-anklets.jpg";
+  }
+  if (description.includes("bangle")) return "/collection-bangles.png";
+  if (description.includes("ring")) return "/collection-rings.png";
+  return "";
+}
+
 function SampleArtwork({ design }) {
   const Icon = iconFor(design);
   const hue = hueFor(design);
+  const photo = sampleArtworkPhoto(design);
   return (
-    <div className="nkj-design-art" style={{ "--design-hue": hue }} aria-label="Sample design inspiration illustration">
-      <span className="nkj-design-art-orbit orbit-one" />
-      <span className="nkj-design-art-orbit orbit-two" />
-      <span className="nkj-design-art-spark spark-one">✦</span>
-      <span className="nkj-design-art-spark spark-two">✧</span>
-      <div className="nkj-design-art-center">
-        <Icon size={70} strokeWidth={1.2} />
-      </div>
+    <div className={`nkj-design-art ${photo ? "has-product-photo" : ""}`} style={{ "--design-hue": hue }} aria-label="Sample design inspiration">
+      {photo ? (
+        <img className="nkj-design-art-image" src={photo} alt={design.designName || "Jewellery sample inspiration"} loading="lazy" />
+      ) : (
+        <>
+          <span className="nkj-design-art-orbit orbit-one" />
+          <span className="nkj-design-art-orbit orbit-two" />
+          <span className="nkj-design-art-spark spark-one">✦</span>
+          <span className="nkj-design-art-spark spark-two">✧</span>
+          <div className="nkj-design-art-center">
+            <Icon size={70} strokeWidth={1.2} />
+          </div>
+        </>
+      )}
       <span className="nkj-design-art-caption">SAMPLE • INSPIRATION</span>
       <span className="nkj-design-art-code">{design.designCode}</span>
     </div>
