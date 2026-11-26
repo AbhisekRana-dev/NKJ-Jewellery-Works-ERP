@@ -82,3 +82,119 @@
 .setup-screen {min-height:calc(100vh - 132px)!important}
 
 }
+
+
+/* ============================================================
+   LOGIN PAGE — REMOVE WHITE SCROLL GAPS
+   Keep the public navbar, login background and footer in one
+   continuous jewellery-themed page canvas.
+============================================================ */
+html:has(.nkj-login-page),
+body:has(.nkj-login-page),
+#root:has(.nkj-login-page) {
+  width: 100% !important;
+  min-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #2b0010 !important;
+}
+
+body:has(.nkj-login-page) {
+  min-width: 320px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  overflow-x: hidden !important;
+}
+
+body:has(.nkj-login-page) #root {
+  min-height: 100svh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: linear-gradient(180deg, #2b0010 0%, #4b0718 58%, #25000e 100%) !important;
+}
+
+body:has(.nkj-login-page) .app-layout {
+  display: flex !important;
+  flex: 1 0 auto !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-height: 100svh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+body:has(.nkj-login-page) .app-content {
+  display: flex !important;
+  flex: 1 0 auto !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  background: transparent !important;
+}
+
+/* The public navbar is the first element on the login route: no
+   legacy body top-padding or header offset is allowed above it. */
+body:has(.nkj-login-page) .app-content > .nkj-public-topbar,
+body:has(.nkj-login-page) .app-content > .topbar {
+  position: relative !important;
+  inset: auto !important;
+  top: 0 !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+/* Size the hero to the space left after the navigation and footer.
+   If a shorter screen needs more room, the content can grow naturally. */
+body:has(.nkj-login-page) .nkj-login-page {
+  box-sizing: border-box !important;
+  display: grid !important;
+  flex: 1 0 auto !important;
+  width: 100% !important;
+  min-height: max(600px, calc(100svh - 98px - 184px)) !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background-color: #2b0010 !important;
+  background-image:
+    linear-gradient(90deg, rgba(35,0,10,.42), rgba(35,0,10,.08)),
+    url("/login-jewellery-bg.png") !important;
+  background-repeat: no-repeat !important;
+  background-position: center center !important;
+  background-size: cover !important;
+}
+
+/* Keep the real site footer flush to the login hero. Never leave a
+   white body strip beneath it when the document is scrolled. */
+body:has(.nkj-login-page) .jewellery-footer {
+  position: relative !important;
+  inset: auto !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  background: linear-gradient(115deg, #70001e, #410013 55%, #69001d) !important;
+}
+
+body:has(.nkj-login-page) .footer-copyright {
+  background: linear-gradient(90deg, #fff0d6, #f2d9b2, #fff0d6) !important;
+}
+
+@media (max-width: 760px) {
+  body:has(.nkj-login-page) .nkj-login-page {
+    min-height: max(760px, calc(100svh - 86px - 250px)) !important;
+    background-position: 42% center !important;
+  }
+}
+
+@media (max-width: 420px) {
+  body:has(.nkj-login-page) .nkj-login-page {
+    min-height: max(820px, calc(100svh - 86px - 270px)) !important;
+  }
+}
