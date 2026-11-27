@@ -999,6 +999,7 @@ export default function JewelleryDesignsPage() {
 
                     </section>
 
+                    {selected.images?.length > 0 && (
                     <section className="nkj-catalog-view-card nkj-catalog-view-photos-card">
                       <header><h3><ImagePlus size={19} /> Design photographs</h3><span>{selected.images?.length || 0} photographs</span></header>
                       <div className="nkj-catalog-view-photo-management">
@@ -1018,15 +1019,12 @@ export default function JewelleryDesignsPage() {
                         )}
                       </div>
                     </section>
+                    )}
 
-
-                  </section>
-                </div>
                 {isAdmin && (
                   <section className="nkj-catalog-view-card nkj-catalog-owner-controls">
                     <div className="nkj-catalog-owner-controls-heading">
-                      <div><Lock size={21} /><span><small>OWNER CONTROLS</small><b>Manage this design</b></span></div>
-                      <Lock size={22} />
+                      <div><Lock size={27} /><span><b>Manage this design</b></span></div>
                     </div>
                     <div className="nkj-catalog-owner-control-actions">
                       {!editMode ? (
@@ -1124,7 +1122,12 @@ export default function JewelleryDesignsPage() {
                     {adminActionMessage && <p className="nkj-design-admin-feedback success" role="status">{adminActionMessage}</p>}
                     {replacePhotoError && <p className="nkj-design-admin-feedback error" role="alert">{replacePhotoError}</p>}
                   </section>
-                )}                <footer className="nkj-catalog-view-footer"><button type="button" onClick={closeSelectedModal}>Close</button></footer>
+                )}
+
+
+                  </section>
+                </div>
+                <footer className="nkj-catalog-view-footer"><button type="button" onClick={closeSelectedModal}>Close</button></footer>
                 {adminPhotoExpanded && selected.images?.length > 0 && (
                   <div className="nkj-catalog-view-lightbox" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAdminPhotoExpanded(false); }}>
                     <button type="button" className="close" onClick={() => setAdminPhotoExpanded(false)} aria-label="Close full-screen photo"><X size={23} /></button>
