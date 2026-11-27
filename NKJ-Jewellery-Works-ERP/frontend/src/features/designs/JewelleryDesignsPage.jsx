@@ -915,7 +915,7 @@ export default function JewelleryDesignsPage() {
                 <button type="button" className="nkj-catalog-view-close" onClick={closeSelectedModal} aria-label="Close design details"><X size={23} /></button>
                 <div className="nkj-catalog-view-layout">
                   <section className="nkj-catalog-view-gallery" aria-label="Design photographs">
-                    <div className="nkj-catalog-view-main-photo">
+                    <div className={`nkj-catalog-view-main-photo ${selected.images?.length ? "has-product-image" : "no-product-image"}`}>
                       {selected.images?.length ? (
                         <>
                           <span className="nkj-catalog-view-image-fallback"><ImagePlus size={34} /><b>Photograph unavailable</b><small>The saved image could not be loaded.</small></span>
