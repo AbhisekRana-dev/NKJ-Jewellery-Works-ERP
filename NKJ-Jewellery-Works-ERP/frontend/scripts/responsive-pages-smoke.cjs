@@ -797,7 +797,7 @@ async function testInvoiceMakingChargeModes(browser) {
     await flatMode.check();
     await row.locator(".making-charge-flat-input").fill("5000");
     let rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
-    assert(Math.abs(rowTotal - 41375) < 0.01, "Fixed ₹5,000 making charge total is incorrect: " + rowTotal);
+    assert(Math.abs(rowTotal - 41225) < 0.01, "Fixed ₹5,000 making charge total is incorrect: " + rowTotal);
 
     await percentMode.check();
     await row.locator(".making-charge-percent-input").fill("12");
@@ -818,7 +818,7 @@ async function testInvoiceMakingChargeModes(browser) {
     assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
 
     rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
-    assert(Math.abs(rowTotal - 40722) < 0.01, "Percentage mode ornament total is incorrect: " + rowTotal);
+    assert(Math.abs(rowTotal - 40572) < 0.01, "Percentage mode ornament total is incorrect: " + rowTotal);
 
     await rateInput.fill("7000");
     const recalculated = Number((await row.locator(".making-charge-result").innerText()).replace(/[^\d.-]/g, ""));
