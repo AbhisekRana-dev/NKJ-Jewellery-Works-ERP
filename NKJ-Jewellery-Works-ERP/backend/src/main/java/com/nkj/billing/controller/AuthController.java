@@ -31,8 +31,15 @@ public class AuthController {
     record Login(String username, String password) {}
     record Verify(String challengeId, String code) {}
     record SessionManagerUnlock(String password) {}
+    record RateBoardUnlock(String password) {}
     record SetupEmailStart(String username, String password) {}
     record SetupEmailVerify(String challengeId, String code) {}
+
+    @PostMapping("/rate-board/unlock")
+    public Map<String,Object> unlockRateBoard(@RequestBody RateBoardUnlock body, HttpServletRequest request) {
+        String editToken = auth.unlockRateBoard(body.password(), request.getRemoteAddr());
+        return Map.of("editToken", editToken, "expiresInSeconds", 300);
+    }
 
     @PostMapping("/login")
     public Map<String,Object> login(@RequestBody Login x) {

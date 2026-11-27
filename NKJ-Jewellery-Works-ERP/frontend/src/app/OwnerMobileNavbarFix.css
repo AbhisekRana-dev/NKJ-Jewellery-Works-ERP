@@ -183,3 +183,129 @@
     max-height: calc(100dvh - 16px) !important;
   }
 }
+
+
+/* NEW INVOICE NATIVE PRINT — RESET THE APP FLEX SHELL AND START AT PAGE 1.
+   The application shell has min-height:100vh and flex-grow rules. Hiding it
+   with visibility:hidden leaves that full-screen space in the print flow.
+   This print-only reset removes the shell/navigation flow and starts the
+   invoice at the top of the first A4 landscape page. */
+@page {
+  size: 297mm 210mm;
+  margin: 3mm;
+}
+@media print {
+  html,
+  body,
+  body:has(main.invoice-container > #invoice-print),
+  body:has(main.invoice-container > #invoice-print) #root {
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) {
+    display: block !important;
+    position: static !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) .app-layout,
+  body:has(main.invoice-container > #invoice-print) .app-content {
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    flex-basis: auto !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+  }
+
+  /* Remove all non-invoice siblings from layout, not just from visibility. */
+  body:has(main.invoice-container > #invoice-print) .app-layout > :not(.app-content),
+  body:has(main.invoice-container > #invoice-print) .app-content > :not(main.invoice-container),
+  body:has(main.invoice-container > #invoice-print) main.invoice-container > :not(#invoice-print) {
+    display: none !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) .nkj-owner-sidebar,
+  body:has(main.invoice-container > #invoice-print) .nkj-mobile-sidebar-backdrop,
+  body:has(main.invoice-container > #invoice-print) .nkj-owner-topbar,
+  body:has(main.invoice-container > #invoice-print) .nkj-public-topbar,
+  body:has(main.invoice-container > #invoice-print) footer {
+    display: none !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) main.invoice-container {
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) #invoice-print {
+    display: block !important;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    zoom: 1 !important;
+    transform: none !important;
+    break-before: auto !important;
+    break-after: auto !important;
+    break-inside: auto !important;
+    page-break-before: auto !important;
+    page-break-after: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  /* Keep the invoice sections together, but allow the invoice sheet itself
+     to begin on page 1 instead of being deferred as one unbreakable block. */
+  body:has(main.invoice-container > #invoice-print) #invoice-print .inv-head,
+  body:has(main.invoice-container > #invoice-print) #invoice-print .inv-two,
+  body:has(main.invoice-container > #invoice-print) #invoice-print .inv-main,
+  body:has(main.invoice-container > #invoice-print) #invoice-print .inv-bottom,
+  body:has(main.invoice-container > #invoice-print) #invoice-print .thankyou {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

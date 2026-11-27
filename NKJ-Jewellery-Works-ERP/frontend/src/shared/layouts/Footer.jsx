@@ -1,7 +1,7 @@
 
 import "./Footer.css";
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Home,
   FileText,
@@ -13,6 +13,9 @@ import {
 } from "lucide-react";
 
 const Footer = () => {
+  const location = useLocation();
+  if (location.pathname === "/rate") return null;
+
   return (
     <footer
       className="jewellery-footer"

@@ -29,7 +29,7 @@ const ownerRoutes = [
   "/reports/expenses", "/design-catalog", "/database", "/audit-logs",
 ];
 
-const publicRoutes = ["/", "/invoice", "/designs", "/calculator", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp"];
+const publicRoutes = ["/", "/rate", "/invoice", "/designs", "/calculator", "/mobile-design-upload/mobile-responsive-smoke-token", "/login", "/setup-totp"];
 
 // Authenticated compatibility routes may intentionally land on a canonical page.
 const expectedRoutePaths = {
@@ -447,15 +447,20 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
           cellCount: cells.length,
           cells: cells.map((cell) => {
             const cellRect = cell.getBoundingClientRect();
-            const field = cell.querySelector("input, select, textarea");
-            const fieldRect = field?.getBoundingClientRect();
+            // Mode radio buttons are controls, not the editable value field.
+            // Measure the numeric/text field so a 15px %/₹ radio cannot make
+            // the mobile card test falsely report a squeezed input.
+            const valueFields = Array.from(cell.querySelectorAll(
+              'input:not([type="radio"]), select, textarea'
+            ));
+            const fieldRect = valueFields[0]?.getBoundingClientRect();
             return {
               width: cellRect.width,
               height: cellRect.height,
               labelWidth: cellRect.width,
               fieldWidth: fieldRect?.width || 0,
               fieldHeight: fieldRect?.height || 0,
-              fieldCount: field ? 1 : 0,
+              fieldCount: valueFields.length,
             };
           }),
         };
@@ -490,10 +495,17 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
         row.labelledCells >= Math.max(4, row.cellCount - 1),
         invoiceKind + " ornament card is missing readable field labels: " + JSON.stringify(result)
       );
+      // The final table cell is a deliberately compact remove-action column.
+      // Validate editable data cells separately so a 28px trash-button cell is
+      // not mistaken for a squeezed text/number field.
+      const editableCells = row.cells.slice(0, -1);
+      const actionCell = row.cells[row.cells.length - 1];
       assert(
-        row.cells.every((cell) => cell.width >= 60) &&
-        row.cells.every((cell) => !cell.fieldCount || cell.fieldWidth >= Math.min(96, cell.width - 12)),
-        invoiceKind + " ornament fields were squeezed into narrow desktop percentage columns: " + JSON.stringify(result)
+        editableCells.every((cell) => cell.width >= 60) &&
+        editableCells.every((cell) => !cell.fieldCount || cell.fieldWidth >= Math.min(96, cell.width - 12)) &&
+        actionCell.width >= 22 &&
+        actionCell.fieldCount === 0,
+        invoiceKind + " ornament data fields or remove-action cell have invalid mobile sizing: " + JSON.stringify(result)
       );
       assert(
         row.cells.every((cell) => !cell.fieldCount || cell.fieldHeight >= 44),
@@ -516,7 +528,7 @@ async function fillNewInvoiceForMobile(page, width) {
 
   const table = page.locator("#invoice-print .new-items-table");
   const fillRow = async (rowIndex, values) => {
-    const inputs = table.locator("tbody tr").nth(rowIndex).locator("td input");
+    const inputs = table.locator("tbody tr").nth(rowIndex).locator('td input:not([type="radio"])');
     for (let index = 0; index < values.length; index += 1) {
       await inputs.nth(index).fill(String(values[index]));
     }
@@ -711,75 +723,142 @@ async function testNewInvoiceMobile(browser, width) {
     await context.close();
   }
 }
-async function testInvoiceCalculatorPopup(browser, width) {
-  const viewport = { name: "invoice-calculator-" + width, width, height: width <= 760 ? 820 : 900 };
-  const context = await browser.newContext({ viewport });
+async function testNewInvoiceNativePrintSinglePage(browser) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 950 } });
   const page = await context.newPage();
   await installApiMocks(page);
 
   try {
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    await page.locator(".nkj-calculator-trigger").click();
-    const popup = page.locator(".nkj-invoice-calculator-popup");
-    await popup.waitFor({ state: "visible", timeout: 5000 });
+    await page.locator("#invoice-print .new-items-table tbody tr").first().locator("td").nth(2).locator("input").fill("22K / 916");
+    await page.locator("#invoice-print .new-items-table tbody tr").first().locator("td").nth(3).locator("input").fill("5.25");
+    await page.locator("#invoice-print .new-items-table tbody tr").first().locator("td").nth(4).locator("input").fill("6900");
 
-    const geometry = await popup.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      const heading = element.querySelector(".nkj-invoice-calculator-heading strong");
-      const headingStyle = heading ? getComputedStyle(heading) : null;
+    await page.emulateMedia({ media: "print" });
+    const geometry = await page.evaluate(() => {
+      const invoice = document.querySelector("#invoice-print");
+      const main = document.querySelector("main.invoice-container");
+      const appLayout = document.querySelector(".app-layout");
+      const rect = invoice.getBoundingClientRect();
+      const mainRect = main.getBoundingClientRect();
       return {
-        left: rect.left,
-        right: rect.right,
-        top: rect.top,
-        bottom: rect.bottom,
-        width: rect.width,
-        height: rect.height,
-        viewportWidth: document.documentElement.clientWidth,
-        viewportHeight: document.documentElement.clientHeight,
-        headingWhiteSpace: headingStyle?.whiteSpace || "",
-        headingScrollWidth: heading?.scrollWidth || 0,
-        headingClientWidth: heading?.clientWidth || 0,
+        invoiceTop: rect.top,
+        invoiceHeight: rect.height,
+        mainTop: mainRect.top,
+        appLayoutMinHeight: getComputedStyle(appLayout).minHeight,
+        appLayoutDisplay: getComputedStyle(appLayout).display,
+        appContentDisplay: getComputedStyle(document.querySelector(".app-content")).display,
+        invoiceBreakInside: getComputedStyle(invoice).breakInside,
       };
     });
 
-    assert(geometry.width >= Math.min(300, width - 24),
-      "Invoice calculator is too narrow at " + width + "px: " + JSON.stringify(geometry));
-    assert(geometry.left >= -1 && geometry.right <= geometry.viewportWidth + 1,
-      "Invoice calculator extends beyond the horizontal viewport at " + width + "px: " + JSON.stringify(geometry));
-    assert(geometry.top >= -1 && geometry.bottom <= geometry.viewportHeight + 1,
-      "Invoice calculator extends beyond the vertical viewport at " + width + "px: " + JSON.stringify(geometry));
-    assert(geometry.headingWhiteSpace === "nowrap" && geometry.headingScrollWidth <= geometry.headingClientWidth + 1,
-      "Invoice calculator heading wraps or clips at " + width + "px: " + JSON.stringify(geometry));
+    assert(geometry.invoiceTop <= 1 && geometry.mainTop <= 1,
+      "New invoice must start at the top of print page 1: " + JSON.stringify(geometry));
+    assert(geometry.appLayoutDisplay === "block" && geometry.appContentDisplay === "block",
+      "Print layout must reset the full-height application flex shell: " + JSON.stringify(geometry));
+    assert(geometry.invoiceBreakInside !== "avoid",
+      "The complete invoice sheet must not be treated as one unbreakable print block.");
 
-    if (width <= 760) {
-      await page.locator(".nkj-invoice-calculator-scrim").waitFor({ state: "visible", timeout: 3000 });
-      const position = await popup.evaluate((element) => getComputedStyle(element).position);
-      assert(position === "fixed", "Phone calculator should open as a centered fixed dialog.");
-    } else {
-      const position = await popup.evaluate((element) => getComputedStyle(element).position);
-      assert(position === "absolute", "Desktop calculator should stay anchored to the toolbar.");
-    }
+    const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
+    const pdfSource = pdf.toString("latin1");
+    const pageCount = (pdfSource.match(/\/Type\s*\/Page\b/g) || []).length;
+    assert(pageCount === 1,
+      "New invoice Ctrl+P must generate exactly one A4 landscape PDF page, not " + pageCount + ".");
 
-    await page.locator(".nkj-invoice-calculator-key", { hasText: /^7$/ }).click();
-    await page.locator(".nkj-invoice-calculator-key", { hasText: /^\+$/ }).click();
-    await page.locator(".nkj-invoice-calculator-key", { hasText: /^3$/ }).click();
-    await page.locator(".nkj-invoice-calculator-key", { hasText: /^=$/ }).click();
-    await page.waitForFunction(() => {
-      return document.querySelector(".nkj-invoice-calculator-value")?.textContent?.trim() === "10";
-    }, { timeout: 3000 });
-
-    if (width <= 760) {
-      await page.locator(".nkj-invoice-calculator-scrim").click({ position: { x: 5, y: 5 } });
-      await popup.waitFor({ state: "hidden", timeout: 3000 });
-    } else {
-      await page.locator(".nkj-invoice-calculator-close").click();
-      await popup.waitFor({ state: "hidden", timeout: 3000 });
-    }
-
-    process.stdout.write("PASS invoice calculator popup width, position, heading, calculation and close at " + width + "px\\n");
+    process.stdout.write("PASS new invoice Ctrl+P prints from page 1 on one A4 landscape page\\n");
   } finally {
     await context.close();
+  }
+}
+
+async function testInvoiceMakingChargeModes(browser) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 950 } });
+  const page = await context.newPage();
+  await installApiMocks(page);
+  try {
+    await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+    await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+    const row = page.locator("#invoice-print .new-items-table tbody tr").first();
+    const deleteButton = row.locator("td:last-child .icon-btn");
+    const deleteButtonRect = await deleteButton.boundingBox();
+    const deleteIconRect = await deleteButton.locator("svg").boundingBox();
+    assert(deleteButtonRect && deleteButtonRect.width >= 32 && deleteButtonRect.height >= 32,
+      "New ornament delete button must have a visible 32px or larger hit target.");
+    assert(deleteIconRect && deleteIconRect.width >= 20 && deleteIconRect.height >= 20,
+      "New ornament trash icon must be clearly visible at 20px or larger.");
+    const weightInput = row.locator("td").nth(3).locator("input");
+    const rateInput = row.locator("td").nth(4).locator("input");
+    const flatMode = row.locator('.making-charge-mode-option input[value="amount"]');
+    const percentMode = row.locator('.making-charge-mode-option input[value="percent"]');
+
+    await weightInput.fill("5.25");
+    await rateInput.fill("6900");
+    await flatMode.check();
+    await row.locator(".making-charge-flat-input").fill("5000");
+    let rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
+    assert(Math.abs(rowTotal - 41225) < 0.01, "Fixed ₹5,000 making charge total is incorrect: " + rowTotal);
+
+    await percentMode.check();
+    await row.locator(".making-charge-percent-input").fill("12");
+    const makingCell = row.locator("td").nth(5);
+    const stampCell = row.locator("td").nth(6);
+    const resultRect = await row.locator(".making-charge-result").boundingBox();
+    const inputRect = await row.locator(".making-charge-percent-input").boundingBox();
+    const cellRect = await makingCell.boundingBox();
+    const stampInputRect = await stampCell.locator("input").boundingBox();
+    assert(resultRect && inputRect && Math.abs(resultRect.y - inputRect.y) < 5,
+      "Percent entry and converted rupee amount must be displayed side by side.");
+    assert(cellRect && resultRect.left >= cellRect.left && resultRect.right <= cellRect.right + 1,
+      "Calculated rupee box must remain inside the Making Charge column; it must not overlap Stamp Charge.");
+    assert(stampInputRect && resultRect.right < stampInputRect.left,
+      "Calculated rupee box overlaps the Stamp Charge input.");
+    const preview = await row.locator(".making-charge-result").innerText();
+    const makingAmount = Number(preview.replace(/[^\d.-]/g, ""));
+    assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
+
+    rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
+    assert(Math.abs(rowTotal - 40572) < 0.01, "Percentage mode ornament total is incorrect: " + rowTotal);
+
+    await rateInput.fill("7000");
+    const recalculated = Number((await row.locator(".making-charge-result").innerText()).replace(/[^\d.-]/g, ""));
+    assert(Math.abs(recalculated - 4410) < 0.01, "Percentage charge did not recalculate after rate changed: " + recalculated);
+    process.stdout.write("PASS invoice making charge percent/rupee selection and live totals\n");
+  } finally {
+    await context.close();
+  }
+}
+
+async function testInvoiceToolbarAndDeleteControls(browser) {
+  for (const width of [390, 1440]) {
+    const context = await browser.newContext({
+      viewport: { width, height: width <= 760 ? 844 : 950 },
+    });
+    const page = await context.newPage();
+    await installApiMocks(page);
+    try {
+      await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+      await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+      assert(await page.locator(".nkj-calculator-trigger").count() === 0,
+        "Invoice page must not show a Calculator button.");
+      assert(await page.locator(".nkj-invoice-calculator-popup, .nkj-invoice-calculator-scrim").count() === 0,
+        "Invoice page must not render a calculator popup or overlay.");
+
+      const newDelete = page.locator("#invoice-print .new-items-table tbody tr").first().locator("td:last-child .icon-btn");
+      const oldDelete = page.locator("#invoice-print .old-items-table tbody tr").first().locator("td:last-child .icon-btn");
+      for (const [label, button] of [["new ornament", newDelete], ["old ornament", oldDelete]]) {
+        const buttonRect = await button.boundingBox();
+        const iconRect = await button.locator("svg").boundingBox();
+        assert(buttonRect && buttonRect.width <= 26 && buttonRect.height <= 26,
+          label + " delete button should be compact (<=26px); got " + JSON.stringify(buttonRect));
+        assert(iconRect && iconRect.width >= 11 && iconRect.width <= 14 && iconRect.height >= 11 && iconRect.height <= 14,
+          label + " trash icon should be about 12–13px; got " + JSON.stringify(iconRect));
+      }
+      process.stdout.write("PASS invoice has no Calculator button and compact delete icons at " + width + "px\\n");
+    } finally {
+      await context.close();
+    }
   }
 }
 
@@ -933,7 +1012,7 @@ async function testInvoiceSavePinGate(browser) {
   }
 }
 
-async function testInvoiceDraftRecoveryAndReset(browser) {
+async function testInvoiceDraftResetOnReload(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await installApiMocks(page);
@@ -947,11 +1026,13 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     const customerInputs = page.locator("#invoice-print .inv-two .inv-panel").first()
       .locator(".form-grid label input");
     const newItemInputs = page.locator("#invoice-print .new-items-table tbody tr:first-child td input");
-    await customerInputs.nth(0).fill("Draft Recovery Customer");
+
+    await customerInputs.nth(0).fill("Temporary Invoice Customer");
     await customerInputs.nth(1).fill("9876543210");
     await customerInputs.nth(2).fill("Jhargram, West Bengal");
-    await newItemInputs.nth(0).fill("Draft Gold Necklace");
+    await newItemInputs.nth(0).fill("Temporary Gold Necklace");
     await newItemInputs.nth(2).fill("4.25");
+
     await page.evaluate((key) => {
       localStorage.setItem(key, JSON.stringify({
         version: 2,
@@ -962,73 +1043,81 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
 
     await page.waitForFunction((key) => {
       const draft = JSON.parse(localStorage.getItem(key) || "null");
-      return draft?.version === 2 && draft?.customer?.name === "Draft Recovery Customer";
+      return draft?.version === 2 && draft?.customer?.name === "Temporary Invoice Customer";
     }, draftKey);
-    const storedDraft = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
-    assert(storedDraft?.newItems?.[0]?.description === "Draft Gold Necklace",
-      "Ornament details were not persisted in the user's draft.");
-    assert(storedDraft?.newItems?.[0]?.netWeight === "4.25",
-      "Ornament weight was not persisted in the user's draft.");
-    assert((await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).customer.name, otherUserDraftKey))
-      === "Another User Draft",
-      "Saving this account's draft overwrote another user's draft.");
+    const beforeReload = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
+    assert(beforeReload?.newItems?.[0]?.description === "Temporary Gold Necklace",
+      "Current-page temporary invoice backup did not capture ornament details.");
+    assert(beforeReload?.newItems?.[0]?.netWeight === "4.25",
+      "Current-page temporary invoice backup did not capture ornament weight.");
 
-    // Leave through the application Home route, then return through the real route.
+    // Leaving and returning to New Invoice starts with a blank form.
     await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Home -> New Invoice navigation did not restore the customer.");
-    assert((await newItemInputs.nth(0).inputValue()) === "Draft Gold Necklace",
-      "Home -> New Invoice navigation did not restore ornament details.");
+    assert((await customerInputs.nth(0).inputValue()) === "",
+      "Returning to New Invoice restored an unfinished customer.");
+    assert((await newItemInputs.nth(0).inputValue()) === "",
+      "Returning to New Invoice restored unfinished ornament details.");
 
-    // A direct browser reload must keep the draft, including its idempotency key.
+    // A direct browser reload also discards the temporary invoice.
+    await customerInputs.nth(0).fill("Reload Must Clear This Customer");
+    await newItemInputs.nth(0).fill("Reload Must Clear This Ornament");
+    await page.waitForFunction((key) => {
+      const draft = JSON.parse(localStorage.getItem(key) || "null");
+      return draft?.customer?.name === "Reload Must Clear This Customer";
+    }, draftKey);
+    const idempotencyKeyBeforeReload = await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)).idempotencyKey,
+      draftKey
+    );
+
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Refreshing /invoice cleared the user's unfinished draft.");
+    assert((await customerInputs.nth(0).inputValue()) === "",
+      "Reloading /invoice did not clear the unfinished customer.");
+    assert((await newItemInputs.nth(0).inputValue()) === "",
+      "Reloading /invoice did not clear unfinished ornament details.");
+    await page.waitForFunction((key) => {
+      const draft = JSON.parse(localStorage.getItem(key) || "null");
+      return draft?.version === 2 && draft?.customer?.name === "";
+    }, draftKey);
     const afterReload = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
-    assert(afterReload?.idempotencyKey === storedDraft.idempotencyKey,
-      "Refreshing /invoice replaced the draft idempotency key.");
+    assert(afterReload?.idempotencyKey && afterReload.idempotencyKey !== idempotencyKeyBeforeReload,
+      "Reloading /invoice reused the previous temporary draft idempotency key.");
 
-    let escapeCancelMessage = "";
+    // Cancel keeps the current invoice; confirming Reset clears all fields.
+    await customerInputs.nth(0).fill("Reset Confirmation Customer");
+    await newItemInputs.nth(0).fill("Reset Confirmation Ornament");
+    await page.waitForFunction((key) => {
+      const draft = JSON.parse(localStorage.getItem(key) || "null");
+      return draft?.customer?.name === "Reset Confirmation Customer";
+    }, draftKey);
+
+    let resetMessage = "";
     page.once("dialog", async (dialog) => {
-      escapeCancelMessage = dialog.message();
+      resetMessage = dialog.message();
       await dialog.dismiss();
     });
-    await page.keyboard.press("Escape");
-    assert(escapeCancelMessage === "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
-      "Escape did not show the required reset confirmation.");
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Canceling the Escape confirmation changed invoice fields.");
-
-    page.once("dialog", async (dialog) => { await dialog.dismiss(); });
     await page.locator(".nkj-invoice-reset-button").click();
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Canceling the Reset button changed invoice fields.");
+    assert(resetMessage === "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
+      "Reset did not show the expected confirmation message.");
+    assert((await customerInputs.nth(0).inputValue()) === "Reset Confirmation Customer",
+      "Canceling Reset changed the invoice fields.");
     assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Canceling Reset deleted the local draft.");
+      "Canceling Reset removed the temporary invoice backup.");
 
     page.once("dialog", async (dialog) => { await dialog.accept(); });
     await page.locator(".nkj-invoice-reset-button").click();
     assert((await customerInputs.nth(0).inputValue()) === "",
       "Confirming Reset did not clear customer fields.");
-    assert(!(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Confirming Reset did not delete the account's draft.");
+    assert((await newItemInputs.nth(0).inputValue()) === "",
+      "Confirming Reset did not clear ornament fields.");
+    await page.waitForFunction((key) => localStorage.getItem(key) === null, draftKey);
     assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), otherUserDraftKey)),
-      "Reset incorrectly removed another user's draft.");
+      "Reset incorrectly removed another user's data.");
 
-    // Independently exercise Escape-confirm as well as Escape-cancel.
-    await customerInputs.nth(0).fill("Escape Confirm Customer");
-    await page.waitForFunction((key) => Boolean(localStorage.getItem(key)), draftKey);
-    page.once("dialog", async (dialog) => { await dialog.accept(); });
-    await page.keyboard.press("Escape");
-    assert((await customerInputs.nth(0).inputValue()) === "",
-      "Confirming the Escape reset did not clear the current invoice.");
-    assert(!(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Confirming the Escape reset did not delete the draft.");
-
-    process.stdout.write("PASS per-user draft autosave, Home/return, reload recovery, Esc cancel/confirm and Reset cancel/confirm\n");
+    process.stdout.write("PASS New Invoice Reset cancel/confirm, Home/return blank state and reload clears unfinished invoice data\\n");
   } finally {
     await context.close();
   }
@@ -1512,6 +1601,10 @@ async function testPublicNavigation(browser) {
     await waitForServer(server);
     browser = await chromium.launch({ headless: true });
 
+    // Run the Ctrl+P page-count regression first so failures surface before
+    // the much larger all-routes responsive sweep.
+    await testNewInvoiceNativePrintSinglePage(browser);
+
     for (const viewport of viewports) {
       const context = await browser.newContext({ viewport });
       const page = await context.newPage();
@@ -1562,11 +1655,10 @@ async function testPublicNavigation(browser) {
     for (const width of [360, 390, 430]) {
       await testNewInvoiceMobile(browser, width);
     }
-    for (const width of [360, 390, 768, 1366]) {
-      await testInvoiceCalculatorPopup(browser, width);
-    }
+    await testInvoiceMakingChargeModes(browser);
+    await testInvoiceToolbarAndDeleteControls(browser);
     await testInvoiceSavePinGate(browser);
-    await testInvoiceDraftRecoveryAndReset(browser);
+    await testInvoiceDraftResetOnReload(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
     // Verify public navbar placement before the independent saved-invoice print fixture.
     await testPublicNavigation(browser);
@@ -1574,7 +1666,7 @@ async function testPublicNavigation(browser) {
     await testOwnerLoginSingleClick(browser);
     await testPhysicalMobileLayout(browser);
     await testSavedInvoiceMobile(browser);
-    process.stdout.write("PASS New Invoice at 360/390/430, draft recovery/reset, inactivity logout, saved invoice view and print/PDF layout.\n");
+    process.stdout.write("PASS New Invoice at 360/390/430, reload reset, inactivity logout, saved invoice view and print/PDF layout.\n");
     process.stdout.write("All owner/public page responsive smoke checks passed.\n");
   } catch (error) {
     console.error(error);

@@ -2,6 +2,7 @@
 
 import "./InvoicePinDialog.css";
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { LockKeyhole, X, ShieldCheck } from "lucide-react";
 import { request } from "../../core/api/client";
 
@@ -56,14 +57,12 @@ export default function InvoicePinDialog({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="nkj-pin-overlay"
       role="presentation"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !busy) {
-          onClose();
-        }
+        if (e.target === e.currentTarget && !busy) onClose();
       }}
     >
       <section
@@ -87,14 +86,14 @@ export default function InvoicePinDialog({
         </div>
 
         <h2 id="nkj-pin-title">{title}</h2>
-
-        <p>Enter the owner-configured 6-digit PIN to continue.</p>
+        <p>
+          {purpose === "SAVE"
+            ? "Enter the owner-configured 6-digit PIN to save this invoice first."
+            : "Enter the owner-configured 6-digit PIN to authorize invoice printing."}
+        </p>
 
         <form onSubmit={submit}>
-          <label htmlFor="nkj-invoice-pin">
-            Invoice Security PIN
-          </label>
-
+          <label htmlFor="nkj-invoice-pin">Invoice Security PIN</label>
           <input
             id="nkj-invoice-pin"
             type="password"
@@ -109,11 +108,7 @@ export default function InvoicePinDialog({
             disabled={busy}
           />
 
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
+          {error && <p className="error" role="alert">{error}</p>}
 
           <button
             className="primary"
@@ -121,7 +116,7 @@ export default function InvoicePinDialog({
             disabled={busy || pin.length !== 6}
           >
             <ShieldCheck size={17} />
-            {busy ? "Verifying…" : "Verify PIN"}
+            {busy ? (purpose === "SAVE" ? "Saving invoice…" : "Preparing print…") : "Verify PIN"}
           </button>
         </form>
 
@@ -130,6 +125,7 @@ export default function InvoicePinDialog({
           owner audit log.
         </small>
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }
