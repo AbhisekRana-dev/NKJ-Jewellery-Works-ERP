@@ -5,6 +5,7 @@ import { useAuth } from "../core/auth/AuthProvider";
 import Footer from "../shared/layouts/Footer";
 import Profile from "../features/profile/Profile";
 import { Home } from "../features/home/Home";
+import DigitalRateBoardPage from "../features/rates/DigitalRateBoardPage";
 import { AdminHome } from "../features/dashboard/AdminHome";
 import { InvoicePage, SavedInvoices } from "../features/invoices/InvoicePages";
 import { Login, TotpSetup } from "../features/auth/AuthPages";
@@ -26,6 +27,7 @@ import MobileDesignUploadPage from "../features/designs/MobileDesignUploadPage";
 import "./Responsive.css";
 import "./ResponsivePolish.css";
 import "./MobileResponsiveOverrides.css";
+import "./LoginViewportLayout.css";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
@@ -39,13 +41,16 @@ function OwnerOnly({ children }) {
 }
 
 export default function App() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === "/login";
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout${isLoginPage ? " nkj-login-layout" : ""}`}>
       <div className="app-content">
         <Routes>
           {/* Public access: Home, Jewellery Designs, Calculator and New Invoice. */}
           <Route path="/" element={<Home />} />
+          <Route path="/rate" element={<DigitalRateBoardPage />} />
           <Route path="/invoice" element={<InvoicePage />} />
           <Route path="/designs" element={<JewelleryDesignsPage />} />
           <Route path="/mobile-design-upload/:token" element={<MobileDesignUploadPage />} />

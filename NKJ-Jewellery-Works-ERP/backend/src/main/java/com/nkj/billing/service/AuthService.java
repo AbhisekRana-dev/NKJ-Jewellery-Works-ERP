@@ -40,9 +40,11 @@ public class AuthService {
     private static final long IDLE_EXPIRY_REASON_TTL_MILLIS = 60 * 1000L;
     private static final long SESSION_MANAGER_LOCK_MILLIS = 15 * 60 * 1000L;
     private static final int MAX_SESSION_MANAGER_ATTEMPTS = 5;
+    private static final long RATE_BOARD_EDIT_GRANT_TTL_MILLIS = 5 * 60 * 1000L;
+    private static final int MAX_RATE_BOARD_PASSWORD_ATTEMPTS = 5;
 
     @Value("${nkj.admin.username:admin2026}") private String username;
-    @Value("${nkj.auth.session-idle-timeout-ms:600000}") private long sessionIdleTimeoutMillis = 600_000L;
+    @Value("${nkj.auth.session-idle-timeout-ms:900000}") private long sessionIdleTimeoutMillis = 900_000L;
     @Value("${nkj.admin.password:}") private String password;
     @Value("${nkj.admin.session-manager-password:}") private String sessionManagerPassword;
     @Value("${nkj.totp.secret:}") private String secret;
@@ -67,10 +69,13 @@ public class AuthService {
     private final Map<String, Long> setupTokens = new ConcurrentHashMap<>();
     private final Map<String, ManagerGrant> sessionManagerGrants = new ConcurrentHashMap<>();
     private final Map<String, ManagerAttempt> sessionManagerAttempts = new ConcurrentHashMap<>();
+    private final Map<String, RateBoardEditGrant> rateBoardEditGrants = new ConcurrentHashMap<>();
+    private final Map<String, ManagerAttempt> rateBoardPasswordAttempts = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
 
     private record SetupOtp(String codeHash, long expiresAt) {}
     private record ManagerGrant(String ownerSessionId, long expiresAt) {}
+    private record RateBoardEditGrant(String clientKey, long expiresAt) {}
 
     private static final class SessionState {
         private final String id;
@@ -334,6 +339,56 @@ public class AuthService {
     }
 
     public String getUsername() { return username; }
+
+    /**
+     * Verify the configured administrator password without creating an owner
+     * login session. The returned random capability is bound to the caller's
+     * network address, expires after three minutes, and is accepted only by
+     * PUT /api/admin/rates in AuthInterceptor.
+     */
+    public String unlockRateBoard(String suppliedPassword, String clientAddress) {
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            throw new IllegalStateException("Administrator credentials are not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in backend/.env.");
+        }
+        String clientKey = hasText(clientAddress) ? clientAddress.trim() : "unknown-client";
+        String attemptKey = username + "|rate-board|" + clientKey;
+        ManagerAttempt attempt = rateBoardPasswordAttempts.computeIfAbsent(attemptKey, ignored -> new ManagerAttempt());
+        long now = System.currentTimeMillis();
+        synchronized (attempt) {
+            if (attempt.lockedUntil > now) {
+                throw new IllegalArgumentException("Too many incorrect attempts. Try again in 15 minutes.");
+            }
+            if (!constantTimeEquals(password, suppliedPassword)) {
+                attempt.failures++;
+                if (attempt.failures >= MAX_RATE_BOARD_PASSWORD_ATTEMPTS) {
+                    attempt.failures = 0;
+                    attempt.lockedUntil = now + SESSION_MANAGER_LOCK_MILLIS;
+                }
+                throw new IllegalArgumentException("Incorrect administrator password.");
+            }
+            attempt.failures = 0;
+            attempt.lockedUntil = 0;
+        }
+
+        rateBoardEditGrants.entrySet().removeIf(entry -> entry.getValue().expiresAt() < now);
+        String editToken = randomToken();
+        rateBoardEditGrants.put(sha256(editToken),
+                new RateBoardEditGrant(clientKey, now + RATE_BOARD_EDIT_GRANT_TTL_MILLIS));
+        return editToken;
+    }
+
+    public boolean validRateBoardEditGrant(String token, String clientAddress) {
+        if (!hasText(token)) return false;
+        String tokenHash = sha256(token);
+        RateBoardEditGrant grant = rateBoardEditGrants.get(tokenHash);
+        if (grant == null) return false;
+        if (grant.expiresAt() < System.currentTimeMillis()) {
+            rateBoardEditGrants.remove(tokenHash, grant);
+            return false;
+        }
+        String clientKey = hasText(clientAddress) ? clientAddress.trim() : "unknown-client";
+        return constantTimeEquals(grant.clientKey(), clientKey);
+    }
 
     public Map<String, Object> sessionSummary(String ownerToken) {
         requireCurrentSession(ownerToken);

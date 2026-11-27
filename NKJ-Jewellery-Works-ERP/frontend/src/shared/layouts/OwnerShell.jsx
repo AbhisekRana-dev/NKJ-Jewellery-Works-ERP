@@ -85,12 +85,12 @@ const ownerNavigation = [
   ]},
 ];
 
-export function Nav({ active = "home" }) {
+export function Nav({ active = "home", forcePublic = false }) {
   const { isAdmin, logout, user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
   const [publicMenuOpen, setPublicMenuOpen] = useState(false);
   const sidebarNavRef = useRef(null);
-  const ownerWorkspace = isAdmin && active !== "login";
+  const ownerWorkspace = isAdmin && active !== "login" && !forcePublic;
   const persistSidebarState = (collapsed) => {
     try {
       if (window.matchMedia?.("(max-width: 760px)").matches) return;
@@ -265,7 +265,7 @@ export function Nav({ active = "home" }) {
               <section className="nkj-owner-nav-group" key={group.title}>
                 <small className="nkj-owner-nav-title">{group.title}</small>
                 {group.items.map(([key, label, to, Icon, shortLabel]) => {
-                  const selected = active === key || (key === "saved" && active === "saved");
+                  const selected = active === key || (key === "saved" && active === "saved") || (key === "rates" && active === "rate");
                   return (
                     <Link
                       key={key}
@@ -325,6 +325,7 @@ export function Nav({ active = "home" }) {
           </button>
           <nav aria-label="Main navigation">
             <Link className={`nkj-navbar-link${active === "home" ? " active" : ""}`} to="/"><HomeIcon /> <span>Home</span></Link>
+            <Link className={`nkj-navbar-link${active === "rate" ? " active" : ""}`} to="/rate"><Coins /> <span>Rate Board</span></Link>
             <Link className={`nkj-navbar-link${active === "designs" ? " active" : ""}`} to="/designs"><Gem /> <span>Jewellery Designs</span></Link>
             <Link className={`nkj-navbar-link${active === "calculator" ? " active" : ""}`} to="/calculator"><CalculatorIcon /> <span>Calculator</span></Link>
             <Link className={`nkj-navbar-link nkj-navbar-invoice${active === "invoice" ? " active" : ""}`} to="/invoice" state={{ startNewInvoice: true }}><FileText /> <span>New Invoice</span></Link>
@@ -352,6 +353,7 @@ export function Nav({ active = "home" }) {
       </button>
       <nav id="nkj-public-navigation" className={publicMenuOpen ? "is-open" : ""} aria-label="Main navigation">
         <Link className={active === "home" ? "active" : ""} to="/" onClick={() => setPublicMenuOpen(false)}><HomeIcon />Home</Link>
+        <Link className={active === "rate" ? "active" : ""} to="/rate" onClick={() => setPublicMenuOpen(false)}><Coins />Rate Board</Link>
         <Link className={active === "designs" ? "active" : ""} to="/designs" onClick={() => setPublicMenuOpen(false)}><Gem />Jewellery Designs</Link>
         <Link className={active === "calculator" ? "active" : ""} to="/calculator" onClick={() => setPublicMenuOpen(false)}><CalculatorIcon />Calculator</Link>
         <Link className={active === "invoice" ? "active" : ""} to="/invoice" state={{ startNewInvoice: true }} onClick={() => setPublicMenuOpen(false)}><FileText />New Invoice</Link>

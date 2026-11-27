@@ -1,5 +1,5 @@
 import "./AuthPages.css";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   CalendarDays, Diamond, ShieldCheck, Users, LockKeyhole, User,
@@ -107,6 +107,7 @@ export function Login() {
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const submitInProgressRef = useRef(false);
   const sessionExpiredMessage = location.state?.sessionExpiredMessage || "";
 
   if (isAdmin) return <NavigateHome />;
@@ -114,14 +115,16 @@ export function Login() {
   async function submit(e) {
     e.preventDefault();
 
+    // Ignore rapid duplicate clicks/Enter presses while a login request is
+    // already running. The ref locks synchronously before React re-renders.
+    if (submitInProgressRef.current || code.length !== 6) return;
+    submitInProgressRef.current = true;
     setError("");
-
     setBusy(true);
 
     try {
-      await begin(username, password);
-
-      await verify(code);
+      const challenge = await begin(username.trim(), password);
+      await verify(code, challenge.challengeId);
 
       const from = location.state?.from;
       const destination = from
@@ -129,8 +132,9 @@ export function Login() {
         : "/";
       nav(destination, { replace: true });
     } catch (x) {
-      setError(x.message);
+      setError(x?.message || "Login could not be completed. Please try again.");
     } finally {
+      submitInProgressRef.current = false;
       setBusy(false);
     }
   }

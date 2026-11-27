@@ -73,3 +73,239 @@
     display: none !important;
   }
 }
+
+
+/* FINAL INVOICE CALCULATOR DIALOG LAYOUT — loaded after all route styles. */
+/* Final invoice calculator popup layout — isolate it from full-page calculator styles. */
+@media screen {
+  main.invoice-container .nkj-invoice-calculator-anchor {
+    position: relative !important;
+    z-index: 10020 !important;
+    flex: 0 0 auto !important;
+  }
+
+  main.invoice-container .nkj-invoice-calculator-anchor > .nkj-invoice-calculator-popup {
+    position: absolute !important;
+    top: calc(100% + 10px) !important;
+    right: 0 !important;
+    left: auto !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    width: min(340px, calc(100vw - 24px)) !important;
+    min-width: min(320px, calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: min(560px, calc(100dvh - 112px)) !important;
+    margin: 0 !important;
+    padding: 14px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    transform: none !important;
+  }
+
+  main.invoice-container .nkj-invoice-calculator-heading {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    grid-template-columns: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 0 10px !important;
+    background: transparent !important;
+  }
+
+  main.invoice-container .nkj-invoice-calculator-heading > div {
+    display: inline-flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  main.invoice-container .nkj-invoice-calculator-heading strong {
+    display: block !important;
+    font: 800 15px/1.25 Arial, sans-serif !important;
+    white-space: nowrap !important;
+  }
+
+  main.invoice-container .nkj-invoice-calculator-display,
+  main.invoice-container .nkj-invoice-calculator-keypad,
+  main.invoice-container .nkj-invoice-calculator-hint {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media screen and (max-width: 760px) {
+  main.invoice-container .nkj-invoice-calculator-scrim {
+    position: fixed !important;
+    z-index: 12000 !important;
+    inset: 0 !important;
+    display: block !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: rgba(33, 11, 19, .38) !important;
+    cursor: default !important;
+  }
+
+  main.invoice-container .nkj-invoice-calculator-anchor > .nkj-invoice-calculator-popup {
+    position: fixed !important;
+    z-index: 12001 !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+    width: min(360px, calc(100vw - 24px)) !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    padding: 14px !important;
+    border-radius: 16px !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  main.invoice-container .nkj-invoice-calculator-key {
+    min-height: 50px !important;
+    font-size: 18px !important;
+  }
+}
+
+@media screen and (max-height: 560px) {
+  main.invoice-container .nkj-invoice-calculator-popup {
+    max-height: calc(100dvh - 16px) !important;
+  }
+}
+
+
+/* NEW INVOICE NATIVE PRINT — RESET THE APP FLEX SHELL AND START AT PAGE 1.
+   The application shell has min-height:100vh and flex-grow rules. Hiding it
+   with visibility:hidden leaves that full-screen space in the print flow.
+   This print-only reset removes the shell/navigation flow and starts the
+   invoice at the top of the first A4 landscape page. */
+@page {
+  size: 297mm 210mm;
+  margin: 3mm;
+}
+@media print {
+  html,
+  body,
+  body:has(main.invoice-container > #invoice-print),
+  body:has(main.invoice-container > #invoice-print) #root {
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) {
+    display: block !important;
+    position: static !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) .app-layout,
+  body:has(main.invoice-container > #invoice-print) .app-content {
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    flex-basis: auto !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+  }
+
+  /* Remove all non-invoice siblings from layout, not just from visibility. */
+  body:has(main.invoice-container > #invoice-print) .app-layout > :not(.app-content),
+  body:has(main.invoice-container > #invoice-print) .app-content > :not(main.invoice-container),
+  body:has(main.invoice-container > #invoice-print) main.invoice-container > :not(#invoice-print) {
+    display: none !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) .nkj-owner-sidebar,
+  body:has(main.invoice-container > #invoice-print) .nkj-mobile-sidebar-backdrop,
+  body:has(main.invoice-container > #invoice-print) .nkj-owner-topbar,
+  body:has(main.invoice-container > #invoice-print) .nkj-public-topbar,
+  body:has(main.invoice-container > #invoice-print) footer {
+    display: none !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) main.invoice-container {
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  body:has(main.invoice-container > #invoice-print) #invoice-print {
+    display: block !important;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 291mm !important;
+    min-width: 0 !important;
+    max-width: 291mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    zoom: 1 !important;
+    transform: none !important;
+    break-before: auto !important;
+    break-after: auto !important;
+    break-inside: auto !important;
+    page-break-before: auto !important;
+    page-break-after: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  /* Keep the invoice sections together, but allow the invoice sheet itself
+     to begin on page 1 instead of being deferred as one unbreakable block. */
+  body:has(main.invoice-container > #invoice-print) #invoice-print .inv-head,
+  body:has(main.invoice-container > #invoice-print) #invoice-print .inv-two,
+  body:has(main.invoice-container > #invoice-print) #invoice-print .inv-main,
+  body:has(main.invoice-container > #invoice-print) #invoice-print .inv-bottom,
+  body:has(main.invoice-container > #invoice-print) #invoice-print .thankyou {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

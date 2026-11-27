@@ -37,6 +37,13 @@ class AuthServiceIdleTimeoutTest {
     }
 
     @Test
+    void defaultIdleTimeoutIsFifteenMinutes() {
+        ObjectProvider<JavaMailSender> mailSenderProvider = mock(ObjectProvider.class);
+        AuthService defaults = new AuthService(mailSenderProvider, new ObjectMapper(), mock(JdbcTemplate.class));
+        assertEquals(900_000L, (long) ReflectionTestUtils.getField(defaults, "sessionIdleTimeoutMillis"));
+    }
+
+    @Test
     void ordinarySessionValidationDoesNotExtendIdleWindowOrWriteActivity() throws Exception {
         long lastActivity = System.currentTimeMillis() - 2_000L;
         String token = addSession(lastActivity, System.currentTimeMillis() + 60_000L);

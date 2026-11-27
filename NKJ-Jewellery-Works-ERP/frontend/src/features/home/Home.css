@@ -483,10 +483,14 @@
 .nkj-public-collection-heading {display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 12px;}
 .nkj-public-collection-heading h2 {display: flex; align-items: center; gap: 12px; margin: 0; color: #85001d; font: 700 24px Georgia,"Times New Roman",serif;}
 .nkj-public-collection-heading h2 svg {width: 31px; height: 31px;}
-.nkj-public-collection-heading > span {color: #8a001e; font-size: 14px; font-weight: 700;}
-.nkj-public-collection-heading > span b {padding-left: 8px; font-size: 23px;}
+.nkj-public-collection-heading > .nkj-public-collection-view-more {display: inline-flex; align-items: center; gap: 8px; color: #8a001e; font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; cursor: pointer;}
+.nkj-public-collection-heading > .nkj-public-collection-view-more b {font-size: 23px; transition: transform .18s ease;}
+.nkj-public-collection-heading > .nkj-public-collection-view-more:hover b {transform: translateX(4px);}
 .nkj-public-collection-grid {display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 22px;}
-.nkj-public-collection-card {min-width: 0; overflow: hidden; border: 1px solid #efdfcf; border-radius: 12px; background: #fff; box-shadow: 0 3px 8px rgba(65,26,7,.13);}
+.nkj-public-collection-card {display: block; min-width: 0; overflow: hidden; border: 1px solid #efdfcf; border-radius: 12px; background: #fff; box-shadow: 0 3px 8px rgba(65,26,7,.13); color: inherit; text-decoration: none; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;}
+.nkj-public-collection-card:hover {transform: translateY(-3px); border-color: #ddb97c; box-shadow: 0 8px 18px rgba(65,26,7,.17);}
+.nkj-public-collection-card:focus-visible,
+.nkj-public-collection-heading > .nkj-public-collection-view-more:focus-visible {outline: 3px solid #d7a64b; outline-offset: 3px;}
 .nkj-public-collection-card img {display: block; width: 100%; height: 96px; object-fit: cover;}
 .nkj-public-collection-card div {display: flex; align-items: center; justify-content: space-between; padding: 8px 15px; color: #8a001e; font: 700 16px Georgia,"Times New Roman",serif;}
 .nkj-public-collection-card div span {font: 700 24px Arial,sans-serif;}
@@ -522,7 +526,8 @@
 .nkj-public-why-item b {white-space: normal; font-size: 12px;}
 .nkj-public-why-item span {font-size: 10px;}
 .nkj-public-collection-heading h2 {font-size: 19px;}
-.nkj-public-collection-heading > span {display: none;}
+.nkj-public-collection-heading > .nkj-public-collection-view-more {display: inline-flex; font-size: 12px; gap: 4px;}
+.nkj-public-collection-heading > .nkj-public-collection-view-more b {font-size: 18px;}
 .nkj-public-collection-grid {grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px;}
 .nkj-public-collection-card img {height: 95px;}
 

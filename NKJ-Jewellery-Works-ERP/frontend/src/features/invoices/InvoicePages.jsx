@@ -23,6 +23,7 @@ import {
   Trash2,
   ArrowLeft,
   Save,
+  RotateCcw,
   LockKeyhole,
   Diamond,
   EyeOff,
@@ -46,7 +47,6 @@ import {
   Gem,
   Wrench,
   ChevronRight,
-  Calculator as CalculatorIcon,
 } from "lucide-react";
 
 
@@ -68,99 +68,6 @@ function normalizeCustomerName(value) {
 
 function normalizeCustomerAddress(value) {
   return String(value ?? "").toUpperCase();
-}
-
-function evaluateCalculatorExpression(rawExpression) {
-  const expression = String(rawExpression ?? "")
-    .replace(/[×xX]/g, "*")
-    .replace(/[÷]/g, "/")
-    .replace(/[−]/g, "-")
-    .replace(/\s+/g, "");
-
-  if (!expression) throw new Error("Enter a calculation first.");
-
-  const tokens = expression.match(/\d+(?:\.\d*)?|\.\d+|[+\-*/%()]/g) || [];
-  if (tokens.join("") !== expression) throw new Error("Check the expression and try again.");
-
-  let cursor = 0;
-
-  const parsePrimary = () => {
-    const token = tokens[cursor];
-    if (token === "(") {
-      cursor += 1;
-      const nested = parseExpression();
-      if (tokens[cursor] !== ")") throw new Error("Missing closing bracket.");
-      cursor += 1;
-      return nested;
-    }
-    if (!token || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token)) {
-      throw new Error("Enter a number.");
-    }
-    cursor += 1;
-    const value = Number(token);
-    if (!Number.isFinite(value)) throw new Error("The number is too large.");
-    return { value, isPercent: false };
-  };
-
-  const parseFactor = () => {
-    let sign = 1;
-    while (tokens[cursor] === "+" || tokens[cursor] === "-") {
-      if (tokens[cursor] === "-") sign *= -1;
-      cursor += 1;
-    }
-    const node = parsePrimary();
-    let isPercent = false;
-    while (tokens[cursor] === "%") {
-      node.value /= 100;
-      isPercent = true;
-      cursor += 1;
-    }
-    return { value: sign * node.value, isPercent };
-  };
-
-  const parseTerm = () => {
-    let left = parseFactor();
-    while (tokens[cursor] === "*" || tokens[cursor] === "/") {
-      const operator = tokens[cursor++];
-      const right = parseFactor();
-      if (operator === "/" && right.value === 0) {
-        throw new Error("Cannot divide by zero.");
-      }
-      left = {
-        value: operator === "*" ? left.value * right.value : left.value / right.value,
-        isPercent: false,
-      };
-      if (!Number.isFinite(left.value)) throw new Error("The result is outside the supported range.");
-    }
-    return left;
-  };
-
-  const parseExpression = () => {
-    let left = parseTerm();
-    while (tokens[cursor] === "+" || tokens[cursor] === "-") {
-      const operator = tokens[cursor++];
-      const right = parseTerm();
-      // For addition/subtraction, a postfix percentage is relative to the
-      // value on its left (for example, 200 + 10% = 220).
-      const rightValue = right.isPercent ? left.value * right.value : right.value;
-      left = {
-        value: operator === "+" ? left.value + rightValue : left.value - rightValue,
-        isPercent: false,
-      };
-      if (!Number.isFinite(left.value)) throw new Error("The result is outside the supported range.");
-    }
-    return left;
-  };
-
-  const result = parseExpression();
-  if (cursor !== tokens.length) throw new Error("Check the expression and try again.");
-  if (!Number.isFinite(result.value)) throw new Error("The result is not a valid number.");
-  return result.value;
-}
-
-function formatCalculatorValue(value) {
-  if (!Number.isFinite(value)) throw new Error("The result is not a valid number.");
-  return Number(value.toPrecision(12)).toString();
 }
 
 function parseInvoiceDetails(invoice) {
@@ -213,7 +120,7 @@ function hasInvoiceLineItems(invoice) {
   const newItems = invoiceRows(data.newItems);
   const oldItems = invoiceRows(data.oldItems);
   return (
-    newItems.some((row) => rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"])) ||
+    newItems.some((row) => rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "makingChargeFlatAmount", "makingChargePercent", "stampCharge", "extraCharge"])) ||
     oldItems.some((row) => rowHasAnyInput(row, ["description", "purity", "pureWeight", "rate"]))
   );
 }
@@ -228,6 +135,9 @@ const blankNew = () => ({
   rate: "",
 
   makingCharge: "",
+  makingChargeMode: "amount",
+  makingChargeFlatAmount: "",
+  makingChargePercent: "",
 
   stampCharge: "",
 
@@ -244,10 +154,32 @@ const blankOld = () => ({
   rate: "",
 });
 
+const makingChargeAmount = (row) => {
+  const mode = row?.makingChargeMode === "percent" ? "percent" : "amount";
+  if (mode === "percent") {
+    const baseAmount = (Number(row?.netWeight) || 0) * (Number(row?.rate) || 0);
+    const percent = Number(row?.makingChargePercent) || 0;
+    return Math.round((baseAmount * percent / 100 + Number.EPSILON) * 100) / 100;
+  }
+  const flatAmount = Number(row?.makingChargeFlatAmount ?? row?.makingCharge) || 0;
+  return Math.round((flatAmount + Number.EPSILON) * 100) / 100;
+};
+
+const normalizeNewItemRow = (row) => {
+  const merged = { ...blankNew(), ...(row || {}) };
+  return {
+    ...merged,
+    // Legacy invoices contain only makingCharge in rupees. Keep that mode.
+    makingChargeMode: merged.makingChargeMode === "percent" ? "percent" : "amount",
+    makingChargeFlatAmount: row?.makingChargeFlatAmount ?? row?.makingCharge ?? "",
+    makingChargePercent: merged.makingChargePercent ?? "",
+  };
+};
+
 const newAmt = (x) => {
   const netWeight = Number(x.netWeight) || 0;
   const rate = Number(x.rate) || 0;
-  const makingCharge = Number(x.makingCharge) || 0;
+  const makingCharge = makingChargeAmount(x);
   const stampCharge = Number(x.stampCharge) || 0;
   const extraCharge = Number(x.extraCharge) || 0;
 
@@ -394,16 +326,6 @@ function getInvoiceDraftStorageKey(owner, isEditingSavedInvoice = false, invoice
   return `${INVOICE_DRAFT_STORAGE_KEY}:${account}:${scope}`;
 }
 
-function readInvoiceDraft(storageKey) {
-  if (typeof window === "undefined") return null;
-  try {
-    const draft = JSON.parse(window.localStorage.getItem(storageKey) || "null");
-    return draft && draft.version === 2 ? draft : null;
-  } catch {
-    return null;
-  }
-}
-
 function getTodayIndiaDate() {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata",
@@ -463,12 +385,14 @@ export function InvoicePage() {
       location.state?.editInvoice?.id ?? null
     )
   );
-  const [initialDraft] = useState(() => invoiceSeed ? null : readInvoiceDraft(draftStorageKey));
+  // Unfinished invoices are never restored after a fresh page load.
+  // The temporary local copy is removed on mount; saved/copy invoice route
+  // state is still honoured for deliberate edit/copy actions.
   const [invoiceDate, setInvoiceDate] = useState(() =>
-    invoiceSeed?.invoiceDate || initialDraft?.invoiceDate || getTodayIndiaDate()
+    invoiceSeed?.invoiceDate || getTodayIndiaDate()
   );
   const [showGstin, setShowGstin] = useState(() =>
-    Boolean(invoiceSeed?.showGstin ?? initialDraft?.showGstin ?? true)
+    Boolean(invoiceSeed?.showGstin ?? true)
   );
   const maxInvoiceDate = getTodayIndiaDate();
 
@@ -484,26 +408,26 @@ export function InvoicePage() {
   };
 
   const [customer, setCustomer] = useState(() => ({
-    name: normalizeCustomerName(invoiceSeed?.customerName || invoiceSeed?.name || initialDraft?.customer?.name || ""),
-    mobile: invoiceSeed?.mobile || initialDraft?.customer?.mobile || "",
-    address: normalizeCustomerAddress(invoiceSeed?.address || initialDraft?.customer?.address || ""),
+    name: normalizeCustomerName(invoiceSeed?.customerName || invoiceSeed?.name || ""),
+    mobile: invoiceSeed?.mobile || "",
+    address: normalizeCustomerAddress(invoiceSeed?.address || ""),
   }));
 
-  const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || initialDraft?.paymentMode || "Cash");
-  const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || initialDraft?.referenceNo || "");
+  const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || "Cash");
+  const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || "");
   const [totalPaid, setTotalPaid] = useState(() => {
     if (isEditingSavedInvoice) {
       return String(invoiceSeed?.totalPaid ?? invoiceSeed?.paymentAmount ?? 0);
     }
-    return initialDraft?.totalPaid === undefined || initialDraft?.totalPaid === null
-      ? null
-      : String(initialDraft.totalPaid);
+    return null;
   });
-  const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map((x) => ({ ...blankNew(), ...x })));
+  const [newItems, setNewItems] = useState(() =>
+    copiedRows(invoiceSeed?.newItems, [blankNew()]).map(normalizeNewItemRow)
+  );
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
   // and always start with exactly one empty row at the end.
   const [oldItems, setOldItems] = useState(() => {
-    const rows = copiedRows(invoiceSeed?.oldItems, copiedRows(initialDraft?.oldItems, [blankOld()])).map((x) => ({ ...blankOld(), ...x }));
+    const rows = copiedRows(invoiceSeed?.oldItems, [blankOld()]).map((x) => ({ ...blankOld(), ...x }));
     const enteredRows = rows.filter((row) =>
       String(row.description ?? "").trim() !== "" ||
       String(row.purity ?? "").trim() !== "" ||
@@ -512,16 +436,12 @@ export function InvoicePage() {
     );
     return [...enteredRows, blankOld()];
   });
-  const [discount, setDiscount] = useState(() => String(invoiceSeed?.discount ?? initialDraft?.discount ?? ""));
-  const [gst, setGst] = useState(() => String(invoiceSeed?.gstPercent ?? initialDraft?.gst ?? 0));
-  const [description, setDescription] = useState(() => invoiceSeed?.description || initialDraft?.description || "");
+  const [discount, setDiscount] = useState(() => String(invoiceSeed?.discount ?? ""));
+  const [gst, setGst] = useState(() => String(invoiceSeed?.gstPercent ?? 0));
+  const [description, setDescription] = useState(() => invoiceSeed?.description || "");
   const [saved, setSaved] = useState(false);
-  const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
   const [draftStorageError, setDraftStorageError] = useState(false);
-  // Keep the draft's idempotency key when restoring it. The backend checks
-  // that key and safely repairs a prior save's business date only when the
-  // rest of the invoice payload is identical.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => initialDraft?.idempotencyKey || createInvoiceDraftKey());
+  const [idempotencyKey, setIdempotencyKey] = useState(() => createInvoiceDraftKey());
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
@@ -536,151 +456,30 @@ export function InvoicePage() {
   const [showInvoicePin, setShowInvoicePin] = useState(false);
   const [showSavePin, setShowSavePin] = useState(false);
   const [pendingPrintAfterSave, setPendingPrintAfterSave] = useState(false);
-  const [calculatorOpen, setCalculatorOpen] = useState(false);
-  const [calculatorExpression, setCalculatorExpression] = useState("");
-  const [calculatorResult, setCalculatorResult] = useState("");
-  const [calculatorError, setCalculatorError] = useState("");
   const [isPrintPreparing, setIsPrintPreparing] = useState(false);
   const saveInProgressRef = useRef(false);
   const skipNextDraftPersistRef = useRef(false);
 
-  const clearCalculator = () => {
-    setCalculatorExpression("");
-    setCalculatorResult("");
-    setCalculatorError("");
-  };
-
-  const appendCalculatorToken = (token) => {
-    setCalculatorError("");
-    setCalculatorResult("");
-    setCalculatorExpression((current) => {
-      const operators = ["+", "−", "×", "÷"];
-      const isOperator = operators.includes(token);
-      const continuesResult = isOperator || token === "%";
-      let next = calculatorResult !== ""
-        ? (continuesResult ? calculatorResult : "")
-        : current;
-      const last = next.slice(-1);
-
-      if (isOperator) {
-        if (!next) return token === "−" ? token : "";
-        if (operators.includes(last)) {
-          if (next.length === 1 && last === "−" && token !== "−") return next;
-          return next.slice(0, -1) + token;
-        }
-        return next + token;
-      }
-
-      if (token === ".") {
-        const currentNumber = next.split(/[+−×÷*/()]/).pop() || "";
-        if (currentNumber.includes(".")) return next;
-        return next + (currentNumber ? "." : "0.");
-      }
-
-      if (token === "%") {
-        if (!/[0-9.)]$/.test(next) || last === "%") return next;
-        return next + token;
-      }
-
-      if (/^[0-9]$/.test(token)) return next + token;
-      if (token === "(") return next + token;
-      if (token === ")") return next + token;
-      return next;
-    });
-  };
-
-  const backspaceCalculator = () => {
-    setCalculatorError("");
-    setCalculatorResult("");
-    setCalculatorExpression((current) => {
-      const value = calculatorResult !== "" ? calculatorResult : current;
-      return value.slice(0, -1);
-    });
-  };
-
-  const calculateExpression = () => {
+  useEffect(() => {
+    // Remove any unfinished invoice from a previous page visit. Drafts are
+    // temporary within the open page only and must not be restored on reload.
     try {
-      const value = evaluateCalculatorExpression(calculatorExpression);
-      const formatted = formatCalculatorValue(value);
-      setCalculatorExpression(calculatorExpression);
-      setCalculatorResult(formatted);
-      setCalculatorError("");
-    } catch (error) {
-      setCalculatorResult("");
-      setCalculatorError(error.message || "Unable to calculate this expression.");
+      window.localStorage.removeItem(draftStorageKey);
+    } catch {
+      // The form still starts blank when browser storage is unavailable.
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (!calculatorOpen || isPrintPreparing) return undefined;
-
-    const isEditableElement = (element) => {
-      if (!(element instanceof HTMLElement)) return false;
-      return element.isContentEditable ||
-        Boolean(element.closest("input, textarea, select, [contenteditable='true'], [role='textbox']"));
-    };
-
-    const onCalculatorKeyDown = (event) => {
-      if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
-      const key = event.key;
-      // Escape always closes the popup, even when focus is currently in an
-      // invoice field. All other calculator keys leave editable fields alone.
-      if (key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        setCalculatorOpen(false);
-        setCalculatorError("");
-        return;
-      }
-      if (isEditableElement(event.target) || isEditableElement(document.activeElement)) return;
-      if (key === "Enter" || key === "=") {
-        event.preventDefault();
-        event.stopPropagation();
-        calculateExpression();
-        return;
-      }
-      if (key === "Backspace") {
-        event.preventDefault();
-        event.stopPropagation();
-        backspaceCalculator();
-        return;
-      }
-      if (key === "Delete") {
-        event.preventDefault();
-        event.stopPropagation();
-        clearCalculator();
-        return;
-      }
-
-      const mapped = key === "*" || key.toLowerCase() === "x" ? "×"
-        : key === "/" ? "÷"
-          : key === "-" ? "−"
-            : key === "+" ? "+"
-              : key;
-      if (/^[0-9.]$/.test(mapped) || ["+", "−", "×", "÷", "%", "(", ")"].includes(mapped)) {
-        event.preventDefault();
-        event.stopPropagation();
-        appendCalculatorToken(mapped);
-      }
-    };
-
-    window.addEventListener("keydown", onCalculatorKeyDown, true);
-    return () => window.removeEventListener("keydown", onCalculatorKeyDown, true);
-  }, [calculatorOpen, isPrintPreparing, calculatorExpression, calculatorResult]);
-
-  useEffect(() => {
-    // Route state is metadata, not a command to delete a draft. New Invoice
-    // links restore the existing account draft; only an explicit reset or a
-    // confirmed backend save removes it.
     if (location.state?.copyInvoice || location.state?.editInvoice || location.state?.startNewInvoice) {
-      if (startingNewInvoice && saved) {
-        // Support clicking New Invoice again while the previous invoice page
-        // is still mounted after a successful save.
+      if (startingNewInvoice) {
+        // A deliberate New Invoice navigation always starts with blank fields,
+        // including when the previous invoice page is still mounted.
         resetInvoiceFields({ allowSaved: true });
       }
       navigate("/invoice", { replace: true, state: null });
     }
-  }, [location.key, location.state, startingNewInvoice, saved, navigate]);
+  }, [location.key, location.state, startingNewInvoice, navigate]);
 
   useEffect(() => {
     if (saved) {
@@ -727,8 +526,7 @@ export function InvoicePage() {
   const oldTotal = oldItems.reduce((sum, item) => sum + oldAmt(item), 0);
 
   const makingTotal = newItems.reduce(
-    (sum, item) => sum + (+item.makingCharge || 0),
-
+    (sum, item) => sum + makingChargeAmount(item),
     0,
   );
 
@@ -779,7 +577,7 @@ export function InvoicePage() {
   };
 
   const hasNewItemDetails = newItems.some((row) =>
-    rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]),
+    rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "makingChargeFlatAmount", "makingChargePercent", "stampCharge", "extraCharge"]),
   );
   const hasOldItemDetails = oldItems.some((row) =>
     rowHasAnyInput(row, ["description", "purity", "pureWeight", "rate"]),
@@ -797,6 +595,8 @@ export function InvoicePage() {
       "netWeight",
       "rate",
       "makingCharge",
+      "makingChargeFlatAmount",
+      "makingChargePercent",
       "stampCharge",
       "extraCharge",
     ]);
@@ -850,8 +650,12 @@ export function InvoicePage() {
       paymentMode,
       referenceNo,
       description,
-      // Preserve every displayed row, including intentionally blank rows.
-      newItems,
+      // Preserve the selected input mode while sending the calculated
+      // rupee amount in the existing backend-compatible makingCharge field.
+      newItems: newItems.map((row) => ({
+        ...row,
+        makingCharge: makingChargeAmount(row),
+      })),
       oldItems,
       newTotal,
       oldTotal,
@@ -871,6 +675,7 @@ export function InvoicePage() {
     };
   }
 
+  // Clear every editable invoice field and discard this page's temporary draft.
   function resetInvoiceFields({ allowSaved = false } = {}) {
     if (saving || (saved && !allowSaved)) return;
 
@@ -889,59 +694,28 @@ export function InvoicePage() {
     setGst("0");
     setDescription("");
     setSaved(false);
-    setDraftRestored(false);
     setDraftStorageError(false);
     setIsEditingSavedInvoice(false);
     setDraftStorageKey(getInvoiceDraftStorageKey(invoiceOwnerRef.current, false, null));
     setIdempotencyKey(createInvoiceDraftKey());
-    setSuccessMessage("");
     setInvoiceNo("");
     setInvoiceId(null);
     setError("");
+    setSuccessMessage("");
     setShowInvoicePin(false);
     setShowSavePin(false);
     setPendingPrintAfterSave(false);
     setIsPrintPreparing(false);
   }
 
-  function confirmResetInvoice() {
-    if (saving || saved) return;
+  function handleResetInvoice() {
+    if (saving || isPrintPreparing || showInvoicePin || showSavePin) return;
     const confirmed = window.confirm(
-      "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
+      "Are you sure you want to reset this invoice? All unsaved data will be deleted."
     );
     if (!confirmed) return;
-    resetInvoiceFields();
+    resetInvoiceFields({ allowSaved: true });
   }
-
-  useEffect(() => {
-    if (saved) return undefined;
-
-    const onResetShortcut = (event) => {
-      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
-      if (saving || showSavePin || showInvoicePin || calculatorOpen || isPrintPreparing) return;
-
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest(
-        "select,input[type='date'],[role='combobox'],[aria-haspopup='listbox'],[role='listbox'],[role='menu'],.nkj-pin-overlay,.nkj-invoice-detail-overlay"
-      )) return;
-
-      const isMobileViewport = window.matchMedia?.("(max-width: 760px)").matches;
-      const mobileNavigationOpen = Boolean(isMobileViewport
-        && document.querySelector(".nkj-owner-sidebar:not(.is-collapsed)"));
-      const otherOverlayOpen = Boolean(document.querySelector(
-        ".nkj-pin-overlay,[role='dialog'],.nkj-invoice-detail-overlay,.nkj-catalog-modal-backdrop,.nkj-public-topbar nav.is-open"
-      ));
-      if (mobileNavigationOpen || otherOverlayOpen) return;
-
-      event.preventDefault();
-      confirmResetInvoice();
-    };
-
-    // Bubble phase: calculator/dialog/menu/dropdown handlers get the first chance
-    // to consume Escape before this page-level reset confirmation runs.
-    window.addEventListener("keydown", onResetShortcut);
-    return () => window.removeEventListener("keydown", onResetShortcut);
-  }, [saved, saving, showSavePin, showInvoicePin, calculatorOpen, isPrintPreparing]);
 
   function validateInvoiceForm() {
     if (!invoiceDate) return "Please select an invoice date.";
@@ -959,8 +733,8 @@ export function InvoicePage() {
       return raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) < 0);
     });
     const invalidNewItem = newItems.some((row) =>
-      rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]) &&
-      hasInvalidNumber(row, ["netWeight", "rate", "makingCharge", "stampCharge", "extraCharge"]),
+      rowHasAnyInput(row, ["description", "purity", "netWeight", "rate", "makingCharge", "makingChargeFlatAmount", "makingChargePercent", "stampCharge", "extraCharge"]) &&
+      hasInvalidNumber(row, ["netWeight", "rate", "makingCharge", "makingChargeFlatAmount", "makingChargePercent", "stampCharge", "extraCharge"]),
     );
     if (invalidNewItem) return "New ornament weights, rates, and charges must be valid non-negative numbers.";
 
@@ -984,14 +758,16 @@ export function InvoicePage() {
 
   async function persistInvoice(pinTicket) {
     if (saved && invoiceId) return { id: invoiceId, invoiceNo };
-    if (saveInProgressRef.current) return null;
+    if (saveInProgressRef.current) {
+      throw new Error("The invoice is already being saved. Please wait.");
+    }
 
     setError("");
     setSuccessMessage("");
     const validationError = validateInvoiceForm();
     if (validationError) {
       setError(validationError);
-      return null;
+      throw new Error(validationError);
     }
 
     saveInProgressRef.current = true;
@@ -1076,8 +852,11 @@ export function InvoicePage() {
       setSuccessMessage(`Invoice ${result.invoiceNo} ${isEditingSavedInvoice ? "updated" : "saved"} successfully. It is now available in Invoice History.`);
       return result;
     } catch (e) {
-      setError(e.message || "Could not save the invoice. Printing and PDF download have been stopped; your draft is still available.");
-      return null;
+      const message = e.message || "Could not save the invoice. Printing has been stopped; your draft is still available.";
+      setError(message);
+      // Propagate the failure to InvoicePinDialog so the PIN dialog remains
+      // open and the user receives an actionable message instead of a silent close.
+      throw new Error(message);
     } finally {
       saveInProgressRef.current = false;
       setSaving(false);
@@ -1093,52 +872,103 @@ export function InvoicePage() {
   async function saveInvoiceWithPin(ticket) {
     const shouldPrintAfterSave = pendingPrintAfterSave;
     const result = await persistInvoice(ticket);
+    if (!result?.id || !result?.invoiceNo) {
+      throw new Error("The server did not confirm that the invoice was saved. Printing has been stopped; your draft is still available.");
+    }
+
     setShowSavePin(false);
     setPendingPrintAfterSave(false);
-    if (!result?.id || !result?.invoiceNo) return;
 
     if (shouldPrintAfterSave) {
-      setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN again to print or save as PDF.`);
+      setSuccessMessage(`Invoice ${result.invoiceNo} saved successfully. Step 2 of 2: verify the PRINT PIN to open the print preview.`);
       setShowInvoicePin(true);
     }
   }
 
-  async function requestPrintPin() {
+  function requestPrintPin() {
+    if (saving || isPrintPreparing || showSavePin || showInvoicePin) return;
+
     setCalculatorOpen(false);
     setError("");
+    setSuccessMessage("");
+
     if (!saved || !invoiceId) {
-      // Never create or update a record before the SAVE PIN is verified.
-      // The print flow then asks for a second, purpose-specific PRINT PIN.
+      const validationError = validateInvoiceForm();
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      // One click starts the two-stage secure flow:
+      // 1) SAVE PIN -> persist the invoice to PostgreSQL.
+      // 2) PRINT PIN -> authorize the native A4 landscape print preview.
       setPendingPrintAfterSave(true);
+      setSuccessMessage("Step 1 of 2: verify the SAVE PIN. The invoice will be saved before printing.");
       setShowSavePin(true);
       return;
     }
 
-    setIsPrintPreparing(true);
-    setSuccessMessage(`Invoice ${invoiceNo} is saved. Verify the invoice security PIN to print or save as PDF.`);
+    setPendingPrintAfterSave(false);
+    setSuccessMessage(`Invoice ${invoiceNo} is already saved. Verify the PRINT PIN to open the print preview.`);
     setShowInvoicePin(true);
   }
 
   async function printCurrentInvoice(ticket) {
     setIsPrintPreparing(true);
     setError("");
+
+    const printedInvoiceNo = invoiceNo;
+    let printDialogStarted = false;
+    let printFinished = false;
+
+    const finishAfterPrint = () => {
+      if (printFinished) return;
+      printFinished = true;
+      window.removeEventListener("afterprint", finishAfterPrint);
+
+      // The invoice is already safely saved on the server. Clear only the
+      // local form/draft and return this same page to a fresh invoice.
+      resetInvoiceFields({ allowSaved: true });
+      setSuccessMessage(
+        printedInvoiceNo
+          ? `Invoice ${printedInvoiceNo} print dialog closed. Ready for a new invoice.`
+          : "Print dialog closed. Ready for a new invoice.",
+      );
+    };
+
     try {
+      if (!invoiceId || !invoiceNo) {
+        throw new Error("Save the invoice successfully before printing.");
+      }
+
       await request("/invoices/consume-print-ticket", {
         method: "POST",
         body: JSON.stringify({ ticket, invoiceId }),
       });
+
       setShowInvoicePin(false);
 
-      // Open the native browser print dialog only after the security PIN
-      // has been verified and the one-time print ticket has been consumed.
-      // The invoice @page / @media print rules format it as A4 landscape.
+      // Let React commit removal of the PIN overlay before opening the native
+      // print preview. This also prevents the mobile modal from covering the
+      // invoice during Chrome's print snapshot.
+      await new Promise((resolve) => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+      });
+
+      printDialogStarted = true;
+      window.addEventListener("afterprint", finishAfterPrint, { once: true });
+
+      // The existing @media print rules hide the ERP shell and format only
+      // #invoice-print as A4 landscape. afterprint resets the form after the
+      // browser print dialog closes, whether the user prints or cancels.
       window.print();
-      setSuccessMessage(`Print dialog opened for invoice ${invoiceNo}.`);
     } catch (error) {
+      if (printDialogStarted && !printFinished) {
+        window.removeEventListener("afterprint", finishAfterPrint);
+      }
       setShowInvoicePin(false);
-      setError(error.message || "Could not prepare the invoice PDF.");
-    } finally {
       setIsPrintPreparing(false);
+      setError(error.message || "Could not open the invoice print dialog.");
     }
   }
 
@@ -1178,80 +1008,6 @@ export function InvoicePage() {
         </label>
         {isEditingSavedInvoice && invoiceNo && (
           <span className="nkj-editing-invoice-note">Editing {invoiceNo}</span>
-        )}
-        {!isPrintPreparing && (
-          <div className="nkj-invoice-calculator-anchor no-print">
-            <button
-              type="button"
-              className="nkj-calculator-trigger"
-              onClick={() => {
-                setCalculatorOpen((open) => !open);
-                setCalculatorError("");
-              }}
-              aria-label={calculatorOpen ? "Close calculator" : "Open manual calculator"}
-              aria-expanded={calculatorOpen}
-              aria-haspopup="dialog"
-              title="Manual calculator"
-            >
-              <CalculatorIcon size={19} />
-              <span>Calculator</span>
-            </button>
-
-            {calculatorOpen && (
-              <section
-                className="nkj-invoice-calculator-popup no-print"
-                role="dialog"
-                aria-label="Manual calculator"
-                aria-modal="false"
-              >
-                <header className="nkj-calculator-heading">
-                  <div>
-                    <CalculatorIcon size={17} />
-                    <strong>Manual Calculator</strong>
-                  </div>
-                  <button
-                    type="button"
-                    className="nkj-calculator-close"
-                    onClick={() => {
-                      setCalculatorOpen(false);
-                      setCalculatorError("");
-                    }}
-                    aria-label="Close calculator"
-                    title="Close"
-                  >
-                    <X size={18} />
-                  </button>
-                </header>
-
-                <div className="nkj-calculator-display" aria-live="polite" aria-atomic="true">
-                  <div className="nkj-calculator-expression">{calculatorExpression || "Enter calculation"}</div>
-                  <div className={`nkj-calculator-value${calculatorError ? " has-error" : ""}`}>
-                    {calculatorError || calculatorResult || calculatorExpression || "0"}
-                  </div>
-                </div>
-
-                <div className="nkj-calculator-keypad">
-                  {["AC", "⌫", "%", "÷", "7", "8", "9", "×", "4", "5", "6", "−", "1", "2", "3", "+", "0", ".", "="].map((key) => (
-                    <button
-                      type="button"
-                      key={key}
-                      className={`nkj-calc-key${["÷", "×", "−", "+"].includes(key) ? " is-operator" : ""}${key === "=" ? " is-equals" : ""}${key === "AC" || key === "⌫" ? " is-utility" : ""}`}
-                      onClick={() => {
-                        if (key === "AC") clearCalculator();
-                        else if (key === "⌫") backspaceCalculator();
-                        else if (key === "=") calculateExpression();
-                        else appendCalculatorToken(key);
-                      }}
-                      aria-label={key === "⌫" ? "Backspace" : key === "AC" ? "Clear calculator" : key}
-                    >
-                      {key}
-                    </button>
-                  ))}
-                </div>
-                <p className="nkj-calculator-hint">Keyboard: 0–9, +, −, *, /, %, Enter, Backspace, Delete, Esc</p>
-              </section>
-            )}
-          </div>
         )}
       </div>
 
@@ -1466,7 +1222,7 @@ export function InvoicePage() {
 
                         "Rate / GM (₹)",
 
-                        "Making (₹)",
+                        "Making Charge (MC)",
 
                         "Stamp (₹)",
 
@@ -1569,25 +1325,73 @@ export function InvoicePage() {
                           />
                         </td>
 
-                        <td>
-                          <input
-                            {...numberProps}
-                            value={x.makingCharge}
-                            onChange={(e) =>
-                              update(
-                                setNewItems,
+                        <td className="making-charge-cell">
+                          <div className="making-charge-editor">
+                            <div className="making-charge-mode-picker" role="radiogroup" aria-label={`Making charge mode for ornament ${i + 1}`}>
+                              <label className={`making-charge-mode-option ${x.makingChargeMode === "percent" ? "is-active" : ""}`}>
+                                <input
+                                  type="radio"
+                                  name={`making-charge-mode-${i}`}
+                                  value="percent"
+                                  checked={x.makingChargeMode === "percent"}
+                                  onChange={() => update(setNewItems, newItems, i, "makingChargeMode", "percent")}
+                                />
+                                <span>%</span>
+                              </label>
+                              <label className={`making-charge-mode-option ${x.makingChargeMode !== "percent" ? "is-active" : ""}`}>
+                                <input
+                                  type="radio"
+                                  name={`making-charge-mode-${i}`}
+                                  value="amount"
+                                  checked={x.makingChargeMode !== "percent"}
+                                  onChange={() => update(setNewItems, newItems, i, "makingChargeMode", "amount")}
+                                />
+                                <span>₹</span>
+                              </label>
+                            </div>
 
-                                newItems,
-
-                                i,
-
-                                "makingCharge",
-
-                                e.target.value,
-                              )
-                            }
-                            placeholder="0.00"
-                          />
+                            {x.makingChargeMode === "percent" ? (
+                              <div className="making-charge-percent-row">
+                                <label className="making-charge-entry making-charge-percent-entry">
+                                  <input
+                                    {...numberProps}
+                                    step="0.01"
+                                    min="0"
+                                    className="making-charge-percent-input"
+                                    aria-label={`Making charge percentage for ornament ${i + 1}`}
+                                    value={x.makingChargePercent}
+                                    onChange={(e) => update(setNewItems, newItems, i, "makingChargePercent", e.target.value)}
+                                    placeholder="0.00"
+                                  />
+                                  <span className="making-charge-suffix">%</span>
+                                </label>
+                                <span className="making-charge-arrow" aria-hidden="true">⇒</span>
+                                <output className="making-charge-result" aria-live="polite" aria-label={`Calculated making charge ${money(makingChargeAmount(x))} rupees`}>
+                                  ₹ {money(makingChargeAmount(x))}
+                                </output>
+                              </div>
+                            ) : (
+                              <label className="making-charge-entry making-charge-flat-entry">
+                                <span className="making-charge-prefix">₹</span>
+                                <input
+                                  {...numberProps}
+                                  step="0.01"
+                                  min="0"
+                                  className="making-charge-flat-input"
+                                  aria-label={`Making charge rupees for ornament ${i + 1}`}
+                                  value={x.makingChargeFlatAmount}
+                                  onChange={(e) => update(setNewItems, newItems, i, "makingChargeFlatAmount", e.target.value)}
+                                  placeholder="0.00"
+                                />
+                              </label>
+                            )}
+                          </div>
+                          <span className="making-charge-print-value">
+                            {x.makingChargeMode === "percent" && Number(x.makingChargePercent) > 0
+                              ? `${x.makingChargePercent}% · `
+                              : ""}
+                            ₹ {money(makingChargeAmount(x))}
+                          </span>
                         </td>
 
                         <td>
@@ -1960,41 +1764,39 @@ export function InvoicePage() {
       {saving && <p className="draft-note no-print" role="status">Saving the complete invoice to PostgreSQL. Printing will start only after the server confirms the save.</p>}
       {draftStorageError && (
         <p className="error no-print" role="alert">
-          This browser could not save your invoice draft. Keep this page open and avoid refreshing until storage is available.
+          Temporary invoice backup is unavailable in this browser. Unsaved entries will be cleared when this page is reloaded.
         </p>
       )}
 
       <div className="invoice-actions no-print">
+        <button
+          type="button"
+          className="secondary nkj-invoice-reset-button"
+          onClick={handleResetInvoice}
+          disabled={saving || isPrintPreparing || showInvoicePin || showSavePin}
+          title="Clear all entered details and start a blank invoice"
+        >
+          <RotateCcw size={17} /> Reset
+        </button>
+
         <button type="button" className="primary" onClick={save} disabled={saving || saved}>
           <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
         </button>
 
         <button
           type="button"
-          className="secondary nkj-invoice-reset-button"
-          onClick={confirmResetInvoice}
-          disabled={saving || saved}
-          title="Reset this unsaved invoice and delete its local draft"
-        >
-          Reset
-        </button>
-
-        <button
-          type="button"
           className="secondary"
           onClick={requestPrintPin}
-          disabled={saving || showInvoicePin || showSavePin}
-          title="Verify the invoice security PIN before saving and generating a clean A4 landscape PDF"
+          disabled={saving || isPrintPreparing || showInvoicePin || showSavePin}
+          title="Verify the invoice security PIN before opening the A4 landscape print dialog"
         >
-          <Printer /> {saving ? "Saving..." : "Download / Print Invoice PDF"}
+          <Printer /> {isPrintPreparing ? "Opening Print..." : saving ? "Saving..." : "Download / Print Invoice PDF"}
         </button>
 
       </div>
       {!saved && (
         <p className="draft-note no-print" role="status">
-          {draftRestored
-            ? "Your unfinished invoice draft was restored. It is saved on this device and remains available after refresh or session expiry."
-            : "Your invoice is saved automatically as a draft while you work. It is cleared only after a successful invoice save."}
+          Your unfinished invoice is temporary and will be cleared when you reload this page or press Reset.
         </p>
       )}
       {showSavePin && (
@@ -2007,7 +1809,7 @@ export function InvoicePage() {
             setPendingPrintAfterSave(false);
           }}
           onVerified={saveInvoiceWithPin}
-          title={isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
+          title={pendingPrintAfterSave ? "Step 1 of 2: Save Invoice" : isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
         />
       )}
       {showInvoicePin && (
@@ -2019,7 +1821,7 @@ export function InvoicePage() {
             setIsPrintPreparing(false);
           }}
           onVerified={printCurrentInvoice}
-          title="Authorize saved invoice printing"
+          title="Step 2 of 2: Authorize Invoice Printing"
         />
       )}
     </Page>
@@ -2143,7 +1945,7 @@ function SavedInvoicePrintSheet({ invoice }) {
               <table className="items-table new-items-table">
                 <thead>
                   <tr>
-                    {["Sl. No.", "Description", "Purity", "Net Wt. (gm)", "Rate / GM (₹)", "Making (₹)", "Stamp (₹)", "Extra (₹)", "Amount (₹)", ""].map((label, index) => (
+                    {["Sl. No.", "Description", "Purity", "Net Wt. (gm)", "Rate / GM (₹)", "Making Charge (MC)", "Stamp (₹)", "Extra (₹)", "Amount (₹)", ""].map((label, index) => (
                       <th key={`${label}-${index}`}>{label}</th>
                     ))}
                   </tr>
@@ -2156,7 +1958,12 @@ function SavedInvoicePrintSheet({ invoice }) {
                       <td><input value={row.purity || ""} readOnly /></td>
                       <td><input value={row.netWeight ?? ""} readOnly /></td>
                       <td><input value={row.rate ?? ""} readOnly /></td>
-                      <td><input value={row.makingCharge ?? ""} readOnly /></td>
+                      <td><span className="making-charge-saved-value">
+                        {row.makingChargeMode === "percent" && Number(row.makingChargePercent) > 0
+                          ? `${row.makingChargePercent}% · `
+                          : ""}
+                        ₹ {money(row.makingCharge ?? 0)}
+                      </span></td>
                       <td><input value={row.stampCharge ?? ""} readOnly /></td>
                       <td><input value={row.extraCharge ?? ""} readOnly /></td>
                       <td>{money(row.amount ?? newAmt(row))}</td>
@@ -2304,7 +2111,7 @@ function downloadInvoicePdfFile(file) {
 /** Export the existing SavedInvoicePrintSheet as a PDF file. */
 function collectInvoicePrintStyles() {
   const collected = [];
-  const relevantSelector = /#invoice-print|\.invoice-sheet|\.inv-|\.form-grid|\.items-table|\.totals|\.row-end|\.second-reference-totals|\.new-items-table|\.old-items-table|\.invoice-logo-image|\.words-sign|\.amount-words|\.signatures|\.thankyou|\.description-panel/;
+  const relevantSelector = /#invoice-print|\.invoice-sheet|\.inv-|\.form-grid|\.items-table|\.totals|\.row-end|\.second-reference-totals|\.new-items-table|\.old-items-table|\.invoice-logo-image|\.words-sign|\.amount-words|\.signatures|\.thankyou|\.description-panel|\.making-charge/;
 
   const visit = (rules, insidePrint = false) => {
     Array.from(rules || []).forEach((rule) => {

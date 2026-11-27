@@ -1534,13 +1534,14 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 }
 
 
-/* Floating invoice calculator. This control stays outside #invoice-print and
-   never writes its result into invoice state. */
+/* Floating invoice calculator. These names are intentionally unique so the
+   full Calculator page cannot restyle this compact invoice popup. */
 .nkj-invoice-calculator-anchor {
   position: relative;
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
+  z-index: 10001;
 }
 .nkj-calculator-trigger {
   display: inline-flex;
@@ -1564,151 +1565,186 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
   box-shadow: 0 3px 10px rgba(91, 7, 28, .12);
 }
 .nkj-calculator-trigger:focus-visible,
-.nkj-calc-key:focus-visible,
-.nkj-calculator-close:focus-visible {
+.nkj-invoice-calculator-key:focus-visible,
+.nkj-invoice-calculator-close:focus-visible {
   outline: 2px solid #a20b2d;
   outline-offset: 2px;
 }
 .nkj-invoice-calculator-popup {
   position: absolute;
-  z-index: 10000;
-  top: calc(100% + 9px);
+  z-index: 12000;
+  top: calc(100% + 10px);
   right: 0;
-  width: min(292px, calc(100vw - 30px));
-  padding: 12px;
+  display: block;
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 24px));
+  min-width: min(320px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: min(560px, calc(100dvh - 112px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 14px;
   border: 1px solid #d9b875;
-  border-radius: 13px;
+  border-radius: 16px;
   background: #fffaf0;
   color: #351520;
-  box-shadow: 0 14px 36px rgba(47, 7, 19, .24);
+  box-shadow: 0 18px 48px rgba(47, 7, 19, .28);
+  overscroll-behavior: contain;
 }
-.nkj-calculator-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 1px 1px 9px;
-  border-bottom: 1px solid #ead8b6;
+.nkj-invoice-calculator-heading {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 0 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #ead8b6 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #78142e !important;
 }
-.nkj-calculator-heading > div {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #78142e;
+.nkj-invoice-calculator-heading > div {
+  display: inline-flex !important;
+  flex: 1 1 auto !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+  width: auto !important;
+  color: #78142e !important;
 }
-.nkj-calculator-heading strong {
-  font: 700 13px Arial, sans-serif;
+.nkj-invoice-calculator-heading > div svg {
+  flex: 0 0 auto !important;
 }
-.nkj-calculator-close {
+.nkj-invoice-calculator-heading strong {
+  display: block !important;
+  min-width: 0 !important;
+  color: #78142e !important;
+  font: 800 15px/1.25 Arial, sans-serif !important;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+}
+.nkj-invoice-calculator-close {
   display: grid;
+  flex: 0 0 32px;
   place-items: center;
-  width: 29px;
-  height: 29px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid #e4d2b2;
-  border-radius: 7px;
+  border-radius: 9px;
   background: #fff;
   color: #75142d;
   cursor: pointer;
 }
-.nkj-calculator-display {
+.nkj-invoice-calculator-close:hover {
+  border-color: #c99a37;
+  background: #fff2d3;
+}
+.nkj-invoice-calculator-display {
   display: grid;
-  gap: 5px;
-  min-height: 72px;
-  margin: 10px 0;
-  padding: 10px 11px;
+  gap: 6px;
+  min-height: 82px;
+  margin: 12px 0;
+  padding: 12px 13px;
   border: 1px solid #ead9b8;
-  border-radius: 9px;
+  border-radius: 11px;
   background: #fff;
   text-align: right;
   overflow: hidden;
 }
-.nkj-calculator-expression {
-  min-height: 15px;
-  overflow: hidden;
+.nkj-invoice-calculator-expression {
+  min-width: 0;
+  min-height: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
   color: #897b72;
-  font: 11px/1.3 Arial, sans-serif;
-  text-overflow: ellipsis;
+  font: 12px/1.35 Arial, sans-serif;
   white-space: nowrap;
 }
-.nkj-calculator-value {
-  min-height: 27px;
+.nkj-invoice-calculator-value {
+  min-width: 0;
+  min-height: 30px;
   overflow-wrap: anywhere;
   color: #671029;
-  font: 700 24px/1.15 Arial, sans-serif;
+  font: 800 clamp(25px, 2.2vw, 30px)/1.15 Arial, sans-serif;
 }
-.nkj-calculator-value.has-error {
+.nkj-invoice-calculator-value.has-error {
   color: #b42332;
   font-size: 13px;
 }
-.nkj-calculator-keypad {
+.nkj-invoice-calculator-keypad {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
-}
-.nkj-calc-key {
+  gap: 8px;
+  width: 100%;
   min-width: 0;
-  min-height: 42px;
-  padding: 7px 4px;
+}
+.nkj-invoice-calculator-key {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 4px;
   border: 1px solid #e8d8bb;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
   color: #3b2a25;
-  font: 700 16px Arial, sans-serif;
+  font: 800 17px/1 Arial, sans-serif;
   cursor: pointer;
-  transition: background .12s ease, transform .12s ease;
+  transition: background .12s ease, transform .12s ease, border-color .12s ease;
 }
-.nkj-calc-key:hover {
-  background: #f7eddd;
+.nkj-invoice-calculator-key:hover {
+  border-color: #c99a37;
+  background: #fff2d3;
 }
-.nkj-calc-key:active {
-  transform: translateY(1px);
-}
-.nkj-calc-key.is-operator {
+.nkj-invoice-calculator-key:active { transform: translateY(1px); }
+.nkj-invoice-calculator-key.is-operator {
   border-color: #d8b777;
   background: #f6ebd7;
   color: #74132c;
 }
-.nkj-calc-key.is-utility {
+.nkj-invoice-calculator-key.is-utility {
+  border-color: #e8b7c3;
   background: #f2e5cf;
   color: #78142e;
   font-size: 13px;
 }
-.nkj-calc-key.is-equals {
+.nkj-invoice-calculator-key.is-equals {
   border-color: #75132d;
   background: #75132d;
   color: #fff8ec;
 }
-.nkj-calc-key:nth-child(17) {
-  grid-column: span 2;
-}
-.nkj-calculator-hint {
-  margin: 9px 1px 0;
+.nkj-invoice-calculator-key:nth-child(17) { grid-column: span 2; }
+.nkj-invoice-calculator-hint {
+  margin: 10px 2px 0;
   color: #897b72;
   font: 10px/1.4 Arial, sans-serif;
   text-align: center;
 }
+.nkj-invoice-calculator-scrim { display: none; }
 @media (max-width: 600px) {
-  .nkj-invoice-calculator-popup {
-    right: 0;
-    width: min(280px, calc(100vw - 28px));
-  }
   .nkj-calculator-trigger {
-    min-height: 36px;
-    padding: 6px 10px;
+    min-height: 40px;
+    padding: 7px 10px;
     font-size: 12px;
   }
 }
 @media print {
   .nkj-calculator-trigger,
   .nkj-invoice-calculator-popup,
-  .nkj-invoice-calculator-anchor {
+  .nkj-invoice-calculator-anchor,
+  .nkj-invoice-calculator-scrim {
     display: none !important;
     visibility: hidden !important;
   }
 }
-
-
 /* ==========================================================
    SAVED INVOICE SCREEN FIX
    Scope: read-only invoice opened from Invoice History.
@@ -2278,4 +2314,649 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
   }
+}
+
+
+/* Making Charge (MC) — two aligned rows matching the requested reference layout. */
+.new-items-table th:nth-child(6) { width: 20%; }
+.new-items-table td.making-charge-cell {
+  height: auto !important;
+  min-width: 220px;
+  padding: 5px 6px !important;
+  overflow: visible !important;
+  vertical-align: middle;
+}
+.making-charge-editor {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 5px;
+}
+.making-charge-line {
+  display: grid;
+  grid-template-columns: 24px minmax(64px, 78px) minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  box-sizing: border-box;
+  transition: background .12s ease, border-color .12s ease;
+}
+.making-charge-line.is-selected {
+  border-color: #e5c478;
+  background: linear-gradient(90deg, #fff8e8, #fffdf7);
+}
+.making-charge-amount-line {
+  grid-template-columns: 24px minmax(90px, 120px) minmax(0, 1fr);
+}
+.making-charge-mode-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #263343 !important;
+  font: 800 13px/1.1 Arial, sans-serif !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.making-charge-mode-option input[type="radio"] {
+  appearance: auto !important;
+  -webkit-appearance: radio !important;
+  accent-color: #1684ee !important;
+  flex: 0 0 15px !important;
+  width: 15px !important;
+  min-width: 15px !important;
+  height: 15px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+.making-charge-entry {
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 2px 6px !important;
+  border: 1px solid #b8c6d7 !important;
+  border-radius: 7px !important;
+  background: #fff !important;
+  box-sizing: border-box !important;
+}
+.making-charge-entry:focus-within {
+  border-color: #3284d7 !important;
+  box-shadow: 0 0 0 2px rgba(50, 132, 215, .13) !important;
+}
+.making-charge-entry input {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 25px !important;
+  margin: 0 !important;
+  padding: 2px 1px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #182334 !important;
+  text-align: center !important;
+  font: 700 13px/1.2 Arial, sans-serif !important;
+}
+.making-charge-entry input::-webkit-inner-spin-button,
+.making-charge-entry input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+.making-charge-prefix,
+.making-charge-suffix {
+  flex: 0 0 auto !important;
+  color: #6d5260 !important;
+  font: 800 11px/1 Arial, sans-serif !important;
+}
+.making-charge-preview {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  color: #6e7581;
+  font: 800 11px/1.2 Arial, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.making-charge-preview > span {
+  flex: 0 0 auto;
+  color: #929ba8;
+  font-size: 16px;
+  line-height: 1;
+}
+.making-charge-preview strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #7d102f;
+  font: 800 12px/1.2 Arial, sans-serif;
+  white-space: nowrap;
+}
+.making-charge-print-value { display: none; }
+.making-charge-saved-value {
+  display: inline-block;
+  font: 13px Georgia, "Times New Roman", serif;
+  color: #172033;
+  white-space: nowrap;
+}
+@media (max-width: 950px) {
+  .new-items-table td.making-charge-cell { min-width: 205px; }
+  .making-charge-line {
+    grid-template-columns: 22px minmax(64px, 76px) minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .new-items-table td.making-charge-cell { min-width: 210px; }
+  .making-charge-line { gap: 4px; }
+  .making-charge-mode-option { font-size: 12px !important; }
+}
+@media print {
+  #invoice-print .making-charge-editor { display: none !important; }
+  #invoice-print .making-charge-print-value {
+    display: inline-block !important;
+    color: #10172a !important;
+    font: 7pt Georgia, "Times New Roman", serif !important;
+    white-space: nowrap !important;
+  }
+  #invoice-print .making-charge-saved-value {
+    font: 7pt Georgia, "Times New Roman", serif !important;
+  }
+}
+
+
+/* Match the requested reference: enter % on the left and see the
+   converted rupee making charge immediately on the same row. */
+.new-items-table th:nth-child(6) {
+  width: 16% !important;
+  min-width: 170px !important;
+}
+.new-items-table td.making-charge-cell {
+  width: 16% !important;
+  min-width: 170px !important;
+}
+.making-charge-editor { gap: 6px !important; }
+.making-charge-mode-picker {
+  justify-content: flex-start !important;
+  gap: 13px !important;
+  min-height: 18px !important;
+}
+.making-charge-percent-row {
+  display: grid !important;
+  grid-template-columns: minmax(54px, .78fr) 15px minmax(82px, 1.22fr) !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.making-charge-percent-entry {
+  min-width: 0 !important;
+  min-height: 36px !important;
+  padding: 2px 4px !important;
+}
+.making-charge-percent-entry input {
+  text-align: center !important;
+  font-size: 14px !important;
+}
+.making-charge-percent-entry .making-charge-suffix { font-size: 12px !important; }
+.making-charge-arrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+  color: #98a0aa !important;
+  font: 800 17px/1 Arial, sans-serif !important;
+}
+.making-charge-result {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 36px !important;
+  padding: 3px 5px !important;
+  border: 1px solid #b9c8dc !important;
+  border-radius: 7px !important;
+  background: linear-gradient(180deg, #fff 0%, #f7faff 100%) !important;
+  color: #1e293b !important;
+  font: 800 13px/1.15 Arial, sans-serif !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+.making-charge-flat-entry { min-height: 36px !important; }
+@media (max-width: 760px) {
+  .new-items-table td.making-charge-cell,
+  .new-items-table th:nth-child(6) { min-width: 170px !important; }
+  .making-charge-percent-row {
+    grid-template-columns: minmax(48px, .78fr) 13px minmax(78px, 1.22fr) !important;
+    gap: 4px !important;
+  }
+  .making-charge-result { font-size: 12px !important; }
+}
+
+
+/* Final Making Charge column sizing.
+   The table uses fixed layout; allocate enough of the existing 100% width
+   to MC so the percent input → arrow → rupee result cannot spill into Stamp.
+   The small reductions come from the formerly oversized description/purity/
+   weight columns. All other invoice columns and calculations stay unchanged. */
+@media screen and (min-width: 761px) {
+  .invoice-sheet .new-items-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+  .invoice-sheet .new-items-table th:nth-child(1),
+  .invoice-sheet .new-items-table td:nth-child(1) { width: 5% !important; }
+  .invoice-sheet .new-items-table th:nth-child(2),
+  .invoice-sheet .new-items-table td:nth-child(2) { width: 17% !important; }
+  .invoice-sheet .new-items-table th:nth-child(3),
+  .invoice-sheet .new-items-table td:nth-child(3) { width: 8% !important; }
+  .invoice-sheet .new-items-table th:nth-child(4),
+  .invoice-sheet .new-items-table td:nth-child(4) { width: 10% !important; }
+  .invoice-sheet .new-items-table th:nth-child(5),
+  .invoice-sheet .new-items-table td:nth-child(5) { width: 11% !important; }
+  .invoice-sheet .new-items-table th:nth-child(6),
+  .invoice-sheet .new-items-table td:nth-child(6) { width: 16% !important; }
+  .invoice-sheet .new-items-table th:nth-child(7),
+  .invoice-sheet .new-items-table td:nth-child(7) { width: 9% !important; }
+  .invoice-sheet .new-items-table th:nth-child(8),
+  .invoice-sheet .new-items-table td:nth-child(8) { width: 11% !important; }
+  .invoice-sheet .new-items-table th:nth-child(9),
+  .invoice-sheet .new-items-table td:nth-child(9) { width: 12% !important; }
+  .invoice-sheet .new-items-table th:nth-child(10),
+  .invoice-sheet .new-items-table td:nth-child(10) { width: 1% !important; }
+}
+
+.making-charge-cell {
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+.making-charge-percent-row {
+  box-sizing: border-box !important;
+  grid-template-columns: minmax(54px, .78fr) 15px minmax(82px, 1.22fr) !important;
+  max-width: 100% !important;
+}
+.making-charge-percent-entry,
+.making-charge-result {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.making-charge-result {
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  font-size: 11px !important;
+  padding-left: 3px !important;
+  padding-right: 3px !important;
+}
+
+
+/* Invoice ornament delete controls — make the trash icon visible and easy to tap. */
+@media screen {
+  #invoice-print .new-items-table th:last-child,
+  #invoice-print .new-items-table td:last-child,
+  #invoice-print .old-items-table th:last-child,
+  #invoice-print .old-items-table td:last-child {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    padding: 3px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn {
+    display: inline-grid !important;
+    place-items: center !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: 1px solid #edbdc8 !important;
+    border-radius: 8px !important;
+    background: #fff5f7 !important;
+    color: #a5092d !important;
+    cursor: pointer !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn svg {
+    display: block !important;
+    width: 21px !important;
+    height: 21px !important;
+    min-width: 21px !important;
+    min-height: 21px !important;
+    stroke-width: 2.4 !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn:hover {
+    border-color: #a5092d !important;
+    background: #ffe5eb !important;
+    color: #850923 !important;
+  }
+
+  #invoice-print .items-table td:last-child .icon-btn:focus-visible {
+    outline: 3px solid rgba(165, 9, 45, .24) !important;
+    outline-offset: 2px !important;
+  }
+}
+
+
+/* Compact invoice ornament delete controls.
+   Keep the tap target accessible while using a restrained 20px trash glyph. */
+@media screen {
+  #invoice-print .new-items-table th:last-child,
+  #invoice-print .new-items-table td:last-child,
+  #invoice-print .old-items-table th:last-child,
+  #invoice-print .old-items-table td:last-child {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    padding: 2px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+  }
+  #invoice-print .items-table td:last-child .icon-btn {
+    display: inline-grid !important;
+    place-items: center !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: 1px solid #edbdc8 !important;
+    border-radius: 7px !important;
+    background: #fff5f7 !important;
+    color: #a5092d !important;
+    cursor: pointer !important;
+  }
+  #invoice-print .items-table td:last-child .icon-btn svg {
+    display: block !important;
+    width: 20px !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    stroke-width: 2.2 !important;
+  }
+  #invoice-print .items-table td:last-child .icon-btn:hover {
+    border-color: #a5092d !important;
+    background: #ffe5eb !important;
+  }
+  #invoice-print .items-table td:last-child .icon-btn:focus-visible {
+    outline: 3px solid rgba(165, 9, 45, .24) !important;
+    outline-offset: 2px !important;
+  }
+}
+
+
+/* ============================================================
+   SAVED INVOICES — FULL-WIDTH, ALIGNED DATA TABLE
+   Scoped to the saved invoice listing only; invoice print sheets
+   and other ERP tables keep their existing layout.
+============================================================ */
+body.nkj-owner-layout .nkj-saved-panel {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  padding: 20px !important;
+  border: 1px solid #eadfdc !important;
+  border-radius: 15px !important;
+  background: linear-gradient(145deg, #fffefd 0%, #fffaf6 100%) !important;
+  box-shadow: 0 6px 22px rgba(77, 17, 39, .055) !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .table-wrap {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  border: 1px solid #eadde0 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.nkj-owner-layout .nkj-saved-panel table.nkj-saved-table {
+  display: table !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table thead th {
+  height: 52px !important;
+  padding: 13px 14px !important;
+  border: 0 !important;
+  border-right: 1px solid rgba(255,255,255,.16) !important;
+  border-bottom: 2px solid #d8a0ae !important;
+  background: linear-gradient(110deg, #8d0d32 0%, #a9113d 52%, #790d2e 100%) !important;
+  color: #fffaf2 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12px !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table thead th:first-child {
+  border-top-left-radius: 8px !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table thead th:last-child {
+  border-top-right-radius: 8px !important;
+  border-right: 0 !important;
+}
+
+/* Column proportions add up to 100%, including a genuinely useful Actions area. */
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(1),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(1) { width: 14%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(2),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(2) { width: 15%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(3),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(3) { width: 10%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(4),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(4) { width: 12%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(5),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(5) { width: 12%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(6),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(6) { width: 37%; }
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td {
+  height: 57px !important;
+  padding: 10px 12px !important;
+  border: 0 !important;
+  border-right: 1px solid #eee5e5 !important;
+  border-bottom: 1px solid #eee5e5 !important;
+  background: #fff !important;
+  color: #30303a !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-align: left !important;
+  vertical-align: middle !important;
+  overflow-wrap: anywhere;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody tr:nth-child(even) td {
+  background: #fffaf8 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody tr:hover td {
+  background: #fff3ed !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:first-child {
+  color: #79132f !important;
+  font-weight: 750 !important;
+  white-space: nowrap !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:nth-child(3),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:nth-child(4) {
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:nth-child(5) {
+  color: #543548 !important;
+  font-weight: 750 !important;
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:last-child {
+  border-right: 0 !important;
+  overflow: visible !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .small-action {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-height: 38px !important;
+  padding: 8px 12px !important;
+  border: 1px solid #e6c6cb !important;
+  border-radius: 7px !important;
+  background: #fff8f7 !important;
+  color: #941237 !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 3px rgba(95, 16, 44, .04) !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .small-action:hover {
+  border-color: #c98b98 !important;
+  background: #fff0ef !important;
+  box-shadow: 0 3px 8px rgba(95, 16, 44, .09) !important;
+  transform: translateY(-1px);
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-copy-action {
+  border-color: #e7d3a8 !important;
+  background: #fffbf0 !important;
+  color: #8a5a15 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-copy-action:hover {
+  background: #fff4d9 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-delete-action {
+  border-color: #edc5c9 !important;
+  background: #fff6f6 !important;
+  color: #b4233b !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-delete-action:hover {
+  background: #ffebed !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions button:disabled {
+  opacity: .55 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table .empty {
+  height: 90px !important;
+  text-align: center !important;
+  color: #76666d !important;
+  font-size: 14px !important;
+}
+
+@media screen and (max-width: 1100px) {
+  body.nkj-owner-layout .nkj-saved-panel .table-wrap {
+    overflow-x: auto !important;
+  }
+  body.nkj-owner-layout .nkj-saved-panel table.nkj-saved-table {
+    width: 1120px !important;
+    min-width: 1120px !important;
+    table-layout: fixed !important;
+  }
+}
+
+@media screen and (max-width: 650px) {
+  body.nkj-owner-layout .nkj-saved-panel {
+    padding: 10px !important;
+    border-radius: 11px !important;
+  }
+  body.nkj-owner-layout .nkj-saved-panel .table-wrap {
+    border-radius: 8px !important;
+  }
+}
+
+
+/* New Invoice — restore a clear, visible Reset action beside Save and Print. */
+.invoice-actions .nkj-invoice-reset-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 11px 20px;
+  border: 1px solid #e4aab6;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fff8f8, #fff0f2);
+  color: #941535;
+  font-weight: 750;
+  box-shadow: 0 2px 7px rgba(148, 21, 53, .07);
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.invoice-actions .nkj-invoice-reset-button svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+}
+.invoice-actions .nkj-invoice-reset-button:hover:not(:disabled) {
+  border-color: #bd4968;
+  background: #ffe7ec;
+  transform: translateY(-1px);
+}
+.invoice-actions .nkj-invoice-reset-button:focus-visible {
+  outline: 3px solid rgba(148, 21, 53, .2);
+  outline-offset: 2px;
+}
+.invoice-actions .nkj-invoice-reset-button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
 }
