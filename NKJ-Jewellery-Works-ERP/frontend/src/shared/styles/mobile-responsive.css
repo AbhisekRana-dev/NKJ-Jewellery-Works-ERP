@@ -1765,3 +1765,14 @@
     --nkj-owner-sidebar-width: 78px;
   }
 }
+
+
+/* New Invoice mobile entry controls: maintain a full touch-friendly input height. */
+@media screen and (max-width: 760px) {
+  body.invoice-page #invoice-print .items-table input,
+  body.invoice-page #invoice-print .items-table select,
+  body.invoice-page #invoice-print .items-table textarea {
+    min-height: 44px !important;
+    height: auto !important;
+  }
+}
