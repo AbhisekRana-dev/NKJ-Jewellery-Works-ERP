@@ -490,7 +490,7 @@ jobs:
 
           TODAY=$(psql "$DB" -tAc "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE")
           FIRST_DUE=$(date -u -d "$TODAY + 7 days" +%F)
-          DUE_DAY=$(date -u -d "$FIRST_DUE" +%d)
+          DUE_DAY=$(date -u -d "$FIRST_DUE" +%-d)
           INVOICE_ID=$(psql "$DB" -tAc "SELECT id FROM invoices WHERE invoice_no='NKJ-CI-NEW-EMI-002'")
           PREBOOKINGS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM pre_booking_bills")
           ACCOUNTS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")
