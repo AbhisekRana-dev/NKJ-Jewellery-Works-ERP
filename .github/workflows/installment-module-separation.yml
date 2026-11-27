@@ -490,16 +490,26 @@ jobs:
 
           TODAY=$(psql "$DB" -tAc "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE")
           FIRST_DUE=$(date -u -d "$TODAY + 7 days" +%F)
-          DUE_DAY=$(date -u -d "$FIRST_DUE" +%d)
+          DUE_DAY=$(date -u -d "$FIRST_DUE" +%-d)
           INVOICE_ID=$(psql "$DB" -tAc "SELECT id FROM invoices WHERE invoice_no='NKJ-CI-NEW-EMI-002'")
           PREBOOKINGS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM pre_booking_bills")
           ACCOUNTS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_accounts")
           SCHEDULES_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_schedules")
           TRANSACTIONS_BEFORE=$(psql "$DB" -tAc "SELECT COUNT(*) FROM installment_transactions")
 
-          PLAN_JSON=$(curl -fsS -X POST http://localhost:8086/api/admin/installments/plans \
+          PLAN_PAYLOAD=$(printf '{"invoiceId":%s,"downPayment":100,"installmentCount":2,"paymentFrequency":"MONTHLY","firstDueDate":"%s","downPaymentDate":"%s","dueDay":%s,"downPaymentMethod":"Cash","downPaymentReferenceNo":"CI-EMI-DP"}' \
+            "$INVOICE_ID" "$FIRST_DUE" "$TODAY" "$DUE_DAY")
+          PLAN_HTTP=$(curl -sS -o /tmp/nkj-plan-response.json -w '%{http_code}' -X POST http://localhost:8086/api/admin/installments/plans \
             "${AUTH[@]}" -H 'Content-Type: application/json' -H 'Idempotency-Key: CI-API-PLAN-002' \
-            --data "{\"invoiceId\":$INVOICE_ID,\"downPayment\":100,\"installmentCount\":2,\"paymentFrequency\":\"MONTHLY\",\"firstDueDate\":\"$FIRST_DUE\",\"downPaymentDate\":\"$TODAY\",\"dueDay\":$DUE_DAY,\"downPaymentMethod\":\"Cash\",\"downPaymentReferenceNo\":\"CI-EMI-DP\"}")
+            --data "$PLAN_PAYLOAD")
+          if [ "$PLAN_HTTP" -lt 200 ] || [ "$PLAN_HTTP" -ge 300 ]; then
+            echo "Installment plan API returned HTTP $PLAN_HTTP:"
+            cat /tmp/nkj-plan-response.json
+            echo "Backend log:"
+            cat /tmp/nkj-v20.log
+            exit 1
+          fi
+          PLAN_JSON=$(cat /tmp/nkj-plan-response.json)
           ACCOUNT_ID=$(python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["success"] is True; print(x["accountId"])' <<< "$PLAN_JSON")
 
           # Invoice conversion creates only EMI rows. It must not create or mutate a Pre-Booking.
