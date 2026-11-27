@@ -911,7 +911,7 @@ export default function JewelleryDesignsPage() {
             if (event.target === event.currentTarget) closeSelectedModal();
           }}>
             
-              <section className="nkj-catalog-details-modal nkj-catalog-view-modal" role="dialog" aria-modal="true" aria-labelledby="nkj-design-modal-title">
+              <section className={`nkj-catalog-details-modal nkj-catalog-view-modal ${isAdmin ? "nkj-catalog-view-admin" : "nkj-catalog-view-public"}`} role="dialog" aria-modal="true" aria-labelledby="nkj-design-modal-title">
                 <button type="button" className="nkj-catalog-view-close" onClick={closeSelectedModal} aria-label="Close design details"><X size={23} /></button>
                 <div className="nkj-catalog-view-layout">
                   <section className="nkj-catalog-view-gallery" aria-label="Design photographs">
