@@ -1,4 +1,5 @@
 import "./AuthPages.css";
+import "../../app/LoginViewportLayout.css";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
