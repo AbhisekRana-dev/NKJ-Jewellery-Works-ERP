@@ -110,6 +110,36 @@ public class MetalRateService {
         return toResponse(saved);
     }
 
+    /**
+     * Rate Board-only update. It deliberately accepts only 22K gold and silver,
+     * preserving the stored 24K and diamond rates while still using the same
+     * rate history, manual-mode, and realtime publication path.
+     */
+    @Transactional
+    public Map<String, Object> updateRateBoardRates(BigDecimal gold22kValue, BigDecimal silverValue) {
+        BigDecimal gold22 = normalize(gold22kValue, "22K gold");
+        BigDecimal silver = normalize(silverValue, "999 silver");
+        lockRateRow();
+        MetalRate current = getOrCreate();
+        RateSnapshot before = snapshotOf(current);
+
+        current.setGold22kRate(gold22);
+        current.setSilverRate(silver);
+        current.setRateMode("MANUAL");
+        current.setOwnerVerified(true);
+        current.setRateSource("Manual Admin Entry");
+        current.setSourceReference(null);
+        current.setSourcePublishedAt(null);
+        current.setRateDate(LocalDate.now(SHOP_ZONE));
+
+        MetalRate saved = repository.saveAndFlush(current);
+        appendHistory(before, snapshotOf(saved), "MANUAL_RATE_UPDATE",
+                "Gold 22K and silver updated from the public Rate Board",
+                auth.getUsername());
+        publishRatesChangedAfterCommit();
+        return toResponse(saved);
+    }
+
     @Transactional
     public Map<String, Object> enableAutoMode() {
         lockRateRow();

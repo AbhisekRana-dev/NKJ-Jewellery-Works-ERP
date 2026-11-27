@@ -3738,3 +3738,22 @@ body.nkj-mobile-sidebar-open .nkj-mobile-sidebar-backdrop{opacity:1;visibility:v
 .nkj-owner-topbar.nkj-reference-navbar{padding-inline:9px!important;gap:8px!important}
 .nkj-owner-topbar.nkj-reference-navbar .nkj-navbar-brand-copy b{font-size:13px!important}
 }
+
+
+/* Slightly larger icons and labels in the compact owner navigation rail */
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a {
+  min-height: 57px !important;
+  gap: 4px !important;
+}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav a svg {
+  width: 24px !important;
+  height: 24px !important;
+  flex: 0 0 24px !important;
+}
+.nkj-owner-sidebar.is-collapsed .nkj-owner-nav-short-label {
+  font-size: 9px !important;
+  line-height: 1.12 !important;
+}
+.nkj-owner-nav a {
+  font-size: 12.5px;
+}

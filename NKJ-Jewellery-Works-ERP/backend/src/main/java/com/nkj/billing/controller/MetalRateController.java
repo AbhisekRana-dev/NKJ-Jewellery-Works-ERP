@@ -30,6 +30,9 @@ public class MetalRateController {
     /** Legacy contract: values are per gram to preserve existing invoice calculations. */
     public record RateUpdateRequest(BigDecimal gold24kRate, BigDecimal gold22kRate, BigDecimal silverRate, BigDecimal diamondRate) {}
 
+    /** Narrow update contract for the public rate board; 24K and diamond remain untouched. */
+    public record RateBoardUpdateRequest(BigDecimal gold22kRate, BigDecimal silverRate) {}
+
     /** Internal ingestion contract from an authorized Kolkata rate-feed adapter. */
     public record KolkataRateImportRequest(
             BigDecimal gold24kRate,
@@ -54,6 +57,12 @@ public class MetalRateController {
     @PutMapping("/admin/rates")
     public Map<String, Object> updateRates(@RequestBody RateUpdateRequest request) {
         return service.updateManualRates(request);
+    }
+
+    @PutMapping("/admin/rates/board")
+    public Map<String, Object> updateRateBoardRates(@RequestBody RateBoardUpdateRequest request) {
+        if (request == null) throw new IllegalArgumentException("Gold and silver rates are required.");
+        return service.updateRateBoardRates(request.gold22kRate(), request.silverRate());
     }
 
     @PutMapping("/admin/rates/auto")
