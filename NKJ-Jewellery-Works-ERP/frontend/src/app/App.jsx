@@ -27,7 +27,6 @@ import MobileDesignUploadPage from "../features/designs/MobileDesignUploadPage";
 import "./Responsive.css";
 import "./ResponsivePolish.css";
 import "./MobileResponsiveOverrides.css";
-import "./LoginViewportLayout.css";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
