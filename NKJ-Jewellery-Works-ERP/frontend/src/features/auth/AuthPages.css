@@ -844,3 +844,44 @@ body:has(.nkj-login-page) .footer-copyright {
     height: 68px !important;
   }
 }
+
+
+/* HARD DESKTOP VIEWPORT LOCK — no document or nested page scrollbar. */
+@media screen and (min-width: 761px) {
+  html:has(.nkj-login-page),
+  body:has(.nkj-login-page),
+  body:has(.nkj-login-page) #root,
+  body:has(.nkj-login-page) .app-layout {
+    box-sizing: border-box !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) .app-layout {
+    grid-template-rows: minmax(0, 1fr) clamp(104px, 15vh, 126px) !important;
+  }
+
+  body:has(.nkj-login-page) .app-content {
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) .app-content > .nkj-login-page {
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) .app-layout > .jewellery-footer {
+    box-sizing: border-box !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+  }
+}
