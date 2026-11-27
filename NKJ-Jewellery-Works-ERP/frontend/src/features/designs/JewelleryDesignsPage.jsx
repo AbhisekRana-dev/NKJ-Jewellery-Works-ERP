@@ -1019,112 +1019,112 @@ export default function JewelleryDesignsPage() {
                       </div>
                     </section>
 
-                    {isAdmin && (
-                      <section className="nkj-catalog-view-card nkj-catalog-owner-controls">
-                        <div className="nkj-catalog-owner-controls-heading">
-                          <div><Lock size={21} /><span><small>OWNER CONTROLS</small><b>Manage this design</b></span></div>
-                          <Lock size={22} />
-                        </div>
-                        <div className="nkj-catalog-owner-control-actions">
-                          {!editMode ? (
-                            <button type="button" className="edit" onClick={beginEditingDetails}>
-                              <Pencil size={18} /> Edit Details
-                            </button>
-                          ) : (
-                            <div className="nkj-catalog-edit-actions">
-                              <button type="button" className="save" onClick={saveDesignDetails} disabled={savingDetails}>
-                                {savingDetails ? <LoaderCircle size={16} className="spin" /> : <Save size={17} />}
-                                {savingDetails ? "Saving…" : "Save Changes"}
-                              </button>
-                              <button type="button" className="cancel" onClick={cancelEditingDetails} disabled={savingDetails} aria-label="Cancel editing" title="Cancel editing">
-                                <X size={17} />
-                              </button>
-                            </div>
-                          )}
-                          <button type="button" className="archive" onClick={archiveSelectedDesign}>
-                            <Trash2 size={18} /> Delete / Archive
-                          </button>
-                          <button type="button" className="mobile-upload" onClick={generateMobileUploadQr} disabled={qrLoading}>
-                            {qrLoading ? <LoaderCircle size={16} className="spin" /> : <QrCode size={19} />}
-                            Upload from Mobile (QR Code)
-                          </button>
-                          <div className="nkj-catalog-computer-upload-action">
-                            <div className="nkj-catalog-computer-upload-copy">
-                              <UploadCloud size={20} />
-                              <span>
-                                <b>Upload from Computer / Replace Primary Photograph</b>
-                                <small>Add one or multiple photographs to this design</small>
-                              </span>
-                            </div>
-                            <div className="nkj-catalog-computer-upload-options">
-                              <label className="nkj-design-admin-button nkj-catalog-choose-photos">
-                                <ImagePlus size={14} /> Choose Photos
-                                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={selectDesktopImages} disabled={uploadingImages} />
-                              </label>
-                              <label className={"nkj-design-replace-photo-button nkj-catalog-replace-primary" + (replacingPhoto ? " is-busy" : "")}>
-                                {replacingPhoto ? <LoaderCircle size={13} className="spin" /> : <ImagePlus size={13} />}
-                                <span>{replacingPhoto ? "Replacing…" : "Replace Primary"}</span>
-                                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={replacingPhoto} onChange={replaceSelectedPhoto} />
-                              </label>
-                            </div>
-                          </div>
-                        </div>
 
-                        {pendingImages.length > 0 && (
-                          <div className="nkj-design-upload-tools nkj-catalog-pending-upload">
-                            <div>
-                              <b>Selected photographs ({pendingImages.length})</b>
-                              <small>Review your selection, then save the photographs to this design.</small>
-                            </div>
-                            <div className="nkj-design-desktop-preview-grid">
-                              {pendingImages.map((item) => (
-                                <article key={item.id}>
-                                  <img src={item.previewUrl} alt={item.file.name} />
-                                  <span title={item.file.name}>{item.file.name}</span>
-                                  <button type="button" onClick={() => removePendingImage(item.id)} aria-label="Remove selected photo"><X size={13} /></button>
-                                </article>
-                              ))}
-                            </div>
-                            <div className="nkj-design-admin-action-row">
-                              <button type="button" className="nkj-design-admin-button" onClick={clearPendingImages}>
-                                <RotateCcw size={13} /> Clear Selection
-                              </button>
-                              <button type="button" className="nkj-design-admin-button primary" onClick={uploadSelectedImages} disabled={uploadingImages}>
-                                {uploadingImages ? <LoaderCircle size={14} className="spin" /> : <UploadCloud size={14} />}
-                                {uploadingImages ? "Uploading…" : "Save Photos"}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-  
-                        {(qrLoading || qrSession || qrError) && (
-                          <div className="nkj-design-mobile-qr-panel">
-                            <div className="nkj-design-mobile-qr-heading"><div><b>Upload from Mobile</b><small>Scan with your phone camera. This link expires in five minutes and accepts one upload.</small></div><Smartphone size={20} /></div>
-                            {qrLoading && <p className="nkj-design-qr-status"><LoaderCircle size={14} className="spin" /> Generating secure QR code…</p>}
-                            {qrError && <p className="nkj-design-admin-feedback error" role="alert">{qrError}</p>}
-                            {qrSession && (
-                              <div className="nkj-design-mobile-qr-content">
-                                {["WAITING", "SCANNED"].includes(qrSession.status) && qrSession.uploadUrl && <div className="nkj-design-mobile-qr-image"><QRCodeSVG value={qrSession.uploadUrl} size={176} level="H" includeMargin /></div>}
-                                <div className="nkj-design-mobile-qr-info">
-                                  <span className={"nkj-design-qr-status-chip " + String(qrSession.status || "").toLowerCase()}>{qrSession.status || "WAITING"}</span>
-                                  <b>{qrSession.status === "SCANNED" ? "Phone connected" : qrSession.status === "UPLOADED" ? "Photos received" : qrSession.status === "EXPIRED" ? "QR expired" : qrSession.status === "REVOKED" ? "QR revoked" : "Waiting for phone scan"}</b>
-                                  <small>Design: {selected.designId || selected.designCode}</small>
-                                  {qrSession.expiresAt && <small>Expires: {new Date(qrSession.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</small>}
-                                  {["EXPIRED", "REVOKED", "UPLOADED"].includes(qrSession.status) && <button type="button" className="nkj-design-admin-button gold" onClick={generateMobileUploadQr} disabled={qrLoading}><QrCode size={13} /> Generate New QR</button>}
-                                  {["WAITING", "SCANNED"].includes(qrSession.status) && <button type="button" className="nkj-design-admin-button danger" onClick={revokeMobileUploadQr}><X size={13} /> Revoke QR</button>}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {adminActionError && <p className="nkj-design-admin-feedback error" role="alert">{adminActionError}</p>}
-                        {adminActionMessage && <p className="nkj-design-admin-feedback success" role="status">{adminActionMessage}</p>}
-                        {replacePhotoError && <p className="nkj-design-admin-feedback error" role="alert">{replacePhotoError}</p>}
-                      </section>
-                    )}
                   </section>
                 </div>
-                <footer className="nkj-catalog-view-footer"><button type="button" onClick={closeSelectedModal}>Close</button></footer>
+                {isAdmin && (
+                  <section className="nkj-catalog-view-card nkj-catalog-owner-controls">
+                    <div className="nkj-catalog-owner-controls-heading">
+                      <div><Lock size={21} /><span><small>OWNER CONTROLS</small><b>Manage this design</b></span></div>
+                      <Lock size={22} />
+                    </div>
+                    <div className="nkj-catalog-owner-control-actions">
+                      {!editMode ? (
+                        <button type="button" className="edit" onClick={beginEditingDetails}>
+                          <Pencil size={18} /> Edit Details
+                        </button>
+                      ) : (
+                        <div className="nkj-catalog-edit-actions">
+                          <button type="button" className="save" onClick={saveDesignDetails} disabled={savingDetails}>
+                            {savingDetails ? <LoaderCircle size={16} className="spin" /> : <Save size={17} />}
+                            {savingDetails ? "Saving…" : "Save Changes"}
+                          </button>
+                          <button type="button" className="cancel" onClick={cancelEditingDetails} disabled={savingDetails} aria-label="Cancel editing" title="Cancel editing">
+                            <X size={15} /><span>Cancel</span>
+                          </button>
+                        </div>
+                      )}
+                      <button type="button" className="archive" onClick={archiveSelectedDesign}>
+                        <Trash2 size={18} /> Delete / Archive
+                      </button>
+                      <button type="button" className="mobile-upload" onClick={generateMobileUploadQr} disabled={qrLoading}>
+                        {qrLoading ? <LoaderCircle size={16} className="spin" /> : <QrCode size={19} />}
+                        Upload from Mobile (QR Code)
+                      </button>
+                      <div className="nkj-catalog-computer-upload-action">
+                        <div className="nkj-catalog-computer-upload-copy">
+                          <UploadCloud size={20} />
+                          <span>
+                            <b>Upload from Computer / Replace Primary Photograph</b>
+                            <small>Add one or multiple photographs to this design</small>
+                          </span>
+                        </div>
+                        <div className="nkj-catalog-computer-upload-options">
+                          <label className="nkj-design-admin-button nkj-catalog-choose-photos">
+                            <ImagePlus size={14} /> Choose Photos
+                            <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple onChange={selectDesktopImages} disabled={uploadingImages} />
+                          </label>
+                          <label className={"nkj-design-replace-photo-button nkj-catalog-replace-primary" + (replacingPhoto ? " is-busy" : "")}>
+                            {replacingPhoto ? <LoaderCircle size={13} className="spin" /> : <ImagePlus size={13} />}
+                            <span>{replacingPhoto ? "Replacing…" : "Replace Primary"}</span>
+                            <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={replacingPhoto} onChange={replaceSelectedPhoto} />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {pendingImages.length > 0 && (
+                      <div className="nkj-design-upload-tools nkj-catalog-pending-upload">
+                        <div>
+                          <b>Selected photographs ({pendingImages.length})</b>
+                          <small>Review your selection, then save the photographs to this design.</small>
+                        </div>
+                        <div className="nkj-design-desktop-preview-grid">
+                          {pendingImages.map((item) => (
+                            <article key={item.id}>
+                              <img src={item.previewUrl} alt={item.file.name} />
+                              <span title={item.file.name}>{item.file.name}</span>
+                              <button type="button" onClick={() => removePendingImage(item.id)} aria-label="Remove selected photo"><X size={13} /></button>
+                            </article>
+                          ))}
+                        </div>
+                        <div className="nkj-design-admin-action-row">
+                          <button type="button" className="nkj-design-admin-button" onClick={clearPendingImages}>
+                            <RotateCcw size={13} /> Clear Selection
+                          </button>
+                          <button type="button" className="nkj-design-admin-button primary" onClick={uploadSelectedImages} disabled={uploadingImages}>
+                            {uploadingImages ? <LoaderCircle size={14} className="spin" /> : <UploadCloud size={14} />}
+                            {uploadingImages ? "Uploading…" : "Save Photos"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+  
+                    {(qrLoading || qrSession || qrError) && (
+                      <div className="nkj-design-mobile-qr-panel">
+                        <div className="nkj-design-mobile-qr-heading"><div><b>Upload from Mobile</b><small>Scan with your phone camera. This link expires in five minutes and accepts one upload.</small></div><Smartphone size={20} /></div>
+                        {qrLoading && <p className="nkj-design-qr-status"><LoaderCircle size={14} className="spin" /> Generating secure QR code…</p>}
+                        {qrError && <p className="nkj-design-admin-feedback error" role="alert">{qrError}</p>}
+                        {qrSession && (
+                          <div className="nkj-design-mobile-qr-content">
+                            {["WAITING", "SCANNED"].includes(qrSession.status) && qrSession.uploadUrl && <div className="nkj-design-mobile-qr-image"><QRCodeSVG value={qrSession.uploadUrl} size={176} level="H" includeMargin /></div>}
+                            <div className="nkj-design-mobile-qr-info">
+                              <span className={"nkj-design-qr-status-chip " + String(qrSession.status || "").toLowerCase()}>{qrSession.status || "WAITING"}</span>
+                              <b>{qrSession.status === "SCANNED" ? "Phone connected" : qrSession.status === "UPLOADED" ? "Photos received" : qrSession.status === "EXPIRED" ? "QR expired" : qrSession.status === "REVOKED" ? "QR revoked" : "Waiting for phone scan"}</b>
+                              <small>Design: {selected.designId || selected.designCode}</small>
+                              {qrSession.expiresAt && <small>Expires: {new Date(qrSession.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</small>}
+                              {["EXPIRED", "REVOKED", "UPLOADED"].includes(qrSession.status) && <button type="button" className="nkj-design-admin-button gold" onClick={generateMobileUploadQr} disabled={qrLoading}><QrCode size={13} /> Generate New QR</button>}
+                              {["WAITING", "SCANNED"].includes(qrSession.status) && <button type="button" className="nkj-design-admin-button danger" onClick={revokeMobileUploadQr}><X size={13} /> Revoke QR</button>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {adminActionError && <p className="nkj-design-admin-feedback error" role="alert">{adminActionError}</p>}
+                    {adminActionMessage && <p className="nkj-design-admin-feedback success" role="status">{adminActionMessage}</p>}
+                    {replacePhotoError && <p className="nkj-design-admin-feedback error" role="alert">{replacePhotoError}</p>}
+                  </section>
+                )}                <footer className="nkj-catalog-view-footer"><button type="button" onClick={closeSelectedModal}>Close</button></footer>
                 {adminPhotoExpanded && selected.images?.length > 0 && (
                   <div className="nkj-catalog-view-lightbox" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAdminPhotoExpanded(false); }}>
                     <button type="button" className="close" onClick={() => setAdminPhotoExpanded(false)} aria-label="Close full-screen photo"><X size={23} /></button>

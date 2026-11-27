@@ -6440,3 +6440,391 @@ body .nkj-catalog-edit-actions > button.cancel {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+
+/* ============================================================
+   OWNER MODAL FIX — FULL-WIDTH CONTROLS + ALWAYS-VISIBLE ACTIONS
+   The gallery/details stay in the upper split layout. Owner controls
+   are docked below that layout so they are never hidden in the
+   independently scrollable details column.
+============================================================ */
+.nkj-catalog-details-modal.nkj-catalog-view-modal {
+  display: flex !important;
+  flex-direction: column !important;
+  height: min(900px, calc(100dvh - 28px)) !important;
+  max-height: calc(100dvh - 28px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 16px 18px 12px !important;
+  gap: 9px !important;
+}
+
+.nkj-catalog-view-layout {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  grid-template-columns: minmax(0, .96fr) minmax(0, 1.04fr) !important;
+  gap: 16px !important;
+  overflow: hidden !important;
+}
+
+.nkj-catalog-view-gallery {
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.nkj-catalog-view-main-photo {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+.nkj-catalog-view-information {
+  min-height: 0 !important;
+  padding: 8px 5px 8px 0 !important;
+  gap: 10px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+}
+
+.nkj-catalog-owner-controls {
+  position: relative !important;
+  z-index: 11 !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  max-height: clamp(112px, 24vh, 205px) !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  border: 2px solid #a8cfb9 !important;
+  border-radius: 17px !important;
+  background: linear-gradient(135deg, #f3fbf5 0%, #e8f5ec 100%) !important;
+  box-shadow: 0 5px 16px rgba(33, 106, 72, .08) !important;
+}
+
+.nkj-catalog-owner-controls-heading {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin: 0 0 8px !important;
+  padding: 0 0 7px !important;
+  border-bottom: 1px solid #c9dfd0 !important;
+}
+
+.nkj-catalog-owner-controls-heading > div {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.nkj-catalog-owner-controls-heading > div > svg,
+.nkj-catalog-owner-controls-heading > svg {
+  flex: 0 0 auto !important;
+  color: #08704b !important;
+  width: 25px !important;
+  height: 25px !important;
+}
+
+.nkj-catalog-owner-controls-heading span {
+  display: grid !important;
+  gap: 1px !important;
+}
+
+.nkj-catalog-owner-controls-heading small {
+  color: #bd7d20 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1.2px !important;
+}
+
+.nkj-catalog-owner-controls-heading b {
+  color: #075b3d !important;
+  font: 800 clamp(18px, 1.55vw, 25px)/1.08 Georgia, "Times New Roman", serif !important;
+}
+
+.nkj-catalog-owner-control-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 2.35fr) !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+}
+
+.nkj-catalog-owner-control-actions > button,
+.nkj-catalog-edit-actions > button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 58px !important;
+  padding: 9px 12px !important;
+  border-radius: 12px !important;
+  font-size: clamp(11px, .95vw, 14px) !important;
+  font-weight: 850 !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+  text-align: center !important;
+}
+
+.nkj-catalog-owner-control-actions > button > svg,
+.nkj-catalog-edit-actions > button > svg {
+  flex: 0 0 auto !important;
+  width: 22px !important;
+  height: 22px !important;
+}
+
+body .nkj-catalog-owner-control-actions > button.edit {
+  border: 1px solid #e5d7c4 !important;
+  background: #fffdfa !important;
+  color: #701536 !important;
+}
+
+body .nkj-catalog-owner-control-actions > button.archive {
+  border: 1px solid #efb2c6 !important;
+  background: #fff0f5 !important;
+  color: #b2164d !important;
+}
+
+body .nkj-catalog-owner-control-actions > button.mobile-upload {
+  border: 1px solid #ebce82 !important;
+  background: #fff5db !important;
+  color: #76480e !important;
+}
+
+.nkj-catalog-edit-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(72px, .55fr) !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+body .nkj-catalog-edit-actions > button.save {
+  display: flex !important;
+  border: 1px solid #761536 !important;
+  background: linear-gradient(120deg, #85183e, #5d102c) !important;
+  color: #fff8ed !important;
+  cursor: pointer !important;
+}
+
+body .nkj-catalog-edit-actions > button.cancel {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  border: 1px solid #e4c5c9 !important;
+  background: #fff4f3 !important;
+  color: #9b263b !important;
+  cursor: pointer !important;
+}
+
+.nkj-catalog-edit-actions > button:disabled {
+  opacity: .6 !important;
+  cursor: not-allowed !important;
+}
+
+.nkj-catalog-computer-upload-action {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  min-height: 58px !important;
+  box-sizing: border-box !important;
+  padding: 8px 12px !important;
+  border: 1px solid #70122f !important;
+  border-radius: 12px !important;
+  background: linear-gradient(115deg, #64132f, #861b43) !important;
+  color: #fff8ee !important;
+}
+
+.nkj-catalog-computer-upload-copy {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+.nkj-catalog-computer-upload-copy > svg {
+  flex: 0 0 auto !important;
+  width: 25px !important;
+  height: 25px !important;
+  color: #fff1cf !important;
+}
+
+.nkj-catalog-computer-upload-copy > span {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+.nkj-catalog-computer-upload-copy b {
+  color: #fff8ed !important;
+  font-size: clamp(10px, .86vw, 13px) !important;
+  font-weight: 850 !important;
+  line-height: 1.25 !important;
+}
+
+.nkj-catalog-computer-upload-copy small {
+  color: #f3dfe3 !important;
+  font-size: 9px !important;
+  line-height: 1.25 !important;
+}
+
+.nkj-catalog-computer-upload-options {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.nkj-catalog-choose-photos,
+.nkj-catalog-replace-primary {
+  min-height: 38px !important;
+  padding: 7px 10px !important;
+  border-radius: 9px !important;
+  font-size: 10px !important;
+}
+
+.nkj-catalog-pending-upload {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  margin-top: 8px !important;
+}
+
+.nkj-catalog-pending-upload .nkj-design-desktop-preview-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+
+.nkj-catalog-view-footer {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  padding: 8px 0 0 !important;
+  border-top: 1px solid #edce98 !important;
+}
+
+.nkj-catalog-view-footer button {
+  min-width: 150px !important;
+  min-height: 43px !important;
+  padding: 8px 22px !important;
+}
+
+@media screen and (min-width: 681px) and (max-width: 1100px) {
+  .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: calc(100vw - 24px) !important;
+    height: calc(100dvh - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow: hidden !important;
+    padding: 12px !important;
+  }
+
+  .nkj-catalog-view-layout {
+    grid-template-columns: minmax(0, .94fr) minmax(0, 1.06fr) !important;
+    gap: 10px !important;
+  }
+
+  .nkj-catalog-view-information {
+    gap: 8px !important;
+  }
+
+  .nkj-catalog-owner-control-actions {
+    gap: 6px !important;
+  }
+
+  .nkj-catalog-owner-control-actions > button,
+  .nkj-catalog-edit-actions > button {
+    min-height: 52px !important;
+    padding: 7px 6px !important;
+    font-size: 10px !important;
+  }
+
+  .nkj-catalog-computer-upload-action {
+    gap: 6px !important;
+    padding: 6px 8px !important;
+  }
+
+  .nkj-catalog-computer-upload-copy small {
+    display: none !important;
+  }
+}
+
+@media screen and (max-width: 680px) {
+  .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: calc(100vw - 12px) !important;
+    height: calc(100dvh - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 12px !important;
+    gap: 10px !important;
+  }
+
+  .nkj-catalog-view-layout {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    overflow: visible !important;
+  }
+
+  .nkj-catalog-view-gallery {
+    flex: 0 0 auto !important;
+  }
+
+  .nkj-catalog-view-main-photo {
+    min-height: 190px !important;
+    height: clamp(190px, 30dvh, 280px) !important;
+  }
+
+  .nkj-catalog-view-information {
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .nkj-catalog-owner-controls {
+    position: sticky !important;
+    bottom: 0 !important;
+    max-height: 42dvh !important;
+    margin-top: 0 !important;
+    box-shadow: 0 -5px 18px rgba(33, 106, 72, .14) !important;
+  }
+
+  .nkj-catalog-owner-control-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .nkj-catalog-owner-control-actions > button,
+  .nkj-catalog-edit-actions > button {
+    min-height: 48px !important;
+    font-size: 11px !important;
+  }
+
+  .nkj-catalog-computer-upload-action {
+    grid-column: 1 / -1 !important;
+    flex-wrap: wrap !important;
+  }
+
+  .nkj-catalog-computer-upload-options {
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+
+  .nkj-catalog-view-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 12 !important;
+    padding: 8px 0 0 !important;
+    background: #fff8ef !important;
+  }
+
+  .nkj-catalog-view-footer button {
+    width: 100% !important;
+  }
+}
