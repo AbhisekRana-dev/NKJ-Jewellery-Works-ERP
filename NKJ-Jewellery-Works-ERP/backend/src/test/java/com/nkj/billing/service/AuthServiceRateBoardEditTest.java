@@ -39,6 +39,20 @@ class AuthServiceRateBoardEditTest {
     }
 
     @Test
+    void successfulRateBoardGrantExpiresAfterFiveMinutes() {
+        long beforeUnlock = System.currentTimeMillis();
+        String token = service.unlockRateBoard("correct-admin-password", "203.0.113.10");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> grants = (Map<String, Object>) ReflectionTestUtils.getField(service, "rateBoardEditGrants");
+        Object grant = grants.values().iterator().next();
+        long expiresAt = (long) ReflectionTestUtils.getField(grant, "expiresAt");
+
+        assertTrue(expiresAt - beforeUnlock >= 299_000L);
+        assertTrue(expiresAt - beforeUnlock <= 300_500L);
+        assertTrue(service.validRateBoardEditGrant(token, "203.0.113.10"));
+    }
+
+    @Test
     void incorrectPasswordDoesNotCreateARateBoardGrant() {
         assertThrows(IllegalArgumentException.class,
                 () -> service.unlockRateBoard("incorrect-password", "203.0.113.10"));

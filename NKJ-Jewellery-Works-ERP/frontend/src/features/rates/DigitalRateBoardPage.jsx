@@ -640,7 +640,7 @@ export default function DigitalRateBoardPage() {
                   <span>Silver 999 · ₹ / 10 grams</span>
                   <div className="nkj-rate-input-wrap"><b>₹</b><input type="number" min="0.01" step="0.01" value={form.silver} onChange={(event) => setForm((old) => ({ ...old, silver: event.target.value }))} required /></div>
                 </label>
-                <p className="nkj-rate-modal-note"><ShieldCheck size={16} /> Password verified. This temporary edit authorization expires in three minutes. Date and time remain automatic in Kolkata time.</p>
+                <p className="nkj-rate-modal-note"><ShieldCheck size={16} /> Password verified. This temporary edit authorization expires in five minutes. Date and time remain automatic in Kolkata time.</p>
                 {editError && <p className="nkj-rate-edit-error" role="alert">{editError}</p>}
                 <footer>
                   <button type="button" className="nkj-rate-cancel" onClick={closeEditor} disabled={saving}>Cancel</button>
