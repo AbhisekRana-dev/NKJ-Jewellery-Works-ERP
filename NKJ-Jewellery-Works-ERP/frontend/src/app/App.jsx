@@ -27,6 +27,7 @@ import MobileDesignUploadPage from "../features/designs/MobileDesignUploadPage";
 import "./Responsive.css";
 import "./ResponsivePolish.css";
 import "./MobileResponsiveOverrides.css";
+import "./LoginViewportLayout.css";
 
 function Guard({ children }) {
   const { isAdmin, authReady } = useAuth();
@@ -40,9 +41,11 @@ function OwnerOnly({ children }) {
 }
 
 export default function App() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === "/login";
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout${isLoginPage ? " nkj-login-layout" : ""}`}>
       <div className="app-content">
         <Routes>
           {/* Public access: Home, Jewellery Designs, Calculator and New Invoice. */}

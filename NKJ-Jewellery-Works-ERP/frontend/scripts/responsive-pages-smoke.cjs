@@ -495,10 +495,17 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
         row.labelledCells >= Math.max(4, row.cellCount - 1),
         invoiceKind + " ornament card is missing readable field labels: " + JSON.stringify(result)
       );
+      // The final table cell is a deliberately compact remove-action column.
+      // Validate editable data cells separately so a 28px trash-button cell is
+      // not mistaken for a squeezed text/number field.
+      const editableCells = row.cells.slice(0, -1);
+      const actionCell = row.cells[row.cells.length - 1];
       assert(
-        row.cells.every((cell) => cell.width >= 60) &&
-        row.cells.every((cell) => !cell.fieldCount || cell.fieldWidth >= Math.min(96, cell.width - 12)),
-        invoiceKind + " ornament fields were squeezed into narrow desktop percentage columns: " + JSON.stringify(result)
+        editableCells.every((cell) => cell.width >= 60) &&
+        editableCells.every((cell) => !cell.fieldCount || cell.fieldWidth >= Math.min(96, cell.width - 12)) &&
+        actionCell.width >= 22 &&
+        actionCell.fieldCount === 0,
+        invoiceKind + " ornament data fields or remove-action cell have invalid mobile sizing: " + JSON.stringify(result)
       );
       assert(
         row.cells.every((cell) => !cell.fieldCount || cell.fieldHeight >= 44),
@@ -790,7 +797,7 @@ async function testInvoiceMakingChargeModes(browser) {
     await flatMode.check();
     await row.locator(".making-charge-flat-input").fill("5000");
     let rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
-    assert(Math.abs(rowTotal - 41375) < 0.01, "Fixed ₹5,000 making charge total is incorrect: " + rowTotal);
+    assert(Math.abs(rowTotal - 41225) < 0.01, "Fixed ₹5,000 making charge total is incorrect: " + rowTotal);
 
     await percentMode.check();
     await row.locator(".making-charge-percent-input").fill("12");
@@ -811,7 +818,7 @@ async function testInvoiceMakingChargeModes(browser) {
     assert(Math.abs(makingAmount - 4347) < 0.01, "12% making charge should equal ₹4,347.00: " + preview);
 
     rowTotal = Number((await row.locator("td").nth(8).innerText()).replace(/[^\d.-]/g, ""));
-    assert(Math.abs(rowTotal - 40722) < 0.01, "Percentage mode ornament total is incorrect: " + rowTotal);
+    assert(Math.abs(rowTotal - 40572) < 0.01, "Percentage mode ornament total is incorrect: " + rowTotal);
 
     await rateInput.fill("7000");
     const recalculated = Number((await row.locator(".making-charge-result").innerText()).replace(/[^\d.-]/g, ""));
@@ -1005,7 +1012,7 @@ async function testInvoiceSavePinGate(browser) {
   }
 }
 
-async function testInvoiceDraftRecoveryAndReset(browser) {
+async function testInvoiceDraftResetOnReload(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await installApiMocks(page);
@@ -1019,11 +1026,13 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
     const customerInputs = page.locator("#invoice-print .inv-two .inv-panel").first()
       .locator(".form-grid label input");
     const newItemInputs = page.locator("#invoice-print .new-items-table tbody tr:first-child td input");
-    await customerInputs.nth(0).fill("Draft Recovery Customer");
+
+    await customerInputs.nth(0).fill("Temporary Invoice Customer");
     await customerInputs.nth(1).fill("9876543210");
     await customerInputs.nth(2).fill("Jhargram, West Bengal");
-    await newItemInputs.nth(0).fill("Draft Gold Necklace");
+    await newItemInputs.nth(0).fill("Temporary Gold Necklace");
     await newItemInputs.nth(2).fill("4.25");
+
     await page.evaluate((key) => {
       localStorage.setItem(key, JSON.stringify({
         version: 2,
@@ -1034,73 +1043,81 @@ async function testInvoiceDraftRecoveryAndReset(browser) {
 
     await page.waitForFunction((key) => {
       const draft = JSON.parse(localStorage.getItem(key) || "null");
-      return draft?.version === 2 && draft?.customer?.name === "Draft Recovery Customer";
+      return draft?.version === 2 && draft?.customer?.name === "Temporary Invoice Customer";
     }, draftKey);
-    const storedDraft = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
-    assert(storedDraft?.newItems?.[0]?.description === "Draft Gold Necklace",
-      "Ornament details were not persisted in the user's draft.");
-    assert(storedDraft?.newItems?.[0]?.netWeight === "4.25",
-      "Ornament weight was not persisted in the user's draft.");
-    assert((await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).customer.name, otherUserDraftKey))
-      === "Another User Draft",
-      "Saving this account's draft overwrote another user's draft.");
+    const beforeReload = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
+    assert(beforeReload?.newItems?.[0]?.description === "Temporary Gold Necklace",
+      "Current-page temporary invoice backup did not capture ornament details.");
+    assert(beforeReload?.newItems?.[0]?.netWeight === "4.25",
+      "Current-page temporary invoice backup did not capture ornament weight.");
 
-    // Leave through the application Home route, then return through the real route.
+    // Leaving and returning to New Invoice starts with a blank form.
     await page.goto(BASE_URL + "/", { waitUntil: "domcontentloaded" });
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Home -> New Invoice navigation did not restore the customer.");
-    assert((await newItemInputs.nth(0).inputValue()) === "Draft Gold Necklace",
-      "Home -> New Invoice navigation did not restore ornament details.");
+    assert((await customerInputs.nth(0).inputValue()) === "",
+      "Returning to New Invoice restored an unfinished customer.");
+    assert((await newItemInputs.nth(0).inputValue()) === "",
+      "Returning to New Invoice restored unfinished ornament details.");
 
-    // A direct browser reload must keep the draft, including its idempotency key.
+    // A direct browser reload also discards the temporary invoice.
+    await customerInputs.nth(0).fill("Reload Must Clear This Customer");
+    await newItemInputs.nth(0).fill("Reload Must Clear This Ornament");
+    await page.waitForFunction((key) => {
+      const draft = JSON.parse(localStorage.getItem(key) || "null");
+      return draft?.customer?.name === "Reload Must Clear This Customer";
+    }, draftKey);
+    const idempotencyKeyBeforeReload = await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)).idempotencyKey,
+      draftKey
+    );
+
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Refreshing /invoice cleared the user's unfinished draft.");
+    assert((await customerInputs.nth(0).inputValue()) === "",
+      "Reloading /invoice did not clear the unfinished customer.");
+    assert((await newItemInputs.nth(0).inputValue()) === "",
+      "Reloading /invoice did not clear unfinished ornament details.");
+    await page.waitForFunction((key) => {
+      const draft = JSON.parse(localStorage.getItem(key) || "null");
+      return draft?.version === 2 && draft?.customer?.name === "";
+    }, draftKey);
     const afterReload = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), draftKey);
-    assert(afterReload?.idempotencyKey === storedDraft.idempotencyKey,
-      "Refreshing /invoice replaced the draft idempotency key.");
+    assert(afterReload?.idempotencyKey && afterReload.idempotencyKey !== idempotencyKeyBeforeReload,
+      "Reloading /invoice reused the previous temporary draft idempotency key.");
 
-    let escapeCancelMessage = "";
+    // Cancel keeps the current invoice; confirming Reset clears all fields.
+    await customerInputs.nth(0).fill("Reset Confirmation Customer");
+    await newItemInputs.nth(0).fill("Reset Confirmation Ornament");
+    await page.waitForFunction((key) => {
+      const draft = JSON.parse(localStorage.getItem(key) || "null");
+      return draft?.customer?.name === "Reset Confirmation Customer";
+    }, draftKey);
+
+    let resetMessage = "";
     page.once("dialog", async (dialog) => {
-      escapeCancelMessage = dialog.message();
+      resetMessage = dialog.message();
       await dialog.dismiss();
     });
-    await page.keyboard.press("Escape");
-    assert(escapeCancelMessage === "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
-      "Escape did not show the required reset confirmation.");
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Canceling the Escape confirmation changed invoice fields.");
-
-    page.once("dialog", async (dialog) => { await dialog.dismiss(); });
     await page.locator(".nkj-invoice-reset-button").click();
-    assert((await customerInputs.nth(0).inputValue()) === "Draft Recovery Customer",
-      "Canceling the Reset button changed invoice fields.");
+    assert(resetMessage === "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
+      "Reset did not show the expected confirmation message.");
+    assert((await customerInputs.nth(0).inputValue()) === "Reset Confirmation Customer",
+      "Canceling Reset changed the invoice fields.");
     assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Canceling Reset deleted the local draft.");
+      "Canceling Reset removed the temporary invoice backup.");
 
     page.once("dialog", async (dialog) => { await dialog.accept(); });
     await page.locator(".nkj-invoice-reset-button").click();
     assert((await customerInputs.nth(0).inputValue()) === "",
       "Confirming Reset did not clear customer fields.");
-    assert(!(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Confirming Reset did not delete the account's draft.");
+    assert((await newItemInputs.nth(0).inputValue()) === "",
+      "Confirming Reset did not clear ornament fields.");
+    await page.waitForFunction((key) => localStorage.getItem(key) === null, draftKey);
     assert(Boolean(await page.evaluate((key) => localStorage.getItem(key), otherUserDraftKey)),
-      "Reset incorrectly removed another user's draft.");
+      "Reset incorrectly removed another user's data.");
 
-    // Independently exercise Escape-confirm as well as Escape-cancel.
-    await customerInputs.nth(0).fill("Escape Confirm Customer");
-    await page.waitForFunction((key) => Boolean(localStorage.getItem(key)), draftKey);
-    page.once("dialog", async (dialog) => { await dialog.accept(); });
-    await page.keyboard.press("Escape");
-    assert((await customerInputs.nth(0).inputValue()) === "",
-      "Confirming the Escape reset did not clear the current invoice.");
-    assert(!(await page.evaluate((key) => localStorage.getItem(key), draftKey)),
-      "Confirming the Escape reset did not delete the draft.");
-
-    process.stdout.write("PASS per-user draft autosave, Home/return, reload recovery, Esc cancel/confirm and Reset cancel/confirm\n");
+    process.stdout.write("PASS New Invoice Reset cancel/confirm, Home/return blank state and reload clears unfinished invoice data\\n");
   } finally {
     await context.close();
   }
@@ -1641,7 +1658,7 @@ async function testPublicNavigation(browser) {
     await testInvoiceMakingChargeModes(browser);
     await testInvoiceToolbarAndDeleteControls(browser);
     await testInvoiceSavePinGate(browser);
-    await testInvoiceDraftRecoveryAndReset(browser);
+    await testInvoiceDraftResetOnReload(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
     // Verify public navbar placement before the independent saved-invoice print fixture.
     await testPublicNavigation(browser);
@@ -1649,7 +1666,7 @@ async function testPublicNavigation(browser) {
     await testOwnerLoginSingleClick(browser);
     await testPhysicalMobileLayout(browser);
     await testSavedInvoiceMobile(browser);
-    process.stdout.write("PASS New Invoice at 360/390/430, draft recovery/reset, inactivity logout, saved invoice view and print/PDF layout.\n");
+    process.stdout.write("PASS New Invoice at 360/390/430, reload reset, inactivity logout, saved invoice view and print/PDF layout.\n");
     process.stdout.write("All owner/public page responsive smoke checks passed.\n");
   } catch (error) {
     console.error(error);

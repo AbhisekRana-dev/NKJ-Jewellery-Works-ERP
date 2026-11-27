@@ -1638,3 +1638,261 @@
   .nkj-rate-jewel-photo {transform:scaleX(1.25);transform-origin:center;}
   .nkj-rate-jewel-photo.is-silver {transform:scaleX(1.18);transform-origin:center;}
 }
+
+
+/* Shared navigation sits above the board; the artwork remains a 16:9 canvas. */
+.nkj-rate-board-page {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1;
+  width: 100%;
+  height: calc(100vh - var(--nkj-rate-nav-height, 98px));
+  height: calc(100dvh - var(--nkj-rate-nav-height, 98px));
+  min-height: 0;
+  max-height: calc(100vh - var(--nkj-rate-nav-height, 98px));
+  max-height: calc(100dvh - var(--nkj-rate-nav-height, 98px));
+  overflow: hidden;
+}
+
+.nkj-rate-board-canvas {
+  width: min(100vw, calc((100vh - var(--nkj-rate-nav-height, 98px)) * 1.777778));
+  width: min(100vw, calc((100dvh - var(--nkj-rate-nav-height, 98px)) * 1.777778));
+  height: min(calc(100vh - var(--nkj-rate-nav-height, 98px)), 56.25vw);
+  height: min(calc(100dvh - var(--nkj-rate-nav-height, 98px)), 56.25vw);
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* Tablet and landscape-phone screens keep the reference's 16:9 composition. */
+@media (min-width: 621px) and (max-width: 900px) {
+  .nkj-rate-board-page {
+    height: calc(100vh - var(--nkj-rate-nav-height, 98px));
+    height: calc(100dvh - var(--nkj-rate-nav-height, 98px));
+  }
+
+  .nkj-rate-board-canvas {
+    width: min(100vw, calc((100dvh - var(--nkj-rate-nav-height, 98px)) * 1.777778));
+    height: min(calc(100dvh - var(--nkj-rate-nav-height, 98px)), 56.25vw);
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* Phone portrait keeps readable stacked content and may scroll below the navbar. */
+@media (max-width: 620px) {
+  .nkj-rate-board-page {
+    height: auto;
+    min-height: calc(100vh - var(--nkj-rate-nav-height, 62px));
+    min-height: calc(100dvh - var(--nkj-rate-nav-height, 62px));
+    max-height: none;
+    overflow: visible;
+  }
+
+  .nkj-rate-board-canvas {
+    width: 100vw;
+    height: auto;
+    min-height: calc(100vh - var(--nkj-rate-nav-height, 62px));
+    min-height: calc(100dvh - var(--nkj-rate-nav-height, 62px));
+    max-height: none;
+    aspect-ratio: auto;
+  }
+}
+
+
+/* Refined reference framing: keep the artwork 16:9 and replace empty maroon gutters. */
+.nkj-rate-board-page {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.7), transparent 65%),
+    repeating-linear-gradient(0deg, transparent 0 34px, rgba(176,127,43,.10) 35px 36px, transparent 37px 70px),
+    linear-gradient(90deg, #f4e4c5 0%, #fff8eb 48%, #f4e4c5 100%) !important;
+}
+
+.nkj-rate-board-page::before,
+.nkj-rate-board-page::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  width: clamp(18px, 4.2vw, 82px);
+  pointer-events: none;
+  border-left: 2px solid #bc831e;
+  border-right: 2px solid #e6c36e;
+  background:
+    radial-gradient(ellipse at 50% 8%, #fff7d9 0 3px, #d19b30 4px 5px, transparent 7px),
+    radial-gradient(ellipse at 50% 25%, transparent 0 12px, rgba(180,120,29,.55) 13px 14px, transparent 16px),
+    radial-gradient(ellipse at 50% 50%, transparent 0 12px, rgba(180,120,29,.48) 13px 14px, transparent 16px),
+    radial-gradient(ellipse at 50% 75%, transparent 0 12px, rgba(180,120,29,.48) 13px 14px, transparent 16px),
+    repeating-linear-gradient(0deg, transparent 0 23px, rgba(179,122,31,.28) 24px 25px, transparent 26px 48px),
+    linear-gradient(90deg, #ead19a 0%, #fff4dc 28%, #f6e5c2 70%, #dfbd70 100%);
+  box-shadow: inset 0 0 12px rgba(122,72,8,.16);
+}
+
+.nkj-rate-board-page::before { left: 0; }
+.nkj-rate-board-page::after { right: 0; transform: scaleX(-1); }
+
+.nkj-rate-board-canvas {
+  z-index: 1;
+}
+
+/* Reference curtains should drape from the upper corners, not form wide side panels. */
+.nkj-rate-board-curtain {
+  width: 7.6% !important;
+  height: 23% !important;
+  clip-path: polygon(0 0,100% 0,94% 13%,79% 24%,63% 34%,47% 48%,31% 61%,16% 77%,0 88%) !important;
+  filter: drop-shadow(3px 3px 5px rgba(58,0,17,.3));
+}
+
+.nkj-rate-board-curtain:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 8%;
+  width: 4px;
+  height: 94%;
+  border-right: 2px solid #f7d16d;
+  border-left: 1px solid rgba(255,245,195,.8);
+  transform: skewY(-24deg);
+  transform-origin: top;
+}
+
+.nkj-rate-board-curtain.is-left { left: 0; }
+.nkj-rate-board-curtain.is-right { right: 0; transform: scaleX(-1); }
+
+/* The reference controls are compact, square and visually secondary to the wordmark. */
+.nkj-rate-board-header {
+  grid-template-columns: 15.7% 67.1% 11.8%;
+  gap: 2.1%;
+}
+
+.nkj-rate-board-actions { gap: 5%; }
+
+.nkj-rate-action {
+  width: 44%;
+  height: 54%;
+  border-radius: 1cqw;
+}
+
+.nkj-rate-action svg {
+  width: 29% !important;
+  height: 29% !important;
+}
+
+.nkj-rate-action span {
+  font-size: 1.22cqw;
+}
+
+@media (max-width: 900px) {
+  .nkj-rate-board-header {
+    grid-template-columns: 15.7% 67.1% 11.8%;
+    gap: 2.1%;
+  }
+  .nkj-rate-action span { font-size: 1.45cqw; }
+}
+
+@media (max-width: 620px) {
+  .nkj-rate-board-header {
+    grid-template-columns: 18% minmax(0,1fr) 22%;
+  }
+  .nkj-rate-action { height: 64%; }
+  .nkj-rate-action span { font-size: 1.9cqw; }
+  .nkj-rate-board-page::before,
+  .nkj-rate-board-page::after { display: none; }
+}
+
+/* Fullscreen now uses the entire display area because the navbar is outside the fullscreen element. */
+.nkj-rate-board-page:fullscreen {
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  min-height: 100dvh !important;
+}
+
+
+/* Compact, brighter Edit / Full Screen controls, sized to the second reference. */
+@media (min-width: 621px) {
+  .nkj-rate-board-actions {
+    transform: translateX(12%) scale(.88) !important;
+    transform-origin: center right !important;
+    gap: 3.5% !important;
+  }
+
+  .nkj-rate-action {
+    width: 41% !important;
+    height: 49% !important;
+    padding: 1% .5% !important;
+    gap: 2% !important;
+    border: clamp(2px, .3cqw, 4px) double #ffe98a !important;
+    border-radius: .9cqw !important;
+    background:
+      linear-gradient(180deg, rgba(255,246,197,.2), transparent 38%),
+      linear-gradient(180deg, #950021 0%, #670014 49%, #360008 100%) !important;
+    box-shadow:
+      0 3px 0 #9b5b09,
+      0 0 0 1px rgba(255,231,137,.7),
+      0 0 13px rgba(255,194,44,.68),
+      inset 0 0 0 2px rgba(255,250,219,.2),
+      inset 0 -4px 7px rgba(0,0,0,.3) !important;
+  }
+
+  .nkj-rate-action svg {
+    width: 23% !important;
+    height: 23% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    color: #fff0a0 !important;
+    filter: drop-shadow(0 0 3px rgba(255,214,88,.7));
+    stroke-width: 2.35 !important;
+  }
+
+  .nkj-rate-action span {
+    font-size: 1.08cqw !important;
+    line-height: .96 !important;
+    color: #fff8e8 !important;
+    text-shadow: 0 1px 2px #240006, 0 0 5px rgba(255,224,112,.28) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .nkj-rate-board-actions { transform: scale(.9) !important; transform-origin: center right !important; }
+  .nkj-rate-action { width: 43% !important; height: 57% !important; }
+  .nkj-rate-action svg { width: 24% !important; height: 24% !important; color: #fff0a0 !important; }
+  .nkj-rate-action span { font-size: 1.65cqw !important; }
+}
+
+/* Longer certification statement: keep one line, blue, centered and legible. */
+.nkj-rate-hallmark strong {
+  color: #06258f !important;
+  font-size: 2.35cqw !important;
+  letter-spacing: .006em !important;
+  line-height: 1 !important;
+  text-shadow:
+    0 1px 0 #fff9d9,
+    0 2px 1px rgba(75,44,0,.18),
+    0 0 7px rgba(255,255,255,.72) !important;
+}
+
+.nkj-rate-bis-logo {
+  filter: drop-shadow(0 1px 2px rgba(255,255,255,.65));
+}
+
+
+/* Authenticated Rate Board shares the same workspace geometry as Home.
+   The shared OwnerShell navbar and sidebar remain untouched; this route
+   simply reserves the sidebar rail and fills the remaining viewport. */
+body.nkj-owner-layout .nkj-rate-board-page {
+  box-sizing: border-box !important;
+  width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width, 258px))) !important;
+  max-width: calc(100% - var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width, 258px))) !important;
+  margin-left: var(--nkj-owner-sidebar-width, var(--nkj-owner-expanded-width, 258px)) !important;
+}
+
+/* On phones, the owner sidebar becomes an overlay. The board uses the full
+   viewport width while the shared hamburger controls the sidebar. */
+@media screen and (max-width: 760px) {
+  body.nkj-owner-layout .nkj-rate-board-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+}

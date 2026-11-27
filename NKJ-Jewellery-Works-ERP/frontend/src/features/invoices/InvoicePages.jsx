@@ -23,6 +23,7 @@ import {
   Trash2,
   ArrowLeft,
   Save,
+  RotateCcw,
   LockKeyhole,
   Diamond,
   EyeOff,
@@ -325,16 +326,6 @@ function getInvoiceDraftStorageKey(owner, isEditingSavedInvoice = false, invoice
   return `${INVOICE_DRAFT_STORAGE_KEY}:${account}:${scope}`;
 }
 
-function readInvoiceDraft(storageKey) {
-  if (typeof window === "undefined") return null;
-  try {
-    const draft = JSON.parse(window.localStorage.getItem(storageKey) || "null");
-    return draft && draft.version === 2 ? draft : null;
-  } catch {
-    return null;
-  }
-}
-
 function getTodayIndiaDate() {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata",
@@ -394,12 +385,14 @@ export function InvoicePage() {
       location.state?.editInvoice?.id ?? null
     )
   );
-  const [initialDraft] = useState(() => invoiceSeed ? null : readInvoiceDraft(draftStorageKey));
+  // Unfinished invoices are never restored after a fresh page load.
+  // The temporary local copy is removed on mount; saved/copy invoice route
+  // state is still honoured for deliberate edit/copy actions.
   const [invoiceDate, setInvoiceDate] = useState(() =>
-    invoiceSeed?.invoiceDate || initialDraft?.invoiceDate || getTodayIndiaDate()
+    invoiceSeed?.invoiceDate || getTodayIndiaDate()
   );
   const [showGstin, setShowGstin] = useState(() =>
-    Boolean(invoiceSeed?.showGstin ?? initialDraft?.showGstin ?? true)
+    Boolean(invoiceSeed?.showGstin ?? true)
   );
   const maxInvoiceDate = getTodayIndiaDate();
 
@@ -415,26 +408,26 @@ export function InvoicePage() {
   };
 
   const [customer, setCustomer] = useState(() => ({
-    name: normalizeCustomerName(invoiceSeed?.customerName || invoiceSeed?.name || initialDraft?.customer?.name || ""),
-    mobile: invoiceSeed?.mobile || initialDraft?.customer?.mobile || "",
-    address: normalizeCustomerAddress(invoiceSeed?.address || initialDraft?.customer?.address || ""),
+    name: normalizeCustomerName(invoiceSeed?.customerName || invoiceSeed?.name || ""),
+    mobile: invoiceSeed?.mobile || "",
+    address: normalizeCustomerAddress(invoiceSeed?.address || ""),
   }));
 
-  const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || initialDraft?.paymentMode || "Cash");
-  const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || initialDraft?.referenceNo || "");
+  const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || "Cash");
+  const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || "");
   const [totalPaid, setTotalPaid] = useState(() => {
     if (isEditingSavedInvoice) {
       return String(invoiceSeed?.totalPaid ?? invoiceSeed?.paymentAmount ?? 0);
     }
-    return initialDraft?.totalPaid === undefined || initialDraft?.totalPaid === null
-      ? null
-      : String(initialDraft.totalPaid);
+    return null;
   });
-  const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map(normalizeNewItemRow));
+  const [newItems, setNewItems] = useState(() =>
+    copiedRows(invoiceSeed?.newItems, [blankNew()]).map(normalizeNewItemRow)
+  );
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
   // and always start with exactly one empty row at the end.
   const [oldItems, setOldItems] = useState(() => {
-    const rows = copiedRows(invoiceSeed?.oldItems, copiedRows(initialDraft?.oldItems, [blankOld()])).map((x) => ({ ...blankOld(), ...x }));
+    const rows = copiedRows(invoiceSeed?.oldItems, [blankOld()]).map((x) => ({ ...blankOld(), ...x }));
     const enteredRows = rows.filter((row) =>
       String(row.description ?? "").trim() !== "" ||
       String(row.purity ?? "").trim() !== "" ||
@@ -443,16 +436,12 @@ export function InvoicePage() {
     );
     return [...enteredRows, blankOld()];
   });
-  const [discount, setDiscount] = useState(() => String(invoiceSeed?.discount ?? initialDraft?.discount ?? ""));
-  const [gst, setGst] = useState(() => String(invoiceSeed?.gstPercent ?? initialDraft?.gst ?? 0));
-  const [description, setDescription] = useState(() => invoiceSeed?.description || initialDraft?.description || "");
+  const [discount, setDiscount] = useState(() => String(invoiceSeed?.discount ?? ""));
+  const [gst, setGst] = useState(() => String(invoiceSeed?.gstPercent ?? 0));
+  const [description, setDescription] = useState(() => invoiceSeed?.description || "");
   const [saved, setSaved] = useState(false);
-  const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
   const [draftStorageError, setDraftStorageError] = useState(false);
-  // Keep the draft's idempotency key when restoring it. The backend checks
-  // that key and safely repairs a prior save's business date only when the
-  // rest of the invoice payload is identical.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => initialDraft?.idempotencyKey || createInvoiceDraftKey());
+  const [idempotencyKey, setIdempotencyKey] = useState(() => createInvoiceDraftKey());
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
@@ -472,18 +461,25 @@ export function InvoicePage() {
   const skipNextDraftPersistRef = useRef(false);
 
   useEffect(() => {
-    // Route state is metadata, not a command to delete a draft. New Invoice
-    // links restore the existing account draft; only an explicit reset or a
-    // confirmed backend save removes it.
+    // Remove any unfinished invoice from a previous page visit. Drafts are
+    // temporary within the open page only and must not be restored on reload.
+    try {
+      window.localStorage.removeItem(draftStorageKey);
+    } catch {
+      // The form still starts blank when browser storage is unavailable.
+    }
+  }, []);
+
+  useEffect(() => {
     if (location.state?.copyInvoice || location.state?.editInvoice || location.state?.startNewInvoice) {
-      if (startingNewInvoice && saved) {
-        // Support clicking New Invoice again while the previous invoice page
-        // is still mounted after a successful save.
+      if (startingNewInvoice) {
+        // A deliberate New Invoice navigation always starts with blank fields,
+        // including when the previous invoice page is still mounted.
         resetInvoiceFields({ allowSaved: true });
       }
       navigate("/invoice", { replace: true, state: null });
     }
-  }, [location.key, location.state, startingNewInvoice, saved, navigate]);
+  }, [location.key, location.state, startingNewInvoice, navigate]);
 
   useEffect(() => {
     if (saved) {
@@ -679,6 +675,7 @@ export function InvoicePage() {
     };
   }
 
+  // Clear every editable invoice field and discard this page's temporary draft.
   function resetInvoiceFields({ allowSaved = false } = {}) {
     if (saving || (saved && !allowSaved)) return;
 
@@ -697,59 +694,28 @@ export function InvoicePage() {
     setGst("0");
     setDescription("");
     setSaved(false);
-    setDraftRestored(false);
     setDraftStorageError(false);
     setIsEditingSavedInvoice(false);
     setDraftStorageKey(getInvoiceDraftStorageKey(invoiceOwnerRef.current, false, null));
     setIdempotencyKey(createInvoiceDraftKey());
-    setSuccessMessage("");
     setInvoiceNo("");
     setInvoiceId(null);
     setError("");
+    setSuccessMessage("");
     setShowInvoicePin(false);
     setShowSavePin(false);
     setPendingPrintAfterSave(false);
     setIsPrintPreparing(false);
   }
 
-  function confirmResetInvoice() {
-    if (saving || saved) return;
+  function handleResetInvoice() {
+    if (saving || isPrintPreparing || showInvoicePin || showSavePin) return;
     const confirmed = window.confirm(
-      "Are you sure you want to reset this invoice? All unsaved data will be deleted.",
+      "Are you sure you want to reset this invoice? All unsaved data will be deleted."
     );
     if (!confirmed) return;
-    resetInvoiceFields();
+    resetInvoiceFields({ allowSaved: true });
   }
-
-  useEffect(() => {
-    if (saved) return undefined;
-
-    const onResetShortcut = (event) => {
-      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
-      if (saving || showSavePin || showInvoicePin || isPrintPreparing) return;
-
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest(
-        "select,input[type='date'],[role='combobox'],[aria-haspopup='listbox'],[role='listbox'],[role='menu'],.nkj-pin-overlay,.nkj-invoice-detail-overlay"
-      )) return;
-
-      const isMobileViewport = window.matchMedia?.("(max-width: 760px)").matches;
-      const mobileNavigationOpen = Boolean(isMobileViewport
-        && document.querySelector(".nkj-owner-sidebar:not(.is-collapsed)"));
-      const otherOverlayOpen = Boolean(document.querySelector(
-        ".nkj-pin-overlay,[role='dialog'],.nkj-invoice-detail-overlay,.nkj-catalog-modal-backdrop,.nkj-public-topbar nav.is-open"
-      ));
-      if (mobileNavigationOpen || otherOverlayOpen) return;
-
-      event.preventDefault();
-      confirmResetInvoice();
-    };
-
-    // Bubble phase: calculator/dialog/menu/dropdown handlers get the first chance
-    // to consume Escape before this page-level reset confirmation runs.
-    window.addEventListener("keydown", onResetShortcut);
-    return () => window.removeEventListener("keydown", onResetShortcut);
-  }, [saved, saving, showSavePin, showInvoicePin, isPrintPreparing]);
 
   function validateInvoiceForm() {
     if (!invoiceDate) return "Please select an invoice date.";
@@ -792,14 +758,16 @@ export function InvoicePage() {
 
   async function persistInvoice(pinTicket) {
     if (saved && invoiceId) return { id: invoiceId, invoiceNo };
-    if (saveInProgressRef.current) return null;
+    if (saveInProgressRef.current) {
+      throw new Error("The invoice is already being saved. Please wait.");
+    }
 
     setError("");
     setSuccessMessage("");
     const validationError = validateInvoiceForm();
     if (validationError) {
       setError(validationError);
-      return null;
+      throw new Error(validationError);
     }
 
     saveInProgressRef.current = true;
@@ -884,8 +852,11 @@ export function InvoicePage() {
       setSuccessMessage(`Invoice ${result.invoiceNo} ${isEditingSavedInvoice ? "updated" : "saved"} successfully. It is now available in Invoice History.`);
       return result;
     } catch (e) {
-      setError(e.message || "Could not save the invoice. Printing and PDF download have been stopped; your draft is still available.");
-      return null;
+      const message = e.message || "Could not save the invoice. Printing has been stopped; your draft is still available.";
+      setError(message);
+      // Propagate the failure to InvoicePinDialog so the PIN dialog remains
+      // open and the user receives an actionable message instead of a silent close.
+      throw new Error(message);
     } finally {
       saveInProgressRef.current = false;
       setSaving(false);
@@ -901,52 +872,103 @@ export function InvoicePage() {
   async function saveInvoiceWithPin(ticket) {
     const shouldPrintAfterSave = pendingPrintAfterSave;
     const result = await persistInvoice(ticket);
+    if (!result?.id || !result?.invoiceNo) {
+      throw new Error("The server did not confirm that the invoice was saved. Printing has been stopped; your draft is still available.");
+    }
+
     setShowSavePin(false);
     setPendingPrintAfterSave(false);
-    if (!result?.id || !result?.invoiceNo) return;
 
     if (shouldPrintAfterSave) {
-      setSuccessMessage(`Invoice ${result.invoiceNo} is saved. Verify the invoice security PIN again to print or save as PDF.`);
+      setSuccessMessage(`Invoice ${result.invoiceNo} saved successfully. Step 2 of 2: verify the PRINT PIN to open the print preview.`);
       setShowInvoicePin(true);
     }
   }
 
-  async function requestPrintPin() {
+  function requestPrintPin() {
+    if (saving || isPrintPreparing || showSavePin || showInvoicePin) return;
+
     setCalculatorOpen(false);
     setError("");
+    setSuccessMessage("");
+
     if (!saved || !invoiceId) {
-      // Never create or update a record before the SAVE PIN is verified.
-      // The print flow then asks for a second, purpose-specific PRINT PIN.
+      const validationError = validateInvoiceForm();
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      // One click starts the two-stage secure flow:
+      // 1) SAVE PIN -> persist the invoice to PostgreSQL.
+      // 2) PRINT PIN -> authorize the native A4 landscape print preview.
       setPendingPrintAfterSave(true);
+      setSuccessMessage("Step 1 of 2: verify the SAVE PIN. The invoice will be saved before printing.");
       setShowSavePin(true);
       return;
     }
 
-    setIsPrintPreparing(true);
-    setSuccessMessage(`Invoice ${invoiceNo} is saved. Verify the invoice security PIN to print or save as PDF.`);
+    setPendingPrintAfterSave(false);
+    setSuccessMessage(`Invoice ${invoiceNo} is already saved. Verify the PRINT PIN to open the print preview.`);
     setShowInvoicePin(true);
   }
 
   async function printCurrentInvoice(ticket) {
     setIsPrintPreparing(true);
     setError("");
+
+    const printedInvoiceNo = invoiceNo;
+    let printDialogStarted = false;
+    let printFinished = false;
+
+    const finishAfterPrint = () => {
+      if (printFinished) return;
+      printFinished = true;
+      window.removeEventListener("afterprint", finishAfterPrint);
+
+      // The invoice is already safely saved on the server. Clear only the
+      // local form/draft and return this same page to a fresh invoice.
+      resetInvoiceFields({ allowSaved: true });
+      setSuccessMessage(
+        printedInvoiceNo
+          ? `Invoice ${printedInvoiceNo} print dialog closed. Ready for a new invoice.`
+          : "Print dialog closed. Ready for a new invoice.",
+      );
+    };
+
     try {
+      if (!invoiceId || !invoiceNo) {
+        throw new Error("Save the invoice successfully before printing.");
+      }
+
       await request("/invoices/consume-print-ticket", {
         method: "POST",
         body: JSON.stringify({ ticket, invoiceId }),
       });
+
       setShowInvoicePin(false);
 
-      // Open the native browser print dialog only after the security PIN
-      // has been verified and the one-time print ticket has been consumed.
-      // The invoice @page / @media print rules format it as A4 landscape.
+      // Let React commit removal of the PIN overlay before opening the native
+      // print preview. This also prevents the mobile modal from covering the
+      // invoice during Chrome's print snapshot.
+      await new Promise((resolve) => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+      });
+
+      printDialogStarted = true;
+      window.addEventListener("afterprint", finishAfterPrint, { once: true });
+
+      // The existing @media print rules hide the ERP shell and format only
+      // #invoice-print as A4 landscape. afterprint resets the form after the
+      // browser print dialog closes, whether the user prints or cancels.
       window.print();
-      setSuccessMessage(`Print dialog opened for invoice ${invoiceNo}.`);
     } catch (error) {
+      if (printDialogStarted && !printFinished) {
+        window.removeEventListener("afterprint", finishAfterPrint);
+      }
       setShowInvoicePin(false);
-      setError(error.message || "Could not prepare the invoice PDF.");
-    } finally {
       setIsPrintPreparing(false);
+      setError(error.message || "Could not open the invoice print dialog.");
     }
   }
 
@@ -1742,41 +1764,39 @@ export function InvoicePage() {
       {saving && <p className="draft-note no-print" role="status">Saving the complete invoice to PostgreSQL. Printing will start only after the server confirms the save.</p>}
       {draftStorageError && (
         <p className="error no-print" role="alert">
-          This browser could not save your invoice draft. Keep this page open and avoid refreshing until storage is available.
+          Temporary invoice backup is unavailable in this browser. Unsaved entries will be cleared when this page is reloaded.
         </p>
       )}
 
       <div className="invoice-actions no-print">
+        <button
+          type="button"
+          className="secondary nkj-invoice-reset-button"
+          onClick={handleResetInvoice}
+          disabled={saving || isPrintPreparing || showInvoicePin || showSavePin}
+          title="Clear all entered details and start a blank invoice"
+        >
+          <RotateCcw size={17} /> Reset
+        </button>
+
         <button type="button" className="primary" onClick={save} disabled={saving || saved}>
           <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
         </button>
 
         <button
           type="button"
-          className="secondary nkj-invoice-reset-button"
-          onClick={confirmResetInvoice}
-          disabled={saving || saved}
-          title="Reset this unsaved invoice and delete its local draft"
-        >
-          Reset
-        </button>
-
-        <button
-          type="button"
           className="secondary"
           onClick={requestPrintPin}
-          disabled={saving || showInvoicePin || showSavePin}
-          title="Verify the invoice security PIN before saving and generating a clean A4 landscape PDF"
+          disabled={saving || isPrintPreparing || showInvoicePin || showSavePin}
+          title="Verify the invoice security PIN before opening the A4 landscape print dialog"
         >
-          <Printer /> {saving ? "Saving..." : "Download / Print Invoice PDF"}
+          <Printer /> {isPrintPreparing ? "Opening Print..." : saving ? "Saving..." : "Download / Print Invoice PDF"}
         </button>
 
       </div>
       {!saved && (
         <p className="draft-note no-print" role="status">
-          {draftRestored
-            ? "Your unfinished invoice draft was restored. It is saved on this device and remains available after refresh or session expiry."
-            : "Your invoice is saved automatically as a draft while you work. It is cleared only after a successful invoice save."}
+          Your unfinished invoice is temporary and will be cleared when you reload this page or press Reset.
         </p>
       )}
       {showSavePin && (
@@ -1789,7 +1809,7 @@ export function InvoicePage() {
             setPendingPrintAfterSave(false);
           }}
           onVerified={saveInvoiceWithPin}
-          title={isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
+          title={pendingPrintAfterSave ? "Step 1 of 2: Save Invoice" : isEditingSavedInvoice ? "Authorize invoice update" : "Authorize invoice saving"}
         />
       )}
       {showInvoicePin && (
@@ -1801,7 +1821,7 @@ export function InvoicePage() {
             setIsPrintPreparing(false);
           }}
           onVerified={printCurrentInvoice}
-          title="Authorize saved invoice printing"
+          title="Step 2 of 2: Authorize Invoice Printing"
         />
       )}
     </Page>

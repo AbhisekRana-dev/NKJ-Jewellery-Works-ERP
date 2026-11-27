@@ -11,8 +11,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { request } from "../../core/api/client";
-import { Nav } from "../../shared/layouts/OwnerShell";
 import "./DigitalRateBoardPage.css";
+import { Nav } from "../../shared/layouts/OwnerShell";
 
 const initialRates = {
   gold24kRate: 0,
@@ -279,6 +279,7 @@ function BisMark() {
 
 export default function DigitalRateBoardPage() {
   const pageRef = useRef(null);
+  const [navHeight, setNavHeight] = useState(98);
   const [rates, setRates] = useState(initialRates);
   const [now, setNow] = useState(() => new Date());
   const [loading, setLoading] = useState(true);
@@ -324,9 +325,42 @@ export default function DigitalRateBoardPage() {
   }, [refreshRates]);
 
   useEffect(() => {
-    const oldOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = oldOverflow; };
+    const header = document.querySelector(".topbar");
+    if (!header) return undefined;
+
+    const syncNavbarHeight = () => {
+      const nextHeight = Math.ceil(header.getBoundingClientRect().height);
+      if (nextHeight > 0) setNavHeight(nextHeight);
+    };
+
+    syncNavbarHeight();
+    const observer = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(syncNavbarHeight)
+      : null;
+    observer?.observe(header);
+    window.addEventListener("resize", syncNavbarHeight);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", syncNavbarHeight);
+    };
+  }, []);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const mobileQuery = window.matchMedia("(max-width: 620px)");
+    const applyOverflow = () => {
+      // The board stays viewport-fitted on desktop; the compact mobile layout
+      // is allowed to scroll vertically below the shared navigation.
+      document.body.style.overflow = mobileQuery.matches ? previousOverflow : "hidden";
+    };
+
+    applyOverflow();
+    mobileQuery.addEventListener?.("change", applyOverflow);
+    return () => {
+      mobileQuery.removeEventListener?.("change", applyOverflow);
+      document.body.style.overflow = previousOverflow;
+    };
   }, []);
 
   useEffect(() => {
@@ -473,8 +507,13 @@ export default function DigitalRateBoardPage() {
   };
 
   return (
-    <div className="nkj-rate-board-page" ref={pageRef}>
+    <>
       <Nav active="rate" />
+      <div
+        className="nkj-rate-board-page"
+        ref={pageRef}
+        style={{ "--nkj-rate-nav-height": fullscreen ? "0px" : `${navHeight}px` }}
+      >
       <div className="nkj-rate-board-canvas" aria-label="Nandikishor Jewellery Works Gold and Silver Rate Board">
         <div className="nkj-rate-board-marble" aria-hidden="true" />
         <div className="nkj-rate-board-rail is-left" aria-hidden="true" />
@@ -537,7 +576,7 @@ export default function DigitalRateBoardPage() {
         <div className="nkj-rate-hallmark">
           <BISFloralSpray side="left" />
           <BisMark />
-          <strong>916 HALLMARK CERTIFIED JEWELLERY</strong>
+          <strong aria-label="22 karat hallmark 916 certified jewellery">22K HALLMARK (916) CERTIFIED JEWELLERY</strong>
           <BisMark />
           <BISFloralSpray side="right" />
         </div>
@@ -622,7 +661,7 @@ export default function DigitalRateBoardPage() {
                   <span>Silver 999 · ₹ / 10 grams</span>
                   <div className="nkj-rate-input-wrap"><b>₹</b><input type="number" min="0.01" step="0.01" value={form.silver} onChange={(event) => setForm((old) => ({ ...old, silver: event.target.value }))} required /></div>
                 </label>
-                <p className="nkj-rate-modal-note"><ShieldCheck size={16} /> Password verified. This temporary edit authorization expires in three minutes. Date and time remain automatic in Kolkata time.</p>
+                <p className="nkj-rate-modal-note"><ShieldCheck size={16} /> Password verified. This temporary edit authorization expires in five minutes. Date and time remain automatic in Kolkata time.</p>
                 {editError && <p className="nkj-rate-edit-error" role="alert">{editError}</p>}
                 <footer>
                   <button type="button" className="nkj-rate-cancel" onClick={closeEditor} disabled={saving}>Cancel</button>
@@ -633,6 +672,7 @@ export default function DigitalRateBoardPage() {
           </section>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
