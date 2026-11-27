@@ -710,3 +710,137 @@ body:has(.nkj-login-page) .footer-copyright {
     flex: 0 0 auto !important;
   }
 }
+
+
+/* FINAL FOOTER RESERVATION FIX
+   App renders .app-content and .jewellery-footer as sibling children
+   inside .app-layout. Use explicit grid rows so the footer always gets
+   its own visible height instead of relying on nested flex growth. */
+@media screen and (min-width: 761px) {
+  html:has(.nkj-login-page),
+  body:has(.nkj-login-page) {
+    width: 100% !important;
+    height: 100svh !important;
+    min-height: 100svh !important;
+    max-height: 100svh !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) #root {
+    display: block !important;
+    width: 100% !important;
+    height: 100svh !important;
+    min-height: 0 !important;
+    max-height: 100svh !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) .app-layout {
+    display: grid !important;
+    grid-template-rows: minmax(0, 1fr) auto !important;
+    align-content: stretch !important;
+    width: 100% !important;
+    height: 100svh !important;
+    min-height: 0 !important;
+    max-height: 100svh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) .app-content {
+    display: flex !important;
+    grid-row: 1 !important;
+    flex: none !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) .app-content > .nkj-public-topbar {
+    position: relative !important;
+    flex: 0 0 78px !important;
+    width: 100% !important;
+    height: 78px !important;
+    min-height: 78px !important;
+    max-height: 78px !important;
+    margin: 0 !important;
+  }
+
+  body:has(.nkj-login-page) .app-content > .nkj-login-page {
+    position: relative !important;
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) .app-layout > .jewellery-footer {
+    display: block !important;
+    position: relative !important;
+    grid-row: 2 !important;
+    align-self: end !important;
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 108px !important;
+    max-height: 132px !important;
+    margin: 0 !important;
+    padding: 5px clamp(16px, 2.2vw, 32px) 0 !important;
+    overflow: hidden !important;
+    border-top: 2px solid #d5a33e !important;
+    background: linear-gradient(115deg, #70001e, #410013 55%, #69001d) !important;
+  }
+
+  body:has(.nkj-login-page) .app-layout > .jewellery-footer .footer-main {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, .72fr) minmax(0, 1.35fr) minmax(0, .55fr) minmax(0, .85fr) !important;
+    align-items: center !important;
+    gap: clamp(6px, .9vw, 13px) !important;
+    width: 100% !important;
+    min-height: 77px !important;
+    height: 77px !important;
+    margin: 0 auto !important;
+    padding: 2px 0 5px !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.nkj-login-page) .app-layout > .jewellery-footer .footer-copyright {
+    display: block !important;
+    min-height: 19px !important;
+    margin: 0 calc(-1 * clamp(16px, 2.2vw, 32px)) !important;
+    padding: 4px 8px !important;
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+  }
+}
+
+@media screen and (min-width: 761px) and (max-height: 760px) {
+  body:has(.nkj-login-page) .app-content > .nkj-public-topbar {
+    flex-basis: 68px !important;
+    height: 68px !important;
+    min-height: 68px !important;
+    max-height: 68px !important;
+  }
+
+  body:has(.nkj-login-page) .app-layout > .jewellery-footer {
+    min-height: 98px !important;
+    max-height: 108px !important;
+  }
+
+  body:has(.nkj-login-page) .app-layout > .jewellery-footer .footer-main {
+    min-height: 68px !important;
+    height: 68px !important;
+  }
+}
