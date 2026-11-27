@@ -1024,8 +1024,7 @@ export default function JewelleryDesignsPage() {
                 {isAdmin && (
                   <section className="nkj-catalog-view-card nkj-catalog-owner-controls">
                     <div className="nkj-catalog-owner-controls-heading">
-                      <div><Lock size={21} /><span><small>OWNER CONTROLS</small><b>Manage this design</b></span></div>
-                      <Lock size={22} />
+                      <div><Lock size={27} /><span><b>Manage this design</b></span></div>
                     </div>
                     <div className="nkj-catalog-owner-control-actions">
                       {!editMode ? (
