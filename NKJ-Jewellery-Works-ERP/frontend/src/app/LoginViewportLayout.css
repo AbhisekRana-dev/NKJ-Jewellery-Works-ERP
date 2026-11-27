@@ -1,0 +1,583 @@
+
+/*
+ * Route-scoped login viewport layout.
+ * App.jsx adds .nkj-login-layout only for /login.
+ * At desktop 100% browser zoom: navbar + hero/login + complete footer
+ * occupy exactly one viewport. No other application route is affected.
+ */
+@media screen and (min-width: 761px) {
+  html:has(.app-layout.nkj-login-layout),
+  body:has(.app-layout.nkj-login-layout) {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body:has(.app-layout.nkj-login-layout) #root {
+    box-sizing: border-box !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-layout.nkj-login-layout {
+    box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) 112px !important;
+    align-content: stretch !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* The app content gets only grid row 1. It must NOT be 100% of the
+     entire app-layout height, or it will cover the footer's grid row. */
+  .app-layout.nkj-login-layout > .app-content {
+    box-sizing: border-box !important;
+    display: flex !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    flex: none !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Single compact public navbar. */
+  .app-layout.nkj-login-layout > .app-content > .nkj-public-topbar {
+    box-sizing: border-box !important;
+    position: relative !important;
+    inset: auto !important;
+    z-index: 10 !important;
+    display: flex !important;
+    flex: 0 0 64px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px !important;
+    margin: 0 !important;
+    padding: 5px clamp(18px, 3.2vw, 50px) !important;
+    gap: 12px !important;
+    overflow: hidden !important;
+  }
+
+  .app-layout.nkj-login-layout > .app-content > .nkj-public-topbar > .brand {
+    flex: 0 1 34% !important;
+    min-width: 0 !important;
+    max-width: 38% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-public-topbar .brand b {
+    display: block !important;
+    font-size: clamp(17px, 1.55vw, 24px) !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-public-topbar .brand small {
+    display: block !important;
+    margin-top: 3px !important;
+    font-size: clamp(9px, .7vw, 11px) !important;
+    line-height: 1.1 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-public-topbar > .nkj-public-menu-button {
+    display: none !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-public-topbar > nav {
+    position: static !important;
+    display: flex !important;
+    flex: 1 1 auto !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: nowrap !important;
+    width: auto !important;
+    max-width: 66% !important;
+    min-width: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: clamp(4px, .65vw, 10px) !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-public-topbar > nav > a,
+  .app-layout.nkj-login-layout .nkj-public-topbar > nav > button {
+    display: inline-flex !important;
+    flex: 0 1 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 5px clamp(7px, .85vw, 13px) !important;
+    gap: 5px !important;
+    border-radius: 22px !important;
+    font-size: clamp(9px, .72vw, 12px) !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-public-topbar > nav > a svg,
+  .app-layout.nkj-login-layout .nkj-public-topbar > nav > button svg {
+    flex: 0 0 15px !important;
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  /* Hero is the flexible middle row between navbar and footer. */
+  .app-layout.nkj-login-layout > .app-content > .nkj-login-page {
+    box-sizing: border-box !important;
+    position: relative !important;
+    display: grid !important;
+    flex: 1 1 0% !important;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 28vw) !important;
+    align-items: center !important;
+    gap: clamp(18px, 2.6vw, 40px) !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    padding: 10px clamp(28px, 4.3vw, 66px) !important;
+    overflow: hidden !important;
+    background-position: center center !important;
+    background-size: cover !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-brand {
+    box-sizing: border-box !important;
+    align-self: stretch !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    max-width: 640px !important;
+    padding: 5px 0 5px 1vw !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-logo {
+    width: clamp(60px, 8.5vh, 88px) !important;
+    height: clamp(60px, 8.5vh, 88px) !important;
+    margin: 0 0 6px 5vw !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-brand h1 {
+    margin: 2px 0 6px !important;
+    font-size: clamp(32px, 3.35vw, 52px) !important;
+    line-height: 1.02 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-ornament {
+    margin: 4px 0 10px 5px !important;
+    font-size: clamp(12px, 1vw, 16px) !important;
+    line-height: 1 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-location {
+    gap: 8px !important;
+    margin: 0 0 9px !important;
+    font-size: clamp(12px, .95vw, 15px) !important;
+    line-height: 1.15 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-location svg,
+  .app-layout.nkj-login-layout .nkj-login-brand li svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-brand ul {
+    display: grid !important;
+    gap: 7px !important;
+    margin: 2px 0 0 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-brand li {
+    gap: 10px !important;
+    font-size: clamp(12px, .95vw, 15px) !important;
+    line-height: 1.12 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-ring-icon {
+    width: 19px !important;
+    font-size: 18px !important;
+  }
+
+  /* Compact login card: all fields, OTP hint, Login and Reset stay in view. */
+  .app-layout.nkj-login-layout .nkj-login-card {
+    box-sizing: border-box !important;
+    justify-self: end !important;
+    align-self: center !important;
+    width: 100% !important;
+    max-width: 440px !important;
+    min-width: 0 !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    padding: 12px clamp(16px, 1.8vw, 24px) 10px !important;
+    border: 1.5px solid #d9a34d !important;
+    border-radius: 19px !important;
+    box-shadow: 0 10px 32px rgba(35, 0, 11, .35) !important;
+    overflow: hidden !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-lock {
+    width: 44px !important;
+    height: 44px !important;
+    margin: -3px auto 2px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-lock svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-rule {
+    gap: 10px !important;
+    margin: 0 0 3px !important;
+    font-size: 11px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-rule span {
+    width: 60px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-card h2 {
+    margin: 1px 0 3px !important;
+    font-size: clamp(24px, 1.85vw, 29px) !important;
+    line-height: 1.05 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-subtitle {
+    margin: 0 0 9px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-card form {
+    display: grid !important;
+    gap: 6px !important;
+    margin: 0 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-field {
+    grid-template-columns: 27px minmax(0, 1fr) !important;
+    gap: 7px !important;
+    min-height: 47px !important;
+    padding: 5px 9px !important;
+    border-radius: 9px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-field > svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-field b {
+    margin-bottom: 1px !important;
+    font-size: 11px !important;
+    line-height: 1.05 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-field input {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-totp-field {
+    grid-template-columns: 27px minmax(0, 1fr) 21px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-google-mark {
+    font-size: 19px !important;
+    line-height: 1 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-password-wrap button svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-otp-note {
+    gap: 5px !important;
+    padding: 5px 8px !important;
+    border-radius: 6px !important;
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-otp-note svg {
+    width: 13px !important;
+    height: 13px !important;
+    flex: 0 0 13px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-submit {
+    min-height: 39px !important;
+    padding: 7px 10px !important;
+    border-radius: 9px !important;
+    font-size: 16px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-reset-row {
+    gap: 12px !important;
+    margin: 0 !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-reset-row > span {
+    width: 55px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-reset-row button {
+    font-size: 11px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-totp-setup-link {
+    margin-top: 5px !important;
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Footer is a real second grid row, not content below the fold. */
+  .app-layout.nkj-login-layout > .jewellery-footer {
+    box-sizing: border-box !important;
+    display: block !important;
+    position: relative !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    align-self: stretch !important;
+    width: 100% !important;
+    height: 112px !important;
+    min-width: 0 !important;
+    min-height: 112px !important;
+    max-height: 112px !important;
+    margin: 0 !important;
+    padding: 4px clamp(14px, 2.2vw, 32px) 0 !important;
+    border-top: 2px solid #d5a33e !important;
+    overflow: hidden !important;
+    background: linear-gradient(115deg, #70001e, #410013 55%, #69001d) !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-main {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, .72fr) minmax(0, 1.3fr) minmax(0, .48fr) minmax(0, .82fr) !important;
+    align-items: center !important;
+    gap: clamp(5px, .75vw, 10px) !important;
+    width: 100% !important;
+    height: 76px !important;
+    min-height: 76px !important;
+    margin: 0 auto !important;
+    padding: 1px 0 3px !important;
+    overflow: hidden !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-brand {
+    min-height: 44px !important;
+    gap: 6px !important;
+    padding-right: 5px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-logo {
+    flex: 0 0 34px !important;
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 13px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .brand-text h2 {
+    margin-bottom: 2px !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .brand-text p {
+    font-size: 7.5px !important;
+    line-height: 1.25 !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-links,
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-contact {
+    min-height: 43px !important;
+    gap: 3px !important;
+    padding-right: 5px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-links h3,
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-contact h3 {
+    margin-bottom: 1px !important;
+    font-size: 9px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-links a,
+  .app-layout.nkj-login-layout > .jewellery-footer .contact-item {
+    gap: 3px !important;
+    font-size: 7.5px !important;
+    line-height: 1.15 !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-links a svg,
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-contact svg {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-diamond {
+    min-height: 36px !important;
+    padding: 0 2px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-diamond svg {
+    width: 58px !important;
+    height: 38px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-developer {
+    gap: 4px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .developer-heading {
+    font-size: 7.5px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .developer-bottom {
+    gap: 3px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .developer-name {
+    gap: 3px !important;
+    padding: 4px 5px !important;
+    font-size: 7.5px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .developer-name svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .version-tag {
+    padding: 3px 5px !important;
+    font-size: 7.5px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-copyright {
+    display: block !important;
+    height: 19px !important;
+    min-height: 19px !important;
+    margin: 0 calc(-1 * clamp(14px, 2.2vw, 32px)) !important;
+    padding: 3px 6px !important;
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+  }
+}
+
+/* Short desktop viewport: compact the fixed rows but keep the same structure. */
+@media screen and (min-width: 761px) and (max-height: 700px) {
+  .app-layout.nkj-login-layout {
+    grid-template-rows: minmax(0, 1fr) 96px !important;
+  }
+
+  .app-layout.nkj-login-layout > .app-content > .nkj-public-topbar {
+    flex-basis: 58px !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    max-height: 58px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer {
+    height: 96px !important;
+    min-height: 96px !important;
+    max-height: 96px !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer .footer-main {
+    height: 63px !important;
+    min-height: 63px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-card {
+    padding-top: 8px !important;
+    padding-bottom: 7px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-field {
+    min-height: 41px !important;
+  }
+
+  .app-layout.nkj-login-layout .nkj-login-card form {
+    gap: 5px !important;
+  }
+}
+
+/* Mobile and tablet keep natural page scrolling; no content is hidden. */
+@media screen and (max-width: 760px) {
+  html:has(.app-layout.nkj-login-layout),
+  body:has(.app-layout.nkj-login-layout),
+  body:has(.app-layout.nkj-login-layout) #root {
+    height: auto !important;
+    min-height: 100svh !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .app-layout.nkj-login-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100svh !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .app-layout.nkj-login-layout > .app-content {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .app-layout.nkj-login-layout > .app-content > .nkj-login-page {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .app-layout.nkj-login-layout > .jewellery-footer {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+}
