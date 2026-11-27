@@ -47,6 +47,10 @@ import {
   Gem,
   Wrench,
   ChevronRight,
+  ChevronsLeft,
+  ChevronLeft,
+  ChevronsRight,
+  Filter,
 } from "lucide-react";
 
 
@@ -2531,6 +2535,9 @@ export function SavedInvoices() {
   const location = useLocation();
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [dateFilter, setDateFilter] = useState("ALL");
+  const [showFilters, setShowFilters] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -2625,15 +2632,56 @@ export function SavedInvoices() {
     if (match) openInvoiceDetails(match);
   }, [location.search, items]);
 
+  const PAGE_SIZE = 10;
   const searchText = q.trim().toLowerCase();
   const searchPhone = q.replace(/\D/g, "");
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  monthStart.setHours(0, 0, 0, 0);
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setHours(0, 0, 0, 0);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+  const parseSavedInvoiceDate = (value) => {
+    const raw = String(value || "").trim();
+    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+    const dmy = raw.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+    if (dmy) return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime())
+      ? null
+      : new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  };
   const filtered = items.filter((x) => {
     const invoiceNo = String(x.invoiceNo || "").toLowerCase();
     const customerName = String(x.customerName || "").toLowerCase();
     const customerPhone = String(x.mobile || "").replace(/\D/g, "");
-    return invoiceNo.includes(searchText) || customerName.includes(searchText) ||
+    const matchesSearch = invoiceNo.includes(searchText) || customerName.includes(searchText) ||
       (searchPhone.length > 0 && customerPhone.includes(searchPhone));
+    if (!matchesSearch) return false;
+
+    if (dateFilter !== "ALL") {
+      const invoiceDate = parseSavedInvoiceDate(x.invoiceDate);
+      if (!invoiceDate) return false;
+      if (dateFilter === "THIS_MONTH" && (invoiceDate < monthStart || invoiceDate > today)) return false;
+      if (dateFilter === "LAST_30_DAYS" && (invoiceDate < thirtyDaysAgo || invoiceDate > today)) return false;
+      if (dateFilter === "OLDER" && invoiceDate >= monthStart) return false;
+    }
+    return true;
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const firstVisible = filtered.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  const lastVisible = Math.min(currentPage * PAGE_SIZE, filtered.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [q, dateFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const editSelectedInvoice = () => {
     if (!selectedInvoice?.id) {
@@ -2817,45 +2865,83 @@ export function SavedInvoices() {
 
   return (
     <Page active="saved">
-      <div className="page-title">
-        <div>
+      <section className="nkj-saved-hero" aria-label="Saved invoices">
+        <div className="nkj-saved-hero-copy">
           <span className="eyebrow">RECORDS</span>
           <h2>Saved Invoices</h2>
+          <p>View, search and manage all your invoices.</p>
         </div>
-        <Link className="primary" to="/invoice" state={{ startNewInvoice: true }}><Plus /> New Invoice</Link>
-      </div>
+        <ClipboardList className="nkj-saved-hero-icon" aria-hidden="true" />
+      </section>
 
       <div className="nkj-saved-toolbar-row">
-        <div className="toolbar">
-          <Search />
+        <div className="toolbar nkj-saved-search">
+          <Search aria-hidden="true" />
           <input
-            placeholder="Search by invoice number, customer name or phone"
+            placeholder="Search by invoice number, customer name or phone…"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); setCurrentPage(1); }}
           />
         </div>
-
+        <div className="nkj-saved-toolbar-actions">
+          <div className="nkj-saved-filter-wrap">
+            <button
+              type="button"
+              className="nkj-saved-filter-button"
+              onClick={() => setShowFilters((value) => !value)}
+              aria-expanded={showFilters}
+              aria-controls="nkj-saved-invoice-filters"
+            >
+              <Filter size={18} /> Filter
+            </button>
+            {showFilters && (
+              <div className="nkj-saved-filter-popover" id="nkj-saved-invoice-filters">
+                <label htmlFor="nkj-saved-date-filter">Invoice date</label>
+                <select
+                  id="nkj-saved-date-filter"
+                  value={dateFilter}
+                  onChange={(event) => { setDateFilter(event.target.value); setCurrentPage(1); }}
+                >
+                  <option value="ALL">All dates</option>
+                  <option value="THIS_MONTH">This month</option>
+                  <option value="LAST_30_DAYS">Last 30 days</option>
+                  <option value="OLDER">Before this month</option>
+                </select>
+                <button type="button" className="nkj-saved-filter-clear" onClick={() => { setDateFilter("ALL"); setShowFilters(false); }}>
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+          <Link className="primary nkj-saved-new-invoice" to="/invoice" state={{ startNewInvoice: true }}>
+            <Plus size={19} /> New Invoice
+          </Link>
+        </div>
       </div>
 
       {err && <p className="error">{err}</p>}
 
       <div className="panel nkj-saved-panel">
-        <div className="table-wrap">
+        <div className="table-wrap nkj-saved-table-wrap">
           <table className="nkj-saved-table">
             <thead>
               <tr>
-                <th>Invoice No.</th><th>Customer Name</th><th>Date</th>
-                <th>Mobile</th><th>Amount (₹)</th><th>Actions</th>
+                <th><FileText size={17} /> <span>Invoice No.</span></th>
+                <th><User size={17} /> <span>Customer Name</span></th>
+                <th><CalendarDays size={17} /> <span>Date</span></th>
+                <th><Contact size={17} /> <span>Mobile</span></th>
+                <th><Coins size={17} /> <span>Amount (₹)</span></th>
+                <th><Settings size={17} /> <span>Actions</span></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((x, index) => (
+              {pageItems.map((x, index) => (
                 <tr key={x.id ?? x.invoiceNo ?? index}>
                   <td>{x.invoiceNo || "—"}</td>
                   <td>{x.customerName || "—"}</td>
                   <td>{displaySavedInvoiceDate(x.invoiceDate)}</td>
                   <td>{x.mobile || "—"}</td>
-                  <td>₹ {money(x.grandTotal)}</td>
+                  <td><span className="nkj-saved-amount">₹ {money(x.grandTotal)}</span></td>
                   <td>
                     <div className="nkj-invoice-row-actions">
                       <button
@@ -2880,11 +2966,31 @@ export function SavedInvoices() {
                 </tr>
               ))}
               {!loading && !filtered.length && (
-                <tr><td colSpan="6" className="empty">{q ? "No matching invoices found." : "No invoices saved yet."}</td></tr>
+                <tr><td colSpan="6" className="empty">{q || dateFilter !== "ALL" ? "No matching invoices found." : "No invoices saved yet."}</td></tr>
               )}
               {loading && <tr><td colSpan="6" className="empty">Loading saved invoices…</td></tr>}
             </tbody>
           </table>
+        </div>
+        <div className="nkj-saved-pagination">
+          <span className="nkj-saved-results-count">
+            Showing {firstVisible}–{lastVisible} of {filtered.length} invoices
+          </span>
+          <nav className="nkj-saved-pagination-controls" aria-label="Saved invoices pages">
+            <button type="button" aria-label="First page" title="First page" disabled={currentPage <= 1 || !filtered.length} onClick={() => setCurrentPage(1)}>
+              <ChevronsLeft size={18} />
+            </button>
+            <button type="button" aria-label="Previous page" title="Previous page" disabled={currentPage <= 1 || !filtered.length} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>
+              <ChevronLeft size={18} />
+            </button>
+            <span className="nkj-saved-page-number" aria-current="page">{currentPage}</span>
+            <button type="button" aria-label="Next page" title="Next page" disabled={currentPage >= totalPages || !filtered.length} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}>
+              <ChevronRight size={18} />
+            </button>
+            <button type="button" aria-label="Last page" title="Last page" disabled={currentPage >= totalPages || !filtered.length} onClick={() => setCurrentPage(totalPages)}>
+              <ChevronsRight size={18} />
+            </button>
+          </nav>
         </div>
       </div>
 
