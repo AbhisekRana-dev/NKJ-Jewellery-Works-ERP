@@ -495,10 +495,17 @@ async function assertInvoiceTablesUseMobileCards(page, invoiceKind) {
         row.labelledCells >= Math.max(4, row.cellCount - 1),
         invoiceKind + " ornament card is missing readable field labels: " + JSON.stringify(result)
       );
+      // The final table cell is a deliberately compact remove-action column.
+      // Validate editable data cells separately so a 28px trash-button cell is
+      // not mistaken for a squeezed text/number field.
+      const editableCells = row.cells.slice(0, -1);
+      const actionCell = row.cells[row.cells.length - 1];
       assert(
-        row.cells.every((cell) => cell.width >= 60) &&
-        row.cells.every((cell) => !cell.fieldCount || cell.fieldWidth >= Math.min(96, cell.width - 12)),
-        invoiceKind + " ornament fields were squeezed into narrow desktop percentage columns: " + JSON.stringify(result)
+        editableCells.every((cell) => cell.width >= 60) &&
+        editableCells.every((cell) => !cell.fieldCount || cell.fieldWidth >= Math.min(96, cell.width - 12)) &&
+        actionCell.width >= 22 &&
+        actionCell.fieldCount === 0,
+        invoiceKind + " ornament data fields or remove-action cell have invalid mobile sizing: " + JSON.stringify(result)
       );
       assert(
         row.cells.every((cell) => !cell.fieldCount || cell.fieldHeight >= 44),

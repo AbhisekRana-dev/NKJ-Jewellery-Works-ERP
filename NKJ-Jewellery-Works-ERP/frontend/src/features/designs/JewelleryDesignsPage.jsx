@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, ArrowUpRight, ImagePlus,
+  Gem, Crown, Flower2, Sparkles, CircleDot, Heart, Search, X, Plus, ArrowUpRight, ImagePlus,
   Layers3, Star, ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, Orbit, Hexagon, Aperture, Waves, Bird, QrCode,
   LayoutGrid, List, Pencil, Trash2, Save, UploadCloud, Smartphone, CheckCircle2, Lock,
   RotateCcw, ZoomIn, ZoomOut, Maximize2, Package, Weight, Info,
@@ -218,6 +218,12 @@ export default function JewelleryDesignsPage() {
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [showAddSubcategory, setShowAddSubcategory] = useState(false);
+  const [newSubcategoryName, setNewSubcategoryName] = useState("");
+  const [savingSubcategory, setSavingSubcategory] = useState(false);
+  const [removingCategoryId, setRemovingCategoryId] = useState(null);
+  const [categoryActionError, setCategoryActionError] = useState("");
+  const [categoryActionMessage, setCategoryActionMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
@@ -358,6 +364,71 @@ export default function JewelleryDesignsPage() {
     setRegion("");
     setMinWeight("");
     setMaxWeight("");
+  };
+
+  const addSubcategory = async (event) => {
+    event.preventDefault();
+    if (!isAdmin) return;
+
+    const name = newSubcategoryName.trim();
+    if (!name) {
+      setCategoryActionError("Enter a subcategory name before saving.");
+      return;
+    }
+
+    setSavingSubcategory(true);
+    setCategoryActionError("");
+    setCategoryActionMessage("");
+    try {
+      const created = await request("/admin/designs/categories", {
+        method: "POST",
+        body: JSON.stringify({
+          metalType: metal,
+          subcategoryName: name,
+          displayOrder: metalCategories.length + 1,
+        }),
+      });
+      const activeCategories = await request("/designs/categories", { publicRequest: true });
+      setCategories(Array.isArray(activeCategories) ? activeCategories : []);
+      setSubcategory(created.slug || normalizeCollectionKey(name));
+      setNewSubcategoryName("");
+      setShowAddSubcategory(false);
+      setCategoryActionMessage(`${created.subcategoryName || name} was added to ${currentMetal.label} subcategories.`);
+    } catch (error) {
+      setCategoryActionError(error.message || "Could not add this subcategory.");
+    } finally {
+      setSavingSubcategory(false);
+    }
+  };
+
+  const removeSubcategory = async (category) => {
+    if (!isAdmin || removingCategoryId != null) return;
+
+    const savedDesigns = Number(category.totalDesignCount || category.activeDesignCount || 0);
+    const preservationNote = savedDesigns > 0
+      ? ` It has ${savedDesigns} saved design(s); those records will be preserved but hidden from the public catalogue.`
+      : " Existing records, if any, will be preserved.";
+    const confirmed = window.confirm(
+      `Remove "${category.subcategoryName}" from the ${currentMetal.label} subcategories?${preservationNote}`,
+    );
+    if (!confirmed) return;
+
+    setRemovingCategoryId(category.id);
+    setCategoryActionError("");
+    setCategoryActionMessage("");
+    try {
+      await request(`/admin/designs/categories/${category.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isActive: false }),
+      });
+      setCategories((current) => current.filter((item) => String(item.id) !== String(category.id)));
+      setSubcategory((current) => current === category.slug ? "" : current);
+      setCategoryActionMessage(`${category.subcategoryName} was removed from the public catalogue. Its saved design records were kept.`);
+    } catch (error) {
+      setCategoryActionError(error.message || "Could not remove this subcategory.");
+    } finally {
+      setRemovingCategoryId(null);
+    }
   };
 
   const toggleFavorite = (designCode) => {
@@ -782,23 +853,103 @@ export default function JewelleryDesignsPage() {
               <span>EXPLORE BY CATEGORY</span>
               <h2>{currentMetal.label} Subcategories</h2>
             </div>
-            <small>{metalCategories.length} subcategories</small>
+            <div className="nkj-designs-category-heading-actions">
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="nkj-designs-add-category-toggle"
+                  onClick={() => {
+                    setShowAddSubcategory((open) => !open);
+                    setCategoryActionError("");
+                    setCategoryActionMessage("");
+                  }}
+                  aria-expanded={showAddSubcategory}
+                >
+                  {showAddSubcategory ? <X size={15} /> : <Plus size={15} />}
+                  {showAddSubcategory ? "Close" : "Add Subcategory"}
+                </button>
+              )}
+              <small>{metalCategories.length} subcategories</small>
+            </div>
           </div>
+
+          {isAdmin && showAddSubcategory && (
+            <form className="nkj-designs-add-category-form" onSubmit={addSubcategory}>
+              <label>
+                <span>New {currentMetal.label} subcategory name</span>
+                <input
+                  autoFocus
+                  type="text"
+                  maxLength={80}
+                  value={newSubcategoryName}
+                  onChange={(event) => setNewSubcategoryName(event.target.value)}
+                  placeholder="e.g. Antique Necklaces"
+                  aria-label="New subcategory name"
+                  required
+                />
+              </label>
+              <button type="submit" className="save" disabled={savingSubcategory}>
+                {savingSubcategory ? <LoaderCircle size={15} className="spin" /> : <Save size={15} />}
+                {savingSubcategory ? "Saving…" : "Save Subcategory"}
+              </button>
+              <button
+                type="button"
+                className="cancel"
+                onClick={() => {
+                  setShowAddSubcategory(false);
+                  setNewSubcategoryName("");
+                }}
+                disabled={savingSubcategory}
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+
+          {categoryActionError && <p className="nkj-designs-category-feedback is-error" role="alert">{categoryActionError}</p>}
+          {categoryActionMessage && <p className="nkj-designs-category-feedback is-success" role="status">{categoryActionMessage}</p>}
+
           {loadingCategories ? (
             <div className="nkj-designs-loading"><LoaderCircle className="spin" size={22} /> Loading catalogue categories…</div>
           ) : (
             <div className="nkj-designs-category-box">
-              <button type="button" className={subcategory === "" ? "active" : ""} onClick={() => setSubcategory("")}>
+              <button
+                type="button"
+                className={`nkj-designs-category-all ${subcategory === "" ? "active" : ""}`}
+                onClick={() => setSubcategory("")}
+              >
                 <Layers3 size={16} /> All {currentMetal.label} Designs
                 <small>{metalCategories.reduce((sum, item) => sum + Number(item.activeDesignCount || 0), 0)}</small>
               </button>
               {metalCategories.map((item) => (
-                <button type="button" key={item.id}
-                  className={subcategory === item.slug ? "active" : ""}
-                  onClick={() => setSubcategory(item.slug)}>
-                  <Gem size={15} /> {item.subcategoryName}
-                  <small>{item.activeDesignCount || 0}</small>
-                </button>
+                <div
+                  className={`nkj-designs-category-item ${subcategory === item.slug ? "is-active" : ""}${isAdmin ? " has-remove" : ""}`}
+                  key={item.id}
+                >
+                  <button
+                    type="button"
+                    className="nkj-designs-category-select"
+                    onClick={() => setSubcategory(item.slug)}
+                    aria-pressed={subcategory === item.slug}
+                  >
+                    <Gem size={15} /> {item.subcategoryName}
+                    <small>{item.activeDesignCount || 0}</small>
+                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="nkj-designs-category-remove"
+                      onClick={() => removeSubcategory(item)}
+                      disabled={removingCategoryId === item.id}
+                      aria-label={`Remove ${item.subcategoryName} subcategory`}
+                      title={`Remove ${item.subcategoryName}`}
+                    >
+                      {removingCategoryId === item.id
+                        ? <LoaderCircle size={13} className="spin" />
+                        : <X size={13} />}
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
