@@ -8008,3 +8008,78 @@ body .nkj-catalog-edit-actions > button.cancel {
     box-shadow: 0 4px 12px rgba(94, 13, 48, .15) !important;
   }
 }
+
+
+/* Product photography stage: clean white studio canvas for uploaded images.
+   Keep the original image file untouched and show the complete product. */
+.nkj-catalog-view-gallery:has(.nkj-catalog-view-main-photo.has-product-image) {
+  background: #ffffff !important;
+  border-color: #e7e1d8 !important;
+  box-shadow: 0 5px 18px rgba(40, 35, 30, .09) !important;
+}
+
+.nkj-catalog-view-main-photo.has-product-image {
+  display: grid !important;
+  place-items: center !important;
+  padding: 18px !important;
+  box-sizing: border-box !important;
+  background: #ffffff !important;
+  isolation: isolate !important;
+}
+
+.nkj-catalog-view-main-photo.has-product-image::before,
+.nkj-catalog-view-main-photo.has-product-image::after {
+  display: none !important;
+  content: none !important;
+}
+
+.nkj-catalog-view-main-photo.has-product-image .nkj-catalog-view-main-image {
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 94% !important;
+  max-height: 94% !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  padding: 0 !important;
+  margin: auto !important;
+  background: #ffffff !important;
+  border-radius: 3px !important;
+  box-shadow: 0 2px 12px rgba(24, 20, 18, .055) !important;
+}
+
+.nkj-catalog-view-gallery:has(.nkj-catalog-view-main-photo.has-product-image) .nkj-catalog-view-gallery-thumbs {
+  border-top: 1px solid #eee7de !important;
+  background: #ffffff !important;
+}
+
+.nkj-catalog-view-gallery:has(.nkj-catalog-view-main-photo.has-product-image) .nkj-catalog-view-gallery-thumbs > button {
+  border-color: #e5ded3 !important;
+  background: #ffffff !important;
+}
+
+.nkj-catalog-view-gallery:has(.nkj-catalog-view-main-photo.has-product-image) .nkj-catalog-view-gallery-thumbs > button.active {
+  border-color: #c99b42 !important;
+  box-shadow: 0 0 0 2px rgba(201, 155, 66, .16) !important;
+}
+
+.nkj-catalog-view-main-photo.has-product-image .nkj-catalog-view-image-count,
+.nkj-catalog-view-main-photo.has-product-image .nkj-catalog-view-image-tools button,
+.nkj-catalog-view-main-photo.has-product-image .nkj-catalog-view-image-arrow {
+  border-color: #e5d8c6 !important;
+  background: rgba(255, 255, 255, .96) !important;
+  color: #74112d !important;
+  box-shadow: 0 2px 8px rgba(60, 43, 31, .10) !important;
+}
+
+.nkj-catalog-view-main-photo.has-product-image .nkj-catalog-view-image-tools button:hover,
+.nkj-catalog-view-main-photo.has-product-image .nkj-catalog-view-image-arrow:hover {
+  background: #fff4dc !important;
+}
+
+.nkj-catalog-view-main-photo.has-product-image .nkj-catalog-view-image-fallback {
+  background: #ffffff !important;
+  color: #7a1838 !important;
+}
