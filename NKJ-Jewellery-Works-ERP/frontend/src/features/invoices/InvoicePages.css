@@ -2665,37 +2665,302 @@ body:has(.nkj-full-invoice-modal) .nkj-saved-invoice-sheet {width: 291mm !import
 }
 
 
-/* Compact invoice ornament delete controls. Trash glyph reduced by ~50%. */
+/* Compact invoice ornament delete controls.
+   Keep the tap target accessible while using a restrained 20px trash glyph. */
 @media screen {
   #invoice-print .new-items-table th:last-child,
   #invoice-print .new-items-table td:last-child,
   #invoice-print .old-items-table th:last-child,
   #invoice-print .old-items-table td:last-child {
-    width: 28px !important;
-    min-width: 28px !important;
-    max-width: 28px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
     padding: 2px !important;
     box-sizing: border-box !important;
     text-align: center !important;
   }
   #invoice-print .items-table td:last-child .icon-btn {
-    width: 22px !important;
-    min-width: 22px !important;
-    max-width: 22px !important;
-    height: 22px !important;
-    min-height: 22px !important;
-    max-height: 22px !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
     padding: 0 !important;
-    border-radius: 5px !important;
+    margin: 0 auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: 1px solid #edbdc8 !important;
+    border-radius: 7px !important;
+    background: #fff5f7 !important;
+    color: #a5092d !important;
+    cursor: pointer !important;
   }
   #invoice-print .items-table td:last-child .icon-btn svg {
-    width: 12px !important;
-    min-width: 12px !important;
-    height: 12px !important;
-    min-height: 12px !important;
+    display: block !important;
+    width: 20px !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    min-height: 20px !important;
     stroke-width: 2.2 !important;
   }
+  #invoice-print .items-table td:last-child .icon-btn:hover {
+    border-color: #a5092d !important;
+    background: #ffe5eb !important;
+  }
+  #invoice-print .items-table td:last-child .icon-btn:focus-visible {
+    outline: 3px solid rgba(165, 9, 45, .24) !important;
+    outline-offset: 2px !important;
+  }
 }
+
+
+/* ============================================================
+   SAVED INVOICES — FULL-WIDTH, ALIGNED DATA TABLE
+   Scoped to the saved invoice listing only; invoice print sheets
+   and other ERP tables keep their existing layout.
+============================================================ */
+body.nkj-owner-layout .nkj-saved-panel {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  padding: 20px !important;
+  border: 1px solid #eadfdc !important;
+  border-radius: 15px !important;
+  background: linear-gradient(145deg, #fffefd 0%, #fffaf6 100%) !important;
+  box-shadow: 0 6px 22px rgba(77, 17, 39, .055) !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .table-wrap {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  border: 1px solid #eadde0 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.nkj-owner-layout .nkj-saved-panel table.nkj-saved-table {
+  display: table !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table thead th {
+  height: 52px !important;
+  padding: 13px 14px !important;
+  border: 0 !important;
+  border-right: 1px solid rgba(255,255,255,.16) !important;
+  border-bottom: 2px solid #d8a0ae !important;
+  background: linear-gradient(110deg, #8d0d32 0%, #a9113d 52%, #790d2e 100%) !important;
+  color: #fffaf2 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12px !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table thead th:first-child {
+  border-top-left-radius: 8px !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table thead th:last-child {
+  border-top-right-radius: 8px !important;
+  border-right: 0 !important;
+}
+
+/* Column proportions add up to 100%, including a genuinely useful Actions area. */
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(1),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(1) { width: 14%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(2),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(2) { width: 15%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(3),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(3) { width: 10%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(4),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(4) { width: 12%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(5),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(5) { width: 12%; }
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table th:nth-child(6),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table td:nth-child(6) { width: 37%; }
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td {
+  height: 57px !important;
+  padding: 10px 12px !important;
+  border: 0 !important;
+  border-right: 1px solid #eee5e5 !important;
+  border-bottom: 1px solid #eee5e5 !important;
+  background: #fff !important;
+  color: #30303a !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-align: left !important;
+  vertical-align: middle !important;
+  overflow-wrap: anywhere;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody tr:nth-child(even) td {
+  background: #fffaf8 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody tr:hover td {
+  background: #fff3ed !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:first-child {
+  color: #79132f !important;
+  font-weight: 750 !important;
+  white-space: nowrap !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:nth-child(3),
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:nth-child(4) {
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:nth-child(5) {
+  color: #543548 !important;
+  font-weight: 750 !important;
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table tbody td:last-child {
+  border-right: 0 !important;
+  overflow: visible !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .small-action {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-height: 38px !important;
+  padding: 8px 12px !important;
+  border: 1px solid #e6c6cb !important;
+  border-radius: 7px !important;
+  background: #fff8f7 !important;
+  color: #941237 !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 3px rgba(95, 16, 44, .04) !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .small-action:hover {
+  border-color: #c98b98 !important;
+  background: #fff0ef !important;
+  box-shadow: 0 3px 8px rgba(95, 16, 44, .09) !important;
+  transform: translateY(-1px);
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-copy-action {
+  border-color: #e7d3a8 !important;
+  background: #fffbf0 !important;
+  color: #8a5a15 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-copy-action:hover {
+  background: #fff4d9 !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-delete-action {
+  border-color: #edc5c9 !important;
+  background: #fff6f6 !important;
+  color: #b4233b !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions .nkj-delete-action:hover {
+  background: #ffebed !important;
+}
+body.nkj-owner-layout .nkj-saved-panel .nkj-invoice-row-actions button:disabled {
+  opacity: .55 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table .empty {
+  height: 90px !important;
+  text-align: center !important;
+  color: #76666d !important;
+  font-size: 14px !important;
+}
+
+@media screen and (max-width: 1100px) {
+  body.nkj-owner-layout .nkj-saved-panel .table-wrap {
+    overflow-x: auto !important;
+  }
+  body.nkj-owner-layout .nkj-saved-panel table.nkj-saved-table {
+    width: 1120px !important;
+    min-width: 1120px !important;
+    table-layout: fixed !important;
+  }
+}
+
+@media screen and (max-width: 650px) {
+  body.nkj-owner-layout .nkj-saved-panel {
+    padding: 10px !important;
+    border-radius: 11px !important;
+  }
+  body.nkj-owner-layout .nkj-saved-panel .table-wrap {
+    border-radius: 8px !important;
+  }
+}
+
+
+/* New Invoice — restore a clear, visible Reset action beside Save and Print. */
+.invoice-actions .nkj-invoice-reset-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 11px 20px;
+  border: 1px solid #e4aab6;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fff8f8, #fff0f2);
+  color: #941535;
+  font-weight: 750;
+  box-shadow: 0 2px 7px rgba(148, 21, 53, .07);
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.invoice-actions .nkj-invoice-reset-button svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+}
+.invoice-actions .nkj-invoice-reset-button:hover:not(:disabled) {
+  border-color: #bd4968;
+  background: #ffe7ec;
+  transform: translateY(-1px);
+}
+.invoice-actions .nkj-invoice-reset-button:focus-visible {
+  outline: 3px solid rgba(148, 21, 53, .2);
+  outline-offset: 2px;
+}
+.invoice-actions .nkj-invoice-reset-button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+}
+
 
 
 /* Invoice QA fix: preserve a comfortable touch target for Making Charge on phones.

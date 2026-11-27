@@ -1434,8 +1434,11 @@ public class JewelleryDesignController {
             }
             purity = validatePurityForMetal(normalizedMetal, purity, null);
         }
-        StringBuilder filter = new StringBuilder(" WHERE d.is_deleted = FALSE AND (? = TRUE OR d.is_active = TRUE)");
+        StringBuilder filter = new StringBuilder(
+                " WHERE d.is_deleted = FALSE AND (? = TRUE OR d.is_active = TRUE)"
+                        + " AND (? = TRUE OR c.is_active = TRUE)");
         List<Object> parameters = new ArrayList<>();
+        parameters.add(includeInactive);
         parameters.add(includeInactive);
 
         if (metal != null && !metal.isBlank()) {
