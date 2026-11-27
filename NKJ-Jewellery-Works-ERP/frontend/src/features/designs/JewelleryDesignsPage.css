@@ -6839,7 +6839,7 @@ body .nkj-catalog-edit-actions > button.cancel {
     overflow: hidden !important;
   }
 
-  .nkj-catalog-details-modal.nkj-catalog-view-modal.nkj-catalog-view-public {
+  .nkj-catalog-details-modal.nkj-catalog-view-modal.nkj-catalog-view-admin {
     width: min(1100px, 70vw) !important;
     max-width: min(1100px, 70vw) !important;
     height: min(700px, 82dvh) !important;
@@ -6849,12 +6849,12 @@ body .nkj-catalog-edit-actions > button.cancel {
     overflow: hidden !important;
   }
 
-  .nkj-catalog-view-modal.nkj-catalog-view-public .nkj-catalog-view-layout {
+  .nkj-catalog-view-modal.nkj-catalog-view-admin .nkj-catalog-view-layout {
     min-height: 0 !important;
     overflow: hidden !important;
   }
 
-  .nkj-catalog-view-modal.nkj-catalog-view-public .nkj-catalog-view-information {
+  .nkj-catalog-view-modal.nkj-catalog-view-admin .nkj-catalog-view-information {
     min-height: 0 !important;
   }
 }
