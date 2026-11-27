@@ -2235,7 +2235,7 @@ async function createInvoiceSharePdfFile(invoice) {
        shift the first grid column outside the PDF page. */
     #invoice-print.nkj-pdf-export-root .inv-head {
       display: grid !important;
-      grid-template-columns: 30mm minmax(0, 1fr) 72mm !important;
+      grid-template-columns: 28mm minmax(0, 1fr) 68mm !important;
       width: 100% !important;
       min-width: 0 !important;
       margin-left: 0 !important;
@@ -2275,7 +2275,7 @@ async function createInvoiceSharePdfFile(invoice) {
     }
     #invoice-print.nkj-pdf-export-root .inv-main {
       display: grid !important;
-      grid-template-columns: minmax(0, 1fr) 75mm !important;
+      grid-template-columns: minmax(0, 1fr) 80mm !important;
       gap: 2mm !important;
       width: 100% !important;
       min-width: 0 !important;
@@ -2313,9 +2313,9 @@ async function createInvoiceSharePdfFile(invoice) {
       font-size: 7pt !important;
     }
     #invoice-print.nkj-pdf-export-root .totals {
-      width: 75mm !important;
+      width: 80mm !important;
       min-width: 0 !important;
-      max-width: 75mm !important;
+      max-width: 80mm !important;
       overflow: visible !important;
       box-sizing: border-box !important;
     }
@@ -2356,7 +2356,7 @@ async function createInvoiceSharePdfFile(invoice) {
       font-size: 8pt !important;
     }
     #invoice-print.nkj-pdf-export-root .words-sign {
-      grid-template-columns: minmax(0, 1fr) 95mm !important;
+      grid-template-columns: minmax(0, 1fr) 98mm !important;
       min-width: 0 !important;
     }
     #invoice-print.nkj-pdf-export-root .signatures {
@@ -2387,11 +2387,105 @@ async function createInvoiceSharePdfFile(invoice) {
       margin-left: 0 !important;
     }
     #invoice-print.nkj-pdf-export-root .items-table {
+      display: table !important;
       width: 100% !important;
       min-width: 0 !important;
       max-width: 100% !important;
       table-layout: fixed !important;
       border-collapse: collapse !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-head,
+    #invoice-print.nkj-pdf-export-root .inv-two,
+    #invoice-print.nkj-pdf-export-root .inv-main,
+    #invoice-print.nkj-pdf-export-root .inv-bottom,
+    #invoice-print.nkj-pdf-export-root .inv-panel,
+    #invoice-print.nkj-pdf-export-root .inv-left,
+    #invoice-print.nkj-pdf-export-root .totals,
+    #invoice-print.nkj-pdf-export-root .table-wrap,
+    #invoice-print.nkj-pdf-export-root .inv-meta,
+    #invoice-print.nkj-pdf-export-root .inv-shop,
+    #invoice-print.nkj-pdf-export-root .words-sign {
+      box-sizing: border-box !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-head,
+    #invoice-print.nkj-pdf-export-root .inv-two,
+    #invoice-print.nkj-pdf-export-root .inv-main,
+    #invoice-print.nkj-pdf-export-root .inv-bottom {
+      width: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-main {
+      grid-template-columns: minmax(0, 1fr) 80mm !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals {
+      width: 80mm !important;
+      min-width: 0 !important;
+      max-width: 80mm !important;
+      overflow: hidden !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row,
+    #invoice-print.nkj-pdf-export-root .totals .grand {
+      grid-template-columns: minmax(0, 1fr) minmax(0, auto) !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row span,
+    #invoice-print.nkj-pdf-export-root .totals .grand span {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+    }
+    #invoice-print.nkj-pdf-export-root .totals .total-row b,
+    #invoice-print.nkj-pdf-export-root .totals .grand b {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      text-align: right !important;
+    }
+    #invoice-print.nkj-pdf-export-root .items-table th,
+    #invoice-print.nkj-pdf-export-root .items-table td {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      padding-left: .45mm !important;
+      padding-right: .45mm !important;
+      overflow-wrap: anywhere !important;
+      word-break: normal !important;
+      white-space: normal !important;
+      box-sizing: border-box !important;
+    }
+    /* The last column contains only the edit/delete control, never invoice
+       data. Remove it from the exported document to give Amount full space. */
+    #invoice-print.nkj-pdf-export-root .new-items-table th:last-child,
+    #invoice-print.nkj-pdf-export-root .new-items-table td:last-child,
+    #invoice-print.nkj-pdf-export-root .old-items-table th:last-child,
+    #invoice-print.nkj-pdf-export-root .old-items-table td:last-child {
+      display: none !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-meta span {
+      grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+    }
+    #invoice-print.nkj-pdf-export-root .inv-meta span label,
+    #invoice-print.nkj-pdf-export-root .inv-meta span strong {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+    }
+    #invoice-print.nkj-pdf-export-root .words-sign {
+      grid-template-columns: minmax(0, 1fr) 98mm !important;
+      width: 100% !important;
+    }
+    #invoice-print.nkj-pdf-export-root .signatures {
+      min-width: 0 !important;
+      max-width: 100% !important;
     }
   `;
   host.appendChild(style);
@@ -2433,6 +2527,29 @@ async function createInvoiceSharePdfFile(invoice) {
     }));
 
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+
+    // Validate not only the outer clone width but every major invoice section.
+    // html2canvas can otherwise create a landscape page while silently clipping
+    // children that extend beyond the invoice's right edge.
+    const exportRect = clone.getBoundingClientRect();
+    const checkedSelectors = [
+      ".inv-head", ".inv-two", ".inv-main", ".inv-bottom",
+      ".inv-meta", ".totals", ".new-items-table", ".old-items-table",
+      ".words-sign", ".signatures",
+    ];
+    const overflowSections = checkedSelectors.flatMap((selector) =>
+      Array.from(clone.querySelectorAll(selector)).filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && (rect.left < exportRect.left - 2 || rect.right > exportRect.right + 2);
+      }).map((element) => selector)
+    );
+    if (overflowSections.length) {
+      throw new Error(
+        "The invoice has content extending beyond the A4 page (" +
+        [...new Set(overflowSections)].join(", ") +
+        "). PDF sharing was stopped rather than sending a cropped document."
+      );
+    }
 
     const label = clone.querySelector(".form-grid label");
     const labelChildren = label ? Array.from(label.children) : [];
