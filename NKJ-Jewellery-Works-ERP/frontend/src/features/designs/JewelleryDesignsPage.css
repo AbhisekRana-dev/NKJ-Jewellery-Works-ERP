@@ -7196,3 +7196,246 @@ body .nkj-catalog-edit-actions > button.cancel {
     flex-wrap: wrap !important;
   }
 }
+
+
+/* ============================================================
+   ADMIN VIEW DESIGN — FIT THE COMPLETE RIGHT COLUMN WITHOUT SCROLL
+   Keep the existing modal width/height exactly as configured above.
+============================================================ */
+@media screen and (min-width: 1101px) {
+  .nkj-catalog-details-modal.nkj-catalog-view-modal.nkj-catalog-view-admin {
+    overflow: hidden !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-layout {
+    height: 100% !important;
+    min-height: 0 !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-information {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    gap: 7px !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    padding: 2px 3px 2px 0 !important;
+    overflow: hidden !important;
+    overflow-y: hidden !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important;
+    overscroll-behavior: none !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-information::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* Compact the title, Design ID and details to reserve room for management. */
+  .nkj-catalog-view-admin .nkj-catalog-view-title-row {
+    flex: 0 0 auto !important;
+    min-height: 58px !important;
+    margin: 0 46px 0 0 !important;
+    padding: 8px 13px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-title-row h2 {
+    font-size: clamp(22px, 2vw, 32px) !important;
+    line-height: 1.08 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-id {
+    flex: 0 0 auto !important;
+    min-height: 37px !important;
+    padding: 5px 11px !important;
+    gap: 8px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-card {
+    flex: 0 0 auto !important;
+    padding: 7px 10px 6px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-card > h3 {
+    min-height: 33px !important;
+    margin: -8px 0 4px -11px !important;
+    padding: 5px 14px !important;
+    font-size: 15px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows {
+    margin-top: 3px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows > div {
+    min-height: 33px !important;
+    padding: 3px 2px !important;
+    gap: 7px !important;
+    grid-template-columns: 25px minmax(86px, .72fr) minmax(0, 1fr) !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows > div > svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows > div > span,
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows > div > b {
+    font-size: 10px !important;
+    line-height: 1.18 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-photos-card {
+    flex: 0 0 auto !important;
+    max-height: 77px !important;
+    padding: 5px 8px !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-photos-card > header {
+    margin-bottom: 3px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-photo-management {
+    gap: 7px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-photo-strip > button {
+    flex-basis: 38px !important;
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  /* Keep the owner card compact and fully visible beneath the detail card. */
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    gap: 6px !important;
+    margin: 0 !important;
+    padding: 8px 9px !important;
+    overflow: visible !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls-heading {
+    min-height: 29px !important;
+    margin: 0 !important;
+    padding: 0 0 5px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls-heading > div > svg,
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls-heading > svg {
+    width: 23px !important;
+    height: 23px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls-heading b {
+    font-size: 19px !important;
+    line-height: 1.05 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: minmax(44px, auto) !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions > button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Save and Cancel remain visible in the first action slot after Edit is clicked. */
+  .nkj-catalog-view-admin .nkj-catalog-edit-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(38px, .55fr) !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-edit-actions > button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 5px 4px !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+    white-space: normal !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-edit-actions > button.save {
+    display: flex !important;
+    border: 1px solid #741536 !important;
+    background: linear-gradient(120deg, #8a1641, #5d102e) !important;
+    color: #fff6e7 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-edit-actions > button.cancel {
+    display: flex !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-action {
+    display: grid !important;
+    grid-column: 1 / -1 !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    min-height: 58px !important;
+    padding: 6px 8px !important;
+    gap: 7px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-copy > svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-copy b {
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-copy small {
+    font-size: 8px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-options {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-choose-photos,
+  .nkj-catalog-view-admin .nkj-catalog-replace-primary {
+    min-height: 34px !important;
+    padding: 4px 6px !important;
+    font-size: 8px !important;
+  }
+}
+
+/* Keep the modal Close action permanently visible at the bottom. */
+.nkj-catalog-details-modal.nkj-catalog-view-modal .nkj-catalog-view-footer {
+  flex: 0 0 auto !important;
+  margin-top: 5px !important;
+  padding-top: 6px !important;
+}
