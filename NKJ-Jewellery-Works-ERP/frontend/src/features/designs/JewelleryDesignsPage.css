@@ -7766,3 +7766,245 @@ body .nkj-catalog-edit-actions > button.cancel {
     padding: 6px 18px !important;
   }
 }
+
+
+/* ============================================================
+   FINAL VISUAL POLISH — ADMIN DESIGN PREVIEW
+   Preserve the existing modal dimensions and no-scroll behavior.
+   Improve hierarchy, spacing, readability and visual balance only.
+============================================================ */
+@media screen and (min-width: 1101px) {
+  .nkj-catalog-view-admin .nkj-catalog-view-information {
+    gap: 9px !important;
+  }
+
+  /* Premium title strip with consistent single-line/2-line rhythm. */
+  .nkj-catalog-view-admin .nkj-catalog-view-title-row {
+    min-height: 62px !important;
+    padding: 9px 15px !important;
+    border: 1px solid #d7ad67 !important;
+    border-radius: 14px !important;
+    background: linear-gradient(112deg, #650d31 0%, #8b1644 58%, #641034 100%) !important;
+    box-shadow: 0 5px 13px rgba(92, 10, 47, .17) !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-title-row h2 {
+    color: #fff5e5 !important;
+    font-size: clamp(23px, 2vw, 34px) !important;
+    letter-spacing: -.25px !important;
+    line-height: 1.07 !important;
+  }
+
+  /* Design ID: clearly separated, aligned and easy to scan. */
+  .nkj-catalog-view-admin .nkj-catalog-view-id {
+    min-height: 41px !important;
+    padding: 6px 13px !important;
+    gap: 9px !important;
+    border: 1px solid #e5bd72 !important;
+    background: linear-gradient(110deg, #fff2c7, #ffe19a) !important;
+    box-shadow: 0 2px 7px rgba(150, 103, 36, .08) !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-id > span {
+    color: #95611e !important;
+    font-size: 9px !important;
+    letter-spacing: 1.05px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-id > b {
+    color: #37210f !important;
+    font-size: 10px !important;
+    letter-spacing: .1px !important;
+  }
+
+  /* Light ivory details card, clear label hierarchy and even row heights. */
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-card {
+    padding: 8px 11px 7px !important;
+    border: 1px solid #edc38e !important;
+    border-radius: 15px !important;
+    background: linear-gradient(145deg, #fffdf8 0%, #fff5e9 100%) !important;
+    box-shadow: 0 4px 12px rgba(112, 70, 35, .065) !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-card > h3 {
+    min-height: 34px !important;
+    min-width: 150px !important;
+    margin: -9px 0 5px -12px !important;
+    padding: 6px 16px !important;
+    border: 1px solid #d8a54b !important;
+    border-radius: 12px 28px 12px 4px !important;
+    background: linear-gradient(110deg, #680e33, #901744) !important;
+    color: #fff2d8 !important;
+    font: 900 16px/1.1 Georgia, "Times New Roman", serif !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-card > h3 svg {
+    width: 19px !important;
+    height: 19px !important;
+    color: #ffdc79 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows {
+    margin-top: 4px !important;
+    border-top: 1px solid #eddbc2 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows > div {
+    min-height: 37px !important;
+    padding: 4px 4px !important;
+    grid-template-columns: 27px minmax(90px, .72fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    border-bottom: 1px solid #f0e2d1 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows > div > svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows > div > span {
+    color: #573847 !important;
+    font-size: 10.5px !important;
+    font-weight: 800 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-detail-rows > div > b {
+    color: #573847 !important;
+    font-size: 10px !important;
+    font-weight: 850 !important;
+    line-height: 1.18 !important;
+  }
+
+  /* Let Owner Controls use the free space instead of leaving a blank block
+     at the bottom of the right column. */
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 13px !important;
+    min-height: 185px !important;
+    padding: 12px 12px 11px !important;
+    border: 1.5px solid #a9cfb8 !important;
+    border-radius: 16px !important;
+    background: linear-gradient(140deg, #f4fbf5 0%, #e9f5ec 100%) !important;
+    box-shadow: 0 5px 15px rgba(40, 105, 72, .075) !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls-heading {
+    min-height: 33px !important;
+    margin: 0 !important;
+    padding: 0 0 8px !important;
+    border-bottom: 1px solid #c8dfcf !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls-heading > div > svg,
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls-heading > svg {
+    width: 26px !important;
+    height: 26px !important;
+    color: #08734e !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-controls-heading b {
+    color: #086345 !important;
+    font-size: clamp(19px, 1.5vw, 24px) !important;
+    letter-spacing: -.2px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: minmax(51px, auto) !important;
+    gap: 8px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions > button,
+  .nkj-catalog-view-admin .nkj-catalog-edit-actions > button {
+    min-height: 51px !important;
+    padding: 7px 8px !important;
+    border-radius: 12px !important;
+    gap: 7px !important;
+    font-size: 10.5px !important;
+    font-weight: 900 !important;
+    line-height: 1.18 !important;
+    box-shadow: 0 2px 5px rgba(66, 35, 39, .045) !important;
+    transition: transform .16s ease, box-shadow .16s ease, filter .16s ease !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions > button:hover,
+  .nkj-catalog-view-admin .nkj-catalog-edit-actions > button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 9px rgba(66, 35, 39, .1) !important;
+    filter: saturate(1.04) !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions > button.edit {
+    border: 1px solid #e7d7c4 !important;
+    background: linear-gradient(135deg, #fffefa, #fff6ed) !important;
+    color: #741536 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions > button.archive {
+    border: 1px solid #edb7cd !important;
+    background: linear-gradient(135deg, #fff3f7, #ffe8f0) !important;
+    color: #b81750 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions > button.mobile-upload {
+    border: 1px solid #ebcb83 !important;
+    background: linear-gradient(135deg, #fff6df, #ffebbd) !important;
+    color: #75450f !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-owner-control-actions > button > svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-action {
+    min-height: 66px !important;
+    padding: 8px 10px !important;
+    gap: 9px !important;
+    border: 1px solid #71102f !important;
+    border-radius: 13px !important;
+    background: linear-gradient(112deg, #700d34 0%, #941344 57%, #67102f 100%) !important;
+    box-shadow: 0 4px 10px rgba(96, 11, 48, .14) !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-copy > svg {
+    width: 26px !important;
+    height: 26px !important;
+    color: #ffe8b2 !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-copy b {
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+    letter-spacing: .05px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-copy small {
+    margin-top: 2px !important;
+    color: #f8dfd7 !important;
+    font-size: 8.5px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-computer-upload-options {
+    gap: 6px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-choose-photos,
+  .nkj-catalog-view-admin .nkj-catalog-replace-primary {
+    min-height: 38px !important;
+    padding: 5px 8px !important;
+    border: 1px solid #d7b773 !important;
+    border-radius: 9px !important;
+    background: linear-gradient(135deg, #30272b, #211b21) !important;
+    color: #fff3dc !important;
+    font-size: 8.5px !important;
+  }
+
+  .nkj-catalog-view-admin .nkj-catalog-view-footer button {
+    border-radius: 999px !important;
+    box-shadow: 0 4px 12px rgba(94, 13, 48, .15) !important;
+  }
+}
