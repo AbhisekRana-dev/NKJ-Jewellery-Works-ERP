@@ -38,7 +38,7 @@ public class AuthController {
     @PostMapping("/rate-board/unlock")
     public Map<String,Object> unlockRateBoard(@RequestBody RateBoardUnlock body, HttpServletRequest request) {
         String editToken = auth.unlockRateBoard(body.password(), request.getRemoteAddr());
-        return Map.of("editToken", editToken, "expiresInSeconds", 180);
+        return Map.of("editToken", editToken, "expiresInSeconds", 300);
     }
 
     @PostMapping("/login")

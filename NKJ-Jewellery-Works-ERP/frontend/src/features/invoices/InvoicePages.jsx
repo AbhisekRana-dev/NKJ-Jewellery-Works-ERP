@@ -23,6 +23,7 @@ import {
   Trash2,
   ArrowLeft,
   Save,
+  RotateCcw,
   LockKeyhole,
   Diamond,
   EyeOff,
@@ -329,16 +330,6 @@ function getInvoiceDraftStorageKey(owner, isEditingSavedInvoice = false, invoice
   return `${INVOICE_DRAFT_STORAGE_KEY}:${account}:${scope}`;
 }
 
-function readInvoiceDraft(storageKey) {
-  if (typeof window === "undefined") return null;
-  try {
-    const draft = JSON.parse(window.localStorage.getItem(storageKey) || "null");
-    return draft && draft.version === 2 ? draft : null;
-  } catch {
-    return null;
-  }
-}
-
 function getTodayIndiaDate() {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata",
@@ -398,12 +389,14 @@ export function InvoicePage() {
       location.state?.editInvoice?.id ?? null
     )
   );
-  const [initialDraft] = useState(() => invoiceSeed ? null : readInvoiceDraft(draftStorageKey));
+  // Unfinished invoices are never restored after a fresh page load.
+  // The temporary local copy is removed on mount; saved/copy invoice route
+  // state is still honoured for deliberate edit/copy actions.
   const [invoiceDate, setInvoiceDate] = useState(() =>
-    invoiceSeed?.invoiceDate || initialDraft?.invoiceDate || getTodayIndiaDate()
+    invoiceSeed?.invoiceDate || getTodayIndiaDate()
   );
   const [showGstin, setShowGstin] = useState(() =>
-    Boolean(invoiceSeed?.showGstin ?? initialDraft?.showGstin ?? true)
+    Boolean(invoiceSeed?.showGstin ?? true)
   );
   const maxInvoiceDate = getTodayIndiaDate();
 
@@ -419,26 +412,26 @@ export function InvoicePage() {
   };
 
   const [customer, setCustomer] = useState(() => ({
-    name: normalizeCustomerName(invoiceSeed?.customerName || invoiceSeed?.name || initialDraft?.customer?.name || ""),
-    mobile: invoiceSeed?.mobile || initialDraft?.customer?.mobile || "",
-    address: normalizeCustomerAddress(invoiceSeed?.address || initialDraft?.customer?.address || ""),
+    name: normalizeCustomerName(invoiceSeed?.customerName || invoiceSeed?.name || ""),
+    mobile: invoiceSeed?.mobile || "",
+    address: normalizeCustomerAddress(invoiceSeed?.address || ""),
   }));
 
-  const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || initialDraft?.paymentMode || "Cash");
-  const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || initialDraft?.referenceNo || "");
+  const [paymentMode, setPaymentMode] = useState(() => invoiceSeed?.paymentMode || "Cash");
+  const [referenceNo, setReferenceNo] = useState(() => invoiceSeed?.referenceNo || "");
   const [totalPaid, setTotalPaid] = useState(() => {
     if (isEditingSavedInvoice) {
       return String(invoiceSeed?.totalPaid ?? invoiceSeed?.paymentAmount ?? 0);
     }
-    return initialDraft?.totalPaid === undefined || initialDraft?.totalPaid === null
-      ? null
-      : String(initialDraft.totalPaid);
+    return null;
   });
-  const [newItems, setNewItems] = useState(() => copiedRows(invoiceSeed?.newItems, copiedRows(initialDraft?.newItems, [blankNew()])).map(normalizeNewItemRow));
+  const [newItems, setNewItems] = useState(() =>
+    copiedRows(invoiceSeed?.newItems, [blankNew()]).map(normalizeNewItemRow)
+  );
   // Keep all entered/copied old-ornament rows, remove unused blank rows,
   // and always start with exactly one empty row at the end.
   const [oldItems, setOldItems] = useState(() => {
-    const rows = copiedRows(invoiceSeed?.oldItems, copiedRows(initialDraft?.oldItems, [blankOld()])).map((x) => ({ ...blankOld(), ...x }));
+    const rows = copiedRows(invoiceSeed?.oldItems, [blankOld()]).map((x) => ({ ...blankOld(), ...x }));
     const enteredRows = rows.filter((row) =>
       String(row.description ?? "").trim() !== "" ||
       String(row.purity ?? "").trim() !== "" ||
@@ -447,16 +440,12 @@ export function InvoicePage() {
     );
     return [...enteredRows, blankOld()];
   });
-  const [discount, setDiscount] = useState(() => String(invoiceSeed?.discount ?? initialDraft?.discount ?? ""));
-  const [gst, setGst] = useState(() => String(invoiceSeed?.gstPercent ?? initialDraft?.gst ?? 0));
-  const [description, setDescription] = useState(() => invoiceSeed?.description || initialDraft?.description || "");
+  const [discount, setDiscount] = useState(() => String(invoiceSeed?.discount ?? ""));
+  const [gst, setGst] = useState(() => String(invoiceSeed?.gstPercent ?? 0));
+  const [description, setDescription] = useState(() => invoiceSeed?.description || "");
   const [saved, setSaved] = useState(false);
-  const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft));
   const [draftStorageError, setDraftStorageError] = useState(false);
-  // Keep the draft's idempotency key when restoring it. The backend checks
-  // that key and safely repairs a prior save's business date only when the
-  // rest of the invoice payload is identical.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => initialDraft?.idempotencyKey || createInvoiceDraftKey());
+  const [idempotencyKey, setIdempotencyKey] = useState(() => createInvoiceDraftKey());
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
@@ -476,18 +465,25 @@ export function InvoicePage() {
   const skipNextDraftPersistRef = useRef(false);
 
   useEffect(() => {
-    // Route state is metadata, not a command to delete a draft. New Invoice
-    // links restore the existing account draft; only an explicit reset or a
-    // confirmed backend save removes it.
+    // Remove any unfinished invoice from a previous page visit. Drafts are
+    // temporary within the open page only and must not be restored on reload.
+    try {
+      window.localStorage.removeItem(draftStorageKey);
+    } catch {
+      // The form still starts blank when browser storage is unavailable.
+    }
+  }, []);
+
+  useEffect(() => {
     if (location.state?.copyInvoice || location.state?.editInvoice || location.state?.startNewInvoice) {
-      if (startingNewInvoice && saved) {
-        // Support clicking New Invoice again while the previous invoice page
-        // is still mounted after a successful save.
+      if (startingNewInvoice) {
+        // A deliberate New Invoice navigation always starts with blank fields,
+        // including when the previous invoice page is still mounted.
         resetInvoiceFields({ allowSaved: true });
       }
       navigate("/invoice", { replace: true, state: null });
     }
-  }, [location.key, location.state, startingNewInvoice, saved, navigate]);
+  }, [location.key, location.state, startingNewInvoice, navigate]);
 
   useEffect(() => {
     if (saved) {
@@ -683,9 +679,7 @@ export function InvoicePage() {
     };
   }
 
-  // Internal form initializer used only after a completed print or when
-  // the user explicitly starts a new invoice from the application navigation.
-  // There is intentionally no visible Reset action or Escape-key reset shortcut.
+  // Clear every editable invoice field and discard this page's temporary draft.
   function resetInvoiceFields({ allowSaved = false } = {}) {
     if (saving || (saved && !allowSaved)) return;
 
@@ -704,7 +698,6 @@ export function InvoicePage() {
     setGst("0");
     setDescription("");
     setSaved(false);
-    setDraftRestored(false);
     setDraftStorageError(false);
     setIsEditingSavedInvoice(false);
     setDraftStorageKey(getInvoiceDraftStorageKey(invoiceOwnerRef.current, false, null));
@@ -717,6 +710,15 @@ export function InvoicePage() {
     setShowSavePin(false);
     setPendingPrintAfterSave(false);
     setIsPrintPreparing(false);
+  }
+
+  function handleResetInvoice() {
+    if (saving || isPrintPreparing || showInvoicePin || showSavePin) return;
+    const confirmed = window.confirm(
+      "Are you sure you want to reset this invoice? All unsaved data will be deleted."
+    );
+    if (!confirmed) return;
+    resetInvoiceFields({ allowSaved: true });
   }
 
   function validateInvoiceForm() {
@@ -1766,11 +1768,21 @@ export function InvoicePage() {
       {saving && <p className="draft-note no-print" role="status">Saving the complete invoice to PostgreSQL. Printing will start only after the server confirms the save.</p>}
       {draftStorageError && (
         <p className="error no-print" role="alert">
-          This browser could not save your invoice draft. Keep this page open and avoid refreshing until storage is available.
+          Temporary invoice backup is unavailable in this browser. Unsaved entries will be cleared when this page is reloaded.
         </p>
       )}
 
       <div className="invoice-actions no-print">
+        <button
+          type="button"
+          className="secondary nkj-invoice-reset-button"
+          onClick={handleResetInvoice}
+          disabled={saving || isPrintPreparing || showInvoicePin || showSavePin}
+          title="Clear all entered details and start a blank invoice"
+        >
+          <RotateCcw size={17} /> Reset
+        </button>
+
         <button type="button" className="primary" onClick={save} disabled={saving || saved}>
           <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
         </button>
@@ -1788,9 +1800,7 @@ export function InvoicePage() {
       </div>
       {!saved && (
         <p className="draft-note no-print" role="status">
-          {draftRestored
-            ? "Your unfinished invoice draft was restored. It is saved on this device and remains available after refresh or session expiry."
-            : "Your invoice is saved automatically as a draft while you work. It is cleared only after a successful invoice save."}
+          Your unfinished invoice is temporary and will be cleared when you reload this page or press Reset.
         </p>
       )}
       {showSavePin && (
