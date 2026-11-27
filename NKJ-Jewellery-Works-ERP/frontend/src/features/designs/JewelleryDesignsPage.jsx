@@ -1058,7 +1058,7 @@ export default function JewelleryDesignsPage() {
         </section>
 
         {selected && (
-          <div className="nkj-catalog-modal-backdrop nkj-catalog-view-backdrop" role="presentation" onMouseDown={(event) => {
+          <div className={`nkj-catalog-modal-backdrop nkj-catalog-view-backdrop ${isAdmin ? "nkj-catalog-view-admin-backdrop" : ""}`} role="presentation" onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeSelectedModal();
           }}>
             
@@ -1106,7 +1106,14 @@ export default function JewelleryDesignsPage() {
                           )}
                         </>
                       ) : (
-                        <div className="nkj-catalog-view-no-photo"><ImagePlus size={48} /><b>No photograph uploaded</b><span>Edit this design to add product photographs.</span></div>
+                        isAdmin && selected.isSample ? (
+                          <div className="nkj-catalog-view-card-image-preview" aria-label="Same sample image shown on the design card">
+                            <DesignImage design={selected} />
+                            <span className="nkj-catalog-view-preview-label">DESIGN PREVIEW</span>
+                          </div>
+                        ) : (
+                          <div className="nkj-catalog-view-no-photo"><ImagePlus size={48} /><b>No photograph uploaded</b><span>Edit this design to add product photographs.</span></div>
+                        )
                       )}
                     </div>
                     {selected.images?.length > 0 && (
