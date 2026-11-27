@@ -862,6 +862,58 @@ async function testInvoiceToolbarAndDeleteControls(browser) {
   }
 }
 
+async function testInvoiceRowActions(browser) {
+  for (const width of [390, 1440]) {
+    const context = await browser.newContext({
+      viewport: { width, height: width <= 760 ? 844 : 950 },
+    });
+    const page = await context.newPage();
+    await installApiMocks(page);
+    try {
+      await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
+      await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+      const newPanel = page.locator("#invoice-print .inv-left .ornament-panel").nth(0);
+      const newRows = newPanel.locator(".new-items-table tbody tr");
+      const addNew = newPanel.locator(".row-end button");
+      assert(await newRows.count() === 1, "A new invoice should start with one new-ornament row.");
+      await addNew.click();
+      assert(await newRows.count() === 1,
+        "Add Ornament should reject an empty previous row instead of creating blank rows.");
+      assert((await page.locator(".error.no-print").innerText()).includes("previous ornament row"),
+        "Add Ornament did not explain why the blank row could not be added.");
+      await newRows.first().locator("td:nth-child(2) input").fill("QA gold necklace");
+      await addNew.click();
+      assert(await newRows.count() === 2, "Add Ornament did not add a row after valid details were entered.");
+      await newRows.first().locator(".icon-btn").click();
+      assert(await newRows.count() === 1, "Remove new ornament did not delete the selected row.");
+      assert((await newRows.first().locator("td:nth-child(2) input").inputValue()) === "",
+        "Removing the only entered new ornament should leave one clean blank row.");
+
+      const oldPanel = page.locator("#invoice-print .inv-left .ornament-panel").nth(1);
+      const oldRows = oldPanel.locator(".old-items-table tbody tr");
+      const addOld = oldPanel.locator(".row-end button");
+      assert(await oldRows.count() === 1, "A new invoice should start with one old-ornament row.");
+      await addOld.click();
+      assert(await oldRows.count() === 1,
+        "Add Old Ornament should reject an empty previous row.");
+      await oldRows.first().locator("td:nth-child(2) input").fill("QA old gold chain");
+      await addOld.click();
+      assert(await oldRows.count() === 2,
+        "Add Old Ornament did not add a row after valid details were entered.");
+      await oldRows.first().locator(".icon-btn").click();
+      assert(await oldRows.count() === 1,
+        "Remove old ornament did not delete the selected row.");
+      assert((await oldRows.first().locator("td:nth-child(2) input").inputValue()) === "",
+        "Removing the only entered old ornament should leave one clean blank row.");
+
+      process.stdout.write("PASS Add/Remove New and Old Ornament row actions at " + width + "px\\n");
+    } finally {
+      await context.close();
+    }
+  }
+}
+
 async function testInvoiceSavePinGate(browser) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -937,6 +989,7 @@ async function testInvoiceSavePinGate(browser) {
           showGstin: body.showGstin !== false,
           customerName: body.customerName,
           grandTotal: body.grandTotal || 0,
+          invoiceTime: "16:32:00",
         }),
       });
       return;
@@ -963,6 +1016,14 @@ async function testInvoiceSavePinGate(browser) {
   try {
     await page.goto(BASE_URL + "/invoice", { waitUntil: "domcontentloaded" });
     await page.locator("#invoice-print .inv-shop h1").waitFor({ state: "visible", timeout: 10000 });
+
+    // Invalid forms should show validation feedback before asking for the
+    // owner's security PIN; the modal must not block the user from correcting fields.
+    await page.locator(".invoice-actions button.primary").click();
+    assert(await page.locator(".nkj-pin-overlay").count() === 0,
+      "An invalid invoice opened the SAVE PIN dialog before validation.");
+    assert((await page.locator(".error.no-print").first().innerText()).includes("Please enter customer name"),
+      "An invalid invoice did not show the customer-name validation message.");
 
     await page.locator("#invoice-print .inv-two .inv-panel").first()
       .locator(".form-grid label input").first().fill("PIN Gate QA Customer");
@@ -991,6 +1052,34 @@ async function testInvoiceSavePinGate(browser) {
       "The invoice POST did not include its idempotency key.");
     assert(!(await page.evaluate((key) => localStorage.getItem(key), invoiceDraftKey)),
       "A successfully saved invoice left its local draft behind.");
+    const savedTime = await page.locator("#invoice-print .inv-meta span").nth(2).locator("strong").innerText();
+    assert(savedTime.trim() === "04:32 PM",
+      "The invoice header did not switch to the backend-confirmed save time: " + savedTime);
+
+    const lockedInvoiceFields = await page.evaluate(() => {
+      const root = document.querySelector("#invoice-print");
+      const customerInputs = root.querySelectorAll(".inv-two .inv-panel:first-child .form-grid input");
+      const newRow = root.querySelector(".new-items-table tbody tr");
+      return {
+        customerNameReadOnly: customerInputs[0]?.readOnly === true,
+        customerMobileReadOnly: customerInputs[1]?.readOnly === true,
+        customerAddressReadOnly: customerInputs[2]?.readOnly === true,
+        paymentModeDisabled: root.querySelector(".inv-two select")?.disabled === true,
+        ornamentDescriptionReadOnly: newRow?.querySelector("td:nth-child(2) input")?.readOnly === true,
+        ornamentWeightDisabled: newRow?.querySelector("td:nth-child(4) input")?.disabled === true,
+        makingChargeModesDisabled: Array.from(newRow?.querySelectorAll(".making-charge-mode-picker input") || [])
+          .every((input) => input.disabled),
+        removeOrnamentDisabled: newRow?.querySelector(".icon-btn")?.disabled === true,
+        addOrnamentDisabled: root.querySelector(".new-items-table")?.closest(".ornament-panel")
+          ?.querySelector(".row-end button")?.disabled === true,
+        gstDisabled: root.querySelector(".gst-percent-input")?.disabled === true,
+        discountDisabled: root.querySelector('input[aria-label="Discount"]')?.disabled === true,
+        totalPaidReadOnly: root.querySelector('input[aria-label="Total Paid"]')?.readOnly === true,
+        descriptionReadOnly: root.querySelector(".description-panel textarea")?.readOnly === true,
+      };
+    });
+    assert(Object.values(lockedInvoiceFields).every(Boolean),
+      "A saved invoice still has editable fields or row actions: " + JSON.stringify(lockedInvoiceFields));
 
     await page.locator(".invoice-actions button:not(.nkj-invoice-reset-button).secondary").click();
     await page.locator(".nkj-pin-overlay").waitFor({ state: "visible", timeout: 5000 });
@@ -1230,6 +1319,12 @@ async function testSavedInvoiceMobile(browser) {
       .waitFor({ state: "visible", timeout: 12000 });
     await inspectInvoiceMobileLayout(page, viewport, "Old/Saved Invoice");
     await assertInvoiceTablesUseMobileCards(page, "Old/Saved Invoice");
+    const displayedInvoiceDate = await page.locator(".nkj-saved-invoice-sheet .inv-meta span").nth(1).locator("strong").textContent();
+    const displayedInvoiceTime = await page.locator(".nkj-saved-invoice-sheet .inv-meta span").nth(2).locator("strong").textContent();
+    assert(displayedInvoiceDate.trim() === "17-11-2026",
+      "Saved invoice date should be displayed as DD-MM-YYYY: " + displayedInvoiceDate);
+    assert(displayedInvoiceTime.trim() === "10:15 AM",
+      "Saved invoice time should be displayed in 12-hour format: " + displayedInvoiceTime);
     await verifyInvoicePrintPdf(page, "Old/Saved Invoice");
     await verifyRealSharedPdf(page);
     process.stdout.write("PASS populated Old Invoice modal, browser print and actual PDF share file\n");
@@ -1657,6 +1752,7 @@ async function testPublicNavigation(browser) {
     }
     await testInvoiceMakingChargeModes(browser);
     await testInvoiceToolbarAndDeleteControls(browser);
+    await testInvoiceRowActions(browser);
     await testInvoiceSavePinGate(browser);
     await testInvoiceDraftResetOnReload(browser);
     await testTenMinuteInactivityLogoutAcrossTabs(browser);
