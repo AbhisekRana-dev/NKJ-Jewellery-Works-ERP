@@ -129,6 +129,9 @@ function CornerFiligree({ className = "" }) {
         <path d="M122 18 C135 6 148 10 150 24 C139 30 128 27 122 18 Z" />
         <path d="M22 138 C9 127 11 114 24 111 C34 120 33 131 22 138 Z" />
         <path d="M182 106 C195 93 208 98 207 112 C195 119 185 116 182 106 Z" />
+        <path d="M83 168 C88 152 104 149 113 161 C107 175 94 178 83 168 Z" />
+        <path d="M170 157 C177 144 192 145 198 157 C189 169 178 168 170 157 Z" />
+        <path d="M108 104 C118 89 134 91 140 105 C128 117 116 116 108 104 Z" />
       </g>
     </svg>
   );
@@ -195,10 +198,26 @@ function SilverBanglesArtwork() {
     <img
       className="nkj-rate-jewel-photo is-silver"
       src="/rate-silver-bangles-reference.webp"
-      alt="Detailed jewellery bangles"
+      alt="Traditional silver bangles"
       loading="eager"
       decoding="async"
     />
+  );
+}
+
+function RateDiamond() {
+  return (
+    <svg className="nkj-rate-diamond" viewBox="0 0 64 56" aria-hidden="true">
+      <path d="M32 2 L61 27 L32 54 L3 27 Z" fill="#85001c" stroke="#6d0017" strokeWidth="2" />
+      <path d="M32 2 L46 23 L32 54 L18 23 Z" fill="#e20b42" />
+      <path d="M3 27 L18 23 L32 54 Z" fill="#b90032" />
+      <path d="M61 27 L46 23 L32 54 Z" fill="#8d0025" />
+      <path d="M18 23 L25 12 L46 23 L32 30 Z" fill="#ff6488" />
+      <path d="M25 12 L32 2 L46 23 Z" fill="#ff9ab0" />
+      <path d="M18 23 L32 30 L46 23" fill="none" stroke="#ffd9df" strokeWidth="1.8" />
+      <path d="M32 30 L32 54" stroke="#6f0017" strokeWidth="1.5" />
+      <path d="M25 12 L18 23 L3 27" fill="none" stroke="#ffd9df" strokeWidth="1.2" />
+    </svg>
   );
 }
 
@@ -497,6 +516,8 @@ export default function DigitalRateBoardPage() {
       >
       <div className="nkj-rate-board-canvas" aria-label="Nandikishor Jewellery Works Gold and Silver Rate Board">
         <div className="nkj-rate-board-marble" aria-hidden="true" />
+        <div className="nkj-rate-board-rail is-left" aria-hidden="true" />
+        <div className="nkj-rate-board-rail is-right" aria-hidden="true" />
         <div className="nkj-rate-board-curtain is-left" aria-hidden="true" />
         <div className="nkj-rate-board-curtain is-right" aria-hidden="true" />
         <CornerFiligree className="top-left" />
@@ -518,11 +539,11 @@ export default function DigitalRateBoardPage() {
           </div>
           <div className="nkj-rate-board-actions">
             <button className="nkj-rate-action" type="button" onClick={openEditor} aria-label="Edit gold and silver rates">
-              <Pencil size={28} strokeWidth={2.4} />
+              <Pencil size={16} strokeWidth={2.2} />
               <span>Edit</span>
             </button>
             <button className="nkj-rate-action" type="button" onClick={toggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Enter full screen"}>
-              {fullscreen ? <Minimize2 size={27} /> : <Maximize2 size={27} />}
+              {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               <span>{fullscreen ? "Exit" : "Full Screen"}</span>
             </button>
           </div>
@@ -531,9 +552,9 @@ export default function DigitalRateBoardPage() {
         <div className="nkj-rate-title-row">
           <DecorativeScroll side="left" />
           <div className="nkj-rate-title-banner">
-            <span className="nkj-rate-diamond">◆</span>
+            <RateDiamond />
             <h1>GOLD &amp; SILVER RATE</h1>
-            <span className="nkj-rate-diamond">◆</span>
+            <RateDiamond />
           </div>
           <DecorativeScroll side="right" />
         </div>
