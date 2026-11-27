@@ -1796,7 +1796,7 @@ export function InvoicePage() {
       </div>
       {!saved && (
         <p className="draft-note no-print" role="status">
-          "Your unfinished invoice is temporary and will be cleared when you reload this page or press Reset."
+          Your unfinished invoice is temporary and will be cleared when you reload this page or press Reset.
         </p>
       )}
       {showSavePin && (
