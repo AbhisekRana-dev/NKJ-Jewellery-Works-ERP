@@ -6828,3 +6828,33 @@ body .nkj-catalog-edit-actions > button.cancel {
     width: 100% !important;
   }
 }
+
+
+/* Desktop design preview sizing: compact centered panel, approximately
+   70% of the viewport width and 65–75% of the viewport height.
+   Tablet and mobile layouts below 1101px remain unchanged. */
+@media screen and (min-width: 1101px) {
+  .nkj-catalog-modal-backdrop.nkj-catalog-view-backdrop {
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-catalog-details-modal.nkj-catalog-view-modal {
+    width: min(1100px, 70vw) !important;
+    max-width: min(1100px, 70vw) !important;
+    height: min(700px, 82dvh) !important;
+    max-height: min(700px, 82dvh) !important;
+    min-height: 0 !important;
+    padding: 14px 16px 12px !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-catalog-view-layout {
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .nkj-catalog-view-information {
+    min-height: 0 !important;
+  }
+}
