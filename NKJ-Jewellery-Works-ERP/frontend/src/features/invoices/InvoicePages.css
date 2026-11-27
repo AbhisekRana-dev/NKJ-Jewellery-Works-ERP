@@ -2904,3 +2904,40 @@ body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table .empty {
     border-radius: 8px !important;
   }
 }
+
+
+/* New Invoice — restore a clear, visible Reset action beside Save and Print. */
+.invoice-actions .nkj-invoice-reset-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 11px 20px;
+  border: 1px solid #e4aab6;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fff8f8, #fff0f2);
+  color: #941535;
+  font-weight: 750;
+  box-shadow: 0 2px 7px rgba(148, 21, 53, .07);
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.invoice-actions .nkj-invoice-reset-button svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+}
+.invoice-actions .nkj-invoice-reset-button:hover:not(:disabled) {
+  border-color: #bd4968;
+  background: #ffe7ec;
+  transform: translateY(-1px);
+}
+.invoice-actions .nkj-invoice-reset-button:focus-visible {
+  outline: 3px solid rgba(148, 21, 53, .2);
+  outline-offset: 2px;
+}
+.invoice-actions .nkj-invoice-reset-button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+}
