@@ -1769,6 +1769,10 @@ export function InvoicePage() {
       )}
 
       <div className="invoice-actions no-print">
+        <button type="button" className="primary" onClick={save} disabled={saving || saved}>
+          <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
+        </button>
+
         <button
           type="button"
           className="secondary nkj-invoice-reset-button"
@@ -1777,10 +1781,6 @@ export function InvoicePage() {
           title="Clear all entered details and start a blank invoice"
         >
           <RotateCcw size={17} /> Reset
-        </button>
-
-        <button type="button" className="primary" onClick={save} disabled={saving || saved}>
-          <Save /> {saving ? (isEditingSavedInvoice ? "Updating..." : "Saving...") : saved ? (isEditingSavedInvoice ? "Invoice Updated" : "Invoice Saved") : (isEditingSavedInvoice ? "Update Invoice" : "Save Invoice")}
         </button>
 
         <button

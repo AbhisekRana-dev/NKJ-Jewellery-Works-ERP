@@ -2960,3 +2960,37 @@ body.nkj-owner-layout .nkj-saved-panel .nkj-saved-table .empty {
   cursor: not-allowed;
   transform: none;
 }
+
+
+/* New Invoice action order: Save, Reset, then Download / Print. */
+.invoice-actions {
+  align-items: stretch;
+}
+
+.invoice-actions > button.primary,
+.invoice-actions > button.secondary:not(.nkj-invoice-reset-button) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.invoice-actions .nkj-invoice-reset-button {
+  flex: 0 0 132px;
+  min-width: 132px;
+  white-space: nowrap;
+}
+
+@media screen and (max-width: 760px) {
+  .invoice-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .invoice-actions > button {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .invoice-actions .nkj-invoice-reset-button {
+    min-width: 0;
+  }
+}
